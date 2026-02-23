@@ -1,0 +1,22 @@
+[
+  {
+    "id": "1",
+    "fecha": "1 DIC",
+    "fuente": "MECON",
+    "indicador": "Recaudación tributaria [NOV]",
+    "referencia": "NOV-24: 1.78%",
+    "dato": "1.76%",
+    "trend": "down",
+    "hasDetails": true
+  },
+  {
+    "id": "15",
+    "fecha": "Actual",
+    "fuente": "BCRA",
+    "indicador": "Base Monetaria Amplia",
+    "referencia": "Metrica compuesta",
+    "dato": "-",
+    "trend": "neutral",
+    "hasDetails": true
+  }
+]
