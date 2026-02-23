@@ -9,11 +9,12 @@ interface PageProps {
     }>;
 }
 
-import overrides from '@/data/bcra_overrides.json';
+import overrides from '@/data/overrides/bcra.json';
 
 import IndicatorCompositeView, { AreaConfig, MethodologyItem } from '@/components/IndicatorCompositeView';
 
 import { getCachedIndicator, saveIndicatorToCache } from '@/lib/cache';
+import { fetchSeries } from '@/lib/datos_gob';
 
 export default async function IndicatorDetailPage({ params }: PageProps) {
     const resolvedParams = await params;
@@ -35,11 +36,12 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
 
     let chartData: any[] = [];
 
-    if (indicator.id === '15') {
-        const cached = await getCachedIndicator('15');
+    if (indicator.id === 'bma') {
+        const cached = await getCachedIndicator('bma');
         if (cached) {
             chartData = cached;
         } else {
+            // ... (fetching logic remains the same)
             const today = new Date();
             const past = new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
             const toDate = today.toISOString().split('T')[0];
@@ -99,7 +101,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 };
             });
 
-            await saveIndicatorToCache('15', chartData);
+            await saveIndicatorToCache('bma', chartData);
         } const areas: AreaConfig[] = [
             { key: 'BMAmplia', name: 'Base Monetaria AMPLIA', color: '#FFD700', stackId: '2', type: 'monotone' },
             { key: 'BaseMonetaria', name: 'Base Monetaria', color: '#8888cc' },
@@ -122,6 +124,84 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 data={chartData}
                 areas={areas}
                 methodology={methodology}
+            />
+        );
+    }
+
+    if (indicator.id === 'poder-adquisitivo') {
+        const cached = await getCachedIndicator('poder-adquisitivo');
+        if (cached) {
+            chartData = cached;
+        } else {
+            const ids = [
+                '148.3_INUCLEONAL_DICI_M_19', // IPC Nucleo
+                '149.1_TL_REGIADO_OCTU_0_16', // IS Blanco (Total Registrado)
+                '149.1_SOR_PRIADO_OCTU_0_28', // IS Negro (No reg)
+                '149.1_SOR_PRIADO_OCTU_0_25', // IS Privado (Priv Reg)
+                '149.1_SOR_PUBICO_OCTU_0_14', // IS Publico
+                '158.1_REPTE_0_0_5',          // RIPTE
+                '58.1_MP_0_M_24'              // Jubilacion
+            ].join(',');
+
+            const rawData = await fetchSeries(ids);
+
+            // Base Jan 2017
+            const baseRow = rawData.find((row: any) => row[0] === '2017-01-01');
+            if (baseRow) {
+                const getBaseVal = (idx: number) => baseRow[idx] / baseRow[1]; // Value / IPC
+
+                chartData = rawData
+                    .filter((row: any) => {
+                        return row[0] && row[0] >= '2017-01-01' &&
+                            row[1] && row[2] && row[3] &&
+                            row[4] && row[5] && row[6] && row[7];
+                    })
+                    .map((row: any) => {
+                        const ipc = row[1];
+                        const calc = (idx: number) => {
+                            if (!row[idx]) return 0;
+                            const currentAdj = row[idx] / ipc;
+                            const baseAdj = getBaseVal(idx);
+                            return (currentAdj / baseAdj) * 100;
+                        };
+
+                        return {
+                            fecha: row[0].slice(0, 7),
+                            blanco: calc(2),
+                            negro: calc(3),
+                            privado: calc(4),
+                            publico: calc(5),
+                            ripte: calc(6),
+                            jubilacion: calc(7)
+                        };
+                    });
+                await saveIndicatorToCache('poder-adquisitivo', chartData);
+            }
+        }
+
+        const areas: AreaConfig[] = [
+            { key: 'blanco', name: 'PA [IS blanco/IPCC]', color: '#FFFFFF', type: 'line' },
+            { key: 'negro', name: 'PA [IS negro/IPCC]', color: '#444444', type: 'line' },
+            { key: 'privado', name: 'PA [IS privado/IPCC]', color: '#2E64FE', type: 'line' },
+            { key: 'publico', name: 'PA [IS publico/IPCC]', color: '#81BEF7', type: 'line' },
+            { key: 'ripte', name: 'PA [RIPTE/IPCC]', color: '#31B404', type: 'line' },
+            { key: 'jubilacion', name: 'PA [Jubilacion minima/IPCC]', color: '#FF0000', type: 'line' },
+        ];
+
+        const methodology: MethodologyItem[] = [
+            { title: 'Poder Adquisitivo', description: 'Cálculo propio: (Valor Nominal / IPC Núcleo) normalizado a Enero 2017 = 100.' },
+            { title: 'Fuentes', description: 'INDEC (IPC, Índice de Salarios), Secretaría de Trabajo (RIPTE) y ANSES (Jubilaciones).' }
+        ];
+
+        return (
+            <IndicatorCompositeView
+                title={indicator.indicador}
+                subtitle={indicator.fuente}
+                chartTitle="Evolución del Poder Adquisitivo (Base 100 = Ene-17)"
+                data={chartData}
+                areas={areas}
+                methodology={methodology}
+                valueFormat="index"
             />
         );
     }

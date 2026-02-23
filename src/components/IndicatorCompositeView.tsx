@@ -22,7 +22,7 @@ interface IndicatorCompositeViewProps {
     data: any[];
     areas: AreaConfig[];
     methodology: MethodologyItem[];
-    yAxisFormatter?: (val: number) => string;
+    valueFormat?: 'billions' | 'index';
 }
 
 export default function IndicatorCompositeView({
@@ -32,11 +32,16 @@ export default function IndicatorCompositeView({
     data,
     areas,
     methodology,
-    yAxisFormatter = (val) => `${(val / 1000000).toFixed(1)}B`
+    valueFormat = 'billions'
 }: IndicatorCompositeViewProps) {
     if (!data || data.length === 0) {
         return <div className="text-imperial-gold p-8 text-center font-bold">Cargando datos...</div>;
     }
+
+    const formatYAxis = (val: number) => {
+        if (valueFormat === 'index') return val.toFixed(0);
+        return `${(val / 1000000).toFixed(1)}B`;
+    };
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-8">
@@ -65,7 +70,7 @@ export default function IndicatorCompositeView({
                         <AreaChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
                             <CartesianGrid stroke="#ffffff20" strokeDasharray="3 3" />
                             <XAxis dataKey="fecha" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 12 }} />
-                            <YAxis stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 12 }} tickFormatter={yAxisFormatter} />
+                            <YAxis stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 12 }} tickFormatter={formatYAxis} />
                             <Tooltip
                                 contentStyle={{ backgroundColor: '#00143F', borderColor: '#FFD700', color: '#FFF' }}
                                 itemStyle={{ fontWeight: 'bold' }}

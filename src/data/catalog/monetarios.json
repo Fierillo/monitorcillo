@@ -1,0 +1,12 @@
+[
+    {
+        "id": "bma",
+        "fecha": "Actual",
+        "fuente": "BCRA",
+        "indicador": "Base Monetaria Amplia",
+        "referencia": "Metrica compuesta",
+        "dato": "-",
+        "trend": "neutral",
+        "hasDetails": true
+    }
+]

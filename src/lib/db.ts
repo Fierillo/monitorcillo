@@ -12,24 +12,28 @@ export interface Indicator {
     hasDetails?: boolean;
 }
 
-const DB_PATH = path.join(process.cwd(), 'src', 'data', 'db.json');
+const CATALOG_DIR = path.join(process.cwd(), 'src', 'data', 'catalog');
 
 export async function getIndicators(): Promise<Indicator[]> {
     try {
-        const data = await fs.readFile(DB_PATH, 'utf-8');
-        return JSON.parse(data);
+        const files = await fs.readdir(CATALOG_DIR);
+        const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+        const allIndicators = await Promise.all(jsonFiles.map(async file => {
+            const content = await fs.readFile(path.join(CATALOG_DIR, file), 'utf-8');
+            return JSON.parse(content);
+        }));
+
+        return allIndicators.flat();
     } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
-        throw new Error('Error reading database');
+        return [];
     }
 }
 
 export async function saveIndicators(data: Indicator[]): Promise<void> {
-    try {
-        const dir = path.dirname(DB_PATH);
-        await fs.mkdir(dir, { recursive: true });
-        await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2));
-    } catch {
-        throw new Error('Error saving database');
-    }
+    // Para simplificar, si se intenta guardar globalmente, lo ponemos en un archivo 'monitoreo.json'
+    // aunque lo ideal seria que cada script escriba su propio archivo de categoria
+    const target = path.join(CATALOG_DIR, 'monitoreo.json');
+    await fs.mkdir(CATALOG_DIR, { recursive: true });
+    await fs.writeFile(target, JSON.stringify(data, null, 2));
 }

@@ -1,44 +1,39 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-const CACHE_PATH = path.join(process.cwd(), 'src', 'data', 'bcra_cache.json');
+const CACHE_DIR = path.join(process.cwd(), 'src', 'data', 'cache');
 const CACHE_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
 
-export interface CachedData {
+export interface CachedEntry {
     lastUpdate: string;
-    indicators: Record<string, any[]>;
+    data: any[];
 }
 
 export async function getCachedIndicator(id: string): Promise<any[] | null> {
+    const cacheFile = path.join(CACHE_DIR, `${id}.json`);
     try {
-        const content = await fs.readFile(CACHE_PATH, 'utf-8');
-        const cache: CachedData = JSON.parse(content);
+        const content = await fs.readFile(cacheFile, 'utf-8');
+        const entry: CachedEntry = JSON.parse(content);
 
-        const lastUpdate = new Date(cache.lastUpdate).getTime();
+        const lastUpdate = new Date(entry.lastUpdate).getTime();
         const now = Date.now();
 
         if (now - lastUpdate < CACHE_DURATION_MS) {
-            return cache.indicators[id] || null;
+            return entry.data;
         }
-        return null;
+        return null; // Cache expired
     } catch {
-        return null;
+        return null; // Cache missing
     }
 }
 
 export async function saveIndicatorToCache(id: string, data: any[]): Promise<void> {
-    let cache: CachedData = { lastUpdate: new Date().toISOString(), indicators: {} };
+    const cacheFile = path.join(CACHE_DIR, `${id}.json`);
+    const entry: CachedEntry = {
+        lastUpdate: new Date().toISOString(),
+        data
+    };
 
-    try {
-        const content = await fs.readFile(CACHE_PATH, 'utf-8');
-        cache = JSON.parse(content);
-    } catch {
-        // Use default empty cache
-    }
-
-    cache.indicators[id] = data;
-    cache.lastUpdate = new Date().toISOString();
-
-    await fs.mkdir(path.dirname(CACHE_PATH), { recursive: true });
-    await fs.writeFile(CACHE_PATH, JSON.stringify(cache, null, 2));
+    await fs.mkdir(CACHE_DIR, { recursive: true });
+    await fs.writeFile(cacheFile, JSON.stringify(entry, null, 2));
 }

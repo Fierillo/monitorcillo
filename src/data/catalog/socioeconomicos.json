@@ -1,0 +1,22 @@
+[
+    {
+        "id": "recaudacion",
+        "fecha": "1 DIC",
+        "fuente": "MECON",
+        "indicador": "Recaudación tributaria [NOV]",
+        "referencia": "NOV-24: 1.78%",
+        "dato": "1.76%",
+        "trend": "down",
+        "hasDetails": true
+    },
+    {
+        "id": "poder-adquisitivo",
+        "fecha": "Actual",
+        "fuente": "INDEC",
+        "indicador": "Poder adquisitivo (ajustado por IPC nucleo)",
+        "referencia": "Indice 100 = Ene-17",
+        "dato": "-",
+        "trend": "down",
+        "hasDetails": true
+    }
+]

@@ -91,8 +91,8 @@ try {
     const tesoro = processTesoro();
 
     const overrides = { otros, tesoro };
-    fs.writeFileSync(path.join(__dirname, '../src/data/bcra_overrides.json'), JSON.stringify(overrides, null, 2));
-    console.log('Successfully generated src/data/bcra_overrides.json');
+    fs.writeFileSync(path.join(__dirname, '../src/data/overrides/bcra.json'), JSON.stringify(overrides, null, 2));
+    console.log('Successfully generated src/data/overrides/bcra.json');
 } catch (error) {
     console.error('Error processing Excel files:', error);
     process.exit(1);
