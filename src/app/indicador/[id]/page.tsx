@@ -13,6 +13,8 @@ import overrides from '@/data/bcra_overrides.json';
 
 import IndicatorCompositeView, { AreaConfig, MethodologyItem } from '@/components/IndicatorCompositeView';
 
+import { getCachedIndicator, saveIndicatorToCache } from '@/lib/cache';
+
 export default async function IndicatorDetailPage({ params }: PageProps) {
     const resolvedParams = await params;
     const data = await getIndicators();
@@ -34,66 +36,71 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
     let chartData: any[] = [];
 
     if (indicator.id === '15') {
-        const today = new Date();
-        const past = new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
-        const toDate = today.toISOString().split('T')[0];
-        const fromDate = past.toISOString().split('T')[0];
+        const cached = await getCachedIndicator('15');
+        if (cached) {
+            chartData = cached;
+        } else {
+            const today = new Date();
+            const past = new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
+            const toDate = today.toISOString().split('T')[0];
+            const fromDate = past.toISOString().split('T')[0];
 
-        const [baseMonetaria, pases, leliq, lefi, depositosTesoro] = await Promise.all([
-            fetchBcraVariable(15, fromDate, toDate),
-            fetchBcraVariable(152, fromDate, toDate),
-            fetchBcraVariable(155, fromDate, toDate),
-            fetchBcraVariable(196, fromDate, toDate),
-            fetchBcraVariable(210, fromDate, toDate),
-        ]);
+            const [baseMonetaria, pases, leliq, lefi, depositosTesoro] = await Promise.all([
+                fetchBcraVariable(15, fromDate, toDate),
+                fetchBcraVariable(152, fromDate, toDate),
+                fetchBcraVariable(155, fromDate, toDate),
+                fetchBcraVariable(196, fromDate, toDate),
+                fetchBcraVariable(210, fromDate, toDate),
+            ]);
 
-        const lastByMonth = (items: any[]) => {
-            const monthMap: Record<string, number> = {};
-            items
-                .filter((d: any) => d?.fecha)
-                .sort((a: any, b: any) => a.fecha.localeCompare(b.fecha))
-                .forEach((d: any) => { monthMap[d.fecha.slice(0, 7)] = d.valor; });
-            return monthMap;
-        };
-
-        const bmByMonth = lastByMonth(baseMonetaria);
-        const pasesByMonth = lastByMonth(pases);
-        const leliqByMonth = lastByMonth(leliq);
-        const lefiByMonth = lastByMonth(lefi);
-        const tesoroByMonth = lastByMonth(depositosTesoro);
-
-        const fromMonth = fromDate.slice(0, 7);
-        const toMonth = toDate.slice(0, 7);
-
-        const allMonths = new Set(
-            [
-                ...Object.keys(bmByMonth),
-                ...Object.keys(pasesByMonth),
-                ...Object.keys(leliqByMonth),
-                ...Object.keys(lefiByMonth),
-                ...Object.keys(tesoroByMonth),
-                ...Object.keys(overrides.otros),
-                ...Object.keys(overrides.tesoro),
-            ].filter(m => m >= fromMonth && m <= toMonth)
-        );
-
-        chartData = Array.from(allMonths).sort().map(month => {
-            const bm = bmByMonth[month] || 0;
-            const otrosAvg = (overrides.otros as any)[month] || 0;
-            const pasivosRemOriginal = (pasesByMonth[month] || 0) + (leliqByMonth[month] || 0) + (lefiByMonth[month] || 0);
-            const pasivosRemTotal = pasivosRemOriginal + otrosAvg;
-            const tesoro = (overrides.tesoro as any)[month] || tesoroByMonth[month] || 0;
-
-            return {
-                fecha: month,
-                BaseMonetaria: bm,
-                PasivosRemunerados: pasivosRemTotal,
-                DepositosTesoro: tesoro,
-                BMAmplia: bm + pasivosRemTotal + tesoro,
+            const lastByMonth = (items: any[]) => {
+                const monthMap: Record<string, number> = {};
+                items
+                    .filter((d: any) => d?.fecha)
+                    .sort((a: any, b: any) => a.fecha.localeCompare(b.fecha))
+                    .forEach((d: any) => { monthMap[d.fecha.slice(0, 7)] = d.valor; });
+                return monthMap;
             };
-        });
 
-        const areas: AreaConfig[] = [
+            const bmByMonth = lastByMonth(baseMonetaria);
+            const pasesByMonth = lastByMonth(pases);
+            const leliqByMonth = lastByMonth(leliq);
+            const lefiByMonth = lastByMonth(lefi);
+            const tesoroByMonth = lastByMonth(depositosTesoro);
+
+            const fromMonth = fromDate.slice(0, 7);
+            const toMonth = toDate.slice(0, 7);
+
+            const allMonths = new Set(
+                [
+                    ...Object.keys(bmByMonth),
+                    ...Object.keys(pasesByMonth),
+                    ...Object.keys(leliqByMonth),
+                    ...Object.keys(lefiByMonth),
+                    ...Object.keys(tesoroByMonth),
+                    ...Object.keys(overrides.otros),
+                    ...Object.keys(overrides.tesoro),
+                ].filter(m => m >= fromMonth && m <= toMonth)
+            );
+
+            chartData = Array.from(allMonths).sort().map(month => {
+                const bm = bmByMonth[month] || 0;
+                const otrosAvg = (overrides.otros as any)[month] || 0;
+                const pasivosRemOriginal = (pasesByMonth[month] || 0) + (leliqByMonth[month] || 0) + (lefiByMonth[month] || 0);
+                const pasivosRemTotal = pasivosRemOriginal + otrosAvg;
+                const tesoro = (overrides.tesoro as any)[month] || tesoroByMonth[month] || 0;
+
+                return {
+                    fecha: month,
+                    BaseMonetaria: bm,
+                    PasivosRemunerados: pasivosRemTotal,
+                    DepositosTesoro: tesoro,
+                    BMAmplia: bm + pasivosRemTotal + tesoro,
+                };
+            });
+
+            await saveIndicatorToCache('15', chartData);
+        } const areas: AreaConfig[] = [
             { key: 'BMAmplia', name: 'Base Monetaria AMPLIA', color: '#FFD700', stackId: '2', type: 'monotone' },
             { key: 'BaseMonetaria', name: 'Base Monetaria', color: '#8888cc' },
             { key: 'PasivosRemunerados', name: 'Pasivos Remunerados', color: '#cc4444' },
