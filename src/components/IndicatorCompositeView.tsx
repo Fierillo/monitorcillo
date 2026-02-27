@@ -1,6 +1,9 @@
 'use client';
 import { AreaChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import Link from 'next/link';
+import { toPng } from 'html-to-image';
+import { useRef } from 'react';
+import { ImageDown } from 'lucide-react';
 
 export interface AreaConfig {
     key: string;
@@ -23,6 +26,7 @@ interface IndicatorCompositeViewProps {
     areas: AreaConfig[];
     methodology: MethodologyItem[];
     valueFormat?: 'billions' | 'index';
+    yAxisLabel?: string;
 }
 
 export default function IndicatorCompositeView({
@@ -32,16 +36,47 @@ export default function IndicatorCompositeView({
     data,
     areas,
     methodology,
-    valueFormat = 'billions'
+    valueFormat = 'billions',
+    yAxisLabel
 }: IndicatorCompositeViewProps) {
+    const captureRef = useRef<HTMLDivElement>(null);
+
+    const downloadChart = async () => {
+        if (!captureRef.current) return;
+
+        try {
+            const dataUrl = await toPng(captureRef.current, {
+                backgroundColor: '#00143F',
+                pixelRatio: 2,
+                filter: (node) => !node.classList?.contains('no-capture'),
+            });
+
+            const link = document.createElement('a');
+            link.download = `${title.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (err) {
+            console.error('Error al descargar el gráfico:', err);
+        }
+    };
+
     if (!data || data.length === 0) {
         return <div className="text-imperial-gold p-8 text-center font-bold">Cargando datos...</div>;
     }
 
     const formatYAxis = (val: number) => {
-        if (valueFormat === 'index') return val.toFixed(0);
+        if (valueFormat === 'index') return val.toFixed(1);
         return `${(val / 1000000).toFixed(1)}B`;
     };
+
+    // Calcular dominio dinámico con padding
+    const allValues = data.flatMap((row: any) => 
+        areas.map(area => row[area.key]).filter((v: any) => v !== null && v !== undefined && !isNaN(v))
+    );
+    const dataMin = Math.min(...allValues);
+    const dataMax = Math.max(...allValues);
+    const padding = (dataMax - dataMin) * 0.05;
+    const yDomain = [Math.floor(dataMin - padding), Math.ceil(dataMax + padding)];
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-8">
@@ -60,64 +95,87 @@ export default function IndicatorCompositeView({
                 </Link>
             </header>
 
-            <main className="w-full max-w-6xl flex flex-col gap-8">
-                {/* Chart Box */}
-                <div className="w-full h-[500px] bg-imperial-blue border-2 border-imperial-gold p-4 shadow-lg shadow-imperial-blue/50">
-                    <h2 className="text-imperial-gold text-xl font-bold uppercase mb-6 tracking-widest text-center">
-                        {chartTitle}
-                    </h2>
-                    <ResponsiveContainer width="100%" height="80%">
-                        <AreaChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
-                            <CartesianGrid stroke="#ffffff20" strokeDasharray="3 3" />
-                            <XAxis dataKey="fecha" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 12 }} />
-                            <YAxis stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 12 }} tickFormatter={formatYAxis} />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: '#00143F', borderColor: '#FFD700', color: '#FFF' }}
-                                itemStyle={{ fontWeight: 'bold' }}
-                                formatter={(val: any) => new Intl.NumberFormat('es-AR').format(val || 0)}
-                            />
-                            <Legend wrapperStyle={{ color: '#FFD700', paddingTop: '20px' }} />
-                            {areas.map((area) => (
-                                area.type === 'line' ? (
-                                    <Line
-                                        key={area.key}
-                                        type="monotone"
-                                        dataKey={area.key}
-                                        stroke={area.color}
-                                        strokeWidth={3}
-                                        dot={false}
-                                        name={area.name}
-                                    />
-                                ) : (
-                                    <Area
-                                        key={area.key}
-                                        type={area.type || 'step'}
-                                        dataKey={area.key}
-                                        stackId={area.stackId || '1'}
-                                        stroke={area.color}
-                                        fill={area.color}
-                                        fillOpacity={area.stackId === '2' ? 0 : 0.7}
-                                        strokeWidth={area.stackId === '2' ? 2 : 1}
-                                        name={area.name}
-                                    />
-                                )
-                            ))}
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* Methodology Footer */}
-                <div className="p-6 bg-imperial-blue/30 border-2 border-imperial-gold/20 rounded-lg shadow-inner">
-                    <h3 className="text-imperial-gold font-bold uppercase text-sm mb-4 tracking-tighter border-b border-imperial-gold/20 pb-2">
-                        Metodología de composición y fuentes
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm leading-relaxed">
-                        {methodology.map((item, idx) => (
-                            <div key={idx}>
-                                <h4 className="text-imperial-cyan font-bold uppercase text-xs">{item.title}</h4>
-                                <p className="text-foreground/70 italic">{item.description}</p>
+            <main className="w-full max-w-6xl">
+                {/* Chart Box with Methodology */}
+                <div className="w-full h-[850px] bg-imperial-blue border-2 border-imperial-gold p-4 shadow-lg shadow-imperial-blue/50 flex flex-col">
+                    {/* Contenedor para captura - todo el contenido */}
+                    <div ref={captureRef} className="flex-1 flex flex-col bg-imperial-blue">
+                        <div className="flex items-center justify-between mb-2 shrink-0">
+                            <div className="flex-1" />
+                            <h2 className="text-imperial-gold text-xl font-bold uppercase tracking-widest text-center flex-1">
+                                {chartTitle}
+                            </h2>
+                            <div className="flex-1 flex justify-end">
+                                <button
+                                    onClick={downloadChart}
+                                    className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-2 text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2"
+                                    title="Descargar gráfico"
+                                >
+                                    <ImageDown size={18} />
+                                    Guardar
+                                </button>
                             </div>
-                        ))}
+                        </div>
+
+                        <div className="flex-1 min-h-0">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
+                                    <CartesianGrid stroke="#ffffff20" strokeDasharray="3 3" />
+                                    <XAxis dataKey="fecha" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 12 }} />
+                                    <YAxis 
+                                        stroke="#FFD700" 
+                                        tick={{ fill: '#FFD700', fontSize: 12 }} 
+                                        tickFormatter={formatYAxis}
+                                        label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', fill: '#FFD700', fontSize: 11, fontWeight: 'bold', offset: 10 }}
+                                        domain={yDomain}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#00143F', borderColor: '#FFD700', color: '#FFF' }}
+                                        itemStyle={{ fontWeight: 'bold' }}
+                                        formatter={(val: any) => val?.toFixed(1) ?? '-'}
+                                    />
+                                    <Legend wrapperStyle={{ color: '#FFD700', paddingTop: '10px' }} />
+                                    {areas.map((area) => (
+                                        area.type === 'line' ? (
+                                            <Line
+                                                key={area.key}
+                                                type="monotone"
+                                                dataKey={area.key}
+                                                stroke={area.color}
+                                                strokeWidth={3}
+                                                dot={false}
+                                                name={area.name}
+                                            />
+                                        ) : (
+                                            <Area
+                                                key={area.key}
+                                                type={area.type || 'step'}
+                                                dataKey={area.key}
+                                                stackId={area.stackId || '1'}
+                                                stroke={area.color}
+                                                fill={area.color}
+                                                fillOpacity={area.stackId === '2' ? 0 : 0.7}
+                                                strokeWidth={area.stackId === '2' ? 2 : 1}
+                                                name={area.name}
+                                            />
+                                        )
+                                    ))}
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                        
+                        {/* Methodology Section - versión compacta */}
+                        <div className="mt-2 pt-2 border-t border-imperial-gold/30 shrink-0 px-2 pb-1">
+                            <h3 className="text-imperial-gold font-bold text-[10px] mb-1">Fuentes y metodología</h3>
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[9px]">
+                                {methodology.map((item, idx) => (
+                                    <div key={idx} className="leading-tight">
+                                        <span className="text-imperial-cyan font-bold">{item.title}:</span>{' '}
+                                        <span className="text-foreground/80">{item.description}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>
