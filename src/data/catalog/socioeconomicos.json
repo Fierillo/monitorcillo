@@ -11,12 +11,22 @@
     },
     {
         "id": "poder-adquisitivo",
-        "fecha": "Actual",
+        "fecha": "Ene-26",
         "fuente": "INDEC",
         "indicador": "Poder adquisitivo (ajustado por IPC nucleo)",
         "referencia": "Indice 100 = Ene-17",
         "dato": "-",
         "trend": "down",
+        "hasDetails": true
+    },
+    {
+        "id": "emae",
+        "fecha": "Dic-25",
+        "fuente": "INDEC",
+        "indicador": "EMAE (Estimador Mensual de Actividad Económica)",
+        "referencia": "Índice Base Ene-17 = 100",
+        "dato": "-",
+        "trend": "neutral",
         "hasDetails": true
     }
 ]
