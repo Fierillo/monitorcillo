@@ -38,6 +38,28 @@ chore: update BMA cache with latest data
 - No agrupar cambios no relacionados
 - Separar commits de features, fixes y tareas de mantenimiento
 
+## Principio de commits atómicos
+
+Los commits deben ser **cortos y enfocados**. Si necesitas escribir un mensaje de commit extenso para explicar todo lo que hace, probablemente deberías haber hecho commits más pequeños y específicos.
+
+**Regla general**: Un commit = Una funcionalidad/cambio lógico
+
+**Mal ejemplo**:
+```
+feat: add EMAE, update BMA cache, fix bug in chart, add new button
+```
+
+**Buenos ejemplos** (commits separados):
+```
+feat: add EMAE indicator with three series
+
+chore: update BMA cache with recent data
+
+fix: correct chart axis calculation
+
+feat: add download button to chart view
+```
+
 ## Idioma
 
 - Commits: Inglés
