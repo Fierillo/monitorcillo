@@ -1,0 +1,653 @@
+{
+  "lastUpdate": "2026-02-27T03:39:14.779Z",
+  "data": [
+    {
+      "fecha": "ene-17",
+      "emae": 100,
+      "emae_desestacionalizado": 100,
+      "emae_tendencia": 100
+    },
+    {
+      "fecha": "feb-17",
+      "emae": 96.72542190112992,
+      "emae_desestacionalizado": 99.76552022735248,
+      "emae_tendencia": 100.41821463250527
+    },
+    {
+      "fecha": "mar-17",
+      "emae": 111.70166718292236,
+      "emae_desestacionalizado": 100.33582946418417,
+      "emae_tendencia": 100.8659835154323
+    },
+    {
+      "fecha": "abr-17",
+      "emae": 111.20792450300834,
+      "emae_desestacionalizado": 100.26229164877292,
+      "emae_tendencia": 101.32619398728538
+    },
+    {
+      "fecha": "may-17",
+      "emae": 123.24228343818429,
+      "emae_desestacionalizado": 100.83547105289755,
+      "emae_tendencia": 101.77806613325839
+    },
+    {
+      "fecha": "jun-17",
+      "emae": 117.86031691002658,
+      "emae_desestacionalizado": 101.96549636567175,
+      "emae_tendencia": 102.1986429222466
+    },
+    {
+      "fecha": "jul-17",
+      "emae": 110.00741015543429,
+      "emae_desestacionalizado": 102.14492732722837,
+      "emae_tendencia": 102.56373837619685
+    },
+    {
+      "fecha": "ago-17",
+      "emae": 109.2384085462631,
+      "emae_desestacionalizado": 102.15822915332097,
+      "emae_tendencia": 102.84931438896731
+    },
+    {
+      "fecha": "sept-17",
+      "emae": 107.13877649127792,
+      "emae_desestacionalizado": 102.67843958853848,
+      "emae_tendencia": 103.03297505399014
+    },
+    {
+      "fecha": "oct-17",
+      "emae": 109.33399835082925,
+      "emae_desestacionalizado": 103.01686271186585,
+      "emae_tendencia": 103.09811707417653
+    },
+    {
+      "fecha": "nov-17",
+      "emae": 111.19306571848551,
+      "emae_desestacionalizado": 103.56386929659315,
+      "emae_tendencia": 103.03160001092783
+    },
+    {
+      "fecha": "dic-17",
+      "emae": 107.4292087005108,
+      "emae_desestacionalizado": 103.34821847232563,
+      "emae_tendencia": 102.82815501757622
+    },
+    {
+      "fecha": "ene-18",
+      "emae": 104.47056592919711,
+      "emae_desestacionalizado": 102.33117619454164,
+      "emae_tendencia": 102.49353752965457
+    },
+    {
+      "fecha": "feb-18",
+      "emae": 101.59945716987575,
+      "emae_desestacionalizado": 103.13985551141214,
+      "emae_tendencia": 102.04348332207257
+    },
+    {
+      "fecha": "mar-18",
+      "emae": 114.07032559076902,
+      "emae_desestacionalizado": 102.77246348039728,
+      "emae_tendencia": 101.50225657670946
+    },
+    {
+      "fecha": "abr-18",
+      "emae": 110.8992129386287,
+      "emae_desestacionalizado": 99.70691787290374,
+      "emae_tendencia": 100.89996388560382
+    },
+    {
+      "fecha": "may-18",
+      "emae": 116.78517638572413,
+      "emae_desestacionalizado": 98.28434776051263,
+      "emae_tendencia": 100.27138917267442
+    },
+    {
+      "fecha": "jun-18",
+      "emae": 110.60734952032401,
+      "emae_desestacionalizado": 97.39800315150173,
+      "emae_tendencia": 99.65278376123999
+    },
+    {
+      "fecha": "jul-18",
+      "emae": 106.82916147730582,
+      "emae_desestacionalizado": 97.69014042123707,
+      "emae_tendencia": 99.07766692366707
+    },
+    {
+      "fecha": "ago-18",
+      "emae": 107.41645561852388,
+      "emae_desestacionalizado": 99.60151086360457,
+      "emae_tendencia": 98.57653071790709
+    },
+    {
+      "fecha": "sept-18",
+      "emae": 100.81525913328444,
+      "emae_desestacionalizado": 97.25513154914827,
+      "emae_tendencia": 98.17049149318758
+    },
+    {
+      "fecha": "oct-18",
+      "emae": 104.54548460441183,
+      "emae_desestacionalizado": 97.39773831065523,
+      "emae_tendencia": 97.86911048762215
+    },
+    {
+      "fecha": "nov-18",
+      "emae": 102.89809761235126,
+      "emae_desestacionalizado": 96.13163114005081,
+      "emae_tendencia": 97.67321812731748
+    },
+    {
+      "fecha": "dic-18",
+      "emae": 99.72111827761599,
+      "emae_desestacionalizado": 96.4320351203892,
+      "emae_tendencia": 97.57482695594418
+    },
+    {
+      "fecha": "ene-19",
+      "emae": 98.46565262332126,
+      "emae_desestacionalizado": 96.26586222912809,
+      "emae_tendencia": 97.55591817493917
+    },
+    {
+      "fecha": "feb-19",
+      "emae": 96.8054703121962,
+      "emae_desestacionalizado": 97.88224801975794,
+      "emae_tendencia": 97.59090241352622
+    },
+    {
+      "fecha": "mar-19",
+      "emae": 106.09707481659147,
+      "emae_desestacionalizado": 96.82998134552997,
+      "emae_tendencia": 97.6529972912998
+    },
+    {
+      "fecha": "abr-19",
+      "emae": 109.72209863337807,
+      "emae_desestacionalizado": 96.82825841577245,
+      "emae_tendencia": 97.71375104347145
+    },
+    {
+      "fecha": "may-19",
+      "emae": 120.12918411805313,
+      "emae_desestacionalizado": 98.1986166083918,
+      "emae_tendencia": 97.74759137121764
+    },
+    {
+      "fecha": "jun-19",
+      "emae": 110.41208764564985,
+      "emae_desestacionalizado": 97.6061087198366,
+      "emae_tendencia": 97.73225371602308
+    },
+    {
+      "fecha": "jul-19",
+      "emae": 107.42455734615805,
+      "emae_desestacionalizado": 98.83378534946804,
+      "emae_tendencia": 97.64960131659093
+    },
+    {
+      "fecha": "ago-19",
+      "emae": 103.39909595205572,
+      "emae_desestacionalizado": 98.2101019048055,
+      "emae_tendencia": 97.48821172266814
+    },
+    {
+      "fecha": "sept-19",
+      "emae": 98.7151000281584,
+      "emae_desestacionalizado": 95.37655367608873,
+      "emae_tendencia": 97.24374557506691
+    },
+    {
+      "fecha": "oct-19",
+      "emae": 103.66433410049278,
+      "emae_desestacionalizado": 97.59207388462453,
+      "emae_tendencia": 96.91869660068106
+    },
+    {
+      "fecha": "nov-19",
+      "emae": 100.83374662432722,
+      "emae_desestacionalizado": 95.61522611166896,
+      "emae_tendencia": 96.52252314419263
+    },
+    {
+      "fecha": "dic-19",
+      "emae": 99.3650822879328,
+      "emae_desestacionalizado": 95.12908616972456,
+      "emae_tendencia": 96.07206126733138
+    },
+    {
+      "fecha": "ene-20",
+      "emae": 97.99347139698507,
+      "emae_desestacionalizado": 95.45350957526537,
+      "emae_tendencia": 95.58711062405382
+    },
+    {
+      "fecha": "feb-20",
+      "emae": 94.39444363775435,
+      "emae_desestacionalizado": 94.62155775232985,
+      "emae_tendencia": 95.0905653691335
+    },
+    {
+      "fecha": "mar-20",
+      "emae": 93.83632085127981,
+      "emae_desestacionalizado": 85.54530285499207,
+      "emae_tendencia": 94.6068314423567
+    },
+    {
+      "fecha": "abr-20",
+      "emae": 82.91943878891057,
+      "emae_desestacionalizado": 72.10018678488012,
+      "emae_tendencia": 94.16092220456382
+    },
+    {
+      "fecha": "may-20",
+      "emae": 95.8991574144807,
+      "emae_desestacionalizado": 79.84200448902843,
+      "emae_tendencia": 93.77681470059774
+    },
+    {
+      "fecha": "jun-20",
+      "emae": 96.991426330847,
+      "emae_desestacionalizado": 84.68860459178043,
+      "emae_tendencia": 93.47421242618333
+    },
+    {
+      "fecha": "jul-20",
+      "emae": 93.2893277141425,
+      "emae_desestacionalizado": 85.7381656303428,
+      "emae_tendencia": 93.26739961000449
+    },
+    {
+      "fecha": "ago-20",
+      "emae": 91.62076931926674,
+      "emae_desestacionalizado": 87.51455982577015,
+      "emae_tendencia": 93.16593777420653
+    },
+    {
+      "fecha": "sept-20",
+      "emae": 93.07809463302085,
+      "emae_desestacionalizado": 88.7527674169493,
+      "emae_tendencia": 93.1720871053151
+    },
+    {
+      "fecha": "oct-20",
+      "emae": 96.13038521782393,
+      "emae_desestacionalizado": 90.48050462404262,
+      "emae_tendencia": 93.28264767185918
+    },
+    {
+      "fecha": "nov-20",
+      "emae": 96.65965352103052,
+      "emae_desestacionalizado": 91.45088045014977,
+      "emae_tendencia": 93.48773626137069
+    },
+    {
+      "fecha": "dic-20",
+      "emae": 97.96659605466519,
+      "emae_desestacionalizado": 92.90179101867693,
+      "emae_tendencia": 93.77371120755701
+    },
+    {
+      "fecha": "ene-21",
+      "emae": 96.25922374259059,
+      "emae_desestacionalizado": 94.80363413188645,
+      "emae_tendencia": 94.1262427906562
+    },
+    {
+      "fecha": "feb-21",
+      "emae": 92.39318582094488,
+      "emae_desestacionalizado": 93.76776428838723,
+      "emae_tendencia": 94.53448557620217
+    },
+    {
+      "fecha": "mar-21",
+      "emae": 106.82431320279728,
+      "emae_desestacionalizado": 95.76789493198706,
+      "emae_tendencia": 94.9910532709575
+    },
+    {
+      "fecha": "abr-21",
+      "emae": 107.79329376720057,
+      "emae_desestacionalizado": 94.69853808322165,
+      "emae_tendencia": 95.49133547533218
+    },
+    {
+      "fecha": "may-21",
+      "emae": 110.63922996925952,
+      "emae_desestacionalizado": 94.37662691183732,
+      "emae_tendencia": 96.03349167809758
+    },
+    {
+      "fecha": "jun-21",
+      "emae": 109.0366078448213,
+      "emae_desestacionalizado": 96.0951532255233,
+      "emae_tendencia": 96.61513478626796
+    },
+    {
+      "fecha": "jul-21",
+      "emae": 104.24002108992477,
+      "emae_desestacionalizado": 95.98501217903755,
+      "emae_tendencia": 97.23680933791832
+    },
+    {
+      "fecha": "ago-21",
+      "emae": 103.17806976845799,
+      "emae_desestacionalizado": 97.282189206391,
+      "emae_tendencia": 97.89924610142253
+    },
+    {
+      "fecha": "sept-21",
+      "emae": 103.4131148613281,
+      "emae_desestacionalizado": 97.80337931870467,
+      "emae_tendencia": 98.5985349192766
+    },
+    {
+      "fecha": "oct-21",
+      "emae": 102.10937796617068,
+      "emae_desestacionalizado": 97.3146060710139,
+      "emae_tendencia": 99.32644140671587
+    },
+    {
+      "fecha": "nov-21",
+      "emae": 105.21048054065685,
+      "emae_desestacionalizado": 99.02035920468025,
+      "emae_tendencia": 100.06643131429595
+    },
+    {
+      "fecha": "dic-21",
+      "emae": 107.75599251234532,
+      "emae_desestacionalizado": 101.71866577057492,
+      "emae_tendencia": 100.79336468645977
+    },
+    {
+      "fecha": "ene-22",
+      "emae": 102.19954888758367,
+      "emae_desestacionalizado": 100.77527784447351,
+      "emae_tendencia": 101.47785529299689
+    },
+    {
+      "fecha": "feb-22",
+      "emae": 100.89060262153704,
+      "emae_desestacionalizado": 102.28852892614582,
+      "emae_tendencia": 102.08910417561417
+    },
+    {
+      "fecha": "mar-22",
+      "emae": 112.66036345818529,
+      "emae_desestacionalizado": 102.17889769081539,
+      "emae_tendencia": 102.59919577530977
+    },
+    {
+      "fecha": "abr-22",
+      "emae": 115.39092681989615,
+      "emae_desestacionalizado": 103.21710194955851,
+      "emae_tendencia": 102.9888857747433
+    },
+    {
+      "fecha": "may-22",
+      "emae": 120.5344049606876,
+      "emae_desestacionalizado": 103.32863061322357,
+      "emae_tendencia": 103.24766814314408
+    },
+    {
+      "fecha": "jun-22",
+      "emae": 118.16708755665788,
+      "emae_desestacionalizado": 104.69181933756641,
+      "emae_tendencia": 103.37439456889443
+    },
+    {
+      "fecha": "jul-22",
+      "emae": 111.57316872215833,
+      "emae_desestacionalizado": 103.53273886989267,
+      "emae_tendencia": 103.37893571168308
+    },
+    {
+      "fecha": "ago-22",
+      "emae": 110.85617421056348,
+      "emae_desestacionalizado": 102.98052207924985,
+      "emae_tendencia": 103.28028181779646
+    },
+    {
+      "fecha": "sept-22",
+      "emae": 109.17913030572839,
+      "emae_desestacionalizado": 102.4020257686592,
+      "emae_tendencia": 103.10306721202318
+    },
+    {
+      "fecha": "oct-22",
+      "emae": 107.26161339729605,
+      "emae_desestacionalizado": 101.33139950343806,
+      "emae_tendencia": 102.87401141135099
+    },
+    {
+      "fecha": "nov-22",
+      "emae": 108.34195498737755,
+      "emae_desestacionalizado": 100.82335591851465,
+      "emae_tendencia": 102.61792638661116
+    },
+    {
+      "fecha": "dic-22",
+      "emae": 106.98818903003597,
+      "emae_desestacionalizado": 100.84191714001255,
+      "emae_tendencia": 102.35667440665041
+    },
+    {
+      "fecha": "ene-23",
+      "emae": 104.68228520760299,
+      "emae_desestacionalizado": 101.64460834205458,
+      "emae_tendencia": 102.10523499314483
+    },
+    {
+      "fecha": "feb-23",
+      "emae": 100.46062751826695,
+      "emae_desestacionalizado": 101.6189576617667,
+      "emae_tendencia": 101.87080445246947
+    },
+    {
+      "fecha": "mar-23",
+      "emae": 113.4871912939333,
+      "emae_desestacionalizado": 102.42330016968853,
+      "emae_tendencia": 101.64911960192799
+    },
+    {
+      "fecha": "abr-23",
+      "emae": 109.7988471371058,
+      "emae_desestacionalizado": 100.07501272483326,
+      "emae_tendencia": 101.42898701320378
+    },
+    {
+      "fecha": "may-23",
+      "emae": 112.54439918419317,
+      "emae_desestacionalizado": 98.89503506108281,
+      "emae_tendencia": 101.19459914629066
+    },
+    {
+      "fecha": "jun-23",
+      "emae": 111.65487992530953,
+      "emae_desestacionalizado": 99.33880955461424,
+      "emae_tendencia": 100.93182811821748
+    },
+    {
+      "fecha": "jul-23",
+      "emae": 109.94660739097371,
+      "emae_desestacionalizado": 100.9915535907306,
+      "emae_tendencia": 100.63254856014643
+    },
+    {
+      "fecha": "ago-23",
+      "emae": 111.20477250780536,
+      "emae_desestacionalizado": 101.92251245791195,
+      "emae_tendencia": 100.29473788148569
+    },
+    {
+      "fecha": "sept-23",
+      "emae": 108.6359907132842,
+      "emae_desestacionalizado": 101.58585164295964,
+      "emae_tendencia": 99.92568235506579
+    },
+    {
+      "fecha": "oct-23",
+      "emae": 107.95878614208038,
+      "emae_desestacionalizado": 100.58238846855163,
+      "emae_tendencia": 99.54185373396047
+    },
+    {
+      "fecha": "nov-23",
+      "emae": 107.11896839435582,
+      "emae_desestacionalizado": 99.47348377331078,
+      "emae_tendencia": 99.16662381834097
+    },
+    {
+      "fecha": "dic-23",
+      "emae": 101.97837493958781,
+      "emae_desestacionalizado": 97.04434646142847,
+      "emae_tendencia": 98.83039411935377
+    },
+    {
+      "fecha": "ene-24",
+      "emae": 100.66848432576707,
+      "emae_desestacionalizado": 97.64585487520245,
+      "emae_tendencia": 98.5656732600106
+    },
+    {
+      "fecha": "feb-24",
+      "emae": 97.80767231226649,
+      "emae_desestacionalizado": 97.74012822048871,
+      "emae_tendencia": 98.40299390629596
+    },
+    {
+      "fecha": "mar-24",
+      "emae": 104.344467130296,
+      "emae_desestacionalizado": 96.96474007018779,
+      "emae_tendencia": 98.36771473766245
+    },
+    {
+      "fecha": "abr-24",
+      "emae": 107.7817887212894,
+      "emae_desestacionalizado": 95.68055381103402,
+      "emae_tendencia": 98.47488286559755
+    },
+    {
+      "fecha": "may-24",
+      "emae": 114.74312531030807,
+      "emae_desestacionalizado": 96.73308817961932,
+      "emae_tendencia": 98.7248460346707
+    },
+    {
+      "fecha": "jun-24",
+      "emae": 107.85501078708693,
+      "emae_desestacionalizado": 97.53248306728764,
+      "emae_tendencia": 99.10580779421703
+    },
+    {
+      "fecha": "jul-24",
+      "emae": 109.5620390889791,
+      "emae_desestacionalizado": 100.0816010374151,
+      "emae_tendencia": 99.59194146201808
+    },
+    {
+      "fecha": "ago-24",
+      "emae": 107.82749482001527,
+      "emae_desestacionalizado": 100.60236580544921,
+      "emae_tendencia": 100.1479653348053
+    },
+    {
+      "fecha": "sept-24",
+      "emae": 106.00963372150044,
+      "emae_desestacionalizado": 100.47494884575939,
+      "emae_tendencia": 100.7351906205361
+    },
+    {
+      "fecha": "oct-24",
+      "emae": 108.31572718273384,
+      "emae_desestacionalizado": 101.0681787854757,
+      "emae_tendencia": 101.31399664129879
+    },
+    {
+      "fecha": "nov-24",
+      "emae": 108.37041000191729,
+      "emae_desestacionalizado": 102.1743196036718,
+      "emae_tendencia": 101.85327472496117
+    },
+    {
+      "fecha": "dic-24",
+      "emae": 108.7348718265042,
+      "emae_desestacionalizado": 102.707280388819,
+      "emae_tendencia": 102.33089458186662
+    },
+    {
+      "fecha": "ene-25",
+      "emae": 107.0723639825324,
+      "emae_desestacionalizado": 103.14932688872432,
+      "emae_tendencia": 102.73561237915581
+    },
+    {
+      "fecha": "feb-25",
+      "emae": 103.34438123473329,
+      "emae_desestacionalizado": 104.0508061689059,
+      "emae_tendencia": 103.06671137045886
+    },
+    {
+      "fecha": "mar-25",
+      "emae": 110.08095420707278,
+      "emae_desestacionalizado": 102.08739413254978,
+      "emae_tendencia": 103.33144278431953
+    },
+    {
+      "fecha": "abr-25",
+      "emae": 116.18088073652135,
+      "emae_desestacionalizado": 103.16166221626169,
+      "emae_tendencia": 103.54519835740031
+    },
+    {
+      "fecha": "may-25",
+      "emae": 120.67236825009384,
+      "emae_desestacionalizado": 102.93940299700178,
+      "emae_tendencia": 103.72710055906033
+    },
+    {
+      "fecha": "jun-25",
+      "emae": 114.60958690365797,
+      "emae_desestacionalizado": 102.66445613505108,
+      "emae_tendencia": 103.89644253023462
+    },
+    {
+      "fecha": "jul-25",
+      "emae": 112.65491634946049,
+      "emae_desestacionalizado": 102.84455732665198,
+      "emae_tendencia": 104.06986079606733
+    },
+    {
+      "fecha": "ago-25",
+      "emae": 110.1696475394953,
+      "emae_desestacionalizado": 103.57487289763279,
+      "emae_tendencia": 104.25891633560505
+    },
+    {
+      "fecha": "sept-25",
+      "emae": 111.14013294883172,
+      "emae_desestacionalizado": 104.25546286794814,
+      "emae_tendencia": 104.47002541957782
+    },
+    {
+      "fecha": "oct-25",
+      "emae": 111.75215061065693,
+      "emae_desestacionalizado": 103.75399803452873,
+      "emae_tendencia": 104.70609883075221
+    },
+    {
+      "fecha": "nov-25",
+      "emae": 108.22947537201249,
+      "emae_desestacionalizado": 103.6759941053624,
+      "emae_tendencia": 104.96613428439612
+    },
+    {
+      "fecha": "dic-25",
+      "emae": 112.51732933186938,
+      "emae_desestacionalizado": 105.5763969737388,
+      "emae_tendencia": 105.24842110154349
+    }
+  ]
+}

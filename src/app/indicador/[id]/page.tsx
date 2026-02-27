@@ -144,29 +144,30 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
             ].join(',');
 
             const rawData = await fetchSeries(ids);
+            const SPANISH_MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
 
             // Base Jan 2017
             const baseRow = rawData.find((row: any) => row[0] === '2017-01-01');
             if (baseRow) {
-                const getBaseVal = (idx: number) => baseRow[idx] / baseRow[1]; // Value / IPC
+                const getBaseVal = (idx: number) => baseRow[idx] / baseRow[1];
 
-                chartData = rawData
-                    .filter((row: any) => {
-                        return row[0] && row[0] >= '2017-01-01' &&
-                            row[1] && row[2] && row[3] &&
-                            row[4] && row[5] && row[6] && row[7];
-                    })
+                // Pre-calculate all values including negro with 5-month lag
+                const rawValues = rawData
+                    .filter((row: any) => row[0] && row[0] >= '2017-01-01' && row[1])
                     .map((row: any) => {
+                        const dateObj = new Date(row[0] + 'T00:00:00Z');
+                        const fechaStr = `${SPANISH_MONTHS[dateObj.getUTCMonth()]}-${dateObj.getUTCFullYear().toString().slice(-2)}`;
                         const ipc = row[1];
+
                         const calc = (idx: number) => {
-                            if (!row[idx]) return 0;
+                            if (!row[idx]) return null;
                             const currentAdj = row[idx] / ipc;
                             const baseAdj = getBaseVal(idx);
                             return (currentAdj / baseAdj) * 100;
                         };
 
                         return {
-                            fecha: row[0].slice(0, 7),
+                            fecha: fechaStr,
                             blanco: calc(2),
                             negro: calc(3),
                             privado: calc(4),
@@ -175,13 +176,19 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                             jubilacion: calc(7)
                         };
                     });
+
+                // Apply 5-month lag to negro values (data published early by 5 months)
+                chartData = rawValues.map((row: any, index: number) => ({
+                    ...row,
+                    negro: rawValues[index + 5]?.negro ?? null
+                }));
                 await saveIndicatorToCache('poder-adquisitivo', chartData);
             }
         }
 
         const areas: AreaConfig[] = [
             { key: 'blanco', name: 'PA [IS blanco/IPCC]', color: '#FFFFFF', type: 'line' },
-            { key: 'negro', name: 'PA [IS negro/IPCC]', color: '#444444', type: 'line' },
+            { key: 'negro', name: 'PA [IS negro/IPCC]', color: '#000000', type: 'line' },
             { key: 'privado', name: 'PA [IS privado/IPCC]', color: '#2E64FE', type: 'line' },
             { key: 'publico', name: 'PA [IS publico/IPCC]', color: '#81BEF7', type: 'line' },
             { key: 'ripte', name: 'PA [RIPTE/IPCC]', color: '#31B404', type: 'line' },
@@ -197,11 +204,77 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
             <IndicatorCompositeView
                 title={indicator.indicador}
                 subtitle={indicator.fuente}
-                chartTitle="Evolución del Poder Adquisitivo (Base 100 = Ene-17)"
+                chartTitle="Evolución del Poder Adquisitivo"
                 data={chartData}
                 areas={areas}
                 methodology={methodology}
                 valueFormat="index"
+                yAxisLabel="Base 100 = Ene-17"
+            />
+        );
+    }
+
+    if (indicator.id === 'emae') {
+        const cached = await getCachedIndicator('emae');
+        if (cached) {
+            chartData = cached;
+        } else {
+            const ids = [
+                '143.3_NO_PR_2004_A_21', // EMAE original
+                '143.3_NO_PR_2004_A_31', // EMAE desestacionalizado
+                '143.3_NO_PR_2004_A_28'  // EMAE tendencia ciclo
+            ].join(',');
+            const rawData = await fetchSeries(ids);
+            const SPANISH_MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+
+            // Base Jan 2017
+            const baseRow = rawData.find((row: any) => row[0] === '2017-01-01');
+            if (baseRow) {
+                const baseOriginal = baseRow[1];
+                const baseDesest = baseRow[2];
+                const baseTend = baseRow[3];
+
+                chartData = rawData
+                    .filter((row: any) => row[0] && row[0] >= '2017-01-01' && row[1])
+                    .map((row: any) => {
+                        const dateObj = new Date(row[0] + 'T00:00:00Z');
+                        const fechaStr = `${SPANISH_MONTHS[dateObj.getUTCMonth()]}-${dateObj.getUTCFullYear().toString().slice(-2)}`;
+                        return {
+                            fecha: fechaStr,
+                            emae: (row[1] / baseOriginal) * 100,
+                            emae_desestacionalizado: row[2] ? (row[2] / baseDesest) * 100 : null,
+                            emae_tendencia: row[3] ? (row[3] / baseTend) * 100 : null
+                        };
+                    });
+
+                await saveIndicatorToCache('emae', chartData);
+            }
+        }
+
+        const areas: AreaConfig[] = [
+            { key: 'emae', name: 'EMAE Original', color: '#FFD700', type: 'line' },
+            { key: 'emae_desestacionalizado', name: 'EMAE Desestacionalizado', color: '#00BFFF', type: 'line' },
+            { key: 'emae_tendencia', name: 'EMAE Tendencia-Ciclo', color: '#FF6B6B', type: 'line' },
+        ];
+
+        const methodology: MethodologyItem[] = [
+            { title: 'EMAE Original', description: 'Estimador Mensual de Actividad Económica elaborado por el INDEC. Mide la evolución de la actividad económica real de manera anticipada al PIB. Serie sin ajustes.' },
+            { title: 'EMAE Desestacionalizado', description: 'Serie ajustada por estacionalidad, eliminando efectos predecibles del calendario (días hábiles, estaciones, etc.).' },
+            { title: 'EMAE Tendencia-Ciclo', description: 'Componente de largo plazo de la serie, suavizada para eliminar fluctuaciones irregulares y mostrar la tendencia subyacente.' },
+            { title: 'Base', description: 'Índice normalizado a Enero 2017 = 100 para comparabilidad con otros indicadores.' },
+            { title: 'Frecuencia', description: 'Publicación mensual con aproximadamente 60 días de rezago respecto al mes de referencia.' },
+        ];
+
+        return (
+            <IndicatorCompositeView
+                title={indicator.indicador}
+                subtitle={indicator.fuente}
+                chartTitle="Evolución del EMAE"
+                data={chartData}
+                areas={areas}
+                methodology={methodology}
+                valueFormat="index"
+                yAxisLabel="Base 100 = Ene-17"
             />
         );
     }
