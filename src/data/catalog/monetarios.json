@@ -8,5 +8,15 @@
         "dato": "-",
         "trend": "neutral",
         "hasDetails": true
+    },
+    {
+        "id": "emision",
+        "fecha": "Feb-26",
+        "fuente": "BCRA y MECON",
+        "indicador": "Emisión / Absorción de Pesos",
+        "referencia": "Emisión / Absorción de Pesos",
+        "dato": "-",
+        "trend": "neutral",
+        "hasDetails": true
     }
 ]

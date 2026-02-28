@@ -18,6 +18,10 @@ export async function getCachedIndicator(id: string): Promise<any[] | null> {
         const lastUpdate = new Date(entry.lastUpdate).getTime();
         const now = Date.now();
 
+        if (id === 'emision') {
+            return entry.data; // Emisión is managed completely manually or via script, its cache should not expire
+        }
+
         if (now - lastUpdate < CACHE_DURATION_MS) {
             return entry.data;
         }
