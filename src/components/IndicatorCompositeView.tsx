@@ -1,5 +1,5 @@
 'use client';
-import { AreaChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { ComposedChart, Area, Line, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
 import { useRef } from 'react';
@@ -10,7 +10,7 @@ export interface AreaConfig {
     name: string;
     color: string;
     stackId?: string;
-    type?: 'monotone' | 'step' | 'line';
+    type?: 'monotone' | 'step' | 'line' | 'bar';
 }
 
 export interface MethodologyItem {
@@ -25,7 +25,7 @@ interface IndicatorCompositeViewProps {
     data: any[];
     areas: AreaConfig[];
     methodology: MethodologyItem[];
-    valueFormat?: 'billions' | 'index';
+    valueFormat?: 'billions' | 'index' | 'millions';
     yAxisLabel?: string;
 }
 
@@ -66,11 +66,12 @@ export default function IndicatorCompositeView({
 
     const formatYAxis = (val: number) => {
         if (valueFormat === 'index') return val.toFixed(1);
+        if (valueFormat === 'millions') return `$${val.toLocaleString('es-AR')}`;
         return `${(val / 1000000).toFixed(1)}B`;
     };
 
     // Calcular dominio dinámico con padding
-    const allValues = data.flatMap((row: any) => 
+    const allValues = data.flatMap((row: any) =>
         areas.map(area => row[area.key]).filter((v: any) => v !== null && v !== undefined && !isNaN(v))
     );
     const dataMin = Math.min(...allValues);
@@ -119,12 +120,12 @@ export default function IndicatorCompositeView({
 
                         <div className="flex-1 min-h-0">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
+                                <ComposedChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
                                     <CartesianGrid stroke="#ffffff20" strokeDasharray="3 3" />
                                     <XAxis dataKey="fecha" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 12 }} />
-                                    <YAxis 
-                                        stroke="#FFD700" 
-                                        tick={{ fill: '#FFD700', fontSize: 12 }} 
+                                    <YAxis
+                                        stroke="#FFD700"
+                                        tick={{ fill: '#FFD700', fontSize: 12 }}
                                         tickFormatter={formatYAxis}
                                         label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', fill: '#FFD700', fontSize: 11, fontWeight: 'bold', offset: 10 }}
                                         domain={yDomain}
@@ -132,7 +133,13 @@ export default function IndicatorCompositeView({
                                     <Tooltip
                                         contentStyle={{ backgroundColor: '#00143F', borderColor: '#FFD700', color: '#FFF' }}
                                         itemStyle={{ fontWeight: 'bold' }}
-                                        formatter={(val: any) => val?.toFixed(1) ?? '-'}
+                                        formatter={(val: any) => {
+                                            if (typeof val === 'number') {
+                                                if (valueFormat === 'millions') return `$${val.toLocaleString('es-AR')}`;
+                                                return val.toFixed(1);
+                                            }
+                                            return val ?? '-';
+                                        }}
                                     />
                                     <Legend wrapperStyle={{ color: '#FFD700', paddingTop: '10px' }} />
                                     {areas.map((area) => (
@@ -144,6 +151,14 @@ export default function IndicatorCompositeView({
                                                 stroke={area.color}
                                                 strokeWidth={3}
                                                 dot={false}
+                                                name={area.name}
+                                            />
+                                        ) : area.type === 'bar' ? (
+                                            <Bar
+                                                key={area.key}
+                                                dataKey={area.key}
+                                                stackId={area.stackId || '1'}
+                                                fill={area.color}
                                                 name={area.name}
                                             />
                                         ) : (
@@ -160,10 +175,10 @@ export default function IndicatorCompositeView({
                                             />
                                         )
                                     ))}
-                                </AreaChart>
+                                </ComposedChart>
                             </ResponsiveContainer>
                         </div>
-                        
+
                         {/* Methodology Section - versión compacta */}
                         <div className="mt-2 pt-2 border-t border-imperial-gold/30 shrink-0 px-2 pb-1">
                             <h3 className="text-imperial-gold font-bold text-[10px] mb-1">Fuentes y metodología</h3>

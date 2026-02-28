@@ -279,6 +279,37 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         );
     }
 
+    if (indicator.id === 'emision') {
+        const cached = await getCachedIndicator('emision');
+        if (cached) {
+            chartData = cached;
+        }
+
+        const areas: AreaConfig[] = [
+            { key: 'TOTAL', name: 'TOTAL', color: '#ff0000', type: 'line' },
+            { key: 'Resultado fiscal', name: 'Resultado fiscal', color: '#7952b3', type: 'bar', stackId: '1' },
+            { key: 'Licitaciones', name: 'Licitaciones', color: '#0055aa', type: 'bar', stackId: '1' },
+            { key: 'BCRA', name: 'BCRA', color: '#ffcc33', type: 'bar', stackId: '1' }
+        ];
+
+        const methodology: MethodologyItem[] = [
+            { title: 'Fuente', description: '@Fierillo, Elaboración propia en base a BCRA y MECON.' }
+        ];
+
+        return (
+            <IndicatorCompositeView
+                title={indicator.indicador}
+                subtitle={indicator.fuente}
+                chartTitle="Emisión / Absorción de Pesos"
+                data={chartData}
+                areas={areas}
+                methodology={methodology}
+                valueFormat="millions"
+                yAxisLabel="millones de pesos"
+            />
+        );
+    }
+
     // Fallback for other indicators
     return (
         <IndicatorCompositeView
