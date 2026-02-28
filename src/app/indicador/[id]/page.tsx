@@ -144,7 +144,8 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
             ].join(',');
 
             const rawData = await fetchSeries(ids);
-            const SPANISH_MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+            const SPANISH_MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
+            const SPANISH_MONTHS_LOWER = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
 
             // Base Jan 2017
             const baseRow = rawData.find((row: any) => row[0] === '2017-01-01');
@@ -156,7 +157,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                     .filter((row: any) => row[0] && row[0] >= '2017-01-01' && row[1])
                     .map((row: any) => {
                         const dateObj = new Date(row[0] + 'T00:00:00Z');
-                        const fechaStr = `${SPANISH_MONTHS[dateObj.getUTCMonth()]}-${dateObj.getUTCFullYear().toString().slice(-2)}`;
+                        const fechaStr = `${SPANISH_MONTHS[dateObj.getUTCMonth()]} ${dateObj.getUTCFullYear().toString().slice(-2)}`;
                         const ipc = row[1];
 
                         const calc = (idx: number) => {
@@ -225,7 +226,8 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 '143.3_NO_PR_2004_A_28'  // EMAE tendencia ciclo
             ].join(',');
             const rawData = await fetchSeries(ids);
-            const SPANISH_MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+            const SPANISH_MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
+            const SPANISH_MONTHS_LOWER = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
 
             // Base Jan 2017
             const baseRow = rawData.find((row: any) => row[0] === '2017-01-01');
@@ -238,7 +240,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                     .filter((row: any) => row[0] && row[0] >= '2017-01-01' && row[1])
                     .map((row: any) => {
                         const dateObj = new Date(row[0] + 'T00:00:00Z');
-                        const fechaStr = `${SPANISH_MONTHS[dateObj.getUTCMonth()]}-${dateObj.getUTCFullYear().toString().slice(-2)}`;
+                        const fechaStr = `${SPANISH_MONTHS[dateObj.getUTCMonth()]} ${dateObj.getUTCFullYear().toString().slice(-2)}`;
                         return {
                             fecha: fechaStr,
                             emae: (row[1] / baseOriginal) * 100,
