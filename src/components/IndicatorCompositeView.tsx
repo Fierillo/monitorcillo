@@ -67,17 +67,21 @@ export default function IndicatorCompositeView({
     const formatYAxis = (val: number) => {
         if (valueFormat === 'index') return val.toFixed(1);
         if (valueFormat === 'millions') return `$${val.toLocaleString('es-AR')}`;
+        if (valueFormat === 'billions') return `$${(val / 1000000).toFixed(0)}B`;
         return `${(val / 1000000).toFixed(1)}B`;
     };
 
     // Calcular dominio dinámico con padding
+    const scaleFactor = valueFormat === 'billions' ? 1000000 : valueFormat === 'millions' ? 1000000 : 1;
     const allValues = data.flatMap((row: any) =>
         areas.map(area => row[area.key]).filter((v: any) => v !== null && v !== undefined && !isNaN(v))
     );
     const dataMin = Math.min(...allValues);
     const dataMax = Math.max(...allValues);
-    const padding = (dataMax - dataMin) * 0.05;
-    const yDomain = [Math.floor(dataMin - padding), Math.ceil(dataMax + padding)];
+    const scaledMin = dataMin / scaleFactor;
+    const scaledMax = dataMax / scaleFactor;
+    const padding = (scaledMax - scaledMin) * 0.05;
+    const yDomain = [Math.floor(scaledMin - padding), Math.ceil(scaledMax + padding)];
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-8">
@@ -127,7 +131,8 @@ export default function IndicatorCompositeView({
                                         stroke="#FFD700"
                                         tick={{ fill: '#FFD700', fontSize: 12 }}
                                         tickFormatter={formatYAxis}
-                                        label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', fill: '#FFD700', fontSize: 11, fontWeight: 'bold', offset: 10 }}
+                                        tickCount={10}
+                                        label={{ value: yAxisLabel, angle: -90, position: 'left', fill: '#FFD700', fontSize: 11, fontWeight: 'bold', dx: -10, dy: -30 }}
                                         domain={yDomain}
                                     />
                                     <Tooltip

@@ -308,8 +308,8 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 data={chartData}
                 areas={areas}
                 methodology={methodology}
-                valueFormat="millions"
-                yAxisLabel="millones de pesos"
+                valueFormat="billions"
+                yAxisLabel="billones de pesos"
             />
         );
     }
