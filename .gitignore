@@ -45,3 +45,4 @@ scripts
 ,*
  *.js
 /public/*.png
+AGENTS.md

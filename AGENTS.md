@@ -65,3 +65,8 @@ feat: add download button to chart view
 - Commits: Inglés
 - Código: Inglés
 - Documentación: Español (para este proyecto)
+
+## Reglas de trabajo
+
+- **NO hacer commits sin orden expresa del usuario**
+- Esperar siempre la orden "commit" o "hacer commit" antes de ejecutar git commit
