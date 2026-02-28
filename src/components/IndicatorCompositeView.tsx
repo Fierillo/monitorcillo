@@ -132,7 +132,7 @@ export default function IndicatorCompositeView({
                                         tick={{ fill: '#FFD700', fontSize: 12 }}
                                         tickFormatter={formatYAxis}
                                         tickCount={10}
-                                        label={{ value: yAxisLabel, angle: -90, position: 'left', fill: '#FFD700', fontSize: 11, fontWeight: 'bold', dx: -10, dy: -30 }}
+                                        label={{ value: yAxisLabel, angle: -90, position: 'left', fill: '#FFD700', fontSize: 14, fontWeight: 'bold', dy: -30 }}
                                         domain={yDomain}
                                     />
                                     <Tooltip
