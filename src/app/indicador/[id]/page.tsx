@@ -286,14 +286,18 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         }
 
         const areas: AreaConfig[] = [
-            { key: 'TOTAL', name: 'TOTAL', color: '#ff0000', type: 'line' },
+            { key: 'ACUMULADO', name: 'TOTAL', color: '#ff0000', type: 'line' },
             { key: 'Resultado fiscal', name: 'Resultado fiscal', color: '#7952b3', type: 'bar', stackId: '1' },
             { key: 'Licitaciones', name: 'Licitaciones', color: '#0055aa', type: 'bar', stackId: '1' },
             { key: 'BCRA', name: 'BCRA', color: '#ffcc33', type: 'bar', stackId: '1' }
         ];
 
         const methodology: MethodologyItem[] = [
-            { title: 'Fuente', description: '@Fierillo, Elaboración propia en base a BCRA y MECON.' }
+            { title: 'BCRA (Divisas)', description: 'Impacto por compra/venta de dólares (Variable 78 en Millones u$s) valorizados al Tipo de Cambio de Referencia (Variable 4 - Com. "A" 3500).' },
+            { title: 'Licitaciones', description: 'Impacto neto del Tesoro Nacional: Diferencia entre Vencimientos programados y montos Licitados (adjudicados) en el mercado local.' },
+            { title: 'Resultado Fiscal', description: 'Impacto monetario directo derivado del superávit o déficit del Tesoro Nacional.' },
+            { title: 'Acumulado', description: 'Línea de tendencia que representa el stock acumulado de pesos emitidos o absorbidos durante el período visualizado.' },
+            { title: 'Elaboración', description: 'Cálculo propio realizado por @Fierillo en base a datos abiertos del BCRA y el Ministerio de Economía (MECON).' }
         ];
 
         return (
