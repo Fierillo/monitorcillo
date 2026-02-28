@@ -1,180 +1,180 @@
 {
-  "lastUpdate": "2026-02-27T03:45:46.710Z",
+  "lastUpdate": "2026-02-28T13:19:50.407Z",
   "data": [
     {
-      "fecha": "2024-02",
+      "fecha": "FEB 24",
       "BaseMonetaria": 10541474,
       "PasivosRemunerados": 28049328,
       "DepositosTesoro": 1639459.81,
       "BMAmplia": 40230261.81
     },
     {
-      "fecha": "2024-03",
+      "fecha": "MAR 24",
       "BaseMonetaria": 12463695,
       "PasivosRemunerados": 30791842,
       "DepositosTesoro": 1297840.36,
       "BMAmplia": 44553377.36
     },
     {
-      "fecha": "2024-04",
+      "fecha": "ABR 24",
       "BaseMonetaria": 14969070,
       "PasivosRemunerados": 32712831,
       "DepositosTesoro": 1793962.472,
       "BMAmplia": 49475863.472
     },
     {
-      "fecha": "2024-05",
+      "fecha": "MAY 24",
       "BaseMonetaria": 17151691,
       "PasivosRemunerados": 18489248,
       "DepositosTesoro": 13502374.224,
       "BMAmplia": 49143313.224
     },
     {
-      "fecha": "2024-06",
+      "fecha": "JUN 24",
       "BaseMonetaria": 20182490,
       "PasivosRemunerados": 15880749,
       "DepositosTesoro": 13877259.747,
       "BMAmplia": 49940498.747
     },
     {
-      "fecha": "2024-07",
+      "fecha": "JUL 24",
       "BaseMonetaria": 21822977,
       "PasivosRemunerados": 9604955.4541,
       "DepositosTesoro": 17176142.715,
       "BMAmplia": 48604075.1691
     },
     {
-      "fecha": "2024-08",
+      "fecha": "AGO 24",
       "BaseMonetaria": 21953008,
       "PasivosRemunerados": 8828310.7246,
       "DepositosTesoro": 17577741.689,
       "BMAmplia": 48359060.4136
     },
     {
-      "fecha": "2024-09",
+      "fecha": "SEPT 24",
       "BaseMonetaria": 22396060,
       "PasivosRemunerados": 11143865.183,
       "DepositosTesoro": 14541032.138,
       "BMAmplia": 48080957.320999995
     },
     {
-      "fecha": "2024-10",
+      "fecha": "OCT 24",
       "BaseMonetaria": 22715300,
       "PasivosRemunerados": 12677889.2777,
       "DepositosTesoro": 13273622.756,
       "BMAmplia": 48666812.0337
     },
     {
-      "fecha": "2024-11",
+      "fecha": "NOV 24",
       "BaseMonetaria": 23823912,
       "PasivosRemunerados": 14915258.5391,
       "DepositosTesoro": 12010037.538,
       "BMAmplia": 50749208.0771
     },
     {
-      "fecha": "2024-12",
+      "fecha": "DIC 24",
       "BaseMonetaria": 29728575,
       "PasivosRemunerados": 10742211.4816,
       "DepositosTesoro": 12261239.443,
       "BMAmplia": 52732025.924600005
     },
     {
-      "fecha": "2025-01",
+      "fecha": "ENE 25",
       "BaseMonetaria": 30246597,
       "PasivosRemunerados": 12220820.3365,
       "DepositosTesoro": 7630778.241,
       "BMAmplia": 50098195.5775
     },
     {
-      "fecha": "2025-02",
+      "fecha": "FEB 25",
       "BaseMonetaria": 30282166,
       "PasivosRemunerados": 11418640.4648,
       "DepositosTesoro": 9193046.002,
       "BMAmplia": 50893852.466800004
     },
     {
-      "fecha": "2025-03",
+      "fecha": "MAR 25",
       "BaseMonetaria": 30534180,
       "PasivosRemunerados": 10254705.9299,
       "DepositosTesoro": 7677967.24,
       "BMAmplia": 48466853.1699
     },
     {
-      "fecha": "2025-04",
+      "fecha": "ABR 25",
       "BaseMonetaria": 32698982,
       "PasivosRemunerados": 11534728.7326,
       "DepositosTesoro": 31802353.832,
       "BMAmplia": 76036064.5646
     },
     {
-      "fecha": "2025-05",
+      "fecha": "MAY 25",
       "BaseMonetaria": 34940118,
       "PasivosRemunerados": 11335632.0667,
       "DepositosTesoro": 15802836.472,
       "BMAmplia": 62078586.5387
     },
     {
-      "fecha": "2025-06",
+      "fecha": "JUN 25",
       "BaseMonetaria": 37175626,
       "PasivosRemunerados": 11017328.5847,
       "DepositosTesoro": 13959495.978,
       "BMAmplia": 62152450.5627
     },
     {
-      "fecha": "2025-07",
+      "fecha": "JUL 25",
       "BaseMonetaria": 40113368,
       "PasivosRemunerados": 915650.0522746978,
       "DepositosTesoro": 17897559.53,
       "BMAmplia": 58926577.5822747
     },
     {
-      "fecha": "2025-08",
+      "fecha": "AGO 25",
       "BaseMonetaria": 44259863,
       "PasivosRemunerados": 870107.8875241702,
       "DepositosTesoro": 14439378.437,
       "BMAmplia": 59569349.32452417
     },
     {
-      "fecha": "2025-09",
+      "fecha": "SEPT 25",
       "BaseMonetaria": 42295612,
       "PasivosRemunerados": 4410267.021281188,
       "DepositosTesoro": 14242526.088,
       "BMAmplia": 60948405.10928119
     },
     {
-      "fecha": "2025-10",
+      "fecha": "OCT 25",
       "BaseMonetaria": 41327194,
       "PasivosRemunerados": 1680687.1870503204,
       "DepositosTesoro": 5421402.905,
       "BMAmplia": 48429284.09205032
     },
     {
-      "fecha": "2025-11",
+      "fecha": "NOV 25",
       "BaseMonetaria": 40926609,
       "PasivosRemunerados": 3338799.64449871,
       "DepositosTesoro": 3895412.899,
       "BMAmplia": 48160821.54349871
     },
     {
-      "fecha": "2025-12",
+      "fecha": "DIC 25",
       "BaseMonetaria": 42956965,
       "PasivosRemunerados": 3598125.5826119184,
       "DepositosTesoro": 7042997.418,
       "BMAmplia": 53598088.000611916
     },
     {
-      "fecha": "2026-01",
+      "fecha": "ENE 26",
       "BaseMonetaria": 42812343,
       "PasivosRemunerados": 532951.165145119,
       "DepositosTesoro": 5063480.96,
       "BMAmplia": 48408775.12514512
     },
     {
-      "fecha": "2026-02",
-      "BaseMonetaria": 42600442,
+      "fecha": "FEB 26",
+      "BaseMonetaria": 41232963,
       "PasivosRemunerados": 401430.9767548815,
       "DepositosTesoro": 5317933.508,
-      "BMAmplia": 48319806.48475488
+      "BMAmplia": 46952327.48475488
     }
   ]
 }

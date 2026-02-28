@@ -2,7 +2,7 @@
   "lastUpdate": "2026-02-28T02:28:46.776Z",
   "data": [
     {
-      "fecha": "1-ene-26",
+      "fecha": "1 ENE 26",
       "CompraDolares": 0,
       "TC": 1200,
       "BCRA": 0,
@@ -14,7 +14,7 @@
       "ACUMULADO": 0
     },
     {
-      "fecha": "2-ene-26",
+      "fecha": "2 ENE 26",
       "CompraDolares": 0,
       "TC": 1491.24,
       "BCRA": 0,
@@ -26,7 +26,7 @@
       "ACUMULADO": 0
     },
     {
-      "fecha": "5-ene-26",
+      "fecha": "5 ENE 26",
       "CompraDolares": 20.8,
       "TC": 1492.46,
       "BCRA": 31043.168,
@@ -38,7 +38,7 @@
       "ACUMULADO": 31043.168
     },
     {
-      "fecha": "6-ene-26",
+      "fecha": "6 ENE 26",
       "CompraDolares": 83.5,
       "TC": 1488.32,
       "BCRA": 124274.72,
@@ -50,7 +50,7 @@
       "ACUMULADO": 155317.888
     },
     {
-      "fecha": "7-ene-26",
+      "fecha": "7 ENE 26",
       "CompraDolares": 9,
       "TC": 1485.21,
       "BCRA": 13366.89,
@@ -62,7 +62,7 @@
       "ACUMULADO": 168684.778
     },
     {
-      "fecha": "8-ene-26",
+      "fecha": "8 ENE 26",
       "CompraDolares": 62,
       "TC": 1482.66,
       "BCRA": 91924.92,
@@ -74,7 +74,7 @@
       "ACUMULADO": 260609.69799999997
     },
     {
-      "fecha": "9-ene-26",
+      "fecha": "9 ENE 26",
       "CompraDolares": 42.5,
       "TC": 1483.19,
       "BCRA": 63035.575000000004,
@@ -86,7 +86,7 @@
       "ACUMULADO": 323645.273
     },
     {
-      "fecha": "12-ene-26",
+      "fecha": "12 ENE 26",
       "CompraDolares": 55,
       "TC": 1482.33,
       "BCRA": 81528.15,
@@ -98,7 +98,7 @@
       "ACUMULADO": 405173.42299999995
     },
     {
-      "fecha": "13-ene-26",
+      "fecha": "13 ENE 26",
       "CompraDolares": 55.2,
       "TC": 1482.52,
       "BCRA": 81835.104,
@@ -110,7 +110,7 @@
       "ACUMULADO": 487008.52699999994
     },
     {
-      "fecha": "14-ene-26",
+      "fecha": "14 ENE 26",
       "CompraDolares": 187.5,
       "TC": 1475,
       "BCRA": 276562.5,
@@ -122,7 +122,7 @@
       "ACUMULADO": 763571.027
     },
     {
-      "fecha": "15-ene-26",
+      "fecha": "15 ENE 26",
       "CompraDolares": 47,
       "TC": 1466.87,
       "BCRA": 68942.89,
@@ -134,7 +134,7 @@
       "ACUMULADO": 1012513.917
     },
     {
-      "fecha": "16-ene-26",
+      "fecha": "16 ENE 26",
       "CompraDolares": 125,
       "TC": 1453.45,
       "BCRA": 181681.25,
@@ -146,7 +146,7 @@
       "ACUMULADO": 4484195.167
     },
     {
-      "fecha": "19-ene-26",
+      "fecha": "19 ENE 26",
       "CompraDolares": 20.9,
       "TC": 1454.65,
       "BCRA": 30402.185,
@@ -158,7 +158,7 @@
       "ACUMULADO": 4514597.352
     },
     {
-      "fecha": "20-ene-26",
+      "fecha": "20 ENE 26",
       "CompraDolares": 8,
       "TC": 1454.04,
       "BCRA": 11632.32,
@@ -170,7 +170,7 @@
       "ACUMULADO": 4526229.672
     },
     {
-      "fecha": "21-ene-26",
+      "fecha": "21 ENE 26",
       "CompraDolares": 107,
       "TC": 1452.73,
       "BCRA": 155442.11000000002,
@@ -182,7 +182,7 @@
       "ACUMULADO": 4681671.782000001
     },
     {
-      "fecha": "22-ene-26",
+      "fecha": "22 ENE 26",
       "CompraDolares": 80.5,
       "TC": 1452.09,
       "BCRA": 116893.245,
@@ -194,7 +194,7 @@
       "ACUMULADO": 4798565.027000001
     },
     {
-      "fecha": "23-ene-26",
+      "fecha": "23 ENE 26",
       "CompraDolares": 75,
       "TC": 1454.56,
       "BCRA": 109092,
@@ -206,7 +206,7 @@
       "ACUMULADO": 4907657.027000001
     },
     {
-      "fecha": "26-ene-26",
+      "fecha": "26 ENE 26",
       "CompraDolares": 39,
       "TC": 1459.88,
       "BCRA": 56935.32000000001,
@@ -218,7 +218,7 @@
       "ACUMULADO": 4964592.347000001
     },
     {
-      "fecha": "27-ene-26",
+      "fecha": "27 ENE 26",
       "CompraDolares": 32,
       "TC": 1463.48,
       "BCRA": 46831.36,
@@ -230,7 +230,7 @@
       "ACUMULADO": 5011423.707000001
     },
     {
-      "fecha": "28-ene-26",
+      "fecha": "28 ENE 26",
       "CompraDolares": 33,
       "TC": 1463.92,
       "BCRA": 48309.36,
@@ -242,7 +242,7 @@
       "ACUMULADO": 3019733.0670000017
     },
     {
-      "fecha": "29-ene-26",
+      "fecha": "29 ENE 26",
       "CompraDolares": 52.5,
       "TC": 1465.08,
       "BCRA": 76916.7,
@@ -254,7 +254,7 @@
       "ACUMULADO": 3096649.767000002
     },
     {
-      "fecha": "30-ene-26",
+      "fecha": "30 ENE 26",
       "CompraDolares": 23,
       "TC": 1465.01,
       "BCRA": 33695.23,
@@ -266,7 +266,7 @@
       "ACUMULADO": 3130344.997000002
     },
     {
-      "fecha": "2-feb-26",
+      "fecha": "2 FEB 26",
       "CompraDolares": 39,
       "TC": 1471.3,
       "BCRA": 57380.7,
@@ -278,7 +278,7 @@
       "ACUMULADO": 3187725.697000002
     },
     {
-      "fecha": "3-feb-26",
+      "fecha": "3 FEB 26",
       "CompraDolares": 57,
       "TC": 1465.67,
       "BCRA": 83543.19,
@@ -290,7 +290,7 @@
       "ACUMULADO": 3271268.887000002
     },
     {
-      "fecha": "4-feb-26",
+      "fecha": "4 FEB 26",
       "CompraDolares": 44,
       "TC": 1465.92,
       "BCRA": 64500.48,
@@ -302,7 +302,7 @@
       "ACUMULADO": 3335769.367000002
     },
     {
-      "fecha": "5-feb-26",
+      "fecha": "5 FEB 26",
       "CompraDolares": 126,
       "TC": 1467.01,
       "BCRA": 184843.26,
@@ -314,7 +314,7 @@
       "ACUMULADO": 3520612.627000002
     },
     {
-      "fecha": "6-feb-26",
+      "fecha": "6 FEB 26",
       "CompraDolares": 51,
       "TC": 1453.25,
       "BCRA": 74115.75,
@@ -326,7 +326,7 @@
       "ACUMULADO": 3594728.377000002
     },
     {
-      "fecha": "9-feb-26",
+      "fecha": "9 FEB 26",
       "CompraDolares": 176,
       "TC": 1445.77,
       "BCRA": 254455.52,
@@ -338,7 +338,7 @@
       "ACUMULADO": 3849183.897000002
     },
     {
-      "fecha": "10-feb-26",
+      "fecha": "10 FEB 26",
       "CompraDolares": 42,
       "TC": 1428.11,
       "BCRA": 59980.619999999995,
@@ -350,7 +350,7 @@
       "ACUMULADO": 3909164.5170000023
     },
     {
-      "fecha": "11-feb-26",
+      "fecha": "11 FEB 26",
       "CompraDolares": 214,
       "TC": 1427.34,
       "BCRA": 305450.76,
@@ -362,7 +362,7 @@
       "ACUMULADO": 2494615.2770000026
     },
     {
-      "fecha": "12-feb-26",
+      "fecha": "12 FEB 26",
       "CompraDolares": 141,
       "TC": 1420.27,
       "BCRA": 200258.07,
@@ -374,7 +374,7 @@
       "ACUMULADO": 2694873.3470000024
     },
     {
-      "fecha": "13-feb-26",
+      "fecha": "13 FEB 26",
       "CompraDolares": 41.6,
       "TC": 1420.64,
       "BCRA": 59098.624,
@@ -386,7 +386,7 @@
       "ACUMULADO": 2753971.971000002
     },
     {
-      "fecha": "16-feb-26",
+      "fecha": "16 FEB 26",
       "CompraDolares": 0,
       "TC": 0,
       "BCRA": 0,
@@ -398,7 +398,7 @@
       "ACUMULADO": 2753971.971000002
     },
     {
-      "fecha": "17-feb-26",
+      "fecha": "17 FEB 26",
       "CompraDolares": 0,
       "TC": 0,
       "BCRA": 0,
@@ -410,7 +410,7 @@
       "ACUMULADO": 2753971.971000002
     },
     {
-      "fecha": "18-feb-26",
+      "fecha": "18 FEB 26",
       "CompraDolares": 80,
       "TC": 1424.61,
       "BCRA": 113968.79999999999,
@@ -422,7 +422,7 @@
       "ACUMULADO": 1762781.7710000023
     },
     {
-      "fecha": "19-feb-26",
+      "fecha": "19 FEB 26",
       "CompraDolares": 76,
       "TC": 1419.32,
       "BCRA": 107868.31999999999,
@@ -434,7 +434,7 @@
       "ACUMULADO": 1870650.0910000023
     },
     {
-      "fecha": "20-feb-26",
+      "fecha": "20 FEB 26",
       "CompraDolares": 167,
       "TC": 1399.15,
       "BCRA": 233658.05000000002,
@@ -446,7 +446,7 @@
       "ACUMULADO": 2104308.141000002
     },
     {
-      "fecha": "23-feb-26",
+      "fecha": "23 FEB 26",
       "CompraDolares": 95,
       "TC": 1392.75,
       "BCRA": 132311.25,
@@ -458,7 +458,7 @@
       "ACUMULADO": 2236619.391000002
     },
     {
-      "fecha": "24-feb-26",
+      "fecha": "24 FEB 26",
       "CompraDolares": 48,
       "TC": 1400.12,
       "BCRA": 67205.76,
@@ -470,7 +470,7 @@
       "ACUMULADO": 2303825.151000002
     },
     {
-      "fecha": "25-feb-26",
+      "fecha": "25 FEB 26",
       "CompraDolares": 85,
       "TC": 1416.53,
       "BCRA": 120405.05,
@@ -482,7 +482,7 @@
       "ACUMULADO": 2904230.201000002
     },
     {
-      "fecha": "26-feb-26",
+      "fecha": "26 FEB 26",
       "CompraDolares": 41,
       "TC": 1429.59,
       "BCRA": 58613.189999999995,
@@ -494,7 +494,7 @@
       "ACUMULADO": 2962843.391000002
     },
     {
-      "fecha": "27-feb-26",
+      "fecha": "27 FEB 26",
       "CompraDolares": 31,
       "TC": 1426.45,
       "BCRA": 44219.950000000004,
