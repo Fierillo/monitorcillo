@@ -41,7 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 # personal scripts and temp files
-/src/scripts
+scripts
 ,*
  *.js
 /public/*.png
