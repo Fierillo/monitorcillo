@@ -1,5 +1,5 @@
 import { isAuthenticated } from '@/lib/auth';
-import { getIndicators } from '@/lib/db';
+import { getIndicators } from '@/lib/indicators';
 import AdminDashboard from './AdminDashboard';
 import LoginForm from './LoginForm';
 

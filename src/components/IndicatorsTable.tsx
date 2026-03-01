@@ -1,5 +1,5 @@
 'use client';
-import { Indicator } from '@/lib/db';
+import { Indicator } from '@/lib/indicators';
 import { useRouter } from 'next/navigation';
 
 export default function IndicatorsTable({ data }: { data: Indicator[] }) {

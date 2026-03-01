@@ -1,4 +1,4 @@
-import { getIndicators } from '@/lib/db';
+import { getIndicators } from '@/lib/indicators';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { fetchBcraVariable } from '@/lib/bcra';
@@ -13,7 +13,7 @@ import overrides from '@/data/overrides/bcra.json';
 
 import IndicatorCompositeView, { AreaConfig, MethodologyItem } from '@/components/IndicatorCompositeView';
 
-import { getCachedIndicator, saveIndicatorToCache } from '@/lib/cache';
+import { getCachedIndicator, saveIndicatorToCache } from '@/lib/storage';
 import { fetchSeries } from '@/lib/datos_gob';
 
 export default async function IndicatorDetailPage({ params }: PageProps) {

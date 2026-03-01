@@ -1,6 +1,29 @@
 [
     {
+        "id": "bma",
+        "category": "monetario",
+        "fecha": "Feb-26",
+        "fuente": "BCRA",
+        "indicador": "Base Monetaria Amplia",
+        "referencia": "Metrica compuesta",
+        "dato": "-",
+        "trend": "neutral",
+        "hasDetails": true
+    },
+    {
+        "id": "emision",
+        "category": "monetario",
+        "fecha": "Feb-26",
+        "fuente": "BCRA y MECON",
+        "indicador": "Emisión / Absorción de Pesos",
+        "referencia": "Emisión / Absorción de Pesos",
+        "dato": "-",
+        "trend": "neutral",
+        "hasDetails": true
+    },
+    {
         "id": "recaudacion",
+        "category": "socioeconomico",
         "fecha": "1 DIC",
         "fuente": "MECON",
         "indicador": "Recaudación tributaria [NOV]",
@@ -11,6 +34,7 @@
     },
     {
         "id": "poder-adquisitivo",
+        "category": "socioeconomico",
         "fecha": "Ene-26",
         "fuente": "INDEC",
         "indicador": "Poder adquisitivo (ajustado por IPC nucleo)",
@@ -21,6 +45,7 @@
     },
     {
         "id": "emae",
+        "category": "socioeconomico",
         "fecha": "Dic-25",
         "fuente": "INDEC",
         "indicador": "EMAE (Estimador Mensual de Actividad Económica)",

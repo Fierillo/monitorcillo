@@ -38,7 +38,7 @@ chore: update BMA cache with latest data
 - No agrupar cambios no relacionados
 - Separar commits de features, fixes y tareas de mantenimiento
 
-## Principio de commits atómicos
+##ar commits de features Principio de commits atómicos
 
 Los commits deben ser **cortos y enfocados**. Si necesitas escribir un mensaje de commit extenso para explicar todo lo que hace, probablemente deberías haber hecho commits más pequeños y específicos.
 
@@ -70,3 +70,83 @@ feat: add download button to chart view
 
 - **NO hacer commits sin orden expresa del usuario**
 - Esperar siempre la orden "commit" o "hacer commit" antes de ejecutar git commit
+
+## Código
+
+### Principios
+
+**Código minimalista**: La mejor pieza de código es la que no existe. Menos código = menos bugs = más fácil de mantener.
+
+**Sin comentarios**: El código debe ser autoexplicativo. Si necesitás comentarios, el código no está bien escrito.
+
+**Mensajes de error claros**: Siempre que lances un error, explicá qué pasó y cómo arreglarlo.
+
+**Nombres claros**: Usá nombres descriptivos para variables, funciones y clases. Evitá abreviaciones confusas.
+
+**Funciones pequeñas**: Cada función debe hacer una sola cosa y hacerlo bien.
+
+**Máximo 3 niveles de indentación**: Si necesitás más, refactorizá tu código.
+
+**Returns tempranos**: Evitan procesar código innecesario.
+
+**Async/await**: Priorizá el uso de async/await sobre callbacks. No teconfíes en callbacks que pueden llevar a callback hell.
+
+### Ejemplos
+
+```typescript
+// Malo
+function getUserData(userId: string, callback) {
+    if (userId) {
+        database.query('SELECT * FROM users WHERE id = ?', [userId], function(err, user) {
+            if (err) {
+                callback(err);
+            } else {
+                if (user) {
+                    callback(null, user);
+                } else {
+                    callback(new Error('User not found'));
+                }
+            }
+        });
+    } else {
+        callback(new Error('Invalid userId'));
+    }
+}
+
+// Bueno
+async function getUserData(userId: string): Promise<User> {
+    if (!userId) throw new Error('Invalid userId');
+    
+    const user = await database.query('SELECT * FROM users WHERE id = ?', [userId]);
+    if (!user) throw new Error('User not found');
+    
+    return user;
+}
+```
+
+```typescript
+// Malo - más de 3 niveles de indentación
+function processData(data) {
+    if (data) {
+        if (data.items) {
+            if (data.items.length > 0) {
+                for (let i = 0; i < data.items.length; i++) {
+                    if (data.items[i].valid) {
+                        processItem(data.items[i]);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Bueno - returns tempranos y menos niveles
+function processData(data) {
+    if (!data) return;
+    if (!data.items?.length) return;
+    
+    for (const item of data.items) {
+        if (item.valid) processItem(item);
+    }
+}
+```

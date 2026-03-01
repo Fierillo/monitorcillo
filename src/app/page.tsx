@@ -1,4 +1,4 @@
-import { getIndicators } from '@/lib/db';
+import { getIndicators } from '@/lib/indicators';
 import IndicatorsTable from '@/components/IndicatorsTable';
 
 export default async function Home() {

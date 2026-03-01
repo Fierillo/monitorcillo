@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getIndicators, saveIndicators } from '@/lib/db';
+import { getIndicators, saveIndicators } from '@/lib/indicators';
 import { isAuthenticated } from '@/lib/auth';
-import { getCachedIndicator, saveIndicatorToCache } from '@/lib/cache';
+import { getCachedIndicator, saveIndicatorToCache } from '@/lib/storage';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
