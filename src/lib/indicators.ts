@@ -10,6 +10,7 @@ export interface Indicator {
     dato: string;
     trend?: 'up' | 'down' | 'neutral';
     hasDetails?: boolean;
+    sourceUrl?: string;
 }
 
 const CATALOG_DIR = path.join(process.cwd(), 'src', 'data', 'catalog');
@@ -25,21 +26,18 @@ function formatDateFromCache(fechaStr: string): string {
     
     const parts = fechaStr.toLowerCase().split('-');
     
-    // Formato "YYYY-MM" (ej: "2026-02") -> "FEB 26"
     if (parts.length === 2 && parts[0].length === 4) {
         const month = months[parts[1]] || 'ENE';
         const year = parts[0].slice(-2);
         return `${month} ${year}`;
     }
     
-    // Formato "mmm-aa" (ej: "ene-17" o "feb-26") -> "FEB 26"
     if (parts.length === 2 && parts[1].length === 2) {
         const month = months[parts[0]] || 'ENE';
         const year = parts[1].padStart(2, '0');
         return `${month} ${year}`;
     }
     
-    // Formato "dd-mmm-aa" o "d-mmm-aa" (ej: "26-feb-26") -> "26 FEB 26"
     if (parts.length >= 3) {
         const day = parseInt(parts[0]);
         const month = months[parts[1]] || 'FEB';
@@ -47,7 +45,6 @@ function formatDateFromCache(fechaStr: string): string {
         return `${day} ${month} ${year}`;
     }
     
-    // Formato "dd-mmm" (ej: "26-feb") -> "26 FEB 26"
     if (parts.length === 2 && parts[1].length === 3) {
         const day = parseInt(parts[0]);
         const month = months[parts[1]] || 'FEB';
@@ -73,7 +70,6 @@ function getLastDateFromCache(indicatorId: string): string | null {
             }
         }
     } catch (err) {
-        // Si no existe el cache, retornar null
     }
     return null;
 }
@@ -90,8 +86,11 @@ export async function getIndicators(): Promise<Indicator[]> {
 
         const indicators = allIndicators.flat();
         
-        // Actualizar dinámicamente la fecha según el último dato del cache
         return indicators.map(indicator => {
+            if (indicator.sourceUrl) {
+                return indicator;
+            }
+
             const lastDate = getLastDateFromCache(indicator.id);
             if (lastDate) {
                 return { ...indicator, fecha: lastDate };
@@ -104,8 +103,6 @@ export async function getIndicators(): Promise<Indicator[]> {
 }
 
 export async function saveIndicators(data: Indicator[]): Promise<void> {
-    // Para simplificar, si se intenta guardar globalmente, lo ponemos en un archivo 'monitoreo.json'
-    // aunque lo ideal seria que cada script escriba su propio archivo de categoria
     const target = path.join(CATALOG_DIR, 'monitoreo.json');
     await fs.mkdir(CATALOG_DIR, { recursive: true });
     await fs.writeFile(target, JSON.stringify(data, null, 2));

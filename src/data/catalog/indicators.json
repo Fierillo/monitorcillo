@@ -1,57 +1,59 @@
 [
-    {
-        "id": "bma",
-        "category": "monetario",
-        "fecha": "Feb-26",
-        "fuente": "BCRA",
-        "indicador": "Base Monetaria Amplia",
-        "referencia": "Metrica compuesta",
-        "dato": "-",
-        "trend": "neutral",
-        "hasDetails": true
-    },
-    {
-        "id": "emision",
-        "category": "monetario",
-        "fecha": "Feb-26",
-        "fuente": "BCRA y MECON",
-        "indicador": "Emisión / Absorción de Pesos",
-        "referencia": "Emisión / Absorción de Pesos",
-        "dato": "-",
-        "trend": "neutral",
-        "hasDetails": true
-    },
-    {
-        "id": "recaudacion",
-        "category": "socioeconomico",
-        "fecha": "1 DIC",
-        "fuente": "MECON",
-        "indicador": "Recaudación tributaria [NOV]",
-        "referencia": "NOV-24: 1.78%",
-        "dato": "1.76%",
-        "trend": "down",
-        "hasDetails": true
-    },
-    {
-        "id": "poder-adquisitivo",
-        "category": "socioeconomico",
-        "fecha": "Ene-26",
-        "fuente": "INDEC",
-        "indicador": "Poder adquisitivo (ajustado por IPC nucleo)",
-        "referencia": "Indice 100 = Ene-17",
-        "dato": "-",
-        "trend": "down",
-        "hasDetails": true
-    },
-    {
-        "id": "emae",
-        "category": "socioeconomico",
-        "fecha": "Dic-25",
-        "fuente": "INDEC",
-        "indicador": "EMAE (Estimador Mensual de Actividad Económica)",
-        "referencia": "Índice Base Ene-17 = 100",
-        "dato": "-",
-        "trend": "neutral",
-        "hasDetails": true
-    }
+  {
+    "id": "bma",
+    "indicador": "Base Monetaria Amplia",
+    "referencia": "Metrica compuesta",
+    "dato": "-",
+    "fecha": "Feb-26",
+    "fuente": "BCRA",
+    "trend": "neutral",
+    "category": "monetario",
+    "hasDetails": true
+  },
+  {
+    "id": "emision",
+    "indicador": "Emisión / Absorción de Pesos",
+    "referencia": "Emisión / Absorción de Pesos",
+    "dato": "-",
+    "fecha": "Feb-26",
+    "fuente": "BCRA y MECON",
+    "trend": "neutral",
+    "category": "monetario",
+    "hasDetails": true
+  },
+  {
+    "id": "recaudacion",
+    "indicador": "Recaudación tributaria [NOV]",
+    "referencia": "NOV-24: 1.78%",
+    "dato": "1.76%",
+    "fecha": "1 DIC",
+    "fuente": "MECON",
+    "trend": "down",
+    "category": "socioeconomico",
+    "hasDetails": true
+  },
+  {
+    "id": "poder-adquisitivo",
+    "indicador": "Poder adquisitivo (ajustado por IPC nucleo)",
+    "referencia": "Indice 100 = Ene-17",
+    "dato": "-",
+    "fecha": "12 FEB 26",
+    "fuente": "INDEC",
+    "trend": "down",
+    "category": "socioeconomico",
+    "hasDetails": true,
+    "sourceUrl": "https://www.indec.gob.ar/indec/web/Nivel4-Tema-4-31-61"
+  },
+  {
+    "id": "emae",
+    "indicador": "EMAE (Estimador Mensual de Actividad Económica)",
+    "referencia": "Índice Base Ene-17 = 100",
+    "dato": "-",
+    "fecha": "24 FEB 26",
+    "fuente": "INDEC",
+    "trend": "neutral",
+    "category": "socioeconomico",
+    "hasDetails": true,
+    "sourceUrl": "https://www.indec.gob.ar/indec/web/Nivel4-Tema-3-9-48"
+  }
 ]
