@@ -22,3 +22,11 @@ body {
   margin: 0;
   padding: 0;
 }
+
+*:focus {
+  outline: none !important;
+}
+
+*:focus-visible {
+  outline: none !important;
+}
