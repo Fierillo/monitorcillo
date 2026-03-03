@@ -23,12 +23,12 @@
   },
   {
     "id": "recaudacion",
-    "indicador": "Recaudación tributaria [NOV]",
-    "referencia": "NOV-24: 1.78%",
-    "dato": "1.76%",
-    "fecha": "1 DIC",
+    "indicador": "Recaudación tributaria",
+    "referencia": "Var% interanual: 21.99% | %PIB: 7.76%",
+    "dato": "21.99%",
+    "fecha": "ENE 26",
     "fuente": "MECON",
-    "trend": "down",
+    "trend": "neutral",
     "category": "socioeconomico",
     "hasDetails": true
   },

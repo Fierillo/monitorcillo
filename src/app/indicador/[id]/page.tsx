@@ -316,6 +316,161 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         );
     }
 
+    if (indicator.id === 'recaudacion') {
+        const cached = await getCachedIndicator('recaudacion');
+        if (cached) {
+            chartData = cached;
+        } else {
+            const [taxData, gdpData, emaeDesestData, ipcData] = await Promise.all([
+                fetchSeries('172.3_TL_RECAION_M_0_0_17'),
+                fetchSeries('166.2_PPIB_0_0_3'),
+                fetchSeries('143.3_NO_PR_2004_A_31'),
+                fetchSeries('148.3_INUCLEONAL_DICI_M_19')
+            ]);
+
+            const getQuarter = (month: number) => Math.ceil(month / 3);
+            const gdpQuarterMap: Record<string, number> = {};
+            gdpData.forEach((row: any) => {
+                const date = row[0];
+                const year = parseInt(date.slice(0, 4));
+                const month = parseInt(date.slice(5, 7));
+                const quarter = getQuarter(month);
+                gdpQuarterMap[`${year}-Q${quarter}`] = row[1];
+            });
+
+            let latestGdpQuarter = '';
+            let latestGdpValue = 0;
+            Object.keys(gdpQuarterMap).sort().forEach(key => {
+                latestGdpQuarter = key;
+                latestGdpValue = gdpQuarterMap[key];
+            });
+
+            const emaeMap: Record<string, number> = {};
+            emaeDesestData.forEach((row: any) => {
+                if (row[1]) emaeMap[row[0]] = row[1];
+            });
+
+            const emaeDates = Object.keys(emaeMap).sort();
+            const emaeVarMap: Record<string, number> = {};
+            for (let i = 1; i < emaeDates.length; i++) {
+                const prevDate = emaeDates[i - 1];
+                const currDate = emaeDates[i];
+                const prevVal = emaeMap[prevDate];
+                const currVal = emaeMap[currDate];
+                if (prevVal && currVal) {
+                    emaeVarMap[currDate] = (currVal / prevVal) - 1;
+                }
+            }
+
+            const ipcMap: Record<string, number> = {};
+            ipcData.forEach((row: any) => {
+                if (row[1]) ipcMap[row[0]] = row[1];
+            });
+
+            const taxMap: Record<string, number> = {};
+            taxData.forEach((row: any) => {
+                if (row[1]) taxMap[row[0]] = row[1];
+            });
+
+            const availableYears = Object.keys(gdpQuarterMap).sort();
+            const lastGdpKey = availableYears[availableYears.length - 1];
+            const lastGdpValue = gdpQuarterMap[lastGdpKey];
+
+            const getMonthlyGdp = (targetDate: string) => {
+                const targetYear = parseInt(targetDate.slice(0, 4));
+                const targetMonth = parseInt(targetDate.slice(5, 7));
+                const targetQuarter = getQuarter(targetMonth);
+                const targetGdpKey = `${targetYear}-Q${targetQuarter}`;
+                let targetGdp = gdpQuarterMap[targetGdpKey];
+                
+                if (!targetGdp) {
+                    targetGdp = lastGdpValue;
+                }
+                
+                if (!targetGdp) return null;
+                
+                const emaeVal = emaeMap[targetDate];
+                const emaeBaseDate = `${targetYear}-01-01`;
+                const emaeBase = emaeMap[emaeBaseDate] || emaeMap['2024-01-01'] || Object.values(emaeMap)[0];
+                
+                if (emaeVal && emaeBase) {
+                    return (targetGdp / 3) * (emaeVal / emaeBase);
+                }
+                
+                return targetGdp / 3;
+            };
+
+            const pctPbiMap: Record<string, number> = {};
+            taxData.forEach((row: any) => {
+                const date = row[0];
+                const tax = row[1];
+                if (!tax) return;
+                
+                const monthlyGdp = getMonthlyGdp(date);
+                if (monthlyGdp) {
+                    pctPbiMap[date] = (tax / monthlyGdp) * 100;
+                }
+            });
+
+            chartData = taxData
+                .filter((row: any) => row[0] && row[0] >= '2019-01-01' && row[1] !== null)
+                .map((row: any) => {
+                    const date = row[0];
+                    const year = parseInt(date.slice(0, 4));
+                    const monthStr = date.slice(5, 7);
+                    
+                    const dateObj = new Date(date + 'T00:00:00Z');
+                    const fechaStr = `${['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'][dateObj.getUTCMonth()]} ${dateObj.getUTCFullYear().toString().slice(-2)}`;
+
+                    const prevYear = year - 1;
+                    const prevYearDate = `${prevYear}-${monthStr}-01`;
+                    const currentIpc = ipcMap[date];
+                    const prevYearIpc = ipcMap[prevYearDate];
+                    const currentTax = taxMap[date];
+                    const prevYearTax = taxMap[prevYearDate];
+
+                    let variacionReal = null;
+                    if (currentIpc && prevYearIpc && currentTax && prevYearTax) {
+                        const realCurrent = currentTax / currentIpc;
+                        const realPrev = prevYearTax / prevYearIpc;
+                        variacionReal = ((realCurrent / realPrev) - 1) * 100;
+                    }
+
+                    return {
+                        fecha: fechaStr,
+                        mes: monthStr,
+                        year: year,
+                        pctPbi: pctPbiMap[date]
+                    };
+                });
+
+            await saveIndicatorToCache('recaudacion', chartData);
+        }
+
+        const areas: AreaConfig[] = [
+            { key: 'pctPbi', name: '% PIB Mensual', color: '#FFD700', type: 'bar', yAxisId: 'left' }
+        ];
+
+        const methodology: MethodologyItem[] = [
+            { title: '% PIB Mensual', description: 'Recaudación / PIB mensual estimado (PIB trim × var EMAE desest.).' },
+            { title: 'Tooltip', description: 'Muestra variación vs. mismo mes de años anteriores.' },
+            { title: 'Fuente', description: 'Secretaría de Hacienda, Ministerio de Economía.' }
+        ];
+
+        return (
+            <IndicatorCompositeView
+                title={indicator.indicador}
+                subtitle={indicator.fuente}
+                chartTitle="Recaudación Tributaria (% PIB Mensual)"
+                data={chartData}
+                areas={areas}
+                methodology={methodology}
+                valueFormat="percent"
+                yAxisLabel="% PIB"
+            />
+        );
+    }
+
     // Fallback for other indicators
     return (
         <IndicatorCompositeView
