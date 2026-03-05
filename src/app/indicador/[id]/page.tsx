@@ -382,21 +382,21 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 const targetQuarter = getQuarter(targetMonth);
                 const targetGdpKey = `${targetYear}-Q${targetQuarter}`;
                 let targetGdp = gdpQuarterMap[targetGdpKey];
-                
+
                 if (!targetGdp) {
                     targetGdp = lastGdpValue;
                 }
-                
+
                 if (!targetGdp) return null;
-                
+
                 const emaeVal = emaeMap[targetDate];
                 const emaeBaseDate = `${targetYear}-01-01`;
                 const emaeBase = emaeMap[emaeBaseDate] || emaeMap['2024-01-01'] || Object.values(emaeMap)[0];
-                
+
                 if (emaeVal && emaeBase) {
                     return (targetGdp / 3) * (emaeVal / emaeBase);
                 }
-                
+
                 return targetGdp / 3;
             };
 
@@ -405,7 +405,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 const date = row[0];
                 const tax = row[1];
                 if (!tax) return;
-                
+
                 const monthlyGdp = getMonthlyGdp(date);
                 if (monthlyGdp) {
                     pctPbiMap[date] = (tax / monthlyGdp) * 100;
@@ -418,7 +418,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                     const date = row[0];
                     const year = parseInt(date.slice(0, 4));
                     const monthStr = date.slice(5, 7);
-                    
+
                     const dateObj = new Date(date + 'T00:00:00Z');
                     const fechaStr = `${['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'][dateObj.getUTCMonth()]} ${dateObj.getUTCFullYear().toString().slice(-2)}`;
 
@@ -467,6 +467,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 methodology={methodology}
                 valueFormat="percent"
                 yAxisLabel="% PIB"
+                leftYAxisDomain="auto-pad"
             />
         );
     }
