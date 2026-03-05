@@ -101,13 +101,25 @@ async function updateEmisionData() {
         appended++;
     }
 
-    if (appended === 0) {
+    const merged = Array.from(existingByFecha.values())
+        .sort((a, b) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
+
+    let runningTotal = 0;
+    let fixedAcumulado = 0;
+    for (const row of merged) {
+        if (row.ACUMULADO !== undefined && row.ACUMULADO !== null) {
+            runningTotal = row.ACUMULADO;
+        } else {
+            runningTotal += row.TOTAL ?? 0;
+            row.ACUMULADO = runningTotal;
+            fixedAcumulado++;
+        }
+    }
+
+    if (appended === 0 && fixedAcumulado === 0) {
         console.log('No new records to append.');
         return;
     }
-
-    const merged = Array.from(existingByFecha.values())
-        .sort((a, b) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
 
     await fs.writeFile(dbPath, JSON.stringify({ lastUpdate: new Date().toISOString(), data: merged }, null, 2));
 
