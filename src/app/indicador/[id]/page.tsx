@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { fetchBcraVariable } from '@/lib/bcra';
 
+export const revalidate = 21600; // 6 hours
+
 interface PageProps {
     params: Promise<{
         id: string;

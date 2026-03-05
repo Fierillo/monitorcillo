@@ -1,6 +1,8 @@
 import { getIndicators } from '@/lib/indicators';
 import IndicatorsTable from '@/components/IndicatorsTable';
 
+export const revalidate = 21600; // 6 hours
+
 export default async function Home() {
   const data = await getIndicators();
 
