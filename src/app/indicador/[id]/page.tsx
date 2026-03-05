@@ -92,8 +92,16 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 const pasivosRemTotal = pasivosRemOriginal + otrosAvg;
                 const tesoro = (overrides.tesoro as any)[month] || tesoroByMonth[month] || 0;
 
+                const [yyyy, mm] = month.split('-');
+                const monthNames: Record<string, string> = {
+                    '01': 'ENE', '02': 'FEB', '03': 'MAR', '04': 'ABR',
+                    '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AGO',
+                    '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
+                };
+                const fechaFormatted = `${monthNames[mm]} ${yyyy.slice(-2)}`;
+
                 return {
-                    fecha: month,
+                    fecha: fechaFormatted,
                     BaseMonetaria: bm,
                     PasivosRemunerados: pasivosRemTotal,
                     DepositosTesoro: tesoro,
