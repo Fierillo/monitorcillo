@@ -46,6 +46,7 @@ export default function IndicatorCompositeView({
         const allValues: number[] = [];
         data.forEach((row: any) => {
             areas.forEach(area => {
+                if (dimmedAreas.has(area.key)) return;
                 const val = row[area.key];
                 if (val !== null && val !== undefined && !isNaN(val)) {
                     allValues.push(val);
@@ -64,7 +65,7 @@ export default function IndicatorCompositeView({
         }
 
         return [min, max];
-    }, [data, areas, leftYAxisDomain]);
+    }, [data, areas, leftYAxisDomain, dimmedAreas]);
 
     const handleToggleDim = useCallback((key: string) => {
         setDimmedAreas(prev => {
@@ -217,15 +218,13 @@ export default function IndicatorCompositeView({
                                             />
                                         )}
                                     />
-                                    <CustomLegend
-                                        dimmedAreas={dimmedAreas}
-                                        onToggleDim={handleToggleDim}
-                                    />
                                     {areas.map((areaConfig: AreaConfig) => {
                                         const isDimmed = dimmedAreas.has(areaConfig.key);
 
+                                        if (isDimmed) return null;
+
                                         if (areaConfig.type === 'line') {
-                                            return <ChartLine key={areaConfig.key} areaConfig={areaConfig} isDimmed={isDimmed} />;
+                                            return <ChartLine key={areaConfig.key} areaConfig={areaConfig} isDimmed={false} />;
                                         }
 
                                         if (areaConfig.type === 'bar') {
@@ -233,7 +232,7 @@ export default function IndicatorCompositeView({
                                                 <InteractiveBar
                                                     key={areaConfig.key}
                                                     areaConfig={areaConfig}
-                                                    isDimmed={isDimmed}
+                                                    isDimmed={false}
                                                     selectedMonth={selectedMonth}
                                                     activeMonth={activeMonth}
                                                     onSelectMonth={setSelectedMonth}
@@ -242,11 +241,17 @@ export default function IndicatorCompositeView({
                                             );
                                         }
 
-                                        return <ChartArea key={areaConfig.key} areaConfig={areaConfig} isDimmed={isDimmed} />;
+                                        return <ChartArea key={areaConfig.key} areaConfig={areaConfig} isDimmed={false} />;
                                     })}
                                 </ComposedChart>
                             </ResponsiveContainer>
                         </div>
+
+                        <CustomLegend
+                            areas={areas}
+                            dimmedAreas={dimmedAreas}
+                            onToggleDim={handleToggleDim}
+                        />
 
                         <MethodologySection methodology={methodology} />
                     </div>
