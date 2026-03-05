@@ -1,5 +1,5 @@
 {
-  "lastUpdate": "2026-02-28T02:28:46.776Z",
+  "lastUpdate": "2026-03-05T21:11:47.714Z",
   "data": [
     {
       "fecha": "1 ENE 26",
@@ -504,6 +504,17 @@
       "Resultado fiscal": 0,
       "TOTAL": 44219.950000000004,
       "ACUMULADO": 3007063.3410000023
+    },
+    {
+      "fecha": "2 MAR 26",
+      "CompraDolares": 70,
+      "TC": 1417.21,
+      "BCRA": 99204.7,
+      "Vencimientos": 0,
+      "Licitado": 0,
+      "Licitaciones": 0,
+      "Resultado fiscal": 0,
+      "TOTAL": 99204.7
     }
   ]
 }

@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-const CACHE_DIR = path.join(process.cwd(), 'src', 'data', 'cache');
+const CACHE_DIR = path.join(process.cwd(), 'src', 'data', 'db');
 const CACHE_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 export interface CachedEntry {
