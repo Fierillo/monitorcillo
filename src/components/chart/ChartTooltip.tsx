@@ -14,31 +14,28 @@ interface ChartTooltipProps {
     };
 }
 
-export default function ChartTooltip({ 
-    chartData, 
-    areaConfigs, 
-    valueFormat, 
-    tooltipProps 
+export default function ChartTooltip({
+    chartData,
+    areaConfigs,
+    valueFormat,
+    tooltipProps
 }: ChartTooltipProps) {
-    if (!tooltipProps.active || !tooltipProps.payload || tooltipProps.payload.length === 0) {
-        return (
-            <div style={{ backgroundColor: '#00143F', border: '1px solid #FFD700', padding: '10px', color: '#FFF' }}>
-                {tooltipProps.label}
-            </div>
-        );
-    }
+    if (!tooltipProps.active || !tooltipProps.label) return null;
 
-    const tooltipLabel = tooltipProps.label as string;
+    const tooltipLabel = String(tooltipProps.label);
     const rowData = chartData.find((row: any) => row.fecha === tooltipLabel);
-    const firstPayload = tooltipProps.payload[0]?.payload;
 
-    if (firstPayload?.pctPbi && firstPayload?.mes) {
+
+
+    if (!rowData) return null;
+
+    if (rowData.pctPbi && rowData.mes) {
         const monthlyComparison = chartData
-            .filter((row: any) => row.mes === firstPayload.mes && row.pctPbi)
+            .filter((row: any) => row.mes === rowData.mes && row.pctPbi)
             .sort((a: any, b: any) => b.year - a.year);
 
         const rows = monthlyComparison.map((row: any) => {
-            const isCurrent = row.year === firstPayload.year;
+            const isCurrent = row.year === rowData.year;
             return (
                 <div
                     key={row.year}
@@ -51,20 +48,20 @@ export default function ChartTooltip({
                         paddingBottom: isCurrent ? '4px' : '0'
                     }}
                 >
-                    {SPANISH_MONTHS[firstPayload.mes]} {String(row.year).slice(-2)}: {row.pctPbi.toFixed(1)}% PIB
+                    {SPANISH_MONTHS[rowData.mes]} {String(row.year).slice(-2)}: {row.pctPbi.toFixed(1)}% PIB
                 </div>
             );
         });
 
         return (
-            <div style={{ backgroundColor: '#00143F', border: '1px solid #FFD700', padding: '10px', color: '#FFF', minWidth: '180px' }}>
+            <div key={tooltipLabel} style={{ backgroundColor: '#00143F', border: '1px solid #FFD700', padding: '10px', color: '#FFF', minWidth: '180px' }}>
                 {rows}
             </div>
         );
     }
 
     const valueRows = areaConfigs.map(area => {
-        const value = rowData?.[area.key];
+        const value = rowData[area.key];
         if (value === null || value === undefined) return null;
 
         return (
@@ -74,8 +71,10 @@ export default function ChartTooltip({
         );
     }).filter(Boolean);
 
+    if (valueRows.length === 0) return null;
+
     return (
-        <div style={{ backgroundColor: '#00143F', border: '1px solid #FFD700', padding: '10px', color: '#FFF' }}>
+        <div key={tooltipLabel} style={{ backgroundColor: '#00143F', border: '1px solid #FFD700', padding: '10px', color: '#FFF' }}>
             <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{tooltipLabel}</div>
             {valueRows}
         </div>
