@@ -1,33 +1,39 @@
 'use client';
 
-import { Legend } from 'recharts';
+import { AreaConfig } from '@/types/chart';
 
 interface CustomLegendProps {
+    areas: AreaConfig[];
     dimmedAreas: Set<string>;
     onToggleDim: (key: string) => void;
 }
 
-export default function CustomLegend({ dimmedAreas, onToggleDim }: CustomLegendProps) {
+export default function CustomLegend({ areas, dimmedAreas, onToggleDim }: CustomLegendProps) {
     return (
-        <Legend
-            wrapperStyle={{ color: '#FFD700', paddingTop: '10px' }}
-            formatter={(value: string, entry: any) => {
-                const key = entry?.payload?.dataKey;
-                const isDimmed = key ? dimmedAreas.has(key) : false;
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '4px 16px', paddingTop: '10px' }}>
+            {areas.map(area => {
+                const isDimmed = dimmedAreas.has(area.key);
                 return (
                     <span
+                        key={area.key}
+                        onClick={() => onToggleDim(area.key)}
                         style={{
                             color: isDimmed ? '#666' : '#FFD700',
-                            marginRight: 10,
+                            opacity: isDimmed ? 0.5 : 1,
                             cursor: 'pointer',
-                            opacity: isDimmed ? 0.5 : 1
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontSize: 14,
                         }}
-                        onClick={() => key && onToggleDim(key)}
                     >
-                        {value}
+                        <svg width="10" height="10">
+                            <circle cx="5" cy="5" r="5" fill={isDimmed ? '#666' : area.color} />
+                        </svg>
+                        {area.name}
                     </span>
                 );
-            }}
-        />
+            })}
+        </div>
     );
 }
