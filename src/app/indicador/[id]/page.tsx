@@ -15,7 +15,7 @@ import overrides from '@/data/overrides/bcra.json';
 
 import IndicatorCompositeView, { AreaConfig, MethodologyItem } from '@/components/IndicatorCompositeView';
 
-import { getCachedIndicator, saveIndicatorToCache } from '@/lib/storage';
+import { getCachedIndicator, saveIndicatorToCache, getStaleCache, appendToCache } from '@/lib/storage';
 import { fetchSeries } from '@/lib/datos_gob';
 
 export default async function IndicatorDetailPage({ params }: PageProps) {
@@ -143,57 +143,63 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         if (cached) {
             chartData = cached;
         } else {
+            const stale = await getStaleCache('poder-adquisitivo');
+            const lastFecha = stale?.length ? stale[stale.length - 1].fecha : null;
+
+            const lastDateISO = lastFecha
+                ? (() => {
+                    const MONTHS: Record<string, string> = { ENE: '01', FEB: '02', MAR: '03', ABR: '04', MAY: '05', JUN: '06', JUL: '07', AGO: '08', SEPT: '09', OCT: '10', NOV: '11', DIC: '12' };
+                    const [mon, yr] = lastFecha.split(' ');
+                    return `20${yr}-${MONTHS[mon]}-01`;
+                })()
+                : null;
+
             const ids = [
-                '148.3_INUCLEONAL_DICI_M_19', // IPC Nucleo
-                '149.1_TL_REGIADO_OCTU_0_16', // IS Blanco (Total Registrado)
-                '149.1_SOR_PRIADO_OCTU_0_28', // IS Negro (No reg)
-                '149.1_SOR_PRIADO_OCTU_0_25', // IS Privado (Priv Reg)
-                '149.1_SOR_PUBICO_OCTU_0_14', // IS Publico
-                '158.1_REPTE_0_0_5',          // RIPTE
-                '58.1_MP_0_M_24'              // Jubilacion
+                '148.3_INUCLEONAL_DICI_M_19',
+                '149.1_TL_REGIADO_OCTU_0_16',
+                '149.1_SOR_PRIADO_OCTU_0_28',
+                '149.1_SOR_PRIADO_OCTU_0_25',
+                '149.1_SOR_PUBICO_OCTU_0_14',
+                '158.1_REPTE_0_0_5',
+                '58.1_MP_0_M_24'
             ].join(',');
 
-            const rawData = await fetchSeries(ids);
+            const rawData = await fetchSeries(ids, lastDateISO ?? undefined);
             const SPANISH_MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
-            const SPANISH_MONTHS_LOWER = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
 
-            // Base Jan 2017
-            const baseRow = rawData.find((row: any) => row[0] === '2017-01-01');
+            const baseSource = lastDateISO ? await fetchSeries(ids.split(',')[0], '2017-01-01') : rawData;
+            const baseRow = baseSource.find((row: any) => row[0] === '2017-01-01') ?? rawData.find((row: any) => row[0] === '2017-01-01');
+
             if (baseRow) {
                 const getBaseVal = (idx: number) => baseRow[idx] / baseRow[1];
 
-                // Pre-calculate all values including negro with 5-month lag
                 const rawValues = rawData
-                    .filter((row: any) => row[0] && row[0] >= '2017-01-01' && row[1])
+                    .filter((row: any) => row[0] && row[1])
                     .map((row: any) => {
                         const dateObj = new Date(row[0] + 'T00:00:00Z');
                         const fechaStr = `${SPANISH_MONTHS[dateObj.getUTCMonth()]} ${dateObj.getUTCFullYear().toString().slice(-2)}`;
                         const ipc = row[1];
-
                         const calc = (idx: number) => {
                             if (!row[idx]) return null;
-                            const currentAdj = row[idx] / ipc;
-                            const baseAdj = getBaseVal(idx);
-                            return (currentAdj / baseAdj) * 100;
+                            return ((row[idx] / ipc) / getBaseVal(idx)) * 100;
                         };
-
-                        return {
-                            fecha: fechaStr,
-                            blanco: calc(2),
-                            negro: calc(3),
-                            privado: calc(4),
-                            publico: calc(5),
-                            ripte: calc(6),
-                            jubilacion: calc(7)
-                        };
+                        return { fecha: fechaStr, blanco: calc(2), negro: calc(3), privado: calc(4), publico: calc(5), ripte: calc(6), jubilacion: calc(7) };
                     });
 
-                // Apply 5-month lag to negro values (data published early by 5 months)
-                chartData = rawValues.map((row: any, index: number) => ({
+                const newRows = rawValues.map((row: any, index: number) => ({
                     ...row,
                     negro: rawValues[index + 5]?.negro ?? null
                 }));
-                await saveIndicatorToCache('poder-adquisitivo', chartData);
+
+                if (stale) {
+                    await appendToCache('poder-adquisitivo', newRows);
+                    chartData = (await getStaleCache('poder-adquisitivo')) ?? newRows;
+                } else {
+                    await saveIndicatorToCache('poder-adquisitivo', newRows);
+                    chartData = newRows;
+                }
+            } else if (stale) {
+                chartData = stale;
             }
         }
 
@@ -230,24 +236,35 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         if (cached) {
             chartData = cached;
         } else {
-            const ids = [
-                '143.3_NO_PR_2004_A_21', // EMAE original
-                '143.3_NO_PR_2004_A_31', // EMAE desestacionalizado
-                '143.3_NO_PR_2004_A_28'  // EMAE tendencia ciclo
-            ].join(',');
-            const rawData = await fetchSeries(ids);
-            const SPANISH_MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
-            const SPANISH_MONTHS_LOWER = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+            const stale = await getStaleCache('emae');
+            const lastFecha = stale?.length ? stale[stale.length - 1].fecha : null;
 
-            // Base Jan 2017
-            const baseRow = rawData.find((row: any) => row[0] === '2017-01-01');
+            const lastDateISO = lastFecha
+                ? (() => {
+                    const MONTHS: Record<string, string> = { ENE: '01', FEB: '02', MAR: '03', ABR: '04', MAY: '05', JUN: '06', JUL: '07', AGO: '08', SEPT: '09', OCT: '10', NOV: '11', DIC: '12' };
+                    const [mon, yr] = lastFecha.split(' ');
+                    return `20${yr}-${MONTHS[mon]}-01`;
+                })()
+                : null;
+
+            const ids = [
+                '143.3_NO_PR_2004_A_21',
+                '143.3_NO_PR_2004_A_31',
+                '143.3_NO_PR_2004_A_28'
+            ].join(',');
+            const rawData = await fetchSeries(ids, lastDateISO ?? undefined);
+            const SPANISH_MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
+
+            const baseSource = lastDateISO ? await fetchSeries(ids, '2017-01-01') : rawData;
+            const baseRow = baseSource.find((row: any) => row[0] === '2017-01-01') ?? rawData.find((row: any) => row[0] === '2017-01-01');
+
             if (baseRow) {
                 const baseOriginal = baseRow[1];
                 const baseDesest = baseRow[2];
                 const baseTend = baseRow[3];
 
-                chartData = rawData
-                    .filter((row: any) => row[0] && row[0] >= '2017-01-01' && row[1])
+                const newRows = rawData
+                    .filter((row: any) => row[0] && row[1])
                     .map((row: any) => {
                         const dateObj = new Date(row[0] + 'T00:00:00Z');
                         const fechaStr = `${SPANISH_MONTHS[dateObj.getUTCMonth()]} ${dateObj.getUTCFullYear().toString().slice(-2)}`;
@@ -259,7 +276,15 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                         };
                     });
 
-                await saveIndicatorToCache('emae', chartData);
+                if (stale) {
+                    await appendToCache('emae', newRows);
+                    chartData = (await getStaleCache('emae')) ?? newRows;
+                } else {
+                    await saveIndicatorToCache('emae', newRows);
+                    chartData = newRows;
+                }
+            } else if (stale) {
+                chartData = stale;
             }
         }
 
