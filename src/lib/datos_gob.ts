@@ -1,7 +1,8 @@
 import https from 'https';
 
-export async function fetchSeries(ids: string): Promise<any[]> {
-    const url = `https://apis.datos.gob.ar/series/api/series/?ids=${ids}&limit=5000&format=json`;
+export async function fetchSeries(ids: string, startDate?: string): Promise<any[]> {
+    const dateParam = startDate ? `&start_date=${startDate}` : '';
+    const url = `https://apis.datos.gob.ar/series/api/series/?ids=${ids}&limit=5000&format=json${dateParam}`;
 
     return new Promise((resolve) => {
         https.get(url, (res) => {
