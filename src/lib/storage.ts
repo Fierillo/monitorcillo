@@ -9,26 +9,57 @@ export interface CachedEntry {
     data: any[];
 }
 
-export async function getCachedIndicator(id: string): Promise<any[] | null> {
+async function readCacheFile(id: string): Promise<CachedEntry | null> {
     const cacheFile = path.join(CACHE_DIR, `${id}.json`);
     try {
         const content = await fs.readFile(cacheFile, 'utf-8');
-        const entry: CachedEntry = JSON.parse(content);
-
-        const lastUpdate = new Date(entry.lastUpdate).getTime();
-        const now = Date.now();
-
-        if (id === 'emision') {
-            return entry.data; // Emisión is managed completely manually or via script, its cache should not expire
-        }
-
-        if (now - lastUpdate < CACHE_DURATION_MS) {
-            return entry.data;
-        }
-        return null; // Cache expired
+        return JSON.parse(content);
     } catch {
-        return null; // Cache missing
+        return null;
     }
+}
+
+export async function getCachedIndicator(id: string): Promise<any[] | null> {
+    if (id === 'emision') {
+        const entry = await readCacheFile(id);
+        return entry?.data ?? null;
+    }
+
+    const entry = await readCacheFile(id);
+    if (!entry) return null;
+
+    const isExpired = Date.now() - new Date(entry.lastUpdate).getTime() >= CACHE_DURATION_MS;
+    return isExpired ? null : entry.data;
+}
+
+export async function getStaleCache(id: string): Promise<any[] | null> {
+    const entry = await readCacheFile(id);
+    return entry?.data ?? null;
+}
+
+export async function getLastCachedDate(id: string): Promise<string | null> {
+    const entry = await readCacheFile(id);
+    if (!entry?.data?.length) return null;
+    return entry.data[entry.data.length - 1]?.fecha ?? null;
+}
+
+export async function appendToCache(id: string, newRows: any[]): Promise<void> {
+    const existing = await readCacheFile(id);
+    const existingData = existing?.data ?? [];
+
+    const existingFechas = new Set(existingData.map((r: any) => r.fecha));
+    const toAdd = newRows.filter(r => !existingFechas.has(r.fecha));
+
+    const merged = [...existingData, ...toAdd];
+
+    const cacheFile = path.join(CACHE_DIR, `${id}.json`);
+    const entry: CachedEntry = {
+        lastUpdate: new Date().toISOString(),
+        data: merged
+    };
+
+    await fs.mkdir(CACHE_DIR, { recursive: true });
+    await fs.writeFile(cacheFile, JSON.stringify(entry, null, 2));
 }
 
 export async function saveIndicatorToCache(id: string, data: any[]): Promise<void> {
