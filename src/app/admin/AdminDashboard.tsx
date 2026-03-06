@@ -135,14 +135,21 @@ export default function AdminDashboard({ initialData }: { initialData: Indicator
 
     const getNextWorkingDate = (prevDateStr: string) => {
         if (!prevDateStr) return '';
-        const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-        const parts = prevDateStr.toLowerCase().split('-');
+        const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
+
+        // Split by space or hyphen
+        const parts = prevDateStr.toUpperCase().split(/[\s-]+/);
         if (parts.length < 2) return '';
+
         const day = parseInt(parts[0], 10);
-        let monthStr = parts[1];
-        if (monthStr === 'sept') monthStr = 'sep';
-        const month = months.indexOf(monthStr);
-        if (month === -1 || isNaN(day)) return '';
+        const monthStr = parts[1];
+
+        // Find month index, handling both 'SEP' and 'SEPT'
+        let month = months.indexOf(monthStr);
+        if (month === -1) {
+            if (monthStr === 'SEP') month = 8;
+            else return '';
+        }
 
         let year = new Date().getFullYear();
         if (parts.length === 3) {
@@ -170,14 +177,10 @@ export default function AdminDashboard({ initialData }: { initialData: Indicator
             d.setDate(d.getDate() + 1);
         } while (d.getDay() === 0 || d.getDay() === 6 || isHoliday(d));
 
-        let nextMonth = months[d.getMonth()];
-        if (nextMonth === 'sep' && prevDateStr.toLowerCase().includes('sept')) nextMonth = 'sept';
+        const nextMonth = months[d.getMonth()];
+        const nextYear = d.getFullYear().toString().slice(-2);
 
-        if (parts.length === 3) {
-            const nextYear = d.getFullYear().toString().slice(-2);
-            return `${d.getDate()}-${nextMonth}-${nextYear}`;
-        }
-        return `${d.getDate()}-${nextMonth}`;
+        return `${d.getDate()} ${nextMonth} ${nextYear}`;
     };
 
     const addEmisionRow = () => {
@@ -350,7 +353,7 @@ export default function AdminDashboard({ initialData }: { initialData: Indicator
                                                 type="text"
                                                 value={row.fecha}
                                                 onChange={e => handleEmisionCellChange(i, 'fecha', e.target.value)}
-                                                className="w-20 bg-transparent text-imperial-gold font-bold p-1 outline-none text-center"
+                                                className="w-24 bg-transparent text-imperial-gold font-bold p-1 outline-none text-center"
                                             />
                                         </td>
                                         <td className="p-1 border-r border-imperial-cyan/30">

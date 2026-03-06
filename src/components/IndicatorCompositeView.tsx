@@ -103,8 +103,8 @@ export default function IndicatorCompositeView({
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-8">
-            <header className="w-full max-w-6xl mb-8 border-b-2 border-imperial-gold pb-4 mt-4 flex items-center justify-between">
+        <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-6 lg:p-10">
+            <header className="w-[96%] max-w-[1800px] mb-8 border-b-2 border-imperial-gold pb-4 mt-4 flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-widest text-imperial-gold leading-tight uppercase">
                         {title}
@@ -119,7 +119,7 @@ export default function IndicatorCompositeView({
                 </Link>
             </header>
 
-            <main className="w-full max-w-6xl">
+            <main className="w-[96%] max-w-[1800px]">
                 <div
                     className="w-full h-[850px] bg-imperial-blue border-2 border-imperial-gold p-4 shadow-lg shadow-imperial-blue/50 flex flex-col"
                     style={{ outline: 'none' }}
