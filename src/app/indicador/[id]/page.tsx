@@ -2,6 +2,7 @@ import { getIndicators } from '@/lib/indicators';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { fetchBcraVariable } from '@/lib/bcra';
+import { getBcraOverrides } from '@/lib/db';
 
 export const revalidate = 21600; // 6 hours
 
@@ -10,8 +11,6 @@ interface PageProps {
         id: string;
     }>;
 }
-
-import overrides from '@/data/overrides/bcra.json';
 
 import IndicatorCompositeView, { AreaConfig, MethodologyItem } from '@/components/IndicatorCompositeView';
 
@@ -22,6 +21,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
     const resolvedParams = await params;
     const data = await getIndicators();
     const indicator = data.find(i => i.id === resolvedParams.id);
+    const overrides = await getBcraOverrides();
 
     if (!indicator) {
         return notFound();

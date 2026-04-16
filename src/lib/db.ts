@@ -98,3 +98,41 @@ export async function saveIndicatorsCatalog(data: Record<string, any>[]): Promis
         ]);
     }
 }
+
+export interface BcraOverride {
+    category: string;
+    month: string;
+    value: number;
+}
+
+export async function getBcraOverrides(): Promise<Record<string, Record<string, number>>> {
+    const rows = await sql.query('SELECT category, month, value FROM bcra_overrides');
+    
+    const result: Record<string, Record<string, number>> = {
+        otros: {},
+        tesoro: {}
+    };
+    
+    for (const row of rows) {
+        result[row.category][row.month] = row.value;
+    }
+    
+    return result;
+}
+
+export async function saveBcraOverride(category: string, month: string, value: number): Promise<void> {
+    await sql.query(
+        `INSERT INTO bcra_overrides (category, month, value, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (category, month) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+        [category, month, value]
+    );
+}
+
+export async function saveBcraOverrides(overrides: Record<string, Record<string, number>>): Promise<void> {
+    for (const category of Object.keys(overrides)) {
+        for (const [month, value] of Object.entries(overrides[category])) {
+            await saveBcraOverride(category, month, value);
+        }
+    }
+}
