@@ -57,3 +57,44 @@ export async function getLastUpdate(type: IndicatorType): Promise<string | null>
     const rows = await sql.query(`SELECT last_update FROM ${table} ORDER BY last_update DESC LIMIT 1`);
     return rows.length > 0 ? rows[0].last_update : null;
 }
+
+export interface CatalogIndicator {
+    id: string;
+    indicador: string;
+    referencia: string;
+    dato: string;
+    fecha: string;
+    fuente: string;
+    trend: string;
+    category: string;
+    has_details: boolean;
+    source_url: string | null;
+}
+
+export async function getIndicatorsCatalog(): Promise<any[]> {
+    return sql.query('SELECT * FROM indicators_catalog ORDER BY category, indicador');
+}
+
+export async function saveIndicatorsCatalog(data: Record<string, any>[]): Promise<void> {
+    for (const row of data) {
+        const query = `
+            INSERT INTO indicators_catalog (id, indicador, referencia, dato, fecha, fuente, trend, category, has_details, source_url, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+            ON CONFLICT (id) DO UPDATE SET
+                indicador = EXCLUDED.indicador,
+                referencia = EXCLUDED.referencia,
+                dato = EXCLUDED.dato,
+                fecha = EXCLUDED.fecha,
+                fuente = EXCLUDED.fuente,
+                trend = EXCLUDED.trend,
+                category = EXCLUDED.category,
+                has_details = EXCLUDED.has_details,
+                source_url = EXCLUDED.source_url,
+                updated_at = NOW()
+        `;
+        await sql.query(query, [
+            row.id, row.indicador, row.referencia, row.dato, row.fecha,
+            row.fuente, row.trend, row.category, row.has_details, row.source_url
+        ]);
+    }
+}

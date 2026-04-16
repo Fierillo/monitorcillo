@@ -1,5 +1,12 @@
-import fs from 'fs/promises';
-import path from 'path';
+import { getIndicatorsCatalog, saveIndicatorsCatalog, getNormalizedData } from './db';
+
+const MAPPING: Record<string, 'emision' | 'emae' | 'bma' | 'reca' | 'poder'> = {
+    emision: 'emision',
+    emae: 'emae',
+    bma: 'bma',
+    reca: 'reca',
+    'poder-adquisitivo': 'poder',
+};
 
 export interface Indicator {
     id: string;
@@ -12,9 +19,6 @@ export interface Indicator {
     hasDetails?: boolean;
     sourceUrl?: string;
 }
-
-const CATALOG_DIR = path.join(process.cwd(), 'src', 'data', 'catalog');
-const CACHE_DIR = path.join(process.cwd(), 'src', 'data', 'cache');
 
 function formatDateFromCache(fechaStr: string): string {
     const months: Record<string, string> = {
@@ -55,55 +59,53 @@ function formatDateFromCache(fechaStr: string): string {
     return fechaStr;
 }
 
-function getLastDateFromCache(indicatorId: string): string | null {
-    const cacheFile = path.join(CACHE_DIR, `${indicatorId}.json`);
-    
-    try {
-        const content = require('fs').readFileSync(cacheFile, 'utf-8');
-        const data = JSON.parse(content);
-        
-        if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
-            const lastRecord = data.data[data.data.length - 1];
-            
-            if (lastRecord.fecha) {
-                return formatDateFromCache(lastRecord.fecha);
-            }
-        }
-    } catch (err) {
+async function getLastDateFromIndicator(indicatorId: string): Promise<string | null> {
+    const type = MAPPING[indicatorId];
+    if (!type) return null;
+
+    const data = await getNormalizedData(type);
+    if (!data || data.length === 0) return null;
+
+    const lastRecord = data[data.length - 1];
+    if (lastRecord.fecha) {
+        return formatDateFromCache(lastRecord.fecha);
     }
     return null;
 }
 
 export async function getIndicators(): Promise<Indicator[]> {
     try {
-        const files = await fs.readdir(CATALOG_DIR);
-        const jsonFiles = files.filter(f => f.endsWith('.json'));
-
-        const allIndicators = await Promise.all(jsonFiles.map(async file => {
-            const content = await fs.readFile(path.join(CATALOG_DIR, file), 'utf-8');
-            return JSON.parse(content);
-        }));
-
-        const indicators = allIndicators.flat();
+        const rows = await getIndicatorsCatalog();
         
-        return indicators.map(indicator => {
-            if (indicator.sourceUrl) {
-                return indicator;
-            }
-
-            const lastDate = getLastDateFromCache(indicator.id);
-            if (lastDate) {
-                return { ...indicator, fecha: lastDate };
-            }
-            return indicator;
-        });
+        return rows.map((row: any) => ({
+            id: row.id,
+            indicador: row.indicador,
+            referencia: row.referencia,
+            dato: row.dato,
+            fecha: row.fecha,
+            fuente: row.fuente,
+            trend: row.trend,
+            category: row.category,
+            hasDetails: row.has_details,
+            sourceUrl: row.source_url,
+        }));
     } catch (err) {
         return [];
     }
 }
 
 export async function saveIndicators(data: Indicator[]): Promise<void> {
-    const target = path.join(CATALOG_DIR, 'monitoreo.json');
-    await fs.mkdir(CATALOG_DIR, { recursive: true });
-    await fs.writeFile(target, JSON.stringify(data, null, 2));
+    const mapped = data.map(ind => ({
+        id: ind.id,
+        indicador: ind.indicador,
+        referencia: ind.referencia,
+        dato: ind.dato,
+        fecha: ind.fecha,
+        fuente: ind.fuente,
+        trend: ind.trend || 'neutral',
+        category: 'default',
+        has_details: ind.hasDetails || false,
+        source_url: ind.sourceUrl || null,
+    }));
+    await saveIndicatorsCatalog(mapped);
 }
