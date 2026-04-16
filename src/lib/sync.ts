@@ -206,13 +206,25 @@ export async function syncBcraOverrides(): Promise<{ appended: number; total: nu
     return { appended: count, total: count };
 }
 
+export async function syncRecaudacion(): Promise<{ appended: number; total: number }> {
+    console.log('Recaudacion: no API available - manual data required');
+    return { appended: 0, total: 0 };
+}
+
+export async function syncPoderAdquisitivo(): Promise<{ appended: number; total: number }> {
+    console.log('Poder adquisitivo: no API available - manual data required');
+    return { appended: 0, total: 0 };
+}
+
 export async function runSync(): Promise<Record<string, { appended: number; total: number }>> {
     const results: Record<string, { appended: number; total: number }> = {};
 
-    const [emision, emae, bma, catalog, overrides] = await Promise.all([
+    const [emision, emae, bma, reca, poder, catalog, overrides] = await Promise.all([
         syncEmision(),
         syncEmae(),
         syncBma(),
+        syncRecaudacion(),
+        syncPoderAdquisitivo(),
         syncIndicatorsCatalog(),
         syncBcraOverrides(),
     ]);
@@ -220,6 +232,8 @@ export async function runSync(): Promise<Record<string, { appended: number; tota
     if (emision.total > 0) results.emision = { appended: emision.appended, total: emision.total };
     if (emae.total > 0) results.emae = { appended: emae.appended, total: emae.total };
     if (bma.total > 0) results.bma = { appended: bma.appended, total: bma.total };
+    if (reca.total > 0) results.recaudacion = { appended: reca.appended, total: reca.total };
+    if (poder.total > 0) results.poder_adquisitivo = { appended: poder.appended, total: poder.total };
     if (catalog.total > 0) results.catalog = { appended: catalog.appended, total: catalog.total };
     if (overrides.total > 0) results.overrides = { appended: overrides.appended, total: overrides.total };
 
