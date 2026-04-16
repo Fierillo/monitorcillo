@@ -132,9 +132,9 @@ CREATE INDEX IF NOT EXISTS idx_recaudacion_fecha ON recaudacion_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_poder_fecha ON poder_adquisitivo_raw(fecha);
 
 -- ============================================
--- BCRA OVERRIDES (datos manuales que prevalecen sobre API)
+-- MANUAL OVERRIDES (datos manuales que prevalecen sobre API)
 -- ============================================
-CREATE TABLE IF NOT EXISTS bcra_overrides (
+CREATE TABLE IF NOT EXISTS manual_overrides (
     id SERIAL PRIMARY KEY,
     category VARCHAR(50) NOT NULL,  -- 'otros' o 'tesoro'
     month VARCHAR(7) NOT NULL,       -- formato 'YYYY-MM'
@@ -143,4 +143,4 @@ CREATE TABLE IF NOT EXISTS bcra_overrides (
     UNIQUE(category, month)
 );
 
-CREATE INDEX IF NOT EXISTS idx_bcra_overrides_month ON bcra_overrides(month);
+CREATE INDEX IF NOT EXISTS idx_manual_overrides_month ON manual_overrides(month);

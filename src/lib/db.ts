@@ -105,8 +105,8 @@ export interface BcraOverride {
     value: number;
 }
 
-export async function getBcraOverrides(): Promise<Record<string, Record<string, number>>> {
-    const rows = await sql.query('SELECT category, month, value FROM bcra_overrides');
+export async function getManualOverrides(): Promise<Record<string, Record<string, number>>> {
+    const rows = await sql.query('SELECT category, month, value FROM manual_overrides');
     
     const result: Record<string, Record<string, number>> = {
         otros: {},
@@ -120,19 +120,19 @@ export async function getBcraOverrides(): Promise<Record<string, Record<string, 
     return result;
 }
 
-export async function saveBcraOverride(category: string, month: string, value: number): Promise<void> {
+export async function saveManualOverride(category: string, month: string, value: number): Promise<void> {
     await sql.query(
-        `INSERT INTO bcra_overrides (category, month, value, updated_at)
+        `INSERT INTO manual_overrides (category, month, value, updated_at)
          VALUES ($1, $2, $3, NOW())
          ON CONFLICT (category, month) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
         [category, month, value]
     );
 }
 
-export async function saveBcraOverrides(overrides: Record<string, Record<string, number>>): Promise<void> {
+export async function saveManualOverrides(overrides: Record<string, Record<string, number>>): Promise<void> {
     for (const category of Object.keys(overrides)) {
         for (const [month, value] of Object.entries(overrides[category])) {
-            await saveBcraOverride(category, month, value);
+            await saveManualOverride(category, month, value);
         }
     }
 }
