@@ -3,6 +3,23 @@
 -- ============================================
 
 -- ============================================
+-- CATALOG (indicadores)
+-- ============================================
+CREATE TABLE IF NOT EXISTS indicators_catalog (
+    id VARCHAR(50) PRIMARY KEY,
+    indicador VARCHAR(255),
+    referencia TEXT,
+    dato VARCHAR(50),
+    fecha VARCHAR(20),
+    fuente VARCHAR(100),
+    trend VARCHAR(20),
+    category VARCHAR(50),
+    has_details BOOLEAN DEFAULT false,
+    source_url TEXT,
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
 -- EMISION (diaria)
 -- ============================================
 CREATE TABLE IF NOT EXISTS emision_raw (
@@ -107,6 +124,7 @@ CREATE TABLE IF NOT EXISTS poder_adquisitivo_normalized (
 -- ============================================
 -- INDEXES
 -- ============================================
+CREATE INDEX IF NOT EXISTS idx_indicators_catalog_id ON indicators_catalog(id);
 CREATE INDEX IF NOT EXISTS idx_emision_fecha ON emision_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_emae_fecha ON emae_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_bma_fecha ON bma_raw(fecha);
