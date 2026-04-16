@@ -1,5 +1,5 @@
 import https from 'https';
-import { getRawData, saveRawData, saveNormalizedData, saveIndicatorsCatalog, getBcraOverrides, saveBcraOverride, IndicatorType } from './db';
+import { getRawData, saveRawData, saveNormalizedData, saveIndicatorsCatalog, getManualOverrides, saveManualOverride, IndicatorType } from './db';
 import { normalizeEmision, normalizeEmae, normalizeBma, isoToFecha, fechaToISO, fechaToTimestamp } from './normalize';
 
 function fetchFromUrl(url: string): Promise<any[]> {
@@ -191,7 +191,7 @@ export async function syncIndicatorsCatalog(): Promise<{ appended: number; total
 }
 
 export async function syncBcraOverrides(): Promise<{ appended: number; total: number }> {
-    const existing = await getBcraOverrides();
+    const existing = await getManualOverrides();
     const existingCount = Object.keys(existing.otros).length + Object.keys(existing.tesoro).length;
     
     if (existingCount > 0) {
@@ -200,7 +200,7 @@ export async function syncBcraOverrides(): Promise<{ appended: number; total: nu
 
     let count = 0;
     for (const [month, value] of Object.entries(DEFAULT_OVERRIDES_OTROS)) {
-        await saveBcraOverride('otros', month, value);
+        await saveManualOverride('otros', month, value);
         count++;
     }
     return { appended: count, total: count };
