@@ -1,5 +1,5 @@
 {
-  "lastUpdate": "2026-03-05T20:49:37.963Z",
+  "lastUpdate": "2026-03-16T21:46:44.465Z",
   "data": [
     {
       "fecha": "MAR 24",
@@ -171,10 +171,10 @@
     },
     {
       "fecha": "MAR 26",
-      "BaseMonetaria": 42641381,
+      "BaseMonetaria": 41407606,
       "PasivosRemunerados": 0,
       "DepositosTesoro": 0,
-      "BMAmplia": 42641381
+      "BMAmplia": 41407606
     }
   ]
 }
