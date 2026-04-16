@@ -10,6 +10,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
     "cheerio": "^1.2.0",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.575.0",
