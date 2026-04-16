@@ -1,0 +1,17 @@
+name: Sync Data
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run sync
+        run: |
+          curl -X POST "${{ vars.VERCEL_URL }}/api/sync" \
+            -H "x-api-key: ${{ secrets.SYNC_API_KEY }}"
+        env:
+          SYNC_API_KEY: ${{ secrets.SYNC_API_KEY }}
