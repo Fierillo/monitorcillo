@@ -52,49 +52,75 @@ export function normalizeEmision(rawData: any[], tcData: any[] = []): any[] {
     return result;
 }
 
-export function normalizeEmae(rawData: any[]): any[] {
+export function normalizeEmae(rawData: any): any[] {
+    if (!rawData || !rawData.data || !Array.isArray(rawData.data)) {
+        return [];
+    }
+
     const months: Record<string, string> = {
         '01': 'ENE', '02': 'FEB', '03': 'MAR', '04': 'ABR', '05': 'MAY', '06': 'JUN',
         '07': 'JUL', '08': 'AGO', '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
     };
 
-    const emaeByFecha = new Map<string, { emae: number; desest?: number; tendencia?: number }>();
+    const emaeByFecha = new Map<string, { emae?: number; desest?: number; tendencia?: number }>();
 
-    for (const s of rawData) {
-        const fecha = `${months[s.fecha.slice(5, 7)]} ${s.fecha.slice(2, 4)}`;
+    for (const row of rawData.data) {
+        const fechaStr = row[0];
+        const value = row[1];
         
-        if (s.indice === 'tcm_2006.4_m_23_37') {
-            emaeByFecha.set(fecha, { emae: s.valor });
-        } else if (s.indice === 'tcm_2006.4_m_23_38' && emaeByFecha.has(fecha)) {
-            emaeByFecha.get(fecha)!.desest = s.valor;
-        } else if (s.indice === 'tcm_2006.4_m_23_39' && emaeByFecha.has(fecha)) {
-            emaeByFecha.get(fecha)!.tendencia = s.valor;
+        if (!fechaStr) continue;
+        
+        const fecha = `${months[fechaStr.slice(5, 7)]} ${fechaStr.slice(2, 4)}`;
+        
+        if (!emaeByFecha.has(fecha)) {
+            emaeByFecha.set(fecha, {});
+        }
+        
+        const existing = emaeByFecha.get(fecha)!;
+        
+        if (value !== null && value !== undefined) {
+            if (!existing.emae) {
+                existing.emae = value;
+            } else if (!existing.desest) {
+                existing.desest = value;
+            } else if (!existing.tendencia) {
+                existing.tendencia = value;
+            }
         }
     }
 
     const result = Array.from(emaeByFecha.entries())
         .map(([fecha, values]) => ({
             fecha,
-            emae: values.emae,
-            emae_desestacionalizado: values.desest,
-            emae_tendencia: values.tendencia,
+            emae: values.emae ?? null,
+            emae_desestacionalizado: values.desest ?? null,
+            emae_tendencia: values.tendencia ?? null,
         }))
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
 
     return result;
 }
 
-export function normalizeBma(rawData: any[]): any[] {
+export function normalizeBma(rawData: any): any[] {
+    if (!rawData || !rawData.data || !Array.isArray(rawData.data)) {
+        return [];
+    }
+
     const months: Record<string, string> = {
         '01': 'ENE', '02': 'FEB', '03': 'MAR', '04': 'ABR', '05': 'MAY', '06': 'JUN',
         '07': 'JUL', '08': 'AGO', '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
     };
 
-    const result = rawData
-        .map((s: any) => ({
-            fecha: `${months[s.fecha.slice(5, 7)]} ${s.fecha.slice(2, 4)}`,
-            base: s.valor,
-        }))
+    const result = rawData.data
+        .map((row: any) => {
+            const fechaStr = row[0];
+            if (!fechaStr) return null;
+            return {
+                fecha: `${months[fechaStr.slice(5, 7)]} ${fechaStr.slice(2, 4)}`,
+                base: row[1],
+            };
+        })
+        .filter((r: any) => r !== null)
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
 
     return result;
