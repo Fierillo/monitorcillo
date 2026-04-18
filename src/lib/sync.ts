@@ -221,7 +221,7 @@ export async function syncRecaudacion(): Promise<{ appended: number; total: numb
     const existingFechas = new Set(existingData.map((d: any) => d.fecha));
 
     const rawData = await fetchRecaudacionRaw();
-    const normalized = normalizeRecaudacion(rawData.data || []);
+    const normalized = normalizeRecaudacion(rawData);
 
     const newRows = normalized.filter((r: any) => !existingFechas.has(r.fecha));
     const merged = [...existingData, ...newRows].sort((a: any, b: any) => 
@@ -240,7 +240,7 @@ export async function syncPoderAdquisitivo(): Promise<{ appended: number; total:
     const existingFechas = new Set(existingData.map((d: any) => d.fecha));
 
     const rawData = await fetchPoderAdquisitivoRaw();
-    const normalized = normalizePoderAdquisitivo(rawData.data || []);
+    const normalized = normalizePoderAdquisitivo(rawData);
 
     const newRows = normalized.filter((r: any) => !existingFechas.has(r.fecha));
     const merged = [...existingData, ...newRows].sort((a: any, b: any) => 
@@ -256,15 +256,13 @@ export async function syncPoderAdquisitivo(): Promise<{ appended: number; total:
 export async function runSync(): Promise<Record<string, { appended: number; total: number }>> {
     const results: Record<string, { appended: number; total: number }> = {};
 
-    const [emision, emae, bma, reca, poder, catalog, overrides] = await Promise.all([
-        syncEmision(),
-        syncEmae(),
-        syncBma(),
-        syncRecaudacion(),
-        syncPoderAdquisitivo(),
-        syncIndicatorsCatalog(),
-        syncBcraOverrides(),
-    ]);
+    const emision = await syncEmision().catch(e => { console.error('emision error:', e); return { appended: 0, total: 0 }; });
+    const emae = await syncEmae().catch(e => { console.error('emae error:', e); return { appended: 0, total: 0 }; });
+    const bma = await syncBma().catch(e => { console.error('bma error:', e); return { appended: 0, total: 0 }; });
+    const reca = await syncRecaudacion().catch(e => { console.error('reca error:', e); return { appended: 0, total: 0 }; });
+    const poder = await syncPoderAdquisitivo().catch(e => { console.error('poder error:', e); return { appended: 0, total: 0 }; });
+    const catalog = await syncIndicatorsCatalog().catch(e => { console.error('catalog error:', e); return { appended: 0, total: 0 }; });
+    const overrides = await syncBcraOverrides().catch(e => { console.error('overrides error:', e); return { appended: 0, total: 0 }; });
 
     if (emision.total > 0) results.emision = { appended: emision.appended, total: emision.total };
     if (emae.total > 0) results.emae = { appended: emae.appended, total: emae.total };
