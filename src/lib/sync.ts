@@ -1,6 +1,6 @@
 import https from 'https';
 import { getRawData, saveRawData, saveNormalizedData, saveIndicatorsCatalog, getManualOverrides, saveManualOverride, IndicatorType } from './db';
-import { normalizeEmision, normalizeEmae, normalizeBma, isoToFecha, fechaToISO, fechaToTimestamp } from './normalize';
+import { normalizeEmision, normalizeEmae, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo, isoToFecha, fechaToISO, fechaToTimestamp } from './normalize';
 
 function fetchFromUrl(url: string): Promise<any> {
     return new Promise((resolve) => {
@@ -64,6 +64,14 @@ export async function fetchEmaeRaw(): Promise<any> {
 
 export async function fetchBmaRaw(): Promise<any> {
     return fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=90.1_BMT_0_0_20&limit=5000');
+}
+
+export async function fetchPoderAdquisitivoRaw(): Promise<any> {
+    return fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=355.2_PODER_ADQU986__27&limit=5000');
+}
+
+export async function fetchRecaudacionRaw(): Promise<any> {
+    return fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=158.1_REPTE_0_0_5&limit=5000');
 }
 
 function getLastDateISO(existingData: any[]): string {
@@ -208,13 +216,41 @@ export async function syncBcraOverrides(): Promise<{ appended: number; total: nu
 }
 
 export async function syncRecaudacion(): Promise<{ appended: number; total: number }> {
-    console.log('Recaudacion: requires manual data entry - no public API available');
-    return { appended: 0, total: 0 };
+    const type: IndicatorType = 'reca';
+    const existingData = (await getRawData(type)) ?? [];
+    const existingFechas = new Set(existingData.map((d: any) => d.fecha));
+
+    const rawData = await fetchRecaudacionRaw();
+    const normalized = normalizeRecaudacion(rawData.data || []);
+
+    const newRows = normalized.filter((r: any) => !existingFechas.has(r.fecha));
+    const merged = [...existingData, ...newRows].sort((a: any, b: any) => 
+        fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha)
+    );
+
+    await saveRawData(type, merged);
+    await saveNormalizedData(type, merged);
+
+    return { appended: newRows.length, total: merged.length };
 }
 
 export async function syncPoderAdquisitivo(): Promise<{ appended: number; total: number }> {
-    console.log('Poder adquisitivo: requires manual data entry - no public API available');
-    return { appended: 0, total: 0 };
+    const type: IndicatorType = 'poder';
+    const existingData = (await getRawData(type)) ?? [];
+    const existingFechas = new Set(existingData.map((d: any) => d.fecha));
+
+    const rawData = await fetchPoderAdquisitivoRaw();
+    const normalized = normalizePoderAdquisitivo(rawData.data || []);
+
+    const newRows = normalized.filter((r: any) => !existingFechas.has(r.fecha));
+    const merged = [...existingData, ...newRows].sort((a: any, b: any) => 
+        fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha)
+    );
+
+    await saveRawData(type, merged);
+    await saveNormalizedData(type, merged);
+
+    return { appended: newRows.length, total: merged.length };
 }
 
 export async function runSync(): Promise<Record<string, { appended: number; total: number }>> {
