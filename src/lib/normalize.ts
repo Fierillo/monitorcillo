@@ -78,9 +78,18 @@ export function normalizeEmae(rawData: any): any[] {
 
     for (const row of rawData.data) {
         const fechaStr = row[0];
-        if (!fechaStr || !fechaStr.includes('-')) continue;
+        if (!fechaStr || typeof fechaStr !== 'string') continue;
+        if (!fechaStr.includes('-')) continue;
 
-        const fecha = `${MONTHS_ES[new Date(fechaStr).getUTCMonth()]} ${fechaStr.slice(2, 4)}`;
+        let month = 0;
+        try {
+            const dateObj = new Date(fechaStr);
+            month = dateObj.getUTCMonth();
+        } catch {
+            continue;
+        }
+        
+        const fecha = `${MONTHS_ES[month]} ${fechaStr.slice(2, 4)}`;
         
         if (!emaeByFecha.has(fecha)) {
             emaeByFecha.set(fecha, {});
@@ -112,9 +121,18 @@ export function normalizeBma(rawData: any): any[] {
 
     return rawData.data
         .map((row: any) => {
-            if (!row[0] || !row[0].includes('-')) return null;
+            if (!row[0] || typeof row[0] !== 'string' || !row[0].includes('-')) return null;
+            
+            let month = 0;
+            try {
+                const dateObj = new Date(row[0]);
+                month = dateObj.getUTCMonth();
+            } catch {
+                return null;
+            }
+            
             return {
-                fecha: `${MONTHS_ES[new Date(row[0]).getUTCMonth()]} ${row[0].slice(2, 4)}`,
+                fecha: `${MONTHS_ES[month]} ${row[0].slice(2, 4)}`,
                 base: row[1],
             };
         })
@@ -122,28 +140,41 @@ export function normalizeBma(rawData: any): any[] {
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
 }
 
-export function normalizeRecaudacion(rawData: any[]): any[] {
-    const result = rawData
-        .map((r: any) => ({
-            fecha: `${MONTHS_ES[r.mes]} ${String(r.year).slice(-2)}`,
-            mes: r.mes,
-            year: r.year,
-            pct_pbi: r.pctPbi,
-        }))
+export function normalizeRecaudacion(rawData: any): any[] {
+    if (!rawData || !rawData.data || !Array.isArray(rawData.data)) {
+        return [];
+    }
+    
+    const result = rawData.data
+        .map((row: any) => {
+            if (!row[0] || typeof row[0] !== 'string') return null;
+            const fecha = row[0];
+            const [yyyy, mm] = fecha.split('-');
+            return {
+                fecha: `${MONTHS_ES[parseInt(mm) - 1]} ${yyyy.slice(-2)}`,
+                mes: mm,
+                year: parseInt(yyyy),
+                pct_pbi: row[1],
+            };
+        })
+        .filter((r: any) => r !== null)
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
     return result;
 }
 
-export function normalizePoderAdquisitivo(rawData: any[]): any[] {
-    return rawData
-        .map((r: any) => ({
-            fecha: r.fecha,
-            blanco: r.blanco,
-            negro: r.negro,
-            privado: r.privado,
-            publico: r.publico,
-            ripte: r.ripte,
-            jubilacion: r.jubilacion,
-        }))
+export function normalizePoderAdquisitivo(rawData: any): any[] {
+    if (!rawData || !rawData.data || !Array.isArray(rawData.data)) {
+        return [];
+    }
+    
+    return rawData.data
+        .map((row: any) => {
+            if (!row[0] || typeof row[0] !== 'string') return null;
+            return {
+                fecha: row[0],
+                value: row[1],
+            };
+        })
+        .filter((r: any) => r !== null)
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
 }
