@@ -63,7 +63,7 @@ export async function fetchEmaeRaw(): Promise<any> {
 }
 
 export async function fetchBmaRaw(): Promise<any> {
-    return fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=143.2_NO_PR_2004_A_16&limit=5000');
+    return fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=90.1_BMT_0_0_20&limit=5000');
 }
 
 function getLastDateISO(existingData: any[]): string {
@@ -208,12 +208,12 @@ export async function syncBcraOverrides(): Promise<{ appended: number; total: nu
 }
 
 export async function syncRecaudacion(): Promise<{ appended: number; total: number }> {
-    console.log('Recaudacion: no API available - manual data required');
+    console.log('Recaudacion: requires manual data entry - no public API available');
     return { appended: 0, total: 0 };
 }
 
 export async function syncPoderAdquisitivo(): Promise<{ appended: number; total: number }> {
-    console.log('Poder adquisitivo: no API available - manual data required');
+    console.log('Poder adquisitivo: requires manual data entry - no public API available');
     return { appended: 0, total: 0 };
 }
 
