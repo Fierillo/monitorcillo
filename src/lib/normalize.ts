@@ -1,6 +1,23 @@
 const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
 const MONTHS_IDX: Record<string, number> = { ENE: 0, FEB: 1, MAR: 2, ABR: 3, MAY: 4, JUN: 5, JUL: 6, AGO: 7, SEPT: 8, OCT: 9, NOV: 10, DIC: 11 };
 
+const API_CONFIG = {
+    emision: {
+        bcra_variables: { compra: 78, tc: 4 }
+    },
+    emae: {
+        series: {
+            original: '143.3_NO_PR_2004_A_21',
+            desest: '143.3_NO_PR_2004_A_31',
+            tendencia: '143.3_NO_PR_2004_A_28'
+        }
+    },
+    bma: {
+        // A buscar - por ahora comento
+        series: '143.2_NO_PR_2004_A_16'
+    }
+};
+
 export function isoToFecha(dateStr: string): string {
     const d = new Date(dateStr + 'T12:00:00Z');
     return `${d.getUTCDate()} ${MONTHS_ES[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}`;
@@ -57,20 +74,13 @@ export function normalizeEmae(rawData: any): any[] {
         return [];
     }
 
-    const months: Record<string, string> = {
-        '01': 'ENE', '02': 'FEB', '03': 'MAR', '04': 'ABR', '05': 'MAY', '06': 'JUN',
-        '07': 'JUL', '08': 'AGO', '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
-    };
-
     const emaeByFecha = new Map<string, { emae?: number; desest?: number; tendencia?: number }>();
 
     for (const row of rawData.data) {
         const fechaStr = row[0];
-        const value = row[1];
-        
-        if (!fechaStr) continue;
-        
-        const fecha = `${months[fechaStr.slice(5, 7)]} ${fechaStr.slice(2, 4)}`;
+        if (!fechaStr || !fechaStr.includes('-')) continue;
+
+        const fecha = `${MONTHS_ES[new Date(fechaStr).getUTCMonth()]} ${fechaStr.slice(2, 4)}`;
         
         if (!emaeByFecha.has(fecha)) {
             emaeByFecha.set(fecha, {});
@@ -78,18 +88,14 @@ export function normalizeEmae(rawData: any): any[] {
         
         const existing = emaeByFecha.get(fecha)!;
         
-        if (value !== null && value !== undefined) {
-            if (!existing.emae) {
-                existing.emae = value;
-            } else if (!existing.desest) {
-                existing.desest = value;
-            } else if (!existing.tendencia) {
-                existing.tendencia = value;
-            }
+        if (row[1] !== null && row[1] !== undefined) {
+            if (!existing.emae) existing.emae = row[1];
+            else if (!existing.desest) existing.desest = row[1];
+            else if (!existing.tendencia) existing.tendencia = row[1];
         }
     }
 
-    const result = Array.from(emaeByFecha.entries())
+    return Array.from(emaeByFecha.entries())
         .map(([fecha, values]) => ({
             fecha,
             emae: values.emae ?? null,
@@ -97,8 +103,6 @@ export function normalizeEmae(rawData: any): any[] {
             emae_tendencia: values.tendencia ?? null,
         }))
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
-
-    return result;
 }
 
 export function normalizeBma(rawData: any): any[] {
@@ -106,46 +110,32 @@ export function normalizeBma(rawData: any): any[] {
         return [];
     }
 
-    const months: Record<string, string> = {
-        '01': 'ENE', '02': 'FEB', '03': 'MAR', '04': 'ABR', '05': 'MAY', '06': 'JUN',
-        '07': 'JUL', '08': 'AGO', '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
-    };
-
-    const result = rawData.data
+    return rawData.data
         .map((row: any) => {
-            const fechaStr = row[0];
-            if (!fechaStr) return null;
+            if (!row[0] || !row[0].includes('-')) return null;
             return {
-                fecha: `${months[fechaStr.slice(5, 7)]} ${fechaStr.slice(2, 4)}`,
+                fecha: `${MONTHS_ES[new Date(row[0]).getUTCMonth()]} ${row[0].slice(2, 4)}`,
                 base: row[1],
             };
         })
         .filter((r: any) => r !== null)
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
-
-    return result;
 }
 
 export function normalizeRecaudacion(rawData: any[]): any[] {
-    const months: Record<string, string> = {
-        '01': 'ENE', '02': 'FEB', '03': 'MAR', '04': 'ABR', '05': 'MAY', '06': 'JUN',
-        '07': 'JUL', '08': 'AGO', '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
-    };
-
     const result = rawData
         .map((r: any) => ({
-            fecha: `${months[r.mes]} ${String(r.year).slice(-2)}`,
+            fecha: `${MONTHS_ES[r.mes]} ${String(r.year).slice(-2)}`,
             mes: r.mes,
             year: r.year,
             pct_pbi: r.pctPbi,
         }))
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
-
     return result;
 }
 
 export function normalizePoderAdquisitivo(rawData: any[]): any[] {
-    const result = rawData
+    return rawData
         .map((r: any) => ({
             fecha: r.fecha,
             blanco: r.blanco,
@@ -156,6 +146,4 @@ export function normalizePoderAdquisitivo(rawData: any[]): any[] {
             jubilacion: r.jubilacion,
         }))
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
-
-    return result;
 }

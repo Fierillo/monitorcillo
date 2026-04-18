@@ -2,7 +2,7 @@ import https from 'https';
 import { getRawData, saveRawData, saveNormalizedData, saveIndicatorsCatalog, getManualOverrides, saveManualOverride, IndicatorType } from './db';
 import { normalizeEmision, normalizeEmae, normalizeBma, isoToFecha, fechaToISO, fechaToTimestamp } from './normalize';
 
-function fetchFromUrl(url: string): Promise<any[]> {
+function fetchFromUrl(url: string): Promise<any> {
     return new Promise((resolve) => {
         const agent = new https.Agent({ rejectUnauthorized: false });
         https.get(url, { agent }, (res) => {
@@ -12,15 +12,15 @@ function fetchFromUrl(url: string): Promise<any[]> {
                 if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
                     try {
                         const parsed = JSON.parse(data);
-                        resolve(parsed.data || []);
+                        resolve(parsed);
                     } catch {
-                        resolve([]);
+                        resolve({ data: [] });
                     }
                 } else {
-                    resolve([]);
+                    resolve({ data: [] });
                 }
             });
-        }).on('error', () => resolve([]));
+        }).on('error', () => resolve({ data: [] }));
     });
 }
 
@@ -57,12 +57,13 @@ export async function fetchEmisionRaw(from: string, to: string): Promise<{ compr
     return { compraData, tcData };
 }
 
-export async function fetchEmaeRaw(): Promise<any[]> {
-    return fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=tcm_2006.4_m_23_37,tcm_2006.4_m_23_38,tcm_2006.4_m_23_39&limit=5000&format=json');
+export async function fetchEmaeRaw(): Promise<any> {
+    const ids = '143.3_NO_PR_2004_A_21,143.3_NO_PR_2004_A_31,143.3_NO_PR_2004_A_28';
+    return fetchFromUrl(`https://apis.datos.gob.ar/series/api/series/?ids=${ids}&limit=5000`);
 }
 
-export async function fetchBmaRaw(): Promise<any[]> {
-    return fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=tcm_2006.4_m_21_35_tend&limit=5000&format=json');
+export async function fetchBmaRaw(): Promise<any> {
+    return fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=143.2_NO_PR_2004_A_16&limit=5000');
 }
 
 function getLastDateISO(existingData: any[]): string {
