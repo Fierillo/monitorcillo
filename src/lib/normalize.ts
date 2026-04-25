@@ -23,158 +23,277 @@ export function isoToFecha(dateStr: string): string {
     return `${d.getUTCDate()} ${MONTHS_ES[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}`;
 }
 
+export function isoToMonthLabel(dateStr: string): string {
+    const d = new Date(dateStr + 'T12:00:00Z');
+    return `${MONTHS_ES[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}`;
+}
+
 export function fechaToTimestamp(fecha: string): number {
     const parts = fecha.split(' ');
     if (parts.length < 3) return 0;
-    return new Date(2000 + parseInt(parts[2]), MONTHS_IDX[parts[1]], parseInt(parts[0])).getTime();
+    const parsedYear = parseInt(parts[2], 10);
+    const year = parts[2].length === 2 ? 2000 + parsedYear : parsedYear;
+    return new Date(year, MONTHS_IDX[parts[1]], parseInt(parts[0], 10)).getTime();
 }
 
 export function fechaToISO(fecha: string): string {
     const parts = fecha.split(' ');
     if (parts.length < 3) return '';
-    return `20${parts[2]}-${String(MONTHS_IDX[parts[1]] + 1).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`;
+    const parsedYear = parseInt(parts[2], 10);
+    const year = parts[2].length === 2 ? 2000 + parsedYear : parsedYear;
+    return `${year}-${String(MONTHS_IDX[parts[1]] + 1).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`;
 }
 
 export function normalizeEmision(rawData: any[], tcData: any[] = []): any[] {
     const tcByFecha = new Map(tcData.map((d: any) => [d.fecha, d.valor]));
     const byFecha = new Map(rawData.map((d: any) => [d.fecha, d]));
 
-    const merged = Array.from(byFecha.values()).sort((a: any, b: any) => 
-        fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha)
-    );
+    const merged = Array.from(byFecha.values()).sort((a: any, b: any) => String(a.fecha).localeCompare(String(b.fecha)));
 
     let runningTotal = 0;
-    const result = merged.map((r: any) => {
-        const tc = tcByFecha.get(r.fecha) ?? 0;
-        const compraDolares = r.valor ?? 0;
-        const bcra = compraDolares * tc;
-
-        if (r.acumulado !== undefined && r.acumulado !== null) {
-            runningTotal = r.acumulado;
-        } else {
-            runningTotal += bcra ?? 0;
-            r.acumulado = runningTotal;
-        }
+    return merged.map((row: any) => {
+        const tc = Number(row.tc ?? tcByFecha.get(row.fecha) ?? 0);
+        const compraDolares = Number(row.compra_dolares ?? row.valor ?? 0);
+        const bcra = Number(row.bcra ?? (compraDolares * tc));
+        const vencimientos = Number(row.vencimientos ?? 0);
+        const licitado = Number(row.licitado ?? 0);
+        const licitaciones = vencimientos - licitado;
+        const resultadoFiscal = Number(row.resultado_fiscal ?? 0);
+        const total = bcra + licitaciones + resultadoFiscal;
+        runningTotal += total;
 
         return {
-            fecha: isoToFecha(r.fecha),
-            value: bcra,
-            acumulado: r.acumulado,
-            tc,
-            compra_dolares: compraDolares,
-            bcra,
+            fecha: isoToFecha(row.fecha),
+            iso_fecha: row.fecha,
+            BCRA: bcra,
+            BCRA_POS: bcra > 0 ? bcra : null,
+            BCRA_NEG: bcra < 0 ? bcra : null,
+            TC: tc,
+            CompraDolares: compraDolares,
+            Vencimientos: vencimientos,
+            Licitado: licitado,
+            Licitaciones: licitaciones,
+            Licitaciones_POS: licitaciones > 0 ? licitaciones : null,
+            Licitaciones_NEG: licitaciones < 0 ? licitaciones : null,
+            'Resultado fiscal': resultadoFiscal,
+            ResultadoFiscal_POS: resultadoFiscal > 0 ? resultadoFiscal : null,
+            ResultadoFiscal_NEG: resultadoFiscal < 0 ? resultadoFiscal : null,
+            TOTAL: total,
+            ACUMULADO: runningTotal,
         };
     });
-
-    return result;
 }
 
-export function normalizeEmae(rawData: any): any[] {
-    if (!rawData || !rawData.data || !Array.isArray(rawData.data)) {
+export function normalizeEmae(rawData: any[]): any[] {
+    if (!Array.isArray(rawData) || rawData.length === 0) {
         return [];
     }
 
-    const emaeByFecha = new Map<string, { emae?: number; desest?: number; tendencia?: number }>();
-
-    for (const row of rawData.data) {
-        const fechaStr = row[0];
-        if (!fechaStr || typeof fechaStr !== 'string') continue;
-        if (!fechaStr.includes('-')) continue;
-
-        let month = 0;
-        try {
-            const dateObj = new Date(fechaStr);
-            month = dateObj.getUTCMonth();
-        } catch {
-            continue;
-        }
-        
-        const fecha = `${MONTHS_ES[month]} ${fechaStr.slice(2, 4)}`;
-        
-        if (!emaeByFecha.has(fecha)) {
-            emaeByFecha.set(fecha, {});
-        }
-        
-        const existing = emaeByFecha.get(fecha)!;
-        
-        if (row[1] !== null && row[1] !== undefined) {
-            if (!existing.emae) existing.emae = row[1];
-            else if (!existing.desest) existing.desest = row[1];
-            else if (!existing.tendencia) existing.tendencia = row[1];
-        }
+    const baseRow = rawData.find((row: any) => row.fecha === '2017-01-01');
+    if (!baseRow) {
+        return [];
     }
 
-    return Array.from(emaeByFecha.entries())
-        .map(([fecha, values]) => ({
-            fecha,
-            emae: values.emae ?? null,
-            emae_desestacionalizado: values.desest ?? null,
-            emae_tendencia: values.tendencia ?? null,
-        }))
+    const baseOriginal = baseRow.emae;
+    const baseDesest = baseRow.emae_desestacionalizado;
+    const baseTendencia = baseRow.emae_tendencia;
+
+    return rawData
+        .map((row: any) => {
+            if (!row.fecha || typeof row.fecha !== 'string') return null;
+            const dateObj = new Date(`${row.fecha}T00:00:00Z`);
+            if (Number.isNaN(dateObj.getTime())) return null;
+
+            return {
+                fecha: `${MONTHS_ES[dateObj.getUTCMonth()]} ${String(dateObj.getUTCFullYear()).slice(-2)}`,
+                iso_fecha: row.fecha,
+                emae: baseOriginal ? (row.emae / baseOriginal) * 100 : null,
+                emae_desestacionalizado: baseDesest && row.emae_desestacionalizado ? (row.emae_desestacionalizado / baseDesest) * 100 : null,
+                emae_tendencia: baseTendencia && row.emae_tendencia ? (row.emae_tendencia / baseTendencia) * 100 : null,
+            };
+        })
+        .filter((row: any) => row !== null)
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
 }
 
-export function normalizeBma(rawData: any): any[] {
-    if (!rawData || !rawData.data || !Array.isArray(rawData.data)) {
+export function normalizeBma(rawData: any[]): any[] {
+    if (!Array.isArray(rawData) || rawData.length === 0) {
         return [];
     }
 
-    return rawData.data
-        .map((row: any) => {
-            if (!row[0] || typeof row[0] !== 'string' || !row[0].includes('-')) return null;
-            
-            let month = 0;
-            try {
-                const dateObj = new Date(row[0]);
-                month = dateObj.getUTCMonth();
-            } catch {
-                return null;
+    const MONTHS_NAMES: Record<string, string> = {
+        '01': 'ENE', '02': 'FEB', '03': 'MAR', '04': 'ABR',
+        '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AGO',
+        '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
+    };
+
+    const monthly = new Map<string, {
+        bmTotal: number; bmCount: number;
+        pasesTotal: number; pasesCount: number;
+        leliqTotal: number; leliqCount: number;
+        lefiTotal: number; lefiCount: number;
+        otrosTotal: number; otrosCount: number;
+        depositosTesoroTotal: number; depositosTesoroCount: number;
+    }>();
+
+    for (const row of rawData) {
+        if (!row.fecha || typeof row.fecha !== 'string') continue;
+        const monthKey = row.fecha.slice(0, 7);
+        const bucket = monthly.get(monthKey) ?? {
+            bmTotal: 0, bmCount: 0,
+            pasesTotal: 0, pasesCount: 0,
+            leliqTotal: 0, leliqCount: 0,
+            lefiTotal: 0, lefiCount: 0,
+            otrosTotal: 0, otrosCount: 0,
+            depositosTesoroTotal: 0, depositosTesoroCount: 0,
+        };
+
+        const addAverage = (value: any, totalKey: 'bmTotal' | 'pasesTotal' | 'leliqTotal' | 'lefiTotal' | 'otrosTotal', countKey: 'bmCount' | 'pasesCount' | 'leliqCount' | 'lefiCount' | 'otrosCount') => {
+            if (value === null || value === undefined) return;
+            const numericValue = Number(value);
+            if (Number.isNaN(numericValue)) return;
+            bucket[totalKey] += numericValue;
+            bucket[countKey] += 1;
+        };
+
+        addAverage(row.base_monetaria, 'bmTotal', 'bmCount');
+        addAverage(row.pases, 'pasesTotal', 'pasesCount');
+        addAverage(row.leliq, 'leliqTotal', 'leliqCount');
+        addAverage(row.lefi, 'lefiTotal', 'lefiCount');
+        addAverage(row.otros, 'otrosTotal', 'otrosCount');
+
+        if (row.depositos_tesoro !== null && row.depositos_tesoro !== undefined) {
+            const numericDeposito = Number(row.depositos_tesoro);
+            if (!Number.isNaN(numericDeposito)) {
+                bucket.depositosTesoroTotal += numericDeposito;
+                bucket.depositosTesoroCount += 1;
             }
-            
-            return {
-                fecha: `${MONTHS_ES[month]} ${row[0].slice(2, 4)}`,
-                base: row[1],
-            };
-        })
-        .filter((r: any) => r !== null)
-        .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
-}
+        }
 
-export function normalizeRecaudacion(rawData: any): any[] {
-    if (!rawData || !rawData.data || !Array.isArray(rawData.data)) {
-        return [];
+        monthly.set(monthKey, bucket);
     }
-    
-    const result = rawData.data
-        .map((row: any) => {
-            if (!row[0] || typeof row[0] !== 'string') return null;
-            const fecha = row[0];
-            const [yyyy, mm] = fecha.split('-');
+
+    const result = Array.from(monthly.entries())
+        .map(([monthKey, bucket]) => {
+            const [yyyy, mm] = monthKey.split('-');
+            if (!MONTHS_NAMES[mm]) return null;
+
+            const bm = bucket.bmCount > 0 ? bucket.bmTotal / bucket.bmCount : null;
+            const pases = bucket.pasesCount > 0 ? bucket.pasesTotal / bucket.pasesCount : null;
+            const leliq = bucket.leliqCount > 0 ? bucket.leliqTotal / bucket.leliqCount : null;
+            const lefi = bucket.lefiCount > 0 ? bucket.lefiTotal / bucket.lefiCount : null;
+            const otros = bucket.otrosCount > 0 ? bucket.otrosTotal / bucket.otrosCount : null;
+            const depositosTesoro = bucket.depositosTesoroCount > 0 ? bucket.depositosTesoroTotal / bucket.depositosTesoroCount : null;
+
+            const pasivosComponentes = [pases, leliq, lefi, otros].filter((value) => value != null) as number[];
+            const pasivosRemunerados = pasivosComponentes.length > 0 ? pasivosComponentes.reduce((total, value) => total + value, 0) : null;
+            const bmAmplia = bm != null && pasivosRemunerados != null && depositosTesoro != null
+                ? bm + pasivosRemunerados + depositosTesoro
+                : null;
+
             return {
-                fecha: `${MONTHS_ES[parseInt(mm) - 1]} ${yyyy.slice(-2)}`,
-                mes: mm,
-                year: parseInt(yyyy),
-                pct_pbi: row[1],
+                fecha: `${MONTHS_NAMES[mm]} ${yyyy.slice(-2)}`,
+                iso_fecha: `${monthKey}-01`,
+                BaseMonetaria: bm,
+                PasivosRemunerados: pasivosRemunerados,
+                DepositosTesoro: depositosTesoro,
+                BMAmplia: bmAmplia,
             };
         })
         .filter((r: any) => r !== null)
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
+
     return result;
 }
 
-export function normalizePoderAdquisitivo(rawData: any): any[] {
-    if (!rawData || !rawData.data || !Array.isArray(rawData.data)) {
+export function normalizeRecaudacion(rawData: any[]): any[] {
+    if (!Array.isArray(rawData) || rawData.length === 0) {
         return [];
     }
-    
-    return rawData.data
+
+    const emaeMap: Record<string, number> = {};
+    for (const row of rawData) {
+        if (row.fecha && row.emae_desestacionalizado != null) {
+            emaeMap[row.fecha] = row.emae_desestacionalizado;
+        }
+    }
+
+    const fallbackBase = emaeMap['2024-01-01'] || Object.values(emaeMap)[0] || null;
+
+    return rawData
+        .filter((row: any) => row.fecha && row.fecha >= '2019-01-01' && row.recaudacion_total != null)
         .map((row: any) => {
-            if (!row[0] || typeof row[0] !== 'string') return null;
+            const year = row.year;
+            const monthStr = row.mes;
+            const monthNum = parseInt(monthStr, 10);
+            const emaeBase = emaeMap[`${year}-01-01`] || fallbackBase;
+            const pbiMensual = row.pbi_trimestral && emaeBase && row.emae_desestacionalizado
+                ? (row.pbi_trimestral / 3) * (row.emae_desestacionalizado / emaeBase)
+                : row.pbi_trimestral ? row.pbi_trimestral / 3 : null;
+
+            return pbiMensual
+                ? {
+                    fecha: `${MONTHS_ES[monthNum - 1]} ${String(year).slice(-2)}`,
+                    iso_fecha: row.fecha,
+                    mes: monthStr,
+                    year,
+                    pctPbi: (row.recaudacion_total / pbiMensual) * 100,
+                }
+                : null;
+        })
+        .filter((row: any) => row !== null)
+        .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
+}
+
+export function normalizePoderAdquisitivo(rawData: any[]): any[] {
+    if (!Array.isArray(rawData) || rawData.length === 0) {
+        return [];
+    }
+
+    const baseRow = rawData.find((row: any) => row.fecha === '2017-01-01');
+    if (!baseRow || !baseRow.ipc_nucleo) {
+        return [];
+    }
+
+    const baseFactor = (value: number | null | undefined) => {
+        if (value == null || baseRow.ipc_nucleo === 0) return null;
+        return value / baseRow.ipc_nucleo;
+    };
+
+    const baseRegistrado = baseFactor(baseRow.salario_registrado);
+    const baseNoRegistrado = baseFactor(baseRow.salario_no_registrado);
+    const basePrivado = baseFactor(baseRow.salario_privado);
+    const basePublico = baseFactor(baseRow.salario_publico);
+    const baseRipte = baseFactor(baseRow.ripte);
+    const baseJubilacion = baseFactor(baseRow.jubilacion_minima);
+
+    const normalized = rawData
+        .map((row: any) => {
+            if (!row.fecha || row.ipc_nucleo == null || row.ipc_nucleo === 0) return null;
+            const dateObj = new Date(`${row.fecha}T00:00:00Z`);
+            if (Number.isNaN(dateObj.getTime())) return null;
+
+            const calc = (value: number | null | undefined, base: number | null) => {
+                if (value == null || base == null) return null;
+                return ((value / row.ipc_nucleo) / base) * 100;
+            };
+
             return {
-                fecha: row[0],
-                value: row[1],
+                fecha: `${MONTHS_ES[dateObj.getUTCMonth()]} ${String(dateObj.getUTCFullYear()).slice(-2)}`,
+                iso_fecha: row.fecha,
+                blanco: calc(row.salario_registrado, baseRegistrado),
+                negro: calc(row.salario_no_registrado, baseNoRegistrado),
+                privado: calc(row.salario_privado, basePrivado),
+                publico: calc(row.salario_publico, basePublico),
+                ripte: calc(row.ripte, baseRipte),
+                jubilacion: calc(row.jubilacion_minima, baseJubilacion),
             };
         })
-        .filter((r: any) => r !== null)
+        .filter((row: any) => row !== null)
         .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
+
+    return normalized.map((row: any, index: number) => ({
+        ...row,
+        negro: normalized[index + 5]?.negro ?? null,
+    }));
 }

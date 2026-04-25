@@ -1,31 +1,20 @@
-import { getNormalizedData, saveNormalizedData, getLastUpdate as dbGetLastUpdate } from './db';
-
-const CACHE_DURATION_MS = 6 * 60 * 60 * 1000;
+import { getNormalizedData, saveNormalizedData } from './db';
 
 const MAPPING: Record<string, 'emision' | 'emae' | 'bma' | 'reca' | 'poder'> = {
     emision: 'emision',
     emae: 'emae',
     bma: 'bma',
     reca: 'reca',
+    recaudacion: 'reca',
     poder: 'poder',
+    'poder-adquisitivo': 'poder',
 };
 
 export async function getCachedIndicator(id: string): Promise<any[] | null> {
     const type = MAPPING[id];
     if (!type) return null;
 
-    const entry = await getNormalizedData(type);
-    if (!entry) return null;
-
-    if (id === 'emision') {
-        return entry;
-    }
-
-    const lastUpdate = await dbGetLastUpdate(type);
-    if (!lastUpdate) return entry;
-
-    const isExpired = Date.now() - new Date(lastUpdate).getTime() >= CACHE_DURATION_MS;
-    return isExpired ? null : entry;
+    return getNormalizedData(type);
 }
 
 export async function getStaleCache(id: string): Promise<any[] | null> {

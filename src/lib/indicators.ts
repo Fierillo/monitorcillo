@@ -5,6 +5,7 @@ const MAPPING: Record<string, 'emision' | 'emae' | 'bma' | 'reca' | 'poder'> = {
     emae: 'emae',
     bma: 'bma',
     reca: 'reca',
+    recaudacion: 'reca',
     'poder-adquisitivo': 'poder',
 };
 

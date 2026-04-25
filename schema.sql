@@ -40,9 +40,28 @@ CREATE TABLE IF NOT EXISTS emision_raw (
 CREATE TABLE IF NOT EXISTS emision_normalized (
     id SERIAL PRIMARY KEY,
     fecha VARCHAR(20) UNIQUE NOT NULL,
-    data JSONB,
+    bcra DECIMAL,
+    tc DECIMAL,
+    compra_dolares DECIMAL,
+    vencimientos DECIMAL,
+    licitado DECIMAL,
+    licitaciones DECIMAL,
+    resultado_fiscal DECIMAL,
+    total DECIMAL,
+    acumulado DECIMAL,
     last_update TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE emision_normalized ADD COLUMN IF NOT EXISTS bcra DECIMAL;
+ALTER TABLE emision_normalized ADD COLUMN IF NOT EXISTS tc DECIMAL;
+ALTER TABLE emision_normalized ADD COLUMN IF NOT EXISTS compra_dolares DECIMAL;
+ALTER TABLE emision_normalized ADD COLUMN IF NOT EXISTS vencimientos DECIMAL;
+ALTER TABLE emision_normalized ADD COLUMN IF NOT EXISTS licitado DECIMAL;
+ALTER TABLE emision_normalized ADD COLUMN IF NOT EXISTS licitaciones DECIMAL;
+ALTER TABLE emision_normalized ADD COLUMN IF NOT EXISTS resultado_fiscal DECIMAL;
+ALTER TABLE emision_normalized ADD COLUMN IF NOT EXISTS total DECIMAL;
+ALTER TABLE emision_normalized ADD COLUMN IF NOT EXISTS acumulado DECIMAL;
+ALTER TABLE emision_normalized DROP COLUMN IF EXISTS data;
 
 -- ============================================
 -- EMAE (mensual)
@@ -59,9 +78,16 @@ CREATE TABLE IF NOT EXISTS emae_raw (
 CREATE TABLE IF NOT EXISTS emae_normalized (
     id SERIAL PRIMARY KEY,
     fecha VARCHAR(20) UNIQUE NOT NULL,
-    data JSONB,
+    emae DECIMAL,
+    emae_desestacionalizado DECIMAL,
+    emae_tendencia DECIMAL,
     last_update TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE emae_normalized ADD COLUMN IF NOT EXISTS emae DECIMAL;
+ALTER TABLE emae_normalized ADD COLUMN IF NOT EXISTS emae_desestacionalizado DECIMAL;
+ALTER TABLE emae_normalized ADD COLUMN IF NOT EXISTS emae_tendencia DECIMAL;
+ALTER TABLE emae_normalized DROP COLUMN IF EXISTS data;
 
 -- ============================================
 -- BMA (mensual)
@@ -69,16 +95,39 @@ CREATE TABLE IF NOT EXISTS emae_normalized (
 CREATE TABLE IF NOT EXISTS bma_raw (
     id SERIAL PRIMARY KEY,
     fecha VARCHAR(20) UNIQUE NOT NULL,
-    base DECIMAL,
+    base_monetaria DECIMAL,
+    pases DECIMAL,
+    leliq DECIMAL,
+    lefi DECIMAL,
+    otros DECIMAL,
+    depositos_tesoro DECIMAL,
     fetched_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS bma_normalized (
     id SERIAL PRIMARY KEY,
     fecha VARCHAR(20) UNIQUE NOT NULL,
-    data JSONB,
+    base_monetaria DECIMAL,
+    pasivos_remunerados DECIMAL,
+    depositos_tesoro DECIMAL,
+    bma_amplia DECIMAL,
     last_update TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE bma_normalized ADD COLUMN IF NOT EXISTS base_monetaria DECIMAL;
+ALTER TABLE bma_normalized ADD COLUMN IF NOT EXISTS pasivos_remunerados DECIMAL;
+ALTER TABLE bma_normalized ADD COLUMN IF NOT EXISTS depositos_tesoro DECIMAL;
+ALTER TABLE bma_normalized ADD COLUMN IF NOT EXISTS bma_amplia DECIMAL;
+ALTER TABLE bma_normalized DROP COLUMN IF EXISTS data;
+
+ALTER TABLE bma_raw ADD COLUMN IF NOT EXISTS base_monetaria DECIMAL;
+ALTER TABLE bma_raw ADD COLUMN IF NOT EXISTS pases DECIMAL;
+ALTER TABLE bma_raw ADD COLUMN IF NOT EXISTS leliq DECIMAL;
+ALTER TABLE bma_raw ADD COLUMN IF NOT EXISTS lefi DECIMAL;
+ALTER TABLE bma_raw ADD COLUMN IF NOT EXISTS otros DECIMAL;
+ALTER TABLE bma_raw ADD COLUMN IF NOT EXISTS depositos_tesoro DECIMAL;
+ALTER TABLE bma_raw DROP COLUMN IF EXISTS base;
+ALTER TABLE bma_raw DROP COLUMN IF EXISTS tesoro;
 
 -- ============================================
 -- RECAUDACION (mensual)
@@ -88,21 +137,49 @@ CREATE TABLE IF NOT EXISTS recaudacion_raw (
     fecha VARCHAR(20) UNIQUE NOT NULL,
     mes VARCHAR(2),
     year INTEGER,
-    pct_pbi DECIMAL,
+    recaudacion_total DECIMAL,
+    pbi_trimestral DECIMAL,
+    emae_desestacionalizado DECIMAL,
+    ipc_nucleo DECIMAL,
     fetched_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS recaudacion_normalized (
     id SERIAL PRIMARY KEY,
     fecha VARCHAR(20) UNIQUE NOT NULL,
-    data JSONB,
+    mes VARCHAR(2),
+    year INTEGER,
+    pct_pbi DECIMAL,
     last_update TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE recaudacion_normalized ADD COLUMN IF NOT EXISTS mes VARCHAR(2);
+ALTER TABLE recaudacion_normalized ADD COLUMN IF NOT EXISTS year INTEGER;
+ALTER TABLE recaudacion_normalized ADD COLUMN IF NOT EXISTS pct_pbi DECIMAL;
+ALTER TABLE recaudacion_normalized DROP COLUMN IF EXISTS data;
+
+ALTER TABLE recaudacion_raw ADD COLUMN IF NOT EXISTS recaudacion_total DECIMAL;
+ALTER TABLE recaudacion_raw ADD COLUMN IF NOT EXISTS pbi_trimestral DECIMAL;
+ALTER TABLE recaudacion_raw ADD COLUMN IF NOT EXISTS emae_desestacionalizado DECIMAL;
+ALTER TABLE recaudacion_raw ADD COLUMN IF NOT EXISTS ipc_nucleo DECIMAL;
 
 -- ============================================
 -- PODER ADQUISITIVO (mensual)
 -- ============================================
 CREATE TABLE IF NOT EXISTS poder_adquisitivo_raw (
+    id SERIAL PRIMARY KEY,
+    fecha VARCHAR(20) UNIQUE NOT NULL,
+    ipc_nucleo DECIMAL,
+    salario_registrado DECIMAL,
+    salario_no_registrado DECIMAL,
+    salario_privado DECIMAL,
+    salario_publico DECIMAL,
+    ripte DECIMAL,
+    jubilacion_minima DECIMAL,
+    fetched_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS poder_adquisitivo_normalized (
     id SERIAL PRIMARY KEY,
     fecha VARCHAR(20) UNIQUE NOT NULL,
     blanco DECIMAL,
@@ -111,15 +188,23 @@ CREATE TABLE IF NOT EXISTS poder_adquisitivo_raw (
     publico DECIMAL,
     ripte DECIMAL,
     jubilacion DECIMAL,
-    fetched_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS poder_adquisitivo_normalized (
-    id SERIAL PRIMARY KEY,
-    fecha VARCHAR(20) UNIQUE NOT NULL,
-    data JSONB,
     last_update TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE poder_adquisitivo_normalized ADD COLUMN IF NOT EXISTS blanco DECIMAL;
+ALTER TABLE poder_adquisitivo_normalized ADD COLUMN IF NOT EXISTS negro DECIMAL;
+ALTER TABLE poder_adquisitivo_normalized ADD COLUMN IF NOT EXISTS privado DECIMAL;
+ALTER TABLE poder_adquisitivo_normalized ADD COLUMN IF NOT EXISTS publico DECIMAL;
+ALTER TABLE poder_adquisitivo_normalized ADD COLUMN IF NOT EXISTS ripte DECIMAL;
+ALTER TABLE poder_adquisitivo_normalized ADD COLUMN IF NOT EXISTS jubilacion DECIMAL;
+ALTER TABLE poder_adquisitivo_normalized DROP COLUMN IF EXISTS data;
+
+ALTER TABLE poder_adquisitivo_raw ADD COLUMN IF NOT EXISTS ipc_nucleo DECIMAL;
+ALTER TABLE poder_adquisitivo_raw ADD COLUMN IF NOT EXISTS salario_registrado DECIMAL;
+ALTER TABLE poder_adquisitivo_raw ADD COLUMN IF NOT EXISTS salario_no_registrado DECIMAL;
+ALTER TABLE poder_adquisitivo_raw ADD COLUMN IF NOT EXISTS salario_privado DECIMAL;
+ALTER TABLE poder_adquisitivo_raw ADD COLUMN IF NOT EXISTS salario_publico DECIMAL;
+ALTER TABLE poder_adquisitivo_raw ADD COLUMN IF NOT EXISTS jubilacion_minima DECIMAL;
 
 -- ============================================
 -- INDEXES

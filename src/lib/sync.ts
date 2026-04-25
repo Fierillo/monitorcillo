@@ -1,6 +1,24 @@
 import https from 'https';
-import { getRawData, saveRawData, saveNormalizedData, saveIndicatorsCatalog, getManualOverrides, saveManualOverride, IndicatorType } from './db';
-import { normalizeEmision, normalizeEmae, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo, isoToFecha, fechaToISO, fechaToTimestamp } from './normalize';
+import * as XLSX from 'xlsx';
+import { getRawData, saveRawData, saveNormalizedData, saveIndicatorsCatalog, replaceRawData, replaceNormalizedData, IndicatorType } from './db';
+import { normalizeEmision, normalizeEmae, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo, fechaToISO, fechaToTimestamp } from './normalize';
+
+const WEEKLY_BALANCE_WORKBOOK_URL = 'https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/Serieanual.xls';
+const WEEKLY_TREASURY_SERIES_REGEX = /DEPOSITOS DEL GOBIERNO NACIONAL Y OTROS/i;
+const ENGLISH_MONTHS: Record<string, number> = {
+    Jan: 1,
+    Feb: 2,
+    Mar: 3,
+    Apr: 4,
+    May: 5,
+    Jun: 6,
+    Jul: 7,
+    Aug: 8,
+    Sep: 9,
+    Oct: 10,
+    Nov: 11,
+    Dec: 12,
+};
 
 function fetchFromUrl(url: string): Promise<any> {
     return new Promise((resolve) => {
@@ -24,8 +42,77 @@ function fetchFromUrl(url: string): Promise<any> {
     });
 }
 
-function fetchBcraVariable(idVariable: number, from: string, to: string): Promise<any[]> {
-    const url = `https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/${idVariable}?Desde=${from}&Hasta=${to}`;
+function fetchBufferFromUrl(url: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+        const agent = new https.Agent({ rejectUnauthorized: false });
+        https.get(url, { agent }, (res) => {
+            if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+                reject(new Error(`Failed to download ${url}. Status ${res.statusCode}`));
+                return;
+            }
+
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+            res.on('end', () => resolve(Buffer.concat(chunks)));
+        }).on('error', reject);
+    });
+}
+
+function parseWorkbookWeeklyDate(value: unknown): string | null {
+    if (!value) return null;
+    const raw = String(value).trim();
+    const match = raw.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2})$/);
+    if (!match) return null;
+
+    const day = Number(match[1]);
+    const month = ENGLISH_MONTHS[match[2]];
+    const yearShort = Number(match[3]);
+    if (!month || Number.isNaN(day) || Number.isNaN(yearShort)) return null;
+    const year = yearShort >= 50 ? 1900 + yearShort : 2000 + yearShort;
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function parseWorkbookTreasuryValue(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    const sanitized = String(value).trim().replace(/[,.]/g, '');
+    if (!sanitized) return null;
+    const numericValue = Number(sanitized);
+    if (Number.isNaN(numericValue)) return null;
+    return numericValue / 1000;
+}
+
+function extractWeeklyGovernmentDepositsSeries(workbookBuffer: Buffer, fromDate: string): Array<{ fecha: string; valor: number }> {
+    const workbook = XLSX.read(workbookBuffer, { type: 'buffer' });
+    const byFecha = new Map<string, number>();
+
+    for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        if (!sheet) continue;
+
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null }) as unknown[][];
+        const headerRow = rows.find((row) => row.some((cell) => parseWorkbookWeeklyDate(cell)));
+        const treasuryRow = rows.find((row) => WEEKLY_TREASURY_SERIES_REGEX.test(String(row[0] ?? '')));
+
+        if (!headerRow || !treasuryRow) continue;
+
+        for (let column = 1; column < headerRow.length; column += 1) {
+            const fecha = parseWorkbookWeeklyDate(headerRow[column]);
+            if (!fecha || fecha < fromDate) continue;
+
+            const valor = parseWorkbookTreasuryValue(treasuryRow[column]);
+            if (valor == null) continue;
+
+            byFecha.set(fecha, valor);
+        }
+    }
+
+    return Array.from(byFecha.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([fecha, valor]) => ({ fecha, valor }));
+}
+
+function fetchBcraVariablePage(idVariable: number, from: string, to: string, offset: number): Promise<{ detalle: any[]; count: number; limit: number }> {
+    const url = `https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/${idVariable}?Desde=${from}&Hasta=${to}&limit=3000&offset=${offset}`;
 
     return new Promise((resolve) => {
         const agent = new https.Agent({ rejectUnauthorized: false });
@@ -36,16 +123,37 @@ function fetchBcraVariable(idVariable: number, from: string, to: string): Promis
                 if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
                     try {
                         const parsed = JSON.parse(data);
-                        resolve(parsed.results?.[0]?.detalle || []);
+                        resolve({
+                            detalle: parsed.results?.[0]?.detalle || [],
+                            count: parsed.metadata?.resultset?.count || 0,
+                            limit: parsed.metadata?.resultset?.limit || 3000,
+                        });
                     } catch {
-                        resolve([]);
+                        resolve({ detalle: [], count: 0, limit: 3000 });
                     }
                 } else {
-                    resolve([]);
+                    resolve({ detalle: [], count: 0, limit: 3000 });
                 }
             });
-        }).on('error', () => resolve([]));
+        }).on('error', () => resolve({ detalle: [], count: 0, limit: 3000 }));
     });
+}
+
+async function fetchBcraVariable(idVariable: number, from: string, to: string): Promise<any[]> {
+    const allRows: any[] = [];
+    let offset = 0;
+    let count = 0;
+    let limit = 3000;
+
+    do {
+        const page = await fetchBcraVariablePage(idVariable, from, to, offset);
+        allRows.push(...page.detalle);
+        count = page.count;
+        limit = page.limit;
+        offset += limit;
+    } while (offset < count);
+
+    return allRows;
 }
 
 export async function fetchEmisionRaw(from: string, to: string): Promise<{ compraData: any[]; tcData: any[] }> {
@@ -62,75 +170,187 @@ export async function fetchEmaeRaw(): Promise<any> {
     return fetchFromUrl(`https://apis.datos.gob.ar/series/api/series/?ids=${ids}&limit=5000`);
 }
 
-export async function fetchBmaRaw(): Promise<any> {
-    return fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=90.1_BMT_0_0_20&limit=5000');
+export async function fetchBmaRaw(): Promise<any[]> {
+    const today = new Date();
+    const toDate = today.toISOString().split('T')[0];
+    const fromDate = '2017-01-01';
+
+    const [baseMonetaria, pases, leliq, lefi, otros, weeklyWorkbook] = await Promise.all([
+        fetchBcraVariable(15, fromDate, toDate),
+        fetchBcraVariable(152, fromDate, toDate),
+        fetchBcraVariable(155, fromDate, toDate),
+        fetchBcraVariable(196, fromDate, toDate),
+        fetchBcraVariable(198, fromDate, toDate),
+        fetchBufferFromUrl(WEEKLY_BALANCE_WORKBOOK_URL),
+    ]);
+
+    const depositosTesoro = extractWeeklyGovernmentDepositsSeries(weeklyWorkbook, fromDate);
+
+    const byFecha = new Map<string, Record<string, number | null | string>>();
+
+    const mergeSeries = (items: any[], field: string) => {
+        for (const item of items) {
+            if (!item?.fecha) continue;
+            const row: Record<string, number | null | string> = byFecha.get(item.fecha) ?? { fecha: item.fecha };
+            row[field] = item.valor == null ? null : Number(item.valor);
+            byFecha.set(item.fecha, row);
+        }
+    };
+
+    mergeSeries(baseMonetaria, 'base_monetaria');
+    mergeSeries(pases, 'pases');
+    mergeSeries(leliq, 'leliq');
+    mergeSeries(lefi, 'lefi');
+    mergeSeries(otros, 'otros');
+    mergeSeries(depositosTesoro, 'depositos_tesoro');
+
+    return Array.from(byFecha.values()).sort((a: any, b: any) => String(a.fecha).localeCompare(String(b.fecha)));
 }
 
-export async function fetchPoderAdquisitivoRaw(): Promise<any> {
-    return fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=355.2_PODER_ADQU986__27&limit=5000');
+export async function fetchPoderAdquisitivoRaw(): Promise<any[]> {
+    const [ipc, salarios] = await Promise.all([
+        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
+        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=149.1_TL_REGIADO_OCTU_0_16,149.1_SOR_PRIADO_OCTU_0_28,149.1_SOR_PRIADO_OCTU_0_25,149.1_SOR_PUBICO_OCTU_0_14,158.1_REPTE_0_0_5,58.1_MP_0_M_24&limit=5000'),
+    ]);
+
+    const ipcByFecha = new Map((ipc.data || []).map((row: any) => [row[0], row[1]]));
+
+    return (salarios.data || []).map((row: any) => ({
+        fecha: row[0],
+        ipc_nucleo: ipcByFecha.get(row[0]) ?? null,
+        salario_registrado: row[1] ?? null,
+        salario_no_registrado: row[2] ?? null,
+        salario_privado: row[3] ?? null,
+        salario_publico: row[4] ?? null,
+        ripte: row[5] ?? null,
+        jubilacion_minima: row[6] ?? null,
+    }));
 }
 
-export async function fetchRecaudacionRaw(): Promise<any> {
-    return fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=158.1_REPTE_0_0_5&limit=5000');
-}
+export async function fetchRecaudacionRaw(): Promise<any[]> {
+    const [recaudacion, pbi, emae, ipc] = await Promise.all([
+        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=172.3_TL_RECAION_M_0_0_17&limit=5000'),
+        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=166.2_PPIB_0_0_3&limit=5000'),
+        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=143.3_NO_PR_2004_A_31&limit=5000'),
+        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
+    ]);
 
-function getLastDateISO(existingData: any[]): string {
-    if (existingData.length === 0) {
-        return new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const pbiByQuarter = new Map<string, number>();
+    for (const row of pbi.data || []) {
+        const fecha = row[0];
+        if (!fecha || typeof fecha !== 'string') continue;
+        const year = parseInt(fecha.slice(0, 4), 10);
+        const month = parseInt(fecha.slice(5, 7), 10);
+        const quarter = Math.ceil(month / 3);
+        pbiByQuarter.set(`${year}-Q${quarter}`, row[1]);
     }
-    const lastFecha = existingData[existingData.length - 1].fecha;
-    return fechaToISO(lastFecha);
+
+    const emaeByFecha = new Map((emae.data || []).map((row: any) => [row[0], row[1]]));
+    const ipcByFecha = new Map((ipc.data || []).map((row: any) => [row[0], row[1]]));
+
+    return (recaudacion.data || []).map((row: any) => {
+        const fecha = row[0];
+        const year = parseInt(fecha.slice(0, 4), 10);
+        const month = fecha.slice(5, 7);
+        const quarter = Math.ceil(parseInt(month, 10) / 3);
+
+        return {
+            fecha,
+            mes: month,
+            year,
+            recaudacion_total: row[1] ?? null,
+            pbi_trimestral: pbiByQuarter.get(`${year}-Q${quarter}`) ?? null,
+            emae_desestacionalizado: emaeByFecha.get(fecha) ?? null,
+            ipc_nucleo: ipcByFecha.get(fecha) ?? null,
+        };
+    });
 }
 
 export async function syncEmision(): Promise<{ appended: number; total: number }> {
     const type: IndicatorType = 'emision';
-    const existingData = (await getRawData(type)) ?? [];
+    const existingData = ((await getRawData(type)) ?? []).map((row: any) => ({
+        fecha: typeof row.fecha === 'string' && row.fecha.includes('-') ? row.fecha : fechaToISO(row.fecha),
+        compra_dolares: Number(row.compra_dolares ?? 0),
+        tc: Number(row.tc ?? 0),
+        bcra: Number(row.bcra ?? 0),
+        vencimientos: Number(row.vencimientos ?? 0),
+        licitado: Number(row.licitado ?? 0),
+        resultado_fiscal: Number(row.resultado_fiscal ?? 0),
+    }));
     const existingFechas = new Set(existingData.map((d: any) => d.fecha));
 
-    const lastDateISO = getLastDateISO(existingData);
+    const fromDate = '2026-01-01';
     const toDate = new Date().toISOString().split('T')[0];
 
-    const { compraData, tcData } = await fetchEmisionRaw(lastDateISO, toDate);
+    const { compraData, tcData } = await fetchEmisionRaw(fromDate, toDate);
 
-    const newRows = compraData
-        .filter((d: any) => !existingFechas.has(isoToFecha(d.fecha)))
-        .map((d: any) => ({
-            fecha: isoToFecha(d.fecha),
-            compra_dolares: d.valor ?? 0,
-            tc: tcData.find((t: any) => t.fecha === d.fecha)?.valor ?? 0,
-            bcra: (d.valor ?? 0) * (tcData.find((t: any) => t.fecha === d.fecha)?.valor ?? 0),
-            vencimientos: 0,
-            licitado: 0,
-            licitaciones: 0,
-            resultado_fiscal: 0,
-            total: 0,
-            acumulado: null,
-        }));
+    const tcByIso = new Map(tcData.map((row: any) => [row.fecha, Number(row.valor ?? 0)]));
 
-    if (newRows.length === 0) {
-        return { appended: 0, total: existingData.length };
+    const apiRows = compraData.map((row: any) => {
+        const compra = Number(row.valor ?? 0);
+        const tc = tcByIso.get(row.fecha) ?? 0;
+
+        return {
+            fecha: row.fecha,
+            compra_dolares: compra,
+            tc,
+            bcra: compra * tc,
+        };
+    });
+
+    const existingByFecha = new Map(existingData.map((row: any) => [row.fecha, row]));
+    const rowsToUpsert = apiRows
+        .map((row: any) => {
+            const existing = existingByFecha.get(row.fecha);
+
+            if (!existing) {
+                return {
+                    ...row,
+                    vencimientos: 0,
+                    licitado: 0,
+                    resultado_fiscal: 0,
+                };
+            }
+
+            const apiChanged =
+                existing.compra_dolares !== row.compra_dolares ||
+                existing.tc !== row.tc ||
+                existing.bcra !== row.bcra;
+
+            if (!apiChanged) {
+                return null;
+            }
+
+            return {
+                ...existing,
+                compra_dolares: row.compra_dolares,
+                tc: row.tc,
+                bcra: row.bcra,
+            };
+        })
+        .filter((row: any) => row !== null);
+
+    if (rowsToUpsert.length > 0) {
+        await saveRawData(type, rowsToUpsert);
     }
 
-    const merged = [...existingData, ...newRows].sort((a: any, b: any) => 
-        fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha)
-    );
+    const persistedRaw = ((await getRawData(type)) ?? [])
+        .map((row: any) => ({
+            fecha: typeof row.fecha === 'string' && row.fecha.includes('-') ? row.fecha : fechaToISO(row.fecha),
+            compra_dolares: Number(row.compra_dolares ?? 0),
+            tc: Number(row.tc ?? 0),
+            bcra: Number(row.bcra ?? 0),
+            vencimientos: Number(row.vencimientos ?? 0),
+            licitado: Number(row.licitado ?? 0),
+            resultado_fiscal: Number(row.resultado_fiscal ?? 0),
+        }))
+        .sort((a: any, b: any) => String(a.fecha).localeCompare(String(b.fecha)));
 
-    let runningTotal = 0;
-    for (const row of merged) {
-        if (row.acumulado !== undefined && row.acumulado !== null) {
-            runningTotal = row.acumulado;
-        } else {
-            runningTotal += row.bcra ?? 0;
-            row.acumulado = runningTotal;
-        }
-    }
+    const normalized = normalizeEmision(persistedRaw);
+    await replaceNormalizedData(type, normalized);
 
-    await saveRawData(type, merged);
-
-    const normalized = normalizeEmision(merged);
-    await saveNormalizedData(type, normalized);
-
-    return { appended: newRows.length, total: merged.length };
+    const appended = apiRows.filter((row: any) => !existingFechas.has(row.fecha)).length;
+    return { appended, total: persistedRaw.length };
 }
 
 export async function syncEmae(): Promise<{ appended: number; total: number }> {
@@ -139,17 +359,26 @@ export async function syncEmae(): Promise<{ appended: number; total: number }> {
     const existingFechas = new Set(existingData.map((d: any) => d.fecha));
 
     const rawData = await fetchEmaeRaw();
-    const normalized = normalizeEmae(rawData);
+    const rawRows = (rawData.data || [])
+        .map((row: any) => {
+            const fecha = row[0];
+            if (!fecha || typeof fecha !== 'string') return null;
+            return {
+                fecha,
+                emae: row[1] ?? null,
+                emae_desestacionalizado: row[2] ?? null,
+                emae_tendencia: row[3] ?? null,
+            };
+        })
+        .filter((row: any) => row !== null);
 
-    const newRows = normalized.filter((r: any) => !existingFechas.has(r.fecha));
-    const merged = [...existingData, ...newRows].sort((a: any, b: any) => 
-        fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha)
-    );
+    const appended = rawRows.filter((row: any) => !existingFechas.has(row.fecha)).length;
+    await replaceRawData(type, rawRows);
 
-    await saveRawData(type, merged);
-    await saveNormalizedData(type, merged);
+    const normalized = normalizeEmae(rawRows);
+    await replaceNormalizedData(type, normalized);
 
-    return { appended: newRows.length, total: merged.length };
+    return { appended, total: rawRows.length };
 }
 
 export async function syncBma(): Promise<{ appended: number; total: number }> {
@@ -157,18 +386,15 @@ export async function syncBma(): Promise<{ appended: number; total: number }> {
     const existingData = (await getRawData(type)) ?? [];
     const existingFechas = new Set(existingData.map((d: any) => d.fecha));
 
-    const rawData = await fetchBmaRaw();
-    const normalized = normalizeBma(rawData);
+    const components = await fetchBmaRaw();
 
-    const newRows = normalized.filter((r: any) => !existingFechas.has(r.fecha));
-    const merged = [...existingData, ...newRows].sort((a: any, b: any) => 
-        fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha)
-    );
+    const appended = components.filter((row: any) => !existingFechas.has(row.fecha)).length;
+    await replaceRawData(type, components);
 
-    await saveRawData(type, merged);
-    await saveNormalizedData(type, merged);
+    const normalized = normalizeBma(components);
+    await replaceNormalizedData(type, normalized);
 
-    return { appended: newRows.length, total: merged.length };
+    return { appended, total: components.length };
 }
 
 const DEFAULT_CATALOG = [
@@ -179,17 +405,6 @@ const DEFAULT_CATALOG = [
     { id: 'emae', indicador: 'EMAE (Estimador Mensual de Actividad Económica)', referencia: 'Índice Base Ene-17 = 100', dato: '-', fecha: 'FEB 26', fuente: 'INDEC', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: 'https://www.indec.gob.ar/indec/web/Nivel4-Tema-3-9-48' },
 ];
 
-const DEFAULT_OVERRIDES_OTROS = {
-    '2025-07': 915650.0522746978,
-    '2025-08': 870107.8875241702,
-    '2025-09': 4410267.021281188,
-    '2025-10': 1680687.1870503204,
-    '2025-11': 3338799.64449871,
-    '2025-12': 3598125.5826119184,
-    '2026-01': 532951.165145119,
-    '2026-02': 401430.9767548815
-};
-
 export async function syncIndicatorsCatalog(): Promise<{ appended: number; total: number }> {
     try {
         await saveIndicatorsCatalog(DEFAULT_CATALOG);
@@ -199,39 +414,20 @@ export async function syncIndicatorsCatalog(): Promise<{ appended: number; total
     }
 }
 
-export async function syncBcraOverrides(): Promise<{ appended: number; total: number }> {
-    const existing = await getManualOverrides();
-    const existingCount = Object.keys(existing.otros).length + Object.keys(existing.tesoro).length;
-    
-    if (existingCount > 0) {
-        return { appended: 0, total: existingCount };
-    }
-
-    let count = 0;
-    for (const [month, value] of Object.entries(DEFAULT_OVERRIDES_OTROS)) {
-        await saveManualOverride('otros', month, value);
-        count++;
-    }
-    return { appended: count, total: count };
-}
-
 export async function syncRecaudacion(): Promise<{ appended: number; total: number }> {
     const type: IndicatorType = 'reca';
     const existingData = (await getRawData(type)) ?? [];
     const existingFechas = new Set(existingData.map((d: any) => d.fecha));
 
     const rawData = await fetchRecaudacionRaw();
+    const appended = rawData.filter((row: any) => !existingFechas.has(row.fecha)).length;
+
+    await replaceRawData(type, rawData);
+
     const normalized = normalizeRecaudacion(rawData);
+    await replaceNormalizedData(type, normalized);
 
-    const newRows = normalized.filter((r: any) => !existingFechas.has(r.fecha));
-    const merged = [...existingData, ...newRows].sort((a: any, b: any) => 
-        fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha)
-    );
-
-    await saveRawData(type, merged);
-    await saveNormalizedData(type, merged);
-
-    return { appended: newRows.length, total: merged.length };
+    return { appended, total: rawData.length };
 }
 
 export async function syncPoderAdquisitivo(): Promise<{ appended: number; total: number }> {
@@ -240,17 +436,14 @@ export async function syncPoderAdquisitivo(): Promise<{ appended: number; total:
     const existingFechas = new Set(existingData.map((d: any) => d.fecha));
 
     const rawData = await fetchPoderAdquisitivoRaw();
+    const appended = rawData.filter((row: any) => !existingFechas.has(row.fecha)).length;
+
+    await replaceRawData(type, rawData);
+
     const normalized = normalizePoderAdquisitivo(rawData);
+    await replaceNormalizedData(type, normalized);
 
-    const newRows = normalized.filter((r: any) => !existingFechas.has(r.fecha));
-    const merged = [...existingData, ...newRows].sort((a: any, b: any) => 
-        fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha)
-    );
-
-    await saveRawData(type, merged);
-    await saveNormalizedData(type, merged);
-
-    return { appended: newRows.length, total: merged.length };
+    return { appended, total: rawData.length };
 }
 
 export async function runSync(): Promise<Record<string, { appended: number; total: number }>> {
@@ -262,7 +455,6 @@ export async function runSync(): Promise<Record<string, { appended: number; tota
     const reca = await syncRecaudacion().catch(e => { console.error('reca error:', e); return { appended: 0, total: 0 }; });
     const poder = await syncPoderAdquisitivo().catch(e => { console.error('poder error:', e); return { appended: 0, total: 0 }; });
     const catalog = await syncIndicatorsCatalog().catch(e => { console.error('catalog error:', e); return { appended: 0, total: 0 }; });
-    const overrides = await syncBcraOverrides().catch(e => { console.error('overrides error:', e); return { appended: 0, total: 0 }; });
 
     if (emision.total > 0) results.emision = { appended: emision.appended, total: emision.total };
     if (emae.total > 0) results.emae = { appended: emae.appended, total: emae.total };
@@ -270,7 +462,5 @@ export async function runSync(): Promise<Record<string, { appended: number; tota
     if (reca.total > 0) results.recaudacion = { appended: reca.appended, total: reca.total };
     if (poder.total > 0) results.poder_adquisitivo = { appended: poder.appended, total: poder.total };
     if (catalog.total > 0) results.catalog = { appended: catalog.appended, total: catalog.total };
-    if (overrides.total > 0) results.overrides = { appended: overrides.appended, total: overrides.total };
-
     return results;
 }
