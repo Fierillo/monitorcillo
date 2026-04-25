@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
-import { useRef, useState, useCallback, useMemo } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { ImageDown } from 'lucide-react';
-import { ComposedChart, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { ComposedChart, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import {
     AreaConfig,
     MethodologyItem,
@@ -32,21 +32,80 @@ export default function IndicatorCompositeView({
     valueFormat = 'billions',
     yAxisLabel,
     secondaryYAxis,
-    leftYAxisDomain
+    leftYAxisDomain,
 }: IndicatorCompositeViewProps) {
+    const sortedData = useMemo(() => {
+        const getSortKey = (row: any) => {
+            if (typeof row?.iso_fecha === 'string' && row.iso_fecha) return row.iso_fecha;
+            if (typeof row?.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.fecha)) return row.fecha;
+            return '';
+        };
+
+        return [...data].sort((a: any, b: any) => getSortKey(a).localeCompare(getSortKey(b)));
+    }, [data]);
+
+    const xAxisKey = useMemo(() => {
+        return sortedData.every((row: any) => typeof row?.iso_fecha === 'string' && row.iso_fecha) ? 'iso_fecha' : 'fecha';
+    }, [sortedData]);
+
+    const labelByXAxisValue = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const row of sortedData) {
+            if (row?.[xAxisKey] != null && row?.fecha != null) {
+                map.set(String(row[xAxisKey]), String(row.fecha));
+            }
+        }
+        return map;
+    }, [sortedData, xAxisKey]);
+
     const captureRef = useRef<HTMLDivElement>(null);
+    const chartContainerRef = useRef<HTMLDivElement>(null);
     const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
     const [activeMonth, setActiveMonth] = useState<string | null>(null);
     const [dimmedAreas, setDimmedAreas] = useState<Set<string>>(new Set());
+    const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
+
+    const visibleData = sortedData;
+
+    useEffect(() => {
+        if (selectedMonth && !visibleData.some((row: any) => row.fecha === selectedMonth)) {
+            setSelectedMonth(null);
+        }
+
+        if (activeMonth && !visibleData.some((row: any) => row.fecha === activeMonth)) {
+            setActiveMonth(null);
+        }
+    }, [visibleData, selectedMonth, activeMonth]);
+
+    useEffect(() => {
+        if (!chartContainerRef.current) return;
+
+        const element = chartContainerRef.current;
+
+        const updateSize = () => {
+            const rect = element.getBoundingClientRect();
+            setChartSize({
+                width: Math.max(0, Math.floor(rect.width)),
+                height: Math.max(0, Math.floor(rect.height)),
+            });
+        };
+
+        updateSize();
+
+        const observer = new ResizeObserver(updateSize);
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, []);
 
     const leftAxisDomain: any = useMemo(() => {
         if (leftYAxisDomain && leftYAxisDomain !== 'auto-pad' && leftYAxisDomain !== 'auto') return leftYAxisDomain;
-        if (!data || data.length === 0) return [0, 10];
+        if (!visibleData || visibleData.length === 0) return [0, 10];
 
         const allValues: number[] = [];
-        data.forEach((row: any) => {
+        visibleData.forEach((row: any) => {
             areas.forEach(area => {
-                if (dimmedAreas.has(area.key)) return;
+                if (dimmedAreas.has(area.legendKey || area.key)) return;
                 const val = row[area.key];
                 if (val !== null && val !== undefined && !isNaN(val)) {
                     allValues.push(val);
@@ -65,7 +124,7 @@ export default function IndicatorCompositeView({
         }
 
         return [min, max];
-    }, [data, areas, leftYAxisDomain, dimmedAreas]);
+    }, [visibleData, areas, leftYAxisDomain, dimmedAreas]);
 
     const handleToggleDim = useCallback((key: string) => {
         setDimmedAreas(prev => {
@@ -98,7 +157,7 @@ export default function IndicatorCompositeView({
         }
     }, [title]);
 
-    if (!data || data.length === 0) {
+    if (!sortedData || sortedData.length === 0) {
         return <div className="text-imperial-gold p-8 text-center font-bold">Cargando datos...</div>;
     }
 
@@ -136,7 +195,7 @@ export default function IndicatorCompositeView({
                             <h2 className="text-imperial-gold text-xl font-bold uppercase tracking-widest text-center flex-1">
                                 {chartTitle}
                             </h2>
-                            <div className="flex-1 flex justify-end">
+                            <div className="flex-1 flex justify-end gap-2">
                                 <button
                                     onClick={handleDownloadChart}
                                     className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-2 text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2"
@@ -148,10 +207,12 @@ export default function IndicatorCompositeView({
                             </div>
                         </div>
 
-                        <div className="flex-1 min-h-0" style={{ outline: 'none', minHeight: '500px' }} tabIndex={-1}>
-                            <ResponsiveContainer width="100%" height="100%">
+                        <div ref={chartContainerRef} className="flex-1 min-h-0" style={{ outline: 'none', minHeight: '500px' }} tabIndex={-1}>
+                            {chartSize.width > 0 && chartSize.height > 0 ? (
                                 <ComposedChart
-                                    data={data}
+                                    width={chartSize.width}
+                                    height={chartSize.height}
+                                    data={visibleData}
                                     margin={{ top: 5, right: 20, bottom: 5, left: 20 }}
                                     style={{ outline: 'none' }}
                                     onClick={(e: any) => {
@@ -162,9 +223,10 @@ export default function IndicatorCompositeView({
                                 >
                                     <CartesianGrid stroke="#ffffff20" strokeDasharray="3 3" />
                                     <XAxis
-                                        dataKey="fecha"
+                                        dataKey={xAxisKey}
                                         stroke="#FFD700"
                                         tick={{ fill: '#FFD700', fontSize: 12 }}
+                                        tickFormatter={(value: string | number) => labelByXAxisValue.get(String(value)) ?? String(value)}
                                     />
                                     <YAxis
                                         stroke="#FFD700"
@@ -211,7 +273,7 @@ export default function IndicatorCompositeView({
                                     <Tooltip
                                         content={(props) => (
                                             <ChartTooltip
-                                                chartData={data}
+                                                chartData={sortedData}
                                                 areaConfigs={areas}
                                                 valueFormat={valueFormat}
                                                 tooltipProps={props}
@@ -219,7 +281,7 @@ export default function IndicatorCompositeView({
                                         )}
                                     />
                                     {areas.map((areaConfig: AreaConfig) => {
-                                        const isDimmed = dimmedAreas.has(areaConfig.key);
+                                        const isDimmed = dimmedAreas.has(areaConfig.legendKey || areaConfig.key);
 
                                         if (isDimmed) return null;
 
@@ -244,7 +306,11 @@ export default function IndicatorCompositeView({
                                         return <ChartArea key={areaConfig.key} areaConfig={areaConfig} isDimmed={false} />;
                                     })}
                                 </ComposedChart>
-                            </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">
+                                    Cargando gráfico...
+                                </div>
+                            )}
                         </div>
 
                         <CustomLegend

@@ -5,6 +5,8 @@ export interface AreaConfig {
     stackId?: string;
     type?: 'monotone' | 'step' | 'line' | 'bar';
     yAxisId?: 'left' | 'right';
+    legendKey?: string;
+    hideInLegend?: boolean;
 }
 
 export interface MethodologyItem {

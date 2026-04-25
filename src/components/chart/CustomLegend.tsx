@@ -9,14 +9,21 @@ interface CustomLegendProps {
 }
 
 export default function CustomLegend({ areas, dimmedAreas, onToggleDim }: CustomLegendProps) {
+    const legendAreas = areas.filter((area, index) => {
+        if (area.hideInLegend) return false;
+        const toggleKey = area.legendKey || area.key;
+        return areas.findIndex((candidate) => (candidate.legendKey || candidate.key) === toggleKey && !candidate.hideInLegend) === index;
+    });
+
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '4px 16px', paddingTop: '10px' }}>
-            {areas.map(area => {
-                const isDimmed = dimmedAreas.has(area.key);
+            {legendAreas.map(area => {
+                const toggleKey = area.legendKey || area.key;
+                const isDimmed = dimmedAreas.has(toggleKey);
                 return (
                     <span
-                        key={area.key}
-                        onClick={() => onToggleDim(area.key)}
+                        key={toggleKey}
+                        onClick={() => onToggleDim(toggleKey)}
                         style={{
                             color: isDimmed ? '#666' : '#FFD700',
                             opacity: isDimmed ? 0.5 : 1,

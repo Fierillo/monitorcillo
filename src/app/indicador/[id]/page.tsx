@@ -1,10 +1,8 @@
 import { getIndicators } from '@/lib/indicators';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { fetchBcraVariable } from '@/lib/bcra';
-import { getManualOverrides } from '@/lib/db';
 
-export const revalidate = 21600; // 6 hours
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
     params: Promise<{
@@ -14,14 +12,12 @@ interface PageProps {
 
 import IndicatorCompositeView, { AreaConfig, MethodologyItem } from '@/components/IndicatorCompositeView';
 
-import { getCachedIndicator, saveIndicatorToCache, getStaleCache, appendToCache } from '@/lib/storage';
-import { fetchSeries } from '@/lib/datos_gob';
+import { getCachedIndicator } from '@/lib/storage';
 
 export default async function IndicatorDetailPage({ params }: PageProps) {
     const resolvedParams = await params;
     const data = await getIndicators();
     const indicator = data.find(i => i.id === resolvedParams.id);
-    const overrides = await getManualOverrides();
 
     if (!indicator) {
         return notFound();
@@ -38,92 +34,30 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
 
     let chartData: any[] = [];
 
+    const safeGetIndicatorData = async (id: string) => {
+        try {
+            return (await getCachedIndicator(id)) ?? [];
+        } catch (error) {
+            console.error(`[indicator][${id}] failed to load from Neon`, error);
+            return [];
+        }
+    };
+
     if (indicator.id === 'bma') {
-        const cached = await getCachedIndicator('bma');
-        if (cached) {
-            chartData = cached;
-        } else {
-            // ... (fetching logic remains the same)
-            const today = new Date();
-            const past = new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
-            const toDate = today.toISOString().split('T')[0];
-            const fromDate = past.toISOString().split('T')[0];
+        chartData = await safeGetIndicatorData('bma');
 
-            const [baseMonetaria, pases, leliq, lefi, depositosTesoro] = await Promise.all([
-                fetchBcraVariable(15, fromDate, toDate),
-                fetchBcraVariable(152, fromDate, toDate),
-                fetchBcraVariable(155, fromDate, toDate),
-                fetchBcraVariable(196, fromDate, toDate),
-                fetchBcraVariable(210, fromDate, toDate),
-            ]);
-
-            const lastByMonth = (items: any[]) => {
-                const monthMap: Record<string, number> = {};
-                items
-                    .filter((d: any) => d?.fecha)
-                    .sort((a: any, b: any) => a.fecha.localeCompare(b.fecha))
-                    .forEach((d: any) => { monthMap[d.fecha.slice(0, 7)] = d.valor; });
-                return monthMap;
-            };
-
-            const bmByMonth = lastByMonth(baseMonetaria);
-            const pasesByMonth = lastByMonth(pases);
-            const leliqByMonth = lastByMonth(leliq);
-            const lefiByMonth = lastByMonth(lefi);
-            const tesoroByMonth = lastByMonth(depositosTesoro);
-
-            const fromMonth = fromDate.slice(0, 7);
-            const toMonth = toDate.slice(0, 7);
-
-            const allMonths = new Set(
-                [
-                    ...Object.keys(bmByMonth),
-                    ...Object.keys(pasesByMonth),
-                    ...Object.keys(leliqByMonth),
-                    ...Object.keys(lefiByMonth),
-                    ...Object.keys(tesoroByMonth),
-                    ...Object.keys(overrides.otros),
-                    ...Object.keys(overrides.tesoro),
-                ].filter(m => m >= fromMonth && m <= toMonth)
-            );
-
-            chartData = Array.from(allMonths).sort().map(month => {
-                const bm = bmByMonth[month] || 0;
-                const otrosAvg = (overrides.otros as any)[month] || 0;
-                const pasivosRemOriginal = (pasesByMonth[month] || 0) + (leliqByMonth[month] || 0) + (lefiByMonth[month] || 0);
-                const pasivosRemTotal = pasivosRemOriginal + otrosAvg;
-                const tesoro = (overrides.tesoro as any)[month] || tesoroByMonth[month] || 0;
-
-                const [yyyy, mm] = month.split('-');
-                const monthNames: Record<string, string> = {
-                    '01': 'ENE', '02': 'FEB', '03': 'MAR', '04': 'ABR',
-                    '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AGO',
-                    '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
-                };
-                const fechaFormatted = `${monthNames[mm]} ${yyyy.slice(-2)}`;
-
-                return {
-                    fecha: fechaFormatted,
-                    BaseMonetaria: bm,
-                    PasivosRemunerados: pasivosRemTotal,
-                    DepositosTesoro: tesoro,
-                    BMAmplia: bm + pasivosRemTotal + tesoro,
-                };
-            });
-
-            await saveIndicatorToCache('bma', chartData);
-        } const areas: AreaConfig[] = [
+        const areas: AreaConfig[] = [
             { key: 'BMAmplia', name: 'Base Monetaria AMPLIA', color: '#FFD700', stackId: '2', type: 'monotone' },
             { key: 'BaseMonetaria', name: 'Base Monetaria', color: '#8888cc' },
             { key: 'PasivosRemunerados', name: 'Pasivos Remunerados', color: '#cc4444' },
-            { key: 'DepositosTesoro', name: 'Depósitos del Tesoro', color: '#44aa66' },
+            { key: 'DepositosTesoro', name: 'Depósitos del Gobierno Nac. y Otros', color: '#44aa66' },
         ];
 
         const methodology: MethodologyItem[] = [
-            { title: 'Base Monetaria', description: 'Saldos diarios (Variable 15) consolidados por mes (último valor disponible).' },
-            { title: 'Pasivos Remunerados', description: 'Integración histórica de Pases Pasivos (152), LELIQ (155) y LEFI (196). Para instrumentos vigentes se utiliza el promedio mensual de la serie "Otros" del Informe Monetario Diario.' },
-            { title: 'Depósitos del Tesoro', description: 'Saldos extraídos del Balance Semanal del BCRA (Estado Resumido de Activos y Pasivos - Depósitos del Gobierno Nacional y Otros).' },
-            { title: 'Base Monetaria Amplia', description: 'Sumatoria de Base Monetaria + Pasivos Remunerados + Depósitos del Tesoro Nacional en el Banco Central.' },
+            { title: 'Base Monetaria', description: 'Saldos diarios (Variable 15) consolidados por mes mediante promedio mensual.' },
+            { title: 'Pasivos Remunerados', description: 'Integración histórica de Pases Pasivos (152), LELIQ y NOTALQ (155), LEFI (196) y Otros (198). Las series diarias se mensualizan con promedio mensual.' },
+            { title: 'Depósitos del Gobierno Nacional y Otros', description: 'Serie semanal extraída del Estado Resumido de Activos y Pasivos Semanales del BCRA (Serieanual.xls). Se mensualiza mediante promedio simple de las observaciones disponibles del mes.' },
+            { title: 'Base Monetaria Amplia', description: 'Sumatoria de Base Monetaria + Pasivos Remunerados + Depósitos del Gobierno Nacional y Otros.' },
         ];
 
         return (
@@ -139,69 +73,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
     }
 
     if (indicator.id === 'poder-adquisitivo') {
-        const cached = await getCachedIndicator('poder-adquisitivo');
-        if (cached) {
-            chartData = cached;
-        } else {
-            const stale = await getStaleCache('poder-adquisitivo');
-            const lastFecha = stale?.length ? stale[stale.length - 1].fecha : null;
-
-            const lastDateISO = lastFecha
-                ? (() => {
-                    const MONTHS: Record<string, string> = { ENE: '01', FEB: '02', MAR: '03', ABR: '04', MAY: '05', JUN: '06', JUL: '07', AGO: '08', SEPT: '09', OCT: '10', NOV: '11', DIC: '12' };
-                    const [mon, yr] = lastFecha.split(' ');
-                    return `20${yr}-${MONTHS[mon]}-01`;
-                })()
-                : null;
-
-            const ids = [
-                '148.3_INUCLEONAL_DICI_M_19',
-                '149.1_TL_REGIADO_OCTU_0_16',
-                '149.1_SOR_PRIADO_OCTU_0_28',
-                '149.1_SOR_PRIADO_OCTU_0_25',
-                '149.1_SOR_PUBICO_OCTU_0_14',
-                '158.1_REPTE_0_0_5',
-                '58.1_MP_0_M_24'
-            ].join(',');
-
-            const rawData = await fetchSeries(ids, lastDateISO ?? undefined);
-            const SPANISH_MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
-
-            const baseSource = lastDateISO ? await fetchSeries(ids.split(',')[0], '2017-01-01') : rawData;
-            const baseRow = baseSource.find((row: any) => row[0] === '2017-01-01') ?? rawData.find((row: any) => row[0] === '2017-01-01');
-
-            if (baseRow) {
-                const getBaseVal = (idx: number) => baseRow[idx] / baseRow[1];
-
-                const rawValues = rawData
-                    .filter((row: any) => row[0] && row[1])
-                    .map((row: any) => {
-                        const dateObj = new Date(row[0] + 'T00:00:00Z');
-                        const fechaStr = `${SPANISH_MONTHS[dateObj.getUTCMonth()]} ${dateObj.getUTCFullYear().toString().slice(-2)}`;
-                        const ipc = row[1];
-                        const calc = (idx: number) => {
-                            if (!row[idx]) return null;
-                            return ((row[idx] / ipc) / getBaseVal(idx)) * 100;
-                        };
-                        return { fecha: fechaStr, blanco: calc(2), negro: calc(3), privado: calc(4), publico: calc(5), ripte: calc(6), jubilacion: calc(7) };
-                    });
-
-                const newRows = rawValues.map((row: any, index: number) => ({
-                    ...row,
-                    negro: rawValues[index + 5]?.negro ?? null
-                }));
-
-                if (stale) {
-                    await appendToCache('poder-adquisitivo', newRows);
-                    chartData = (await getStaleCache('poder-adquisitivo')) ?? newRows;
-                } else {
-                    await saveIndicatorToCache('poder-adquisitivo', newRows);
-                    chartData = newRows;
-                }
-            } else if (stale) {
-                chartData = stale;
-            }
-        }
+        chartData = await safeGetIndicatorData('poder-adquisitivo');
 
         const areas: AreaConfig[] = [
             { key: 'blanco', name: 'PA [IS blanco/IPCC]', color: '#FFFFFF', type: 'line' },
@@ -232,61 +104,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
     }
 
     if (indicator.id === 'emae') {
-        const cached = await getCachedIndicator('emae');
-        if (cached) {
-            chartData = cached;
-        } else {
-            const stale = await getStaleCache('emae');
-            const lastFecha = stale?.length ? stale[stale.length - 1].fecha : null;
-
-            const lastDateISO = lastFecha
-                ? (() => {
-                    const MONTHS: Record<string, string> = { ENE: '01', FEB: '02', MAR: '03', ABR: '04', MAY: '05', JUN: '06', JUL: '07', AGO: '08', SEPT: '09', OCT: '10', NOV: '11', DIC: '12' };
-                    const [mon, yr] = lastFecha.split(' ');
-                    return `20${yr}-${MONTHS[mon]}-01`;
-                })()
-                : null;
-
-            const ids = [
-                '143.3_NO_PR_2004_A_21',
-                '143.3_NO_PR_2004_A_31',
-                '143.3_NO_PR_2004_A_28'
-            ].join(',');
-            const rawData = await fetchSeries(ids, lastDateISO ?? undefined);
-            const SPANISH_MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
-
-            const baseSource = lastDateISO ? await fetchSeries(ids, '2017-01-01') : rawData;
-            const baseRow = baseSource.find((row: any) => row[0] === '2017-01-01') ?? rawData.find((row: any) => row[0] === '2017-01-01');
-
-            if (baseRow) {
-                const baseOriginal = baseRow[1];
-                const baseDesest = baseRow[2];
-                const baseTend = baseRow[3];
-
-                const newRows = rawData
-                    .filter((row: any) => row[0] && row[1])
-                    .map((row: any) => {
-                        const dateObj = new Date(row[0] + 'T00:00:00Z');
-                        const fechaStr = `${SPANISH_MONTHS[dateObj.getUTCMonth()]} ${dateObj.getUTCFullYear().toString().slice(-2)}`;
-                        return {
-                            fecha: fechaStr,
-                            emae: (row[1] / baseOriginal) * 100,
-                            emae_desestacionalizado: row[2] ? (row[2] / baseDesest) * 100 : null,
-                            emae_tendencia: row[3] ? (row[3] / baseTend) * 100 : null
-                        };
-                    });
-
-                if (stale) {
-                    await appendToCache('emae', newRows);
-                    chartData = (await getStaleCache('emae')) ?? newRows;
-                } else {
-                    await saveIndicatorToCache('emae', newRows);
-                    chartData = newRows;
-                }
-            } else if (stale) {
-                chartData = stale;
-            }
-        }
+        chartData = await safeGetIndicatorData('emae');
 
         const areas: AreaConfig[] = [
             { key: 'emae', name: 'EMAE Original', color: '#FFD700', type: 'line' },
@@ -317,16 +135,19 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
     }
 
     if (indicator.id === 'emision') {
-        const cached = await getCachedIndicator('emision');
+        const cached = await safeGetIndicatorData('emision');
         if (cached) {
-            chartData = cached;
+            chartData = [...cached].sort((a: any, b: any) => String(a.iso_fecha ?? '').localeCompare(String(b.iso_fecha ?? '')));
         }
 
         const areas: AreaConfig[] = [
             { key: 'ACUMULADO', name: 'TOTAL', color: '#ff0000', type: 'line' },
-            { key: 'Resultado fiscal', name: 'Resultado fiscal', color: '#7952b3', type: 'bar', stackId: '1' },
-            { key: 'Licitaciones', name: 'Licitaciones', color: '#0055aa', type: 'bar', stackId: '1' },
-            { key: 'BCRA', name: 'BCRA', color: '#ffcc33', type: 'bar', stackId: '1' }
+            { key: 'BCRA_POS', name: 'BCRA', color: '#ffcc33', type: 'bar', stackId: 'pos', legendKey: 'bcra' },
+            { key: 'Licitaciones_POS', name: 'Licitaciones', color: '#0055aa', type: 'bar', stackId: 'pos', legendKey: 'licitaciones' },
+            { key: 'ResultadoFiscal_POS', name: 'Resultado fiscal', color: '#7952b3', type: 'bar', stackId: 'pos', legendKey: 'resultado_fiscal' },
+            { key: 'BCRA_NEG', name: 'BCRA', color: '#ffcc33', type: 'bar', stackId: 'neg', legendKey: 'bcra', hideInLegend: true },
+            { key: 'Licitaciones_NEG', name: 'Licitaciones', color: '#0055aa', type: 'bar', stackId: 'neg', legendKey: 'licitaciones', hideInLegend: true },
+            { key: 'ResultadoFiscal_NEG', name: 'Resultado fiscal', color: '#7952b3', type: 'bar', stackId: 'neg', legendKey: 'resultado_fiscal', hideInLegend: true }
         ];
 
         const methodology: MethodologyItem[] = [
@@ -352,135 +173,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
     }
 
     if (indicator.id === 'recaudacion') {
-        const cached = await getCachedIndicator('recaudacion');
-        if (cached) {
-            chartData = cached;
-        } else {
-            const [taxData, gdpData, emaeDesestData, ipcData] = await Promise.all([
-                fetchSeries('172.3_TL_RECAION_M_0_0_17'),
-                fetchSeries('166.2_PPIB_0_0_3'),
-                fetchSeries('143.3_NO_PR_2004_A_31'),
-                fetchSeries('148.3_INUCLEONAL_DICI_M_19')
-            ]);
-
-            const getQuarter = (month: number) => Math.ceil(month / 3);
-            const gdpQuarterMap: Record<string, number> = {};
-            gdpData.forEach((row: any) => {
-                const date = row[0];
-                const year = parseInt(date.slice(0, 4));
-                const month = parseInt(date.slice(5, 7));
-                const quarter = getQuarter(month);
-                gdpQuarterMap[`${year}-Q${quarter}`] = row[1];
-            });
-
-            let latestGdpQuarter = '';
-            let latestGdpValue = 0;
-            Object.keys(gdpQuarterMap).sort().forEach(key => {
-                latestGdpQuarter = key;
-                latestGdpValue = gdpQuarterMap[key];
-            });
-
-            const emaeMap: Record<string, number> = {};
-            emaeDesestData.forEach((row: any) => {
-                if (row[1]) emaeMap[row[0]] = row[1];
-            });
-
-            const emaeDates = Object.keys(emaeMap).sort();
-            const emaeVarMap: Record<string, number> = {};
-            for (let i = 1; i < emaeDates.length; i++) {
-                const prevDate = emaeDates[i - 1];
-                const currDate = emaeDates[i];
-                const prevVal = emaeMap[prevDate];
-                const currVal = emaeMap[currDate];
-                if (prevVal && currVal) {
-                    emaeVarMap[currDate] = (currVal / prevVal) - 1;
-                }
-            }
-
-            const ipcMap: Record<string, number> = {};
-            ipcData.forEach((row: any) => {
-                if (row[1]) ipcMap[row[0]] = row[1];
-            });
-
-            const taxMap: Record<string, number> = {};
-            taxData.forEach((row: any) => {
-                if (row[1]) taxMap[row[0]] = row[1];
-            });
-
-            const availableYears = Object.keys(gdpQuarterMap).sort();
-            const lastGdpKey = availableYears[availableYears.length - 1];
-            const lastGdpValue = gdpQuarterMap[lastGdpKey];
-
-            const getMonthlyGdp = (targetDate: string) => {
-                const targetYear = parseInt(targetDate.slice(0, 4));
-                const targetMonth = parseInt(targetDate.slice(5, 7));
-                const targetQuarter = getQuarter(targetMonth);
-                const targetGdpKey = `${targetYear}-Q${targetQuarter}`;
-                let targetGdp = gdpQuarterMap[targetGdpKey];
-
-                if (!targetGdp) {
-                    targetGdp = lastGdpValue;
-                }
-
-                if (!targetGdp) return null;
-
-                const emaeVal = emaeMap[targetDate];
-                const emaeBaseDate = `${targetYear}-01-01`;
-                const emaeBase = emaeMap[emaeBaseDate] || emaeMap['2024-01-01'] || Object.values(emaeMap)[0];
-
-                if (emaeVal && emaeBase) {
-                    return (targetGdp / 3) * (emaeVal / emaeBase);
-                }
-
-                return targetGdp / 3;
-            };
-
-            const pctPbiMap: Record<string, number> = {};
-            taxData.forEach((row: any) => {
-                const date = row[0];
-                const tax = row[1];
-                if (!tax) return;
-
-                const monthlyGdp = getMonthlyGdp(date);
-                if (monthlyGdp) {
-                    pctPbiMap[date] = (tax / monthlyGdp) * 100;
-                }
-            });
-
-            chartData = taxData
-                .filter((row: any) => row[0] && row[0] >= '2019-01-01' && row[1] !== null)
-                .map((row: any) => {
-                    const date = row[0];
-                    const year = parseInt(date.slice(0, 4));
-                    const monthStr = date.slice(5, 7);
-
-                    const dateObj = new Date(date + 'T00:00:00Z');
-                    const fechaStr = `${['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'][dateObj.getUTCMonth()]} ${dateObj.getUTCFullYear().toString().slice(-2)}`;
-
-                    const prevYear = year - 1;
-                    const prevYearDate = `${prevYear}-${monthStr}-01`;
-                    const currentIpc = ipcMap[date];
-                    const prevYearIpc = ipcMap[prevYearDate];
-                    const currentTax = taxMap[date];
-                    const prevYearTax = taxMap[prevYearDate];
-
-                    let variacionReal = null;
-                    if (currentIpc && prevYearIpc && currentTax && prevYearTax) {
-                        const realCurrent = currentTax / currentIpc;
-                        const realPrev = prevYearTax / prevYearIpc;
-                        variacionReal = ((realCurrent / realPrev) - 1) * 100;
-                    }
-
-                    return {
-                        fecha: fechaStr,
-                        mes: monthStr,
-                        year: year,
-                        pctPbi: pctPbiMap[date]
-                    };
-                });
-
-            await saveIndicatorToCache('recaudacion', chartData);
-        }
+        chartData = await safeGetIndicatorData('recaudacion');
 
         const areas: AreaConfig[] = [
             { key: 'pctPbi', name: '% PIB Mensual', color: '#FFD700', type: 'bar', yAxisId: 'left' }

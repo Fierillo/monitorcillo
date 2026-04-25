@@ -23,7 +23,7 @@ export default function ChartTooltip({
     if (!tooltipProps.active || !tooltipProps.label) return null;
 
     const tooltipLabel = String(tooltipProps.label);
-    const rowData = chartData.find((row: any) => row.fecha === tooltipLabel);
+    const rowData = chartData.find((row: any) => row.fecha === tooltipLabel || row.iso_fecha === tooltipLabel);
 
 
 
@@ -74,9 +74,9 @@ export default function ChartTooltip({
     if (valueRows.length === 0) return null;
 
     return (
-        <div key={tooltipLabel} style={{ backgroundColor: '#00143F', border: '1px solid #FFD700', padding: '10px', color: '#FFF' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{tooltipLabel}</div>
-            {valueRows}
-        </div>
+            <div key={tooltipLabel} style={{ backgroundColor: '#00143F', border: '1px solid #FFD700', padding: '10px', color: '#FFF' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{rowData.fecha}</div>
+                {valueRows}
+            </div>
     );
 }
