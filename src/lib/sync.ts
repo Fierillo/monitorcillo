@@ -504,3 +504,18 @@ export async function runSync(): Promise<Record<string, { appended: number; tota
     if (catalog.total > 0) results.catalog = { appended: catalog.appended, total: catalog.total };
     return results;
 }
+
+export default {
+    fetchEmisionRaw,
+    fetchEmaeRaw,
+    fetchBmaRaw,
+    fetchPoderAdquisitivoRaw,
+    fetchRecaudacionRaw,
+    syncEmision,
+    syncEmae,
+    syncBma,
+    syncIndicatorsCatalog,
+    syncRecaudacion,
+    syncPoderAdquisitivo,
+    runSync
+};
