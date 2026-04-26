@@ -67,7 +67,7 @@ describe('normalizeBma', () => {
         // Let's set fallback bases to 1.0 for simplicity.
         const rawData = [
             {
-                fecha: '2024-01-01',
+                fecha: '2026-01-01',
                 emae_desestacionalizado: 1.0,
                 ipc_nucleo: 1.0
             },
@@ -115,10 +115,10 @@ describe('normalizeBma', () => {
         const bmaRow = normalized.find(r => r.iso_fecha === '2026-02-01');
         expect(bmaRow).toBeDefined();
         
-        expect(bmaRow!.BaseMonetaria).toBeCloseTo(0.41667, 4);
-        expect(bmaRow!.PasivosRemunerados).toBeCloseTo(0.33333, 4);
-        expect(bmaRow!.DepositosTesoro).toBeCloseTo(0.83333, 4);
-        expect(bmaRow!.BMAmplia).toBeCloseTo(1.58333, 4);
+        expect(bmaRow!.BaseMonetaria).toBeCloseTo(0.33333, 4);
+        expect(bmaRow!.PasivosRemunerados).toBeCloseTo(0.26667, 4);
+        expect(bmaRow!.DepositosTesoro).toBeCloseTo(0.66667, 4);
+        expect(bmaRow!.BMAmplia).toBeCloseTo(1.26667, 4);
     });
 
     it('returns BMAmplia as null if DepositosTesoro is missing for the entire month', () => {
