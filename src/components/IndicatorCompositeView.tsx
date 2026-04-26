@@ -208,7 +208,7 @@ export default function IndicatorCompositeView({
                                     width={chartSize.width}
                                     height={chartSize.height}
                                     data={visibleData}
-                                    margin={{ top: 5, right: 20, bottom: 5, left: 20 }}
+                                    margin={{ top: 5, right: 20, bottom: 5, left: 100 }}
                                     barCategoryGap="0%"
                                     stackOffset="sign"
                                     style={{ outline: 'none' }}
@@ -233,11 +233,9 @@ export default function IndicatorCompositeView({
                                         label={{
                                             value: yAxisLabel,
                                             angle: -90,
-                                            position: 'left',
-                                            fill: '#FFD700',
-                                            fontSize: 14,
-                                            fontWeight: 'bold',
-                                            dy: -30
+                                            position: 'insideLeft',
+                                            style: { textAnchor: 'middle', fill: '#FFD700', fontSize: 14, fontWeight: 'bold' },
+                                            dx: -85
                                         }}
                                         domain={leftAxisDomain}
                                         allowDataOverflow={true}
@@ -256,11 +254,9 @@ export default function IndicatorCompositeView({
                                             label={{
                                                 value: secondaryYAxis.label,
                                                 angle: 90,
-                                                position: 'right',
-                                                fill: secondaryYAxis.color || "#00BFFF",
-                                                fontSize: 14,
-                                                fontWeight: 'bold',
-                                                dy: -30
+                                                position: 'insideRight',
+                                                style: { textAnchor: 'middle', fill: secondaryYAxis.color || "#00BFFF", fontSize: 14, fontWeight: 'bold' },
+                                                dx: 15
                                             }}
                                             domain={secondaryYAxis?.domain && secondaryYAxis.domain !== 'auto' ? secondaryYAxis.domain : ['auto', 'auto']}
                                             allowDataOverflow={true}

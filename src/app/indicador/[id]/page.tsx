@@ -70,6 +70,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 areas={areas}
                 methodology={methodology}
                 valueFormat="percent"
+                yAxisLabel="% de PBI"
             />
         );
     }
@@ -87,8 +88,12 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         ];
 
         const methodology: MethodologyItem[] = [
-            { title: 'Poder Adquisitivo', description: 'Cálculo propio: (Valor Nominal / IPC Núcleo) normalizado a Enero 2017 = 100.' },
-            { title: 'Fuentes', description: 'INDEC (IPC, Índice de Salarios), Secretaría de Trabajo (RIPTE) y ANSES (Jubilaciones).' }
+            { title: 'IPC Núcleo', description: 'Índice de Precios al Consumidor (INDEC 148.3_INUCLEONAL_DICI_M_19).' },
+            { title: 'Salarios Registrados', description: 'Sector privado (149.1_SOR_PRIADO_OCTU_0_25) y público (149.1_SOR_PUBICO_OCTU_0_14).' },
+            { title: 'Salarios No Registrados', description: 'Estimación de salarios informales (INDEC 149.1_SOR_PRIADO_OCTU_0_28).' },
+            { title: 'RIPTE', description: 'Remuneración imponible promedio de trabajadores estables (Secretaría de Trabajo 158.1_REPTE_0_0_5).' },
+            { title: 'Jubilaciones', description: 'Haber mínimo mensual (ANSES 58.1_MP_0_M_24).' },
+            { title: 'Cálculo', description: '(Valor Nominal / IPC Núcleo) normalizado a Base 100 = Enero 2017.' },
         ];
 
         return (
@@ -115,11 +120,10 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         ];
 
         const methodology: MethodologyItem[] = [
-            { title: 'EMAE Original', description: 'Estimador Mensual de Actividad Económica elaborado por el INDEC. Mide la evolución de la actividad económica real de manera anticipada al PIB. Serie sin ajustes.' },
-            { title: 'EMAE Desestacionalizado', description: 'Serie ajustada por estacionalidad, eliminando efectos predecibles del calendario (días hábiles, estaciones, etc.).' },
-            { title: 'EMAE Tendencia-Ciclo', description: 'Componente de largo plazo de la serie, suavizada para eliminar fluctuaciones irregulares y mostrar la tendencia subyacente.' },
-            { title: 'Base', description: 'Índice normalizado a Enero 2017 = 100 para comparabilidad con otros indicadores.' },
-            { title: 'Frecuencia', description: 'Publicación mensual con aproximadamente 60 días de rezago respecto al mes de referencia.' },
+            { title: 'EMAE Original', description: 'Evolución de la actividad real sin ajustes (INDEC 143.3_NO_PR_2004_A_21).' },
+            { title: 'EMAE Desestacionalizado', description: 'Serie corregida por estacionalidad y calendario (INDEC 143.3_NO_PR_2004_A_31).' },
+            { title: 'EMAE Tendencia-Ciclo', description: 'Evolución de largo plazo suavizada (INDEC 143.3_NO_PR_2004_A_28).' },
+            { title: 'Normalización', description: 'Índice Base Enero 2017 = 100 para comparabilidad histórica.' },
         ];
 
         return (
@@ -153,11 +157,10 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         ];
 
         const methodology: MethodologyItem[] = [
-            { title: 'BCRA (Divisas)', description: 'Impacto por compra/venta de dólares (Variable 78 en Millones u$s) valorizados al Tipo de Cambio de Referencia (Variable 4 - Com. "A" 3500).' },
-            { title: 'Licitaciones', description: 'Impacto neto del Tesoro Nacional: Diferencia entre Vencimientos programados y montos Licitados (adjudicados) en el mercado local.' },
-            { title: 'Resultado Fiscal', description: 'Impacto monetario directo derivado del superávit o déficit del Tesoro Nacional.' },
-            { title: 'Acumulado', description: 'Línea de tendencia que representa el stock acumulado de pesos emitidos o absorbidos durante el período visualizado.' },
-            { title: 'Elaboración', description: 'Cálculo propio realizado por @Fierillo en base a datos abiertos del BCRA y el Ministerio de Economía (MECON).' }
+            { title: 'BCRA (Divisas)', description: 'Compra/venta de USD (Var. 78) al Tipo de Cambio de Referencia (Var. 4).' },
+            { title: 'Licitaciones', description: 'Impacto neto de Vencimientos vs. montos Licitados/Adjudicados del Tesoro.' },
+            { title: 'Resultado Fiscal', description: 'Impacto monetario por superávit o déficit primario del Tesoro Nacional.' },
+            { title: 'Acumulado', description: 'Stock acumulado de pesos emitidos o absorbidos durante el período visualizado.' },
         ];
 
         return (
@@ -168,8 +171,8 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 data={chartData}
                 areas={areas}
                 methodology={methodology}
-                valueFormat="billions"
-                yAxisLabel="billones de pesos"
+                valueFormat="millions"
+                yAxisLabel="millones de pesos"
             />
         );
     }
@@ -182,9 +185,9 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         ];
 
         const methodology: MethodologyItem[] = [
-            { title: '% PIB Mensual', description: 'Recaudación / PIB mensual estimado (PIB trim × var EMAE desest.).' },
-            { title: 'Tooltip', description: 'Muestra variación vs. mismo mes de años anteriores.' },
-            { title: 'Fuente', description: 'Secretaría de Hacienda, Ministerio de Economía.' }
+            { title: 'Recaudación Total', description: 'Recursos tributarios mensuales consolidado (Secretaría de Hacienda 172.3_TL_RECAION_M_0_0_17).' },
+            { title: 'Normalización a % PBI', description: 'Proporción calculada sobre el PBI mensualizado (PBI Anualizado / 12).' },
+            { title: 'Estimación PBI', description: 'El PBI se infiere ajustando el dato trimestral (INDEC 166.2_PPIB_0_0_3) por la variación del EMAE desestacionalizado (143.3_NO_PR_2004_A_31).' },
         ];
 
         return (

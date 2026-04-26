@@ -7,11 +7,14 @@ export const SPANISH_MONTHS: Record<string, string> = {
 export type ChartValueFormat = 'billions' | 'index' | 'millions' | 'percent';
 
 export function formatValueByType(value: number, format?: ChartValueFormat): string {
-    if (format === 'index') return value.toFixed(1);
-    if (format === 'millions') return `$${value.toLocaleString('es-AR')}`;
-    if (format === 'billions') return `$${value.toLocaleString('es-AR')}`;
-    if (format === 'percent') return `${value.toFixed(1)}%`;
-    return value.toLocaleString('es-AR');
+    if (format === 'index') return Math.round(value).toString();
+    if (format === 'millions') return `$${Math.round(value).toLocaleString('es-AR')}M`;
+    if (format === 'billions') {
+        const billones = value / 1000000;
+        return `$${Math.round(billones).toLocaleString('es-AR')}B`;
+    }
+    if (format === 'percent') return `${Math.round(value)}%`;
+    return Math.round(value).toLocaleString('es-AR');
 }
 
 export interface ChartAxisDomainParams {

@@ -48,7 +48,7 @@ export default function ChartTooltip({
                         paddingBottom: isCurrent ? '4px' : '0'
                     }}
                 >
-                    {SPANISH_MONTHS[rowData.mes]} {String(row.year).slice(-2)}: {row.pctPbi.toFixed(1)}% PIB
+                    {SPANISH_MONTHS[rowData.mes]} {String(row.year).slice(-2)}: {Math.round(row.pctPbi)}% PIB
                 </div>
             );
         });
