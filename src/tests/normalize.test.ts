@@ -63,12 +63,13 @@ describe('normalizeEmision', () => {
 describe('normalizeBma', () => {
     it('averages daily values, calculates % PBI, and strictly calculates BMAmplia', () => {
         // For % PBI, BMA values are divided by PBI_Anualizado, then * 100.
-        // PBI_Anualizado = PBI_Trimestral * (EMAE_Mes_Actual / EMAE_Base_Anual)
-        // Let's set fallback base to 1.0 (from 2024-01-01) for simplicity.
+        // PBI_Anualizado = PBI_Trimestral * (EMAE_actual / EMAE_base) * (IPC_actual / IPC_base)
+        // Let's set fallback bases to 1.0 for simplicity.
         const rawData = [
             {
                 fecha: '2024-01-01',
-                emae_desestacionalizado: 1.0 // This sets the fallback base to 1.0
+                emae_desestacionalizado: 1.0,
+                ipc_nucleo: 1.0
             },
             {
                 fecha: '2026-02-05',
@@ -77,43 +78,44 @@ describe('normalizeBma', () => {
                 leliq: 0,
                 lefi: 50, 
                 otros: 20, 
-                depositos_tesoro: null, // Weekly series missing here
+                depositos_tesoro: null,
                 pbi_trimestral: 36000, 
-                emae_desestacionalizado: 1.0 // PBI_Anualizado = 36000 * 1.0 = 36000
+                emae_desestacionalizado: 1.0,
+                ipc_nucleo: 1.25 // Inflation adjustment: 1.25 factor
             },
             {
-                // Another day in the same month
                 fecha: '2026-02-15',
                 base_monetaria: 150, 
                 pases: 50, 
                 leliq: 0,
                 lefi: 50, 
                 otros: 20, 
-                depositos_tesoro: 300, // Weekly series exists here
+                depositos_tesoro: 300,
                 pbi_trimestral: null,
-                emae_desestacionalizado: null
+                emae_desestacionalizado: null,
+                ipc_nucleo: null
             }
         ];
 
         // Averages:
         // bmRaw: 150
-        // pasivosRemuneradosRaw: 50 + 0 + 50 + 20 = 120
+        // pasivosRemuneradosRaw: 120
         // depositosTesoroRaw: 300
-        // BMAmpliaRaw: 150 + 120 + 300 = 570
-        // PBI_Anualizado = 36000
-        // BaseMonetaria %: (150 / 36000) * 100 = 0.4166...
-        // PasivosRemunerados %: (120 / 36000) * 100 = 0.3333...
-        // DepositosTesoro %: (300 / 36000) * 100 = 0.8333...
-        // BMAmplia %: (570 / 36000) * 100 = 1.5833...
+        // BMAmpliaRaw: 570
+        // PBI_Anualizado = 36000 * 1.0 * 1.25 = 45000
+        // BaseMonetaria %: (150 / 45000) * 100 = 0.3333...
+        // PasivosRemunerados %: (120 / 45000) * 100 = 0.2666...
+        // DepositosTesoro %: (300 / 45000) * 100 = 0.6666...
+        // BMAmplia %: (570 / 45000) * 100 = 1.2666...
 
         const normalized = normalizeBma(rawData);
         
-        expect(normalized).toHaveLength(2); // One for 2024-01-01, one for 2026-02-01
+        expect(normalized).toHaveLength(2);
         
         const bmaRow = normalized.find(r => r.iso_fecha === '2026-02-01');
         expect(bmaRow).toBeDefined();
         
-        expect(bmaRow!.BaseMonetaria).toBeCloseTo(0.41666, 4);
+        expect(bmaRow!.BaseMonetaria).toBeCloseTo(0.41667, 4);
         expect(bmaRow!.PasivosRemunerados).toBeCloseTo(0.33333, 4);
         expect(bmaRow!.DepositosTesoro).toBeCloseTo(0.83333, 4);
         expect(bmaRow!.BMAmplia).toBeCloseTo(1.58333, 4);
@@ -130,7 +132,8 @@ describe('normalizeBma', () => {
                 otros: null,
                 depositos_tesoro: null,
                 pbi_trimestral: 36000,
-                emae_desestacionalizado: 1.0
+                emae_desestacionalizado: 1.0,
+                ipc_nucleo: 1.0
             }
         ];
 
@@ -140,14 +143,14 @@ describe('normalizeBma', () => {
 });
 
 describe('normalizeRecaudacion', () => {
-    // We'll import normalizeRecaudacion from '../lib/normalize' at the top.
     it('calculates Recaudacion as % of Monthly GDP', () => {
         // Monthly GDP = Annualized GDP / 12
-        // Annualized GDP = PBI_Trimestral * (EMAE_Mes_Actual / EMAE_Base_Anual)
+        // Annualized GDP = PBI_Trimestral * (EMAE_actual / EMAE_base) * (IPC_actual / IPC_base)
         const rawData = [
             {
                 fecha: '2024-01-01',
-                emae_desestacionalizado: 1.0 // fallback base
+                emae_desestacionalizado: 1.0, // fallback base
+                ipc_nucleo: 1.0
             },
             {
                 fecha: '2026-02-01',
@@ -155,11 +158,12 @@ describe('normalizeRecaudacion', () => {
                 year: 2026,
                 recaudacion_total: 100,
                 pbi_trimestral: 36000,
-                emae_desestacionalizado: 1.0
+                emae_desestacionalizado: 1.0,
+                ipc_nucleo: 1.0
             }
         ];
 
-        // Annualized GDP = 36000 * (1.0 / 1.0) = 36000
+        // Annualized GDP = 36000
         // Monthly GDP = 36000 / 12 = 3000
         // % PBI = (100 / 3000) * 100 = 3.3333...
 
