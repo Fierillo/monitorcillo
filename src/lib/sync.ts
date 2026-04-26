@@ -175,23 +175,25 @@ export async function fetchBmaRaw(): Promise<any[]> {
     const toDate = today.toISOString().split('T')[0];
     const fromDate = '2017-01-01';
 
-    const [baseMonetaria, pases, leliq, lefi, otros, weeklyWorkbook] = await Promise.all([
+    const [baseMonetaria, pases, leliq, lefi, otros, weeklyWorkbook, pbi, emae] = await Promise.all([
         fetchBcraVariable(15, fromDate, toDate),
         fetchBcraVariable(152, fromDate, toDate),
         fetchBcraVariable(155, fromDate, toDate),
         fetchBcraVariable(196, fromDate, toDate),
         fetchBcraVariable(198, fromDate, toDate),
         fetchBufferFromUrl(WEEKLY_BALANCE_WORKBOOK_URL),
+        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=166.2_PPIB_0_0_3&limit=5000'),
+        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=143.3_NO_PR_2004_A_31&limit=5000'),
     ]);
 
     const depositosTesoro = extractWeeklyGovernmentDepositsSeries(weeklyWorkbook, fromDate);
 
-    const byFecha = new Map<string, Record<string, number | null | string>>();
+    const byFecha = new Map<string, Record<string, any>>();
 
     const mergeSeries = (items: any[], field: string) => {
         for (const item of items) {
             if (!item?.fecha) continue;
-            const row: Record<string, number | null | string> = byFecha.get(item.fecha) ?? { fecha: item.fecha };
+            const row: Record<string, any> = byFecha.get(item.fecha) ?? { fecha: item.fecha };
             row[field] = item.valor == null ? null : Number(item.valor);
             byFecha.set(item.fecha, row);
         }
@@ -203,6 +205,40 @@ export async function fetchBmaRaw(): Promise<any[]> {
     mergeSeries(lefi, 'lefi');
     mergeSeries(otros, 'otros');
     mergeSeries(depositosTesoro, 'depositos_tesoro');
+
+    const pbiByQuarter = new Map<string, number>();
+    for (const row of pbi.data || []) {
+        const fecha = row[0];
+        if (!fecha || typeof fecha !== 'string') continue;
+        const year = parseInt(fecha.slice(0, 4), 10);
+        const month = parseInt(fecha.slice(5, 7), 10);
+        const quarter = Math.ceil(month / 3);
+        pbiByQuarter.set(`${year}-Q${quarter}`, row[1]);
+    }
+
+    const emaeByFecha = new Map((emae.data || []).map((row: any) => [row[0], row[1]]));
+
+    const monthPrefixes = new Set<string>();
+    for (const fecha of byFecha.keys()) {
+        monthPrefixes.add(fecha.slice(0, 7));
+    }
+
+    for (const monthPrefix of monthPrefixes) {
+        const firstOfMonth = `${monthPrefix}-01`;
+        const year = parseInt(monthPrefix.slice(0, 4), 10);
+        const month = parseInt(monthPrefix.slice(5, 7), 10);
+        const quarter = Math.ceil(month / 3);
+        
+        const pbiVal = pbiByQuarter.get(`${year}-Q${quarter}`);
+        const emaeVal = emaeByFecha.get(firstOfMonth);
+        
+        if (pbiVal != null || emaeVal != null) {
+            const row: Record<string, any> = byFecha.get(firstOfMonth) ?? { fecha: firstOfMonth };
+            if (pbiVal != null) row.pbi_trimestral = pbiVal;
+            if (emaeVal != null) row.emae_desestacionalizado = emaeVal;
+            byFecha.set(firstOfMonth, row);
+        }
+    }
 
     return Array.from(byFecha.values()).sort((a: any, b: any) => String(a.fecha).localeCompare(String(b.fecha)));
 }

@@ -54,10 +54,11 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         ];
 
         const methodology: MethodologyItem[] = [
-            { title: 'Base Monetaria', description: 'Saldos diarios (Variable 15) consolidados por mes mediante promedio mensual.' },
-            { title: 'Pasivos Remunerados', description: 'Integración histórica de Pases Pasivos (152), LELIQ y NOTALQ (155), LEFI (196) y Otros (198). Las series diarias se mensualizan con promedio mensual.' },
-            { title: 'Depósitos del Gobierno Nacional y Otros', description: 'Serie semanal extraída del Estado Resumido de Activos y Pasivos Semanales del BCRA (Serieanual.xls). Se mensualiza mediante promedio simple de las observaciones disponibles del mes.' },
-            { title: 'Base Monetaria Amplia', description: 'Sumatoria de Base Monetaria + Pasivos Remunerados + Depósitos del Gobierno Nacional y Otros.' },
+            { title: 'Base Monetaria', description: 'Promedio mensual de saldos diarios (BCRA Var. 15).' },
+            { title: 'Pasivos Remunerados', description: 'Promedio mensual agregado de Pases (152), LELIQ/NOTALQ (155), LEFI (196) y Otros (198).' },
+            { title: 'Depósitos del Gobierno', description: 'Promedio de observaciones semanales (BCRA Serieanual.xls).' },
+            { title: 'Base Monetaria Amplia', description: 'Suma de Base Monetaria + Pasivos Remunerados + Depósitos del Gobierno.' },
+            { title: 'Normalización a % PBI', description: 'Proporción calculada sobre el PBI anualizado estimado. El PBI del mes se infiere ajustando el último PBI trimestral (INDEC 166.2_PPIB_0_0_3) por la variación del EMAE desestacionalizado (143.3_NO_PR_2004_A_31).' },
         ];
 
         return (
@@ -68,6 +69,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 data={chartData}
                 areas={areas}
                 methodology={methodology}
+                valueFormat="percent"
             />
         );
     }

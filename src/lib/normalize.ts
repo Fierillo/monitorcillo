@@ -134,6 +134,8 @@ export function normalizeBma(rawData: any[]): any[] {
         lefiTotal: number; lefiCount: number;
         otrosTotal: number; otrosCount: number;
         depositosTesoroTotal: number; depositosTesoroCount: number;
+        pbi_trimestral: number | null;
+        emae_desestacionalizado: number | null;
     }>();
 
     for (const row of rawData) {
@@ -146,6 +148,8 @@ export function normalizeBma(rawData: any[]): any[] {
             lefiTotal: 0, lefiCount: 0,
             otrosTotal: 0, otrosCount: 0,
             depositosTesoroTotal: 0, depositosTesoroCount: 0,
+            pbi_trimestral: null,
+            emae_desestacionalizado: null,
         };
 
         const addAverage = (value: any, totalKey: 'bmTotal' | 'pasesTotal' | 'leliqTotal' | 'lefiTotal' | 'otrosTotal', countKey: 'bmCount' | 'pasesCount' | 'leliqCount' | 'lefiCount' | 'otrosCount') => {
@@ -170,34 +174,66 @@ export function normalizeBma(rawData: any[]): any[] {
             }
         }
 
+        if (row.pbi_trimestral != null) bucket.pbi_trimestral = Number(row.pbi_trimestral);
+        if (row.emae_desestacionalizado != null) bucket.emae_desestacionalizado = Number(row.emae_desestacionalizado);
+
         monthly.set(monthKey, bucket);
     }
+
+    const emaeMap: Record<string, number> = {};
+    for (const row of rawData) {
+        if (row.fecha && row.emae_desestacionalizado != null) {
+            emaeMap[row.fecha] = Number(row.emae_desestacionalizado);
+        }
+    }
+    const fallbackBase = emaeMap['2024-01-01'] || Object.values(emaeMap)[0] || null;
+
+    let lastKnownPbi: number | null = null;
+    let lastKnownEmae: number | null = null;
 
     const result = Array.from(monthly.entries())
         .map(([monthKey, bucket]) => {
             const [yyyy, mm] = monthKey.split('-');
             if (!MONTHS_NAMES[mm]) return null;
 
-            const bm = bucket.bmCount > 0 ? bucket.bmTotal / bucket.bmCount : null;
-            const pases = bucket.pasesCount > 0 ? bucket.pasesTotal / bucket.pasesCount : null;
-            const leliq = bucket.leliqCount > 0 ? bucket.leliqTotal / bucket.leliqCount : null;
-            const lefi = bucket.lefiCount > 0 ? bucket.lefiTotal / bucket.lefiCount : null;
-            const otros = bucket.otrosCount > 0 ? bucket.otrosTotal / bucket.otrosCount : null;
-            const depositosTesoro = bucket.depositosTesoroCount > 0 ? bucket.depositosTesoroTotal / bucket.depositosTesoroCount : null;
+            const year = parseInt(yyyy, 10);
+            const emaeBase = emaeMap[`${year}-01-01`] || fallbackBase;
+            
+            if (bucket.pbi_trimestral != null) lastKnownPbi = bucket.pbi_trimestral;
+            if (bucket.emae_desestacionalizado != null) lastKnownEmae = bucket.emae_desestacionalizado;
 
-            const pasivosComponentes = [pases, leliq, lefi, otros].filter((value) => value != null) as number[];
-            const pasivosRemunerados = pasivosComponentes.length > 0 ? pasivosComponentes.reduce((total, value) => total + value, 0) : null;
-            const bmAmplia = bm != null && pasivosRemunerados != null && depositosTesoro != null
-                ? bm + pasivosRemunerados + depositosTesoro
+            const pbiTrimestral = bucket.pbi_trimestral ?? lastKnownPbi;
+            const emaeDesest = bucket.emae_desestacionalizado ?? lastKnownEmae;
+
+            const pbiAnualizado = pbiTrimestral && emaeBase && emaeDesest
+                ? pbiTrimestral * (emaeDesest / emaeBase)
+                : pbiTrimestral;
+
+            const calcPct = (val: number | null) => {
+                if (val == null || !pbiAnualizado) return null;
+                return (val / pbiAnualizado) * 100;
+            };
+
+            const bmRaw = bucket.bmCount > 0 ? bucket.bmTotal / bucket.bmCount : null;
+            const pasesRaw = bucket.pasesCount > 0 ? bucket.pasesTotal / bucket.pasesCount : null;
+            const leliqRaw = bucket.leliqCount > 0 ? bucket.leliqTotal / bucket.leliqCount : null;
+            const lefiRaw = bucket.lefiCount > 0 ? bucket.lefiTotal / bucket.lefiCount : null;
+            const otrosRaw = bucket.otrosCount > 0 ? bucket.otrosTotal / bucket.otrosCount : null;
+            const depositosTesoroRaw = bucket.depositosTesoroCount > 0 ? bucket.depositosTesoroTotal / bucket.depositosTesoroCount : null;
+
+            const pasivosComponentesRaw = [pasesRaw, leliqRaw, lefiRaw, otrosRaw].filter((value) => value != null) as number[];
+            const pasivosRemuneradosRaw = pasivosComponentesRaw.length > 0 ? pasivosComponentesRaw.reduce((total, value) => total + value, 0) : null;
+            const bmAmpliaRaw = bmRaw != null && pasivosRemuneradosRaw != null && depositosTesoroRaw != null
+                ? bmRaw + pasivosRemuneradosRaw + depositosTesoroRaw
                 : null;
 
             return {
                 fecha: `${MONTHS_NAMES[mm]} ${yyyy.slice(-2)}`,
                 iso_fecha: `${monthKey}-01`,
-                BaseMonetaria: bm,
-                PasivosRemunerados: pasivosRemunerados,
-                DepositosTesoro: depositosTesoro,
-                BMAmplia: bmAmplia,
+                BaseMonetaria: calcPct(bmRaw),
+                PasivosRemunerados: calcPct(pasivosRemuneradosRaw),
+                DepositosTesoro: calcPct(depositosTesoroRaw),
+                BMAmplia: calcPct(bmAmpliaRaw),
             };
         })
         .filter((r: any) => r !== null)
@@ -220,6 +256,9 @@ export function normalizeRecaudacion(rawData: any[]): any[] {
 
     const fallbackBase = emaeMap['2024-01-01'] || Object.values(emaeMap)[0] || null;
 
+    let lastKnownPbi: number | null = null;
+    let lastKnownEmae: number | null = null;
+
     return rawData
         .filter((row: any) => row.fecha && row.fecha >= '2019-01-01' && row.recaudacion_total != null)
         .map((row: any) => {
@@ -227,9 +266,18 @@ export function normalizeRecaudacion(rawData: any[]): any[] {
             const monthStr = row.mes;
             const monthNum = parseInt(monthStr, 10);
             const emaeBase = emaeMap[`${year}-01-01`] || fallbackBase;
-            const pbiMensual = row.pbi_trimestral && emaeBase && row.emae_desestacionalizado
-                ? (row.pbi_trimestral / 3) * (row.emae_desestacionalizado / emaeBase)
-                : row.pbi_trimestral ? row.pbi_trimestral / 3 : null;
+            
+            if (row.pbi_trimestral != null) lastKnownPbi = row.pbi_trimestral;
+            if (row.emae_desestacionalizado != null) lastKnownEmae = row.emae_desestacionalizado;
+
+            const pbiTrimestral = row.pbi_trimestral ?? lastKnownPbi;
+            const emaeDesest = row.emae_desestacionalizado ?? lastKnownEmae;
+
+            const pbiAnualizado = pbiTrimestral && emaeBase && emaeDesest
+                ? pbiTrimestral * (emaeDesest / emaeBase)
+                : pbiTrimestral;
+
+            const pbiMensual = pbiAnualizado ? pbiAnualizado / 12 : null;
 
             return pbiMensual
                 ? {
