@@ -1,6 +1,6 @@
 import https from 'https';
 import * as XLSX from 'xlsx';
-import { getRawData, saveRawData, saveNormalizedData, saveIndicatorsCatalog, replaceRawData, replaceNormalizedData, IndicatorType } from './db';
+import { getRawData, saveRawData, saveIndicatorsCatalog, replaceRawData, replaceNormalizedData, IndicatorType } from './db';
 import { normalizeEmision, normalizeEmae, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo, fechaToISO, fechaToTimestamp } from './normalize';
 
 const WEEKLY_BALANCE_WORKBOOK_URL = 'https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/Serieanual.xls';
@@ -175,7 +175,7 @@ export async function fetchBmaRaw(): Promise<any[]> {
     const toDate = today.toISOString().split('T')[0];
     const fromDate = '2017-01-01';
 
-    const [baseMonetaria, pases, leliq, lefi, otros, weeklyWorkbook, pbi, emae] = await Promise.all([
+    const [baseMonetaria, pases, leliq, lefi, otros, weeklyWorkbook, pbi, emae, ipc] = await Promise.all([
         fetchBcraVariable(15, fromDate, toDate),
         fetchBcraVariable(152, fromDate, toDate),
         fetchBcraVariable(155, fromDate, toDate),
@@ -184,6 +184,7 @@ export async function fetchBmaRaw(): Promise<any[]> {
         fetchBufferFromUrl(WEEKLY_BALANCE_WORKBOOK_URL),
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=166.2_PPIB_0_0_3&limit=5000'),
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=143.3_NO_PR_2004_A_31&limit=5000'),
+        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
     ]);
 
     const depositosTesoro = extractWeeklyGovernmentDepositsSeries(weeklyWorkbook, fromDate);
@@ -217,6 +218,7 @@ export async function fetchBmaRaw(): Promise<any[]> {
     }
 
     const emaeByFecha = new Map((emae.data || []).map((row: any) => [row[0], row[1]]));
+    const ipcByFecha = new Map((ipc.data || []).map((row: any) => [row[0], row[1]]));
 
     const monthPrefixes = new Set<string>();
     for (const fecha of byFecha.keys()) {
@@ -231,11 +233,13 @@ export async function fetchBmaRaw(): Promise<any[]> {
         
         const pbiVal = pbiByQuarter.get(`${year}-Q${quarter}`);
         const emaeVal = emaeByFecha.get(firstOfMonth);
+        const ipcVal = ipcByFecha.get(firstOfMonth);
         
-        if (pbiVal != null || emaeVal != null) {
+        if (pbiVal != null || emaeVal != null || ipcVal != null) {
             const row: Record<string, any> = byFecha.get(firstOfMonth) ?? { fecha: firstOfMonth };
             if (pbiVal != null) row.pbi_trimestral = pbiVal;
             if (emaeVal != null) row.emae_desestacionalizado = emaeVal;
+            if (ipcVal != null) row.ipc_nucleo = ipcVal;
             byFecha.set(firstOfMonth, row);
         }
     }

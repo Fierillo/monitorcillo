@@ -136,6 +136,7 @@ export function normalizeBma(rawData: any[]): any[] {
         depositosTesoroTotal: number; depositosTesoroCount: number;
         pbi_trimestral: number | null;
         emae_desestacionalizado: number | null;
+        ipc_nucleo: number | null;
     }>();
 
     for (const row of rawData) {
@@ -150,14 +151,15 @@ export function normalizeBma(rawData: any[]): any[] {
             depositosTesoroTotal: 0, depositosTesoroCount: 0,
             pbi_trimestral: null,
             emae_desestacionalizado: null,
+            ipc_nucleo: null,
         };
 
-        const addAverage = (value: any, totalKey: 'bmTotal' | 'pasesTotal' | 'leliqTotal' | 'lefiTotal' | 'otrosTotal', countKey: 'bmCount' | 'pasesCount' | 'leliqCount' | 'lefiCount' | 'otrosCount') => {
+        const addAverage = (value: any, totalKey: string, countKey: string) => {
             if (value === null || value === undefined) return;
             const numericValue = Number(value);
             if (Number.isNaN(numericValue)) return;
-            bucket[totalKey] += numericValue;
-            bucket[countKey] += 1;
+            (bucket as any)[totalKey] += numericValue;
+            (bucket as any)[countKey] += 1;
         };
 
         addAverage(row.base_monetaria, 'bmTotal', 'bmCount');
@@ -176,20 +178,24 @@ export function normalizeBma(rawData: any[]): any[] {
 
         if (row.pbi_trimestral != null) bucket.pbi_trimestral = Number(row.pbi_trimestral);
         if (row.emae_desestacionalizado != null) bucket.emae_desestacionalizado = Number(row.emae_desestacionalizado);
+        if (row.ipc_nucleo != null) bucket.ipc_nucleo = Number(row.ipc_nucleo);
 
         monthly.set(monthKey, bucket);
     }
 
     const emaeMap: Record<string, number> = {};
+    const ipcMap: Record<string, number> = {};
     for (const row of rawData) {
         if (row.fecha && row.emae_desestacionalizado != null) {
             emaeMap[row.fecha] = Number(row.emae_desestacionalizado);
         }
+        if (row.fecha && row.ipc_nucleo != null) {
+            ipcMap[row.fecha] = Number(row.ipc_nucleo);
+        }
     }
-    const fallbackBase = emaeMap['2024-01-01'] || Object.values(emaeMap)[0] || null;
 
-    let lastKnownPbi: number | null = null;
-    let lastKnownEmae: number | null = null;
+    const fallbackEmae = Object.values(emaeMap).slice(-1)[0] || null;
+    const fallbackIpc = Object.values(ipcMap).slice(-1)[0] || null;
 
     const result = Array.from(monthly.entries())
         .map(([monthKey, bucket]) => {
@@ -197,16 +203,17 @@ export function normalizeBma(rawData: any[]): any[] {
             if (!MONTHS_NAMES[mm]) return null;
 
             const year = parseInt(yyyy, 10);
-            const emaeBase = emaeMap[`${year}-01-01`] || fallbackBase;
+            const emaeBase = emaeMap[`${year}-01-01`] || fallbackEmae;
+            const ipcBase = ipcMap[`${year}-01-01`] || fallbackIpc;
             
-            if (bucket.pbi_trimestral != null) lastKnownPbi = bucket.pbi_trimestral;
-            if (bucket.emae_desestacionalizado != null) lastKnownEmae = bucket.emae_desestacionalizado;
+            const pbiTrimestral = bucket.pbi_trimestral;
+            const emaeDesest = bucket.emae_desestacionalizado ?? fallbackEmae;
+            const ipcActual = bucket.ipc_nucleo ?? fallbackIpc;
 
-            const pbiTrimestral = bucket.pbi_trimestral ?? lastKnownPbi;
-            const emaeDesest = bucket.emae_desestacionalizado ?? lastKnownEmae;
-
-            const pbiAnualizado = pbiTrimestral && emaeBase && emaeDesest
-                ? pbiTrimestral * (emaeDesest / emaeBase)
+            // BMA is a stock, so it is compared against annualized GDP
+            // Recaudacion is a flow, so it is compared against monthly GDP
+            const pbiAnualizado = pbiTrimestral && emaeBase && emaeDesest && ipcBase && ipcActual
+                ? pbiTrimestral * (emaeDesest / emaeBase) * (ipcActual / ipcBase)
                 : pbiTrimestral;
 
             const calcPct = (val: number | null) => {
@@ -248,16 +255,21 @@ export function normalizeRecaudacion(rawData: any[]): any[] {
     }
 
     const emaeMap: Record<string, number> = {};
+    const ipcMap: Record<string, number> = {};
     for (const row of rawData) {
         if (row.fecha && row.emae_desestacionalizado != null) {
-            emaeMap[row.fecha] = row.emae_desestacionalizado;
+            emaeMap[row.fecha] = Number(row.emae_desestacionalizado);
+        }
+        if (row.fecha && row.ipc_nucleo != null) {
+            ipcMap[row.fecha] = Number(row.ipc_nucleo);
         }
     }
-
-    const fallbackBase = emaeMap['2024-01-01'] || Object.values(emaeMap)[0] || null;
+    const fallbackEmaeBase = emaeMap['2024-01-01'] || Object.values(emaeMap)[0] || null;
+    const fallbackIpcBase = ipcMap['2024-01-01'] || Object.values(ipcMap)[0] || null;
 
     let lastKnownPbi: number | null = null;
     let lastKnownEmae: number | null = null;
+    let lastKnownIpc: number | null = null;
 
     return rawData
         .filter((row: any) => row.fecha && row.fecha >= '2019-01-01' && row.recaudacion_total != null)
@@ -265,16 +277,19 @@ export function normalizeRecaudacion(rawData: any[]): any[] {
             const year = row.year;
             const monthStr = row.mes;
             const monthNum = parseInt(monthStr, 10);
-            const emaeBase = emaeMap[`${year}-01-01`] || fallbackBase;
+            const emaeBase = emaeMap[`${year}-01-01`] || fallbackEmaeBase;
+            const ipcBase = ipcMap[`${year}-01-01`] || fallbackIpcBase;
             
             if (row.pbi_trimestral != null) lastKnownPbi = row.pbi_trimestral;
             if (row.emae_desestacionalizado != null) lastKnownEmae = row.emae_desestacionalizado;
+            if (row.ipc_nucleo != null) lastKnownIpc = row.ipc_nucleo;
 
             const pbiTrimestral = row.pbi_trimestral ?? lastKnownPbi;
             const emaeDesest = row.emae_desestacionalizado ?? lastKnownEmae;
+            const ipcActual = row.ipc_nucleo ?? lastKnownIpc;
 
-            const pbiAnualizado = pbiTrimestral && emaeBase && emaeDesest
-                ? pbiTrimestral * (emaeDesest / emaeBase)
+            const pbiAnualizado = pbiTrimestral && emaeBase && emaeDesest && ipcBase && ipcActual
+                ? pbiTrimestral * (emaeDesest / emaeBase) * (ipcActual / ipcBase)
                 : pbiTrimestral;
 
             const pbiMensual = pbiAnualizado ? pbiAnualizado / 12 : null;
