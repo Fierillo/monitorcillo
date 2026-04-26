@@ -15,7 +15,7 @@ import {
 import { formatValueByType } from './chart/utils';
 import ChartTooltip from './chart/ChartTooltip';
 import CustomLegend from './chart/CustomLegend';
-import InteractiveBar from './chart/InteractiveBar';
+import ChartBar from './chart/ChartBar';
 import ChartLine from './chart/ChartLine';
 import ChartArea from './chart/ChartArea';
 import MethodologySection from './chart/MethodologySection';
@@ -61,21 +61,16 @@ export default function IndicatorCompositeView({
     const captureRef = useRef<HTMLDivElement>(null);
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-    const [activeMonth, setActiveMonth] = useState<string | null>(null);
     const [dimmedAreas, setDimmedAreas] = useState<Set<string>>(new Set());
     const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
 
     const visibleData = sortedData;
 
     useEffect(() => {
-        if (selectedMonth && !visibleData.some((row: any) => row.fecha === selectedMonth)) {
+        if (selectedMonth && !visibleData.some((row: any) => (row.iso_fecha || row.fecha) === selectedMonth)) {
             setSelectedMonth(null);
         }
-
-        if (activeMonth && !visibleData.some((row: any) => row.fecha === activeMonth)) {
-            setActiveMonth(null);
-        }
-    }, [visibleData, selectedMonth, activeMonth]);
+    }, [visibleData, selectedMonth]);
 
     useEffect(() => {
         if (!chartContainerRef.current) return;
@@ -214,6 +209,8 @@ export default function IndicatorCompositeView({
                                     height={chartSize.height}
                                     data={visibleData}
                                     margin={{ top: 5, right: 20, bottom: 5, left: 20 }}
+                                    barCategoryGap="0%"
+                                    stackOffset="sign"
                                     style={{ outline: 'none' }}
                                     onClick={(e: any) => {
                                         if (!e || !e.activePayload || e.activePayload.length === 0 || !e.activeTooltipIndex) {
@@ -271,6 +268,7 @@ export default function IndicatorCompositeView({
                                         />
                                     )}
                                     <Tooltip
+                                        cursor={{ stroke: '#ffffff50', strokeWidth: 1 }}
                                         content={(props) => (
                                             <ChartTooltip
                                                 chartData={sortedData}
@@ -291,14 +289,12 @@ export default function IndicatorCompositeView({
 
                                         if (areaConfig.type === 'bar') {
                                             return (
-                                                <InteractiveBar
+                                                <ChartBar
                                                     key={areaConfig.key}
                                                     areaConfig={areaConfig}
                                                     isDimmed={false}
                                                     selectedMonth={selectedMonth}
-                                                    activeMonth={activeMonth}
                                                     onSelectMonth={setSelectedMonth}
-                                                    onSetActiveMonth={setActiveMonth}
                                                 />
                                             );
                                         }
