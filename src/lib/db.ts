@@ -20,7 +20,11 @@ function getTableName(type: IndicatorType, normalized: boolean): string {
 export async function getRawData(type: IndicatorType): Promise<any[]> {
     const table = getTableName(type, false);
     try {
-        return await sql.query(`SELECT * FROM ${table} ORDER BY fecha`);
+        const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`);
+        return rows.map((r: any) => ({
+            ...r,
+            fecha: r.fecha instanceof Date ? r.fecha.toISOString().split('T')[0] : r.fecha
+        }));
     } catch (error) {
         console.error(`[db] getRawData failed for ${type}`, error);
         return [];
@@ -31,18 +35,19 @@ export async function saveRawData(type: IndicatorType, data: Record<string, any>
     const table = getTableName(type, false);
     if (data.length === 0) return;
 
-    // Process in batches of 100 to avoid too many placeholders or long queries
     const BATCH_SIZE = 100;
     for (let i = 0; i < data.length; i += BATCH_SIZE) {
         const batch = data.slice(i, i + BATCH_SIZE);
         const keys = Object.keys(batch[0]);
-        const setClause = keys.map((k, j) => `${k} = EXCLUDED.${k}`).join(', ');
+        const setClause = keys.map((k) => `${k} = EXCLUDED.${k}`).join(', ');
         
         const values: any[] = [];
         const placeholders = batch.map((row, rowIndex) => {
             const rowPlaceholders = keys.map((_, keyIndex) => {
-                const placeholderIndex = rowIndex * keys.length + keyIndex + 1;
-                values.push(row[keys[keyIndex]] === undefined ? null : row[keys[keyIndex]]);
+                const placeholderIndex = values.length + 1;
+                let val = row[keys[keyIndex]];
+                if (val === undefined) val = null;
+                values.push(val);
                 return `$${placeholderIndex}`;
             }).join(', ');
             return `(${rowPlaceholders})`;
@@ -62,185 +67,101 @@ export async function replaceRawData(type: IndicatorType, data: Record<string, a
 export async function getNormalizedData(type: IndicatorType): Promise<any[] | null> {
     const table = getTableName(type, true);
 
-    if (type === 'emision') {
-        try {
-            const rows = await sql.query(`SELECT fecha, bcra, tc, compra_dolares, vencimientos, licitado, licitaciones, resultado_fiscal, total, acumulado FROM ${table} ORDER BY fecha`);
-            if (rows.length > 0) {
-                return rows.map((row: any) => {
-                    const bcra = Number(row.bcra ?? 0);
-                    const licitaciones = Number(row.licitaciones ?? 0);
-                    const resultadoFiscal = Number(row.resultado_fiscal ?? 0);
-                    return {
-                        fecha: isoToFecha(row.fecha),
-                        iso_fecha: row.fecha,
-                        BCRA: bcra,
-                        BCRA_POS: bcra > 0 ? bcra : null,
-                        BCRA_NEG: bcra < 0 ? bcra : null,
-                        TC: Number(row.tc ?? 0),
-                        CompraDolares: Number(row.compra_dolares ?? 0),
-                        Vencimientos: Number(row.vencimientos ?? 0),
-                        Licitado: Number(row.licitado ?? 0),
-                        Licitaciones: licitaciones,
-                        Licitaciones_POS: licitaciones > 0 ? licitaciones : null,
-                        Licitaciones_NEG: licitaciones < 0 ? licitaciones : null,
-                        'Resultado fiscal': resultadoFiscal,
-                        ResultadoFiscal_POS: resultadoFiscal > 0 ? resultadoFiscal : null,
-                        ResultadoFiscal_NEG: resultadoFiscal < 0 ? resultadoFiscal : null,
-                        TOTAL: Number(row.total ?? 0),
-                        ACUMULADO: Number(row.acumulado ?? 0),
-                    };
-                });
+    try {
+        const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`);
+        if (rows.length === 0) return null;
+
+        return rows.map((row: any) => {
+            const iso_fecha = row.fecha instanceof Date ? row.fecha.toISOString().split('T')[0] : row.fecha;
+            
+            const common = {
+                fecha: type === 'emision' ? isoToFecha(iso_fecha) : isoToMonthLabel(iso_fecha),
+                iso_fecha,
+            };
+
+            if (type === 'emision') {
+                const bcra = Number(row.bcra ?? 0);
+                const licitaciones = Number(row.licitaciones ?? 0);
+                const resultadoFiscal = Number(row.resultado_fiscal ?? 0);
+                return {
+                    ...common,
+                    BCRA: bcra,
+                    BCRA_POS: bcra > 0 ? bcra : null,
+                    BCRA_NEG: bcra < 0 ? bcra : null,
+                    TC: Number(row.tc ?? 0),
+                    CompraDolares: Number(row.compra_dolares ?? 0),
+                    Vencimientos: Number(row.vencimientos ?? 0),
+                    Licitado: Number(row.licitado ?? 0),
+                    Licitaciones: licitaciones,
+                    Licitaciones_POS: licitaciones > 0 ? licitaciones : null,
+                    Licitaciones_NEG: licitaciones < 0 ? licitaciones : null,
+                    'Resultado fiscal': resultadoFiscal,
+                    ResultadoFiscal_POS: resultadoFiscal > 0 ? resultadoFiscal : null,
+                    ResultadoFiscal_NEG: resultadoFiscal < 0 ? resultadoFiscal : null,
+                    TOTAL: Number(row.total ?? 0),
+                    ACUMULADO: Number(row.acumulado ?? 0),
+                };
             }
-        } catch {}
 
-        try {
-            const rawRows = await sql.query(`SELECT fecha, compra_dolares, tc, bcra, vencimientos, licitado, resultado_fiscal FROM ${TABLES.emision.raw} ORDER BY fecha`);
-            if (rawRows.length === 0) {
-                return null;
+            if (type === 'emae') {
+                return {
+                    ...common,
+                    emae: Number(row.emae ?? 0),
+                    emae_desestacionalizado: row.emae_desestacionalizado == null ? null : Number(row.emae_desestacionalizado),
+                    emae_tendencia: row.emae_tendencia == null ? null : Number(row.emae_tendencia),
+                };
             }
 
-            return normalizeEmision(rawRows.map((row: any) => ({
-                fecha: row.fecha,
-                compra_dolares: Number(row.compra_dolares ?? 0),
-                tc: Number(row.tc ?? 0),
-                bcra: Number(row.bcra ?? 0),
-                vencimientos: Number(row.vencimientos ?? 0),
-                licitado: Number(row.licitado ?? 0),
-                resultado_fiscal: Number(row.resultado_fiscal ?? 0),
-            })));
-        } catch {
-            return null;
-        }
-    }
+            if (type === 'bma') {
+                return {
+                    ...common,
+                    BaseMonetaria: row.base_monetaria == null ? null : Number(row.base_monetaria),
+                    PasivosRemunerados: row.pasivos_remunerados == null ? null : Number(row.pasivos_remunerados),
+                    DepositosTesoro: row.depositos_tesoro == null ? null : Number(row.depositos_tesoro),
+                    BMAmplia: row.bma_amplia == null ? null : Number(row.bma_amplia),
+                };
+            }
 
-    if (type === 'emae') {
-        try {
-            const rows = await sql.query(`SELECT fecha, emae, emae_desestacionalizado, emae_tendencia FROM ${table} ORDER BY fecha`);
-            return rows.length > 0 ? rows.map((row: any) => ({
-                fecha: isoToMonthLabel(row.fecha),
-                iso_fecha: row.fecha,
-                emae: Number(row.emae ?? 0),
-                emae_desestacionalizado: row.emae_desestacionalizado == null ? null : Number(row.emae_desestacionalizado),
-                emae_tendencia: row.emae_tendencia == null ? null : Number(row.emae_tendencia),
-            })) : null;
-        } catch (error) {
-            console.error('[db] getNormalizedData failed for emae', error);
-            return null;
-        }
-    }
+            if (type === 'reca') {
+                return {
+                    ...common,
+                    mes: row.mes,
+                    year: Number(row.year ?? 0),
+                    pctPbi: row.pct_pbi == null ? null : Number(row.pct_pbi),
+                };
+            }
 
-    if (type === 'bma') {
-        try {
-            const rows = await sql.query(`SELECT fecha, base_monetaria, pasivos_remunerados, depositos_tesoro, bma_amplia FROM ${table} ORDER BY fecha`);
-            return rows.length > 0 ? rows.map((row: any) => ({
-                fecha: isoToMonthLabel(row.fecha),
-                iso_fecha: row.fecha,
-                BaseMonetaria: row.base_monetaria == null ? null : Number(row.base_monetaria),
-                PasivosRemunerados: row.pasivos_remunerados == null ? null : Number(row.pasivos_remunerados),
-                DepositosTesoro: row.depositos_tesoro == null ? null : Number(row.depositos_tesoro),
-                BMAmplia: row.bma_amplia == null ? null : Number(row.bma_amplia),
-            })) : null;
-        } catch (error) {
-            console.error('[db] getNormalizedData failed for bma', error);
-            return null;
-        }
-    }
+            if (type === 'poder') {
+                return {
+                    ...common,
+                    blanco: row.blanco == null ? null : Number(row.blanco),
+                    negro: row.negro == null ? null : Number(row.negro),
+                    privado: row.privado == null ? null : Number(row.privado),
+                    publico: row.publico == null ? null : Number(row.publico),
+                    ripte: row.ripte == null ? null : Number(row.ripte),
+                    jubilacion: row.jubilacion == null ? null : Number(row.jubilacion),
+                };
+            }
 
-    if (type === 'reca') {
-        try {
-            const rows = await sql.query(`SELECT fecha, mes, year, pct_pbi FROM ${table} ORDER BY fecha`);
-            return rows.length > 0 ? rows.map((row: any) => ({
-                fecha: isoToMonthLabel(row.fecha),
-                iso_fecha: row.fecha,
-                mes: row.mes,
-                year: Number(row.year ?? 0),
-                pctPbi: row.pct_pbi == null ? null : Number(row.pct_pbi),
-            })) : null;
-        } catch (error) {
-            console.error('[db] getNormalizedData failed for reca', error);
-            return null;
-        }
+            return row;
+        });
+    } catch (error) {
+        console.error(`[db] getNormalizedData failed for ${type}`, error);
+        return null;
     }
-
-    if (type === 'poder') {
-        try {
-            const rows = await sql.query(`SELECT fecha, blanco, negro, privado, publico, ripte, jubilacion FROM ${table} ORDER BY fecha`);
-            return rows.length > 0 ? rows.map((row: any) => ({
-                fecha: isoToMonthLabel(row.fecha),
-                iso_fecha: row.fecha,
-                blanco: row.blanco == null ? null : Number(row.blanco),
-                negro: row.negro == null ? null : Number(row.negro),
-                privado: row.privado == null ? null : Number(row.privado),
-                publico: row.publico == null ? null : Number(row.publico),
-                ripte: row.ripte == null ? null : Number(row.ripte),
-                jubilacion: row.jubilacion == null ? null : Number(row.jubilacion),
-            })) : null;
-        } catch (error) {
-            console.error('[db] getNormalizedData failed for poder', error);
-            return null;
-        }
-    }
-
-    return null;
 }
 
 export async function saveNormalizedData(type: IndicatorType, data: Record<string, any>[]): Promise<void> {
     const table = getTableName(type, true);
     if (data.length === 0) return;
 
-    if (type === 'emision') {
-        // Emision has specific columns
-        const BATCH_SIZE = 50;
-        for (let i = 0; i < data.length; i += BATCH_SIZE) {
-            const batch = data.slice(i, i + BATCH_SIZE);
-            const keys = ['fecha', 'bcra', 'tc', 'compra_dolares', 'vencimientos', 'licitado', 'licitaciones', 'resultado_fiscal', 'total', 'acumulado'];
-            const setClause = keys.map(k => `${k} = EXCLUDED.${k}`).join(', ');
-            
-            const values: any[] = [];
-            const placeholders = batch.map((row, rowIndex) => {
-                const fecha = typeof row.iso_fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.iso_fecha)
-                    ? row.iso_fecha
-                    : (typeof row.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.fecha) ? row.fecha : '');
-
-                if (!fecha) return null;
-
-                const rowValues = [
-                    fecha,
-                    Number(row.BCRA ?? 0),
-                    Number(row.TC ?? 0),
-                    Number(row.CompraDolares ?? 0),
-                    Number(row.Vencimientos ?? 0),
-                    Number(row.Licitado ?? 0),
-                    Number(row.Licitaciones ?? 0),
-                    Number(row['Resultado fiscal'] ?? 0),
-                    Number(row.TOTAL ?? 0),
-                    Number(row.ACUMULADO ?? 0)
-                ];
-
-                const rowPlaceholders = rowValues.map((_, valIndex) => {
-                    const placeholderIndex = values.length + valIndex + 1;
-                    return `$${placeholderIndex}`;
-                }).join(', ');
-                
-                values.push(...rowValues);
-                return `(${rowPlaceholders})`;
-            }).filter(p => p !== null).join(', ');
-
-            if (!placeholders) continue;
-
-            const query = `INSERT INTO ${table} (${keys.join(', ')}) VALUES ${placeholders} ON CONFLICT (fecha) DO UPDATE SET ${setClause}, last_update = NOW()`;
-            await sql.query(query, values);
-        }
-        return;
-    }
-
-    // Other indicators might still use different schemas, but let's handle the explicit ones
     const BATCH_SIZE = 50;
     for (let i = 0; i < data.length; i += BATCH_SIZE) {
         const batch = data.slice(i, i + BATCH_SIZE);
         
         let keys: string[] = [];
-        if (type === 'emae') keys = ['fecha', 'emae', 'emae_desestacionalizado', 'emae_tendencia'];
+        if (type === 'emision') keys = ['fecha', 'bcra', 'tc', 'compra_dolares', 'vencimientos', 'licitado', 'licitaciones', 'resultado_fiscal', 'total', 'acumulado'];
+        else if (type === 'emae') keys = ['fecha', 'emae', 'emae_desestacionalizado', 'emae_tendencia'];
         else if (type === 'bma') keys = ['fecha', 'base_monetaria', 'pasivos_remunerados', 'depositos_tesoro', 'bma_amplia'];
         else if (type === 'reca') keys = ['fecha', 'mes', 'year', 'pct_pbi'];
         else if (type === 'poder') keys = ['fecha', 'blanco', 'negro', 'privado', 'publico', 'ripte', 'jubilacion'];
@@ -249,12 +170,14 @@ export async function saveNormalizedData(type: IndicatorType, data: Record<strin
 
         const setClause = keys.map(k => `${k} = EXCLUDED.${k}`).join(', ');
         const values: any[] = [];
-        const placeholders = batch.map((row, rowIndex) => {
-            const fecha = row.iso_fecha || fechaToISO(row.fecha) || row.fecha;
-            if (!fecha) return null;
+        const placeholders = batch.map((row) => {
+            const fecha = row.iso_fecha || (typeof row.fecha === 'string' && row.fecha.includes('-') ? row.fecha : fechaToISO(row.fecha));
+            if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return null;
 
             const rowValues: any[] = [fecha];
-            if (type === 'emae') {
+            if (type === 'emision') {
+                rowValues.push(Number(row.BCRA ?? 0), Number(row.TC ?? 0), Number(row.CompraDolares ?? 0), Number(row.Vencimientos ?? 0), Number(row.Licitado ?? 0), Number(row.Licitaciones ?? 0), Number(row['Resultado fiscal'] ?? 0), Number(row.TOTAL ?? 0), Number(row.ACUMULADO ?? 0));
+            } else if (type === 'emae') {
                 rowValues.push(Number(row.emae ?? 0), row.emae_desestacionalizado == null ? null : Number(row.emae_desestacionalizado), row.emae_tendencia == null ? null : Number(row.emae_tendencia));
             } else if (type === 'bma') {
                 rowValues.push(row.BaseMonetaria == null ? null : Number(row.BaseMonetaria), row.PasivosRemunerados == null ? null : Number(row.PasivosRemunerados), row.DepositosTesoro == null ? null : Number(row.DepositosTesoro), row.BMAmplia == null ? null : Number(row.BMAmplia));
@@ -288,8 +211,12 @@ export async function replaceNormalizedData(type: IndicatorType, data: Record<st
 
 export async function getLastUpdate(type: IndicatorType): Promise<string | null> {
     const table = getTableName(type, true);
-    const rows = await sql.query(`SELECT last_update FROM ${table} ORDER BY last_update DESC LIMIT 1`);
-    return rows.length > 0 ? rows[0].last_update : null;
+    try {
+        const rows = await sql.query(`SELECT last_update FROM ${table} ORDER BY last_update DESC LIMIT 1`);
+        return rows.length > 0 ? rows[0].last_update : null;
+    } catch {
+        return null;
+    }
 }
 
 export interface CatalogIndicator {
@@ -332,3 +259,15 @@ export async function saveIndicatorsCatalog(data: Record<string, any>[]): Promis
         ]);
     }
 }
+
+export default {
+    getRawData,
+    saveRawData,
+    replaceRawData,
+    getNormalizedData,
+    saveNormalizedData,
+    replaceNormalizedData,
+    getLastUpdate,
+    getIndicatorsCatalog,
+    saveIndicatorsCatalog
+};
