@@ -29,16 +29,26 @@ export async function getRawData(type: IndicatorType): Promise<any[]> {
 
 export async function saveRawData(type: IndicatorType, data: Record<string, any>[]): Promise<void> {
     const table = getTableName(type, false);
-    
-    for (const row of data) {
-        const keys = Object.keys(row);
-        const values = Object.values(row).map(v => v === undefined ? null : v);
+    if (data.length === 0) return;
+
+    // Process in batches of 100 to avoid too many placeholders or long queries
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < data.length; i += BATCH_SIZE) {
+        const batch = data.slice(i, i + BATCH_SIZE);
+        const keys = Object.keys(batch[0]);
+        const setClause = keys.map((k, j) => `${k} = EXCLUDED.${k}`).join(', ');
         
-        const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-        const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
-        
-        const query = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders}) ON CONFLICT (fecha) DO UPDATE SET ${setClause}`;
-        
+        const values: any[] = [];
+        const placeholders = batch.map((row, rowIndex) => {
+            const rowPlaceholders = keys.map((_, keyIndex) => {
+                const placeholderIndex = rowIndex * keys.length + keyIndex + 1;
+                values.push(row[keys[keyIndex]] === undefined ? null : row[keys[keyIndex]]);
+                return `$${placeholderIndex}`;
+            }).join(', ');
+            return `(${rowPlaceholders})`;
+        }).join(', ');
+
+        const query = `INSERT INTO ${table} (${keys.join(', ')}) VALUES ${placeholders} ON CONFLICT (fecha) DO UPDATE SET ${setClause}`;
         await sql.query(query, values);
     }
 }
@@ -176,122 +186,97 @@ export async function getNormalizedData(type: IndicatorType): Promise<any[] | nu
 
 export async function saveNormalizedData(type: IndicatorType, data: Record<string, any>[]): Promise<void> {
     const table = getTableName(type, true);
+    if (data.length === 0) return;
 
     if (type === 'emision') {
-        for (const row of data) {
-            const fecha = typeof row.iso_fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.iso_fecha)
-                ? row.iso_fecha
-                : (typeof row.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.fecha) ? row.fecha : '');
+        // Emision has specific columns
+        const BATCH_SIZE = 50;
+        for (let i = 0; i < data.length; i += BATCH_SIZE) {
+            const batch = data.slice(i, i + BATCH_SIZE);
+            const keys = ['fecha', 'bcra', 'tc', 'compra_dolares', 'vencimientos', 'licitado', 'licitaciones', 'resultado_fiscal', 'total', 'acumulado'];
+            const setClause = keys.map(k => `${k} = EXCLUDED.${k}`).join(', ');
+            
+            const values: any[] = [];
+            const placeholders = batch.map((row, rowIndex) => {
+                const fecha = typeof row.iso_fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.iso_fecha)
+                    ? row.iso_fecha
+                    : (typeof row.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.fecha) ? row.fecha : '');
 
-            if (!fecha) continue;
+                if (!fecha) return null;
 
-            const query = `
-                INSERT INTO ${table} (fecha, bcra, tc, compra_dolares, vencimientos, licitado, licitaciones, resultado_fiscal, total, acumulado, last_update)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-                ON CONFLICT (fecha) DO UPDATE SET
-                    bcra = EXCLUDED.bcra,
-                    tc = EXCLUDED.tc,
-                    compra_dolares = EXCLUDED.compra_dolares,
-                    vencimientos = EXCLUDED.vencimientos,
-                    licitado = EXCLUDED.licitado,
-                    licitaciones = EXCLUDED.licitaciones,
-                    resultado_fiscal = EXCLUDED.resultado_fiscal,
-                    total = EXCLUDED.total,
-                    acumulado = EXCLUDED.acumulado,
-                    last_update = NOW()
-            `;
+                const rowValues = [
+                    fecha,
+                    Number(row.BCRA ?? 0),
+                    Number(row.TC ?? 0),
+                    Number(row.CompraDolares ?? 0),
+                    Number(row.Vencimientos ?? 0),
+                    Number(row.Licitado ?? 0),
+                    Number(row.Licitaciones ?? 0),
+                    Number(row['Resultado fiscal'] ?? 0),
+                    Number(row.TOTAL ?? 0),
+                    Number(row.ACUMULADO ?? 0)
+                ];
 
-            await sql.query(query, [
-                fecha,
-                Number(row.BCRA ?? 0),
-                Number(row.TC ?? 0),
-                Number(row.CompraDolares ?? 0),
-                Number(row.Vencimientos ?? 0),
-                Number(row.Licitado ?? 0),
-                Number(row.Licitaciones ?? 0),
-                Number(row['Resultado fiscal'] ?? 0),
-                Number(row.TOTAL ?? 0),
-                Number(row.ACUMULADO ?? 0),
-            ]);
-        }
+                const rowPlaceholders = rowValues.map((_, valIndex) => {
+                    const placeholderIndex = values.length + valIndex + 1;
+                    return `$${placeholderIndex}`;
+                }).join(', ');
+                
+                values.push(...rowValues);
+                return `(${rowPlaceholders})`;
+            }).filter(p => p !== null).join(', ');
 
-        return;
-    }
+            if (!placeholders) continue;
 
-    if (type === 'emae') {
-        for (const row of data) {
-            const fecha = row.iso_fecha || fechaToISO(row.fecha) || row.fecha;
-            if (!fecha) continue;
-            await sql.query(
-                `INSERT INTO ${table} (fecha, emae, emae_desestacionalizado, emae_tendencia, last_update)
-                 VALUES ($1, $2, $3, $4, NOW())
-                 ON CONFLICT (fecha) DO UPDATE SET
-                   emae = EXCLUDED.emae,
-                   emae_desestacionalizado = EXCLUDED.emae_desestacionalizado,
-                   emae_tendencia = EXCLUDED.emae_tendencia,
-                   last_update = NOW()`,
-                [fecha, Number(row.emae ?? 0), row.emae_desestacionalizado == null ? null : Number(row.emae_desestacionalizado), row.emae_tendencia == null ? null : Number(row.emae_tendencia)]
-            );
+            const query = `INSERT INTO ${table} (${keys.join(', ')}) VALUES ${placeholders} ON CONFLICT (fecha) DO UPDATE SET ${setClause}, last_update = NOW()`;
+            await sql.query(query, values);
         }
         return;
     }
 
-    if (type === 'bma') {
-        for (const row of data) {
-            const fecha = row.iso_fecha || fechaToISO(row.fecha) || row.fecha;
-            if (!fecha) continue;
-            await sql.query(
-                `INSERT INTO ${table} (fecha, base_monetaria, pasivos_remunerados, depositos_tesoro, bma_amplia, last_update)
-                 VALUES ($1, $2, $3, $4, $5, NOW())
-                 ON CONFLICT (fecha) DO UPDATE SET
-                   base_monetaria = EXCLUDED.base_monetaria,
-                   pasivos_remunerados = EXCLUDED.pasivos_remunerados,
-                   depositos_tesoro = EXCLUDED.depositos_tesoro,
-                   bma_amplia = EXCLUDED.bma_amplia,
-                   last_update = NOW()`,
-                [fecha, row.BaseMonetaria == null ? null : Number(row.BaseMonetaria), row.PasivosRemunerados == null ? null : Number(row.PasivosRemunerados), row.DepositosTesoro == null ? null : Number(row.DepositosTesoro), row.BMAmplia == null ? null : Number(row.BMAmplia)]
-            );
-        }
-        return;
-    }
+    // Other indicators might still use different schemas, but let's handle the explicit ones
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < data.length; i += BATCH_SIZE) {
+        const batch = data.slice(i, i + BATCH_SIZE);
+        
+        let keys: string[] = [];
+        if (type === 'emae') keys = ['fecha', 'emae', 'emae_desestacionalizado', 'emae_tendencia'];
+        else if (type === 'bma') keys = ['fecha', 'base_monetaria', 'pasivos_remunerados', 'depositos_tesoro', 'bma_amplia'];
+        else if (type === 'reca') keys = ['fecha', 'mes', 'year', 'pct_pbi'];
+        else if (type === 'poder') keys = ['fecha', 'blanco', 'negro', 'privado', 'publico', 'ripte', 'jubilacion'];
+        
+        if (keys.length === 0) continue;
 
-    if (type === 'reca') {
-        for (const row of data) {
+        const setClause = keys.map(k => `${k} = EXCLUDED.${k}`).join(', ');
+        const values: any[] = [];
+        const placeholders = batch.map((row, rowIndex) => {
             const fecha = row.iso_fecha || fechaToISO(row.fecha) || row.fecha;
-            if (!fecha) continue;
-            await sql.query(
-                `INSERT INTO ${table} (fecha, mes, year, pct_pbi, last_update)
-                 VALUES ($1, $2, $3, $4, NOW())
-                 ON CONFLICT (fecha) DO UPDATE SET
-                   mes = EXCLUDED.mes,
-                   year = EXCLUDED.year,
-                   pct_pbi = EXCLUDED.pct_pbi,
-                   last_update = NOW()`,
-                [fecha, row.mes ?? null, row.year == null ? null : Number(row.year), row.pctPbi == null ? null : Number(row.pctPbi)]
-            );
-        }
-        return;
-    }
+            if (!fecha) return null;
 
-    if (type === 'poder') {
-        for (const row of data) {
-            const fecha = row.iso_fecha || fechaToISO(row.fecha) || row.fecha;
-            if (!fecha) continue;
-            await sql.query(
-                `INSERT INTO ${table} (fecha, blanco, negro, privado, publico, ripte, jubilacion, last_update)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-                 ON CONFLICT (fecha) DO UPDATE SET
-                   blanco = EXCLUDED.blanco,
-                   negro = EXCLUDED.negro,
-                   privado = EXCLUDED.privado,
-                   publico = EXCLUDED.publico,
-                   ripte = EXCLUDED.ripte,
-                   jubilacion = EXCLUDED.jubilacion,
-                   last_update = NOW()`,
-                [fecha, row.blanco == null ? null : Number(row.blanco), row.negro == null ? null : Number(row.negro), row.privado == null ? null : Number(row.privado), row.publico == null ? null : Number(row.publico), row.ripte == null ? null : Number(row.ripte), row.jubilacion == null ? null : Number(row.jubilacion)]
-            );
-        }
-        return;
+            const rowValues: any[] = [fecha];
+            if (type === 'emae') {
+                rowValues.push(Number(row.emae ?? 0), row.emae_desestacionalizado == null ? null : Number(row.emae_desestacionalizado), row.emae_tendencia == null ? null : Number(row.emae_tendencia));
+            } else if (type === 'bma') {
+                rowValues.push(row.BaseMonetaria == null ? null : Number(row.BaseMonetaria), row.PasivosRemunerados == null ? null : Number(row.PasivosRemunerados), row.DepositosTesoro == null ? null : Number(row.DepositosTesoro), row.BMAmplia == null ? null : Number(row.BMAmplia));
+            } else if (type === 'reca') {
+                rowValues.push(row.mes ?? null, row.year == null ? null : Number(row.year), row.pctPbi == null ? null : Number(row.pctPbi));
+            } else if (type === 'poder') {
+                rowValues.push(row.blanco == null ? null : Number(row.blanco), row.negro == null ? null : Number(row.negro), row.privado == null ? null : Number(row.privado), row.publico == null ? null : Number(row.publico), row.ripte == null ? null : Number(row.ripte), row.jubilacion == null ? null : Number(row.jubilacion));
+            }
+
+            const rowPlaceholders = rowValues.map((_, valIndex) => {
+                const placeholderIndex = values.length + valIndex + 1;
+                return `$${placeholderIndex}`;
+            }).join(', ');
+
+            values.push(...rowValues);
+            return `(${rowPlaceholders})`;
+        }).filter(p => p !== null).join(', ');
+
+        if (!placeholders) continue;
+
+        const query = `INSERT INTO ${table} (${keys.join(', ')}) VALUES ${placeholders} ON CONFLICT (fecha) DO UPDATE SET ${setClause}, last_update = NOW()`;
+        await sql.query(query, values);
     }
 }
 

@@ -101,6 +101,9 @@ CREATE TABLE IF NOT EXISTS bma_raw (
     lefi DECIMAL,
     otros DECIMAL,
     depositos_tesoro DECIMAL,
+    pbi_trimestral DECIMAL,
+    emae_desestacionalizado DECIMAL,
+    ipc_nucleo DECIMAL,
     fetched_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -128,6 +131,7 @@ ALTER TABLE bma_raw ADD COLUMN IF NOT EXISTS otros DECIMAL;
 ALTER TABLE bma_raw ADD COLUMN IF NOT EXISTS depositos_tesoro DECIMAL;
 ALTER TABLE bma_raw ADD COLUMN IF NOT EXISTS pbi_trimestral DECIMAL;
 ALTER TABLE bma_raw ADD COLUMN IF NOT EXISTS emae_desestacionalizado DECIMAL;
+ALTER TABLE bma_raw ADD COLUMN IF NOT EXISTS ipc_nucleo DECIMAL;
 ALTER TABLE bma_raw DROP COLUMN IF EXISTS base;
 ALTER TABLE bma_raw DROP COLUMN IF EXISTS tesoro;
 
