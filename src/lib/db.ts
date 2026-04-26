@@ -20,7 +20,7 @@ function getTableName(type: IndicatorType, normalized: boolean): string {
 export async function getRawData(type: IndicatorType): Promise<any[]> {
     const table = getTableName(type, false);
     try {
-        const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`);
+        const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`, []);
         return rows.map((r: any) => ({
             ...r,
             fecha: r.fecha instanceof Date ? r.fecha.toISOString().split('T')[0] : r.fecha
@@ -35,32 +35,45 @@ export async function saveRawData(type: IndicatorType, data: Record<string, any>
     const table = getTableName(type, false);
     if (data.length === 0) return;
 
-    const BATCH_SIZE = 100;
-    for (let i = 0; i < data.length; i += BATCH_SIZE) {
-        const batch = data.slice(i, i + BATCH_SIZE);
-        const keys = Object.keys(batch[0]);
-        const setClause = keys.map((k) => `${k} = EXCLUDED.${k}`).join(', ');
-        
-        const values: any[] = [];
-        const placeholders = batch.map((row, rowIndex) => {
-            const rowPlaceholders = keys.map((_, keyIndex) => {
-                const placeholderIndex = values.length + 1;
-                let val = row[keys[keyIndex]];
-                if (val === undefined) val = null;
-                values.push(val);
-                return `$${placeholderIndex}`;
-            }).join(', ');
-            return `(${rowPlaceholders})`;
-        }).join(', ');
+    // Group rows by their set of keys to send efficient homogeneous batches
+    const groups = new Map<string, Record<string, any>[]>();
+    for (const row of data) {
+        const keys = Object.keys(row).sort().join(',');
+        const group = groups.get(keys) || [];
+        group.push(row);
+        groups.set(keys, group);
+    }
 
-        const query = `INSERT INTO ${table} (${keys.join(', ')}) VALUES ${placeholders} ON CONFLICT (fecha) DO UPDATE SET ${setClause}`;
-        await sql.query(query, values);
+    for (const [keyString, rows] of groups.entries()) {
+        const keys = keyString.split(',');
+        const BATCH_SIZE = 100;
+        
+        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+            const batch = rows.slice(i, i + BATCH_SIZE);
+            const setClause = keys.filter(k => k !== 'fecha').map((k) => `${k} = EXCLUDED.${k}`).join(', ');
+            
+            const values: any[] = [];
+            const placeholders = batch.map((row, rowIndex) => {
+                const rowPlaceholders = keys.map((key) => {
+                    const placeholderIndex = values.length + 1;
+                    let val = row[key];
+                    if (val === undefined) val = null;
+                    values.push(val);
+                    return `$${placeholderIndex}`;
+                }).join(', ');
+                return `(${rowPlaceholders})`;
+            }).join(', ');
+
+            const updatePart = setClause ? `ON CONFLICT (fecha) DO UPDATE SET ${setClause}` : 'ON CONFLICT (fecha) DO NOTHING';
+            const query = `INSERT INTO ${table} (${keys.join(', ')}) VALUES ${placeholders} ${updatePart}`;
+            await sql.query(query, values);
+        }
     }
 }
 
 export async function replaceRawData(type: IndicatorType, data: Record<string, any>[]): Promise<void> {
     const table = getTableName(type, false);
-    await sql.query(`DELETE FROM ${table}`);
+    await sql.query(`DELETE FROM ${table}`, []);
     await saveRawData(type, data);
 }
 
@@ -68,7 +81,7 @@ export async function getNormalizedData(type: IndicatorType): Promise<any[] | nu
     const table = getTableName(type, true);
 
     try {
-        const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`);
+        const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`, []);
         if (rows.length === 0) return null;
 
         return rows.map((row: any) => {
@@ -205,14 +218,14 @@ export async function saveNormalizedData(type: IndicatorType, data: Record<strin
 
 export async function replaceNormalizedData(type: IndicatorType, data: Record<string, any>[]): Promise<void> {
     const table = getTableName(type, true);
-    await sql.query(`DELETE FROM ${table}`);
+    await sql.query(`DELETE FROM ${table}`, []);
     await saveNormalizedData(type, data);
 }
 
 export async function getLastUpdate(type: IndicatorType): Promise<string | null> {
     const table = getTableName(type, true);
     try {
-        const rows = await sql.query(`SELECT last_update FROM ${table} ORDER BY last_update DESC LIMIT 1`);
+        const rows = await sql.query(`SELECT last_update FROM ${table} ORDER BY last_update DESC LIMIT 1`, []);
         return rows.length > 0 ? rows[0].last_update : null;
     } catch {
         return null;
@@ -233,7 +246,12 @@ export interface CatalogIndicator {
 }
 
 export async function getIndicatorsCatalog(): Promise<any[]> {
-    return sql.query('SELECT * FROM indicators_catalog ORDER BY category, indicador');
+    try {
+        return await sql.query('SELECT * FROM indicators_catalog ORDER BY category, indicador', []);
+    } catch (error) {
+        console.error('[db] getIndicatorsCatalog failed', error);
+        return [];
+    }
 }
 
 export async function saveIndicatorsCatalog(data: Record<string, any>[]): Promise<void> {
