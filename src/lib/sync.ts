@@ -361,8 +361,9 @@ export async function syncEmision(): Promise<{ appended: number; total: number }
                 return null;
             }
 
+            // ONLY return API columns for existing rows to protect manual ones
             return {
-                ...existing,
+                fecha: row.fecha,
                 compra_dolares: row.compra_dolares,
                 tc: row.tc,
                 bcra: row.bcra,
