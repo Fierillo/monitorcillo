@@ -6,15 +6,17 @@ export const SPANISH_MONTHS: Record<string, string> = {
 
 export type ChartValueFormat = 'billions' | 'index' | 'millions' | 'percent';
 
-export function formatValueByType(value: number, format?: ChartValueFormat): string {
-    if (format === 'index') return Math.round(value).toString();
+export function formatValueByType(value: number, format?: ChartValueFormat, decimals: number = 0): string {
+    const options = { minimumFractionDigits: decimals, maximumFractionDigits: decimals };
+    
+    if (format === 'index') return value.toLocaleString('es-AR', options);
     if (format === 'millions') return `$${Math.round(value).toLocaleString('es-AR')}M`;
     if (format === 'billions') {
         const billones = value / 1000000;
-        return `$${Math.round(billones).toLocaleString('es-AR')}B`;
+        return `$${billones.toLocaleString('es-AR', options)}B`;
     }
-    if (format === 'percent') return `${Math.round(value)}%`;
-    return Math.round(value).toLocaleString('es-AR');
+    if (format === 'percent') return `${value.toLocaleString('es-AR', options)}%`;
+    return value.toLocaleString('es-AR', options);
 }
 
 export interface ChartAxisDomainParams {

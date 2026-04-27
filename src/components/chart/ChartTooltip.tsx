@@ -48,7 +48,7 @@ export default function ChartTooltip({
                         paddingBottom: isCurrent ? '4px' : '0'
                     }}
                 >
-                    {SPANISH_MONTHS[rowData.mes]} {String(row.year).slice(-2)}: {Math.round(row.pctPbi)}% PIB
+                    {SPANISH_MONTHS[rowData.mes]} {String(row.year).slice(-2)}: {row.pctPbi.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% PIB
                 </div>
             );
         });
@@ -66,7 +66,7 @@ export default function ChartTooltip({
 
         return (
             <div key={area.key} style={{ color: area.color, fontWeight: 'bold' }}>
-                {area.name}: {formatValueByType(Number(value), valueFormat)}
+                {area.name}: {formatValueByType(Number(value), valueFormat, 1)}
             </div>
         );
     }).filter(Boolean);
