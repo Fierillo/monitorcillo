@@ -247,24 +247,73 @@ export async function fetchBmaRaw(): Promise<any[]> {
     return Array.from(byFecha.values()).sort((a: any, b: any) => String(a.fecha).localeCompare(String(b.fecha)));
 }
 
+function fetchCSV(url: string): Promise<string[][]> {
+    return new Promise((resolve) => {
+        const agent = new https.Agent({ rejectUnauthorized: false });
+        https.get(url, { agent }, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                    const rows = data.split('\n')
+                        .map(line => line.trim().split(','))
+                        .filter(row => row.length > 1);
+                    resolve(rows);
+                } else {
+                    resolve([]);
+                }
+            });
+        }).on('error', () => resolve([]));
+    });
+}
+
 export async function fetchPoderAdquisitivoRaw(): Promise<any[]> {
-    const [ipc, salarios] = await Promise.all([
+    const [ipc, jubilaciones, salariosCsv, ripteCsv] = await Promise.all([
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
-        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=149.1_TL_REGIADO_OCTU_0_16,149.1_SOR_PRIADO_OCTU_0_28,149.1_SOR_PRIADO_OCTU_0_25,149.1_SOR_PUBICO_OCTU_0_14,158.1_REPTE_0_0_5,58.1_MP_0_M_24&limit=5000'),
+        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=58.1_MP_0_M_24&limit=5000'),
+        fetchCSV('https://infra.datos.gob.ar/catalog/sspm/dataset/149/distribution/149.1/download/indice-salarios-periodicidad-mensual-base-octubre-2016.csv'),
+        fetchCSV('https://infra.datos.gob.ar/catalog/sspm/dataset/158/distribution/158.1/download/remuneracion-imponible-promedio-trabajadores-estables-ripte-total-pais-pesos-serie-mensual.csv'),
     ]);
 
     const ipcByFecha = new Map((ipc.data || []).map((row: any) => [row[0], row[1]]));
+    const jubilacionesByFecha = new Map((jubilaciones.data || []).map((row: any) => [row[0], row[1]]));
+    const ripteByFecha = new Map(ripteCsv.slice(1).map(row => [row[0], row[1]]));
 
-    return (salarios.data || []).map((row: any) => ({
-        fecha: row[0],
-        ipc_nucleo: ipcByFecha.get(row[0]) ?? null,
-        salario_registrado: row[1] ?? null,
-        salario_no_registrado: row[2] ?? null,
-        salario_privado: row[3] ?? null,
-        salario_publico: row[4] ?? null,
-        ripte: row[5] ?? null,
-        jubilacion_minima: row[6] ?? null,
-    }));
+    const combinedMap = new Map<string, any>();
+
+    // Use salaries CSV as base for dates since it's the primary series
+    salariosCsv.slice(1).forEach(row => {
+        const fecha = row[0];
+        if (!fecha) return;
+        combinedMap.set(fecha, {
+            fecha,
+            ipc_nucleo: ipcByFecha.get(fecha) ?? null,
+            salario_registrado: row[2] ? Number(row[2]) : null,
+            salario_no_registrado: row[5] ? Number(row[5]) : null,
+            salario_privado: row[3] ? Number(row[3]) : null,
+            salario_publico: row[4] ? Number(row[4]) : null,
+            ripte: ripteByFecha.get(fecha) ? Number(ripteByFecha.get(fecha)) : null,
+            jubilacion_minima: jubilacionesByFecha.get(fecha) ? Number(jubilacionesByFecha.get(fecha)) : null,
+        });
+    });
+
+    // Ensure we also have rows that might only exist in IPC or Jubilaciones (though unlikely for recent data)
+    ipcByFecha.forEach((val, fecha) => {
+        if (!combinedMap.has(fecha)) {
+            combinedMap.set(fecha, {
+                fecha,
+                ipc_nucleo: val,
+                salario_registrado: null,
+                salario_no_registrado: null,
+                salario_privado: null,
+                salario_publico: null,
+                ripte: ripteByFecha.get(fecha) ? Number(ripteByFecha.get(fecha)) : null,
+                jubilacion_minima: jubilacionesByFecha.get(fecha) ? Number(jubilacionesByFecha.get(fecha)) : null,
+            });
+        }
+    });
+
+    return Array.from(combinedMap.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
 export async function fetchRecaudacionRaw(): Promise<any[]> {
