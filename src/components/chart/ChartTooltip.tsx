@@ -54,7 +54,7 @@ export default function ChartTooltip({
         });
 
         return (
-            <div key={tooltipLabel} style={{ backgroundColor: '#00143F', border: '1px solid #FFD700', padding: '10px', color: '#FFF', minWidth: '180px' }}>
+            <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.85)', border: '1px solid #FFD700', padding: '10px', color: '#FFF', minWidth: '180px', backdropFilter: 'blur(4px)' }}>
                 {rows}
             </div>
         );
@@ -74,7 +74,7 @@ export default function ChartTooltip({
     if (valueRows.length === 0) return null;
 
     return (
-            <div key={tooltipLabel} style={{ backgroundColor: '#00143F', border: '1px solid #FFD700', padding: '10px', color: '#FFF' }}>
+            <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.85)', border: '1px solid #FFD700', padding: '10px', color: '#FFF', backdropFilter: 'blur(4px)' }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{rowData.fecha}</div>
                 {valueRows}
             </div>

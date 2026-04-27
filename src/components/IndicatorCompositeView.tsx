@@ -234,7 +234,7 @@ export default function IndicatorCompositeView({
                             )}
 
                             <div ref={chartContainerRef} className="relative flex-1 overflow-hidden" style={{ outline: 'none' }} tabIndex={-1}>
-                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10 select-none">
+                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none">
                                     <span className="watermark text-imperial-gold/10 text-xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">
                                         @fierillo
                                     </span>
