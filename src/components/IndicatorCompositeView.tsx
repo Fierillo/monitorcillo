@@ -288,17 +288,19 @@ export default function IndicatorCompositeView({
                                                 hide={isMobile}
                                             />
                                         )}
-                                        <Tooltip
-                                            cursor={{ stroke: '#ffffff50', strokeWidth: 1 }}
-                                            content={(props) => (
-                                                <ChartTooltip
-                                                    chartData={sortedData}
-                                                    areaConfigs={areas}
-                                                    valueFormat={valueFormat}
-                                                    tooltipProps={props}
-                                                />
-                                            )}
-                                        />
+                                        {!isCapturing && (
+                                            <Tooltip
+                                                cursor={{ stroke: '#ffffff50', strokeWidth: 1 }}
+                                                content={(props) => (
+                                                    <ChartTooltip
+                                                        chartData={sortedData}
+                                                        areaConfigs={areas}
+                                                        valueFormat={valueFormat}
+                                                        tooltipProps={props}
+                                                    />
+                                                )}
+                                            />
+                                        )}
                                         {areas.map((areaConfig: AreaConfig) => {
                                             const isDimmed = dimmedAreas.has(areaConfig.legendKey || areaConfig.key);
 
