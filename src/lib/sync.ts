@@ -1,7 +1,7 @@
 import https from 'https';
 import * as XLSX from 'xlsx';
-import { getRawData, saveRawData, saveIndicatorsCatalog, replaceRawData, replaceNormalizedData, IndicatorType } from './db';
-import { normalizeEmision, normalizeEmae, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo, fechaToISO, fechaToTimestamp } from './normalize';
+import { getRawData, saveRawData, saveIndicatorsCatalog, replaceRawData, replaceNormalizedData, IndicatorType, getNormalizedData } from './db';
+import { normalizeEmision, normalizeEmae, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo, fechaToISO, fechaToTimestamp, isoToFecha } from './normalize';
 
 const WEEKLY_BALANCE_WORKBOOK_URL = 'https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/Serieanual.xls';
 const WEEKLY_TREASURY_SERIES_REGEX = /DEPOSITOS DEL GOBIERNO NACIONAL Y OTROS/i;
@@ -448,9 +448,58 @@ const DEFAULT_CATALOG = [
 
 export async function syncIndicatorsCatalog(): Promise<{ appended: number; total: number }> {
     try {
-        await saveIndicatorsCatalog(DEFAULT_CATALOG);
-        return { appended: DEFAULT_CATALOG.length, total: DEFAULT_CATALOG.length };
-    } catch {
+        const catalog = JSON.parse(JSON.stringify(DEFAULT_CATALOG));
+        const sources: Record<string, IndicatorType> = {
+            'bma': 'bma',
+            'emision': 'emision',
+            'recaudacion': 'reca',
+            'poder-adquisitivo': 'poder',
+            'emae': 'emae'
+        };
+
+        for (const item of catalog) {
+            const type = sources[item.id];
+            if (!type) continue;
+            
+            const data = await getNormalizedData(type);
+            if (!data || data.length === 0) continue;
+
+            const getValue = (row: any) => {
+                if (item.id === 'bma') return row.BMAmplia;
+                if (item.id === 'emision') return row.ACUMULADO;
+                if (item.id === 'recaudacion') return row.pctPbi;
+                if (item.id === 'poder-adquisitivo') return row.blanco;
+                if (item.id === 'emae') return row.emae_desestacionalizado;
+                return null;
+            };
+
+            let latestRow = data[data.length - 1];
+            if (getValue(latestRow) == null) {
+                for (let i = data.length - 1; i >= 0; i--) {
+                    if (getValue(data[i]) != null) {
+                        latestRow = data[i];
+                        break;
+                    }
+                }
+            }
+
+            if (latestRow.iso_fecha) item.fecha = isoToFecha(latestRow.iso_fecha);
+            
+            const val = getValue(latestRow);
+            if (val != null) {
+                if (item.id === 'bma' || item.id === 'recaudacion') {
+                    item.dato = `${val.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+                } else if (item.id === 'emision') {
+                    item.dato = `$${Math.round(val).toLocaleString('es-AR')}M`;
+                } else {
+                    item.dato = val.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+                }
+            }
+        }
+        await saveIndicatorsCatalog(catalog);
+        return { appended: catalog.length, total: catalog.length };
+    } catch (error) {
+        console.error('syncIndicatorsCatalog error:', error);
         return { appended: 0, total: 0 };
     }
 }
