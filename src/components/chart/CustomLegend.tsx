@@ -16,7 +16,7 @@ export default function CustomLegend({ areas, dimmedAreas, onToggleDim }: Custom
     });
 
     return (
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '4px 16px', paddingTop: '10px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px 24px', paddingTop: '10px', paddingBottom: '10px' }}>
             {legendAreas.map(area => {
                 const toggleKey = area.legendKey || area.key;
                 const isDimmed = dimmedAreas.has(toggleKey);
@@ -30,8 +30,8 @@ export default function CustomLegend({ areas, dimmedAreas, onToggleDim }: Custom
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 6,
-                            fontSize: 14,
+                            gap: 8,
+                            fontSize: 12,
                         }}
                     >
                         <svg width="10" height="10">

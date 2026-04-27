@@ -63,6 +63,7 @@ export default function IndicatorCompositeView({
     const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
     const [dimmedAreas, setDimmedAreas] = useState<Set<string>>(new Set());
     const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
+    const [isCapturing, setIsCapturing] = useState(false);
 
     const visibleData = sortedData;
 
@@ -93,10 +94,16 @@ export default function IndicatorCompositeView({
         return () => observer.disconnect();
     }, []);
 
-    const leftAxisDomain: any = useMemo(() => {
-        if (leftYAxisDomain && leftYAxisDomain !== 'auto-pad' && leftYAxisDomain !== 'auto') return leftYAxisDomain;
-        if (!visibleData || visibleData.length === 0) return [0, 10];
+    const [isMobile, setIsMobile] = useState(false);
 
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    const leftAxisDomain: any = useMemo(() => {
         const allValues: number[] = [];
         visibleData.forEach((row: any) => {
             areas.forEach(area => {
@@ -112,10 +119,16 @@ export default function IndicatorCompositeView({
 
         const min = Math.min(...allValues);
         const max = Math.max(...allValues);
-
-        if (leftYAxisDomain === 'auto-pad' || leftYAxisDomain === 'auto') {
-            const pad = leftYAxisDomain === 'auto-pad' ? (max - min) * 0.1 : 0;
-            return [min - pad, max + pad];
+        const range = max - min;
+        
+        if (leftYAxisDomain === 'auto-pad') {
+            const pad = range * 0.1;
+            return [min < 0 ? min - pad : 0, max + pad];
+        }
+        
+        if (leftYAxisDomain === 'auto' || !leftYAxisDomain) {
+            const pad = range === 0 ? 1 : range * 0.05;
+            return [min < 0 ? min - pad : 0, max + pad];
         }
 
         return [min, max];
@@ -137,6 +150,11 @@ export default function IndicatorCompositeView({
         if (!captureRef.current) return;
 
         try {
+            setIsCapturing(true);
+            
+            // Wait for React to re-render with the methodology section open
+            await new Promise(resolve => setTimeout(resolve, 400));
+
             const dataUrl = await toPng(captureRef.current, {
                 backgroundColor: '#00143F',
                 pixelRatio: 2,
@@ -149,6 +167,8 @@ export default function IndicatorCompositeView({
             link.click();
         } catch (err) {
             console.error('Error al descargar el gráfico:', err);
+        } finally {
+            setIsCapturing(false);
         }
     }, [title]);
 
@@ -160,7 +180,7 @@ export default function IndicatorCompositeView({
         <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-6 lg:p-10">
             <header className="w-[96%] max-w-[1800px] mb-8 border-b-2 border-imperial-gold pb-4 mt-4 flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-widest text-imperial-gold leading-tight uppercase">
+                    <h1 className="imperial-title text-2xl sm:text-3xl font-bold tracking-widest text-imperial-gold leading-tight uppercase">
                         {title}
                     </h1>
                     {subtitle && <p className="text-imperial-cyan mt-1 font-bold">{subtitle}</p>}
@@ -175,7 +195,7 @@ export default function IndicatorCompositeView({
 
             <main className="w-[96%] max-w-[1800px]">
                 <div
-                    className="w-full h-[850px] bg-imperial-blue border-2 border-imperial-gold p-4 shadow-lg shadow-imperial-blue/50 flex flex-col"
+                    className="w-full min-h-[850px] bg-imperial-blue border-2 border-imperial-gold p-4 shadow-lg shadow-imperial-blue/50 flex flex-col"
                     style={{ outline: 'none' }}
                     tabIndex={-1}
                 >
@@ -202,105 +222,119 @@ export default function IndicatorCompositeView({
                             </div>
                         </div>
 
-                        <div ref={chartContainerRef} className="flex-1 min-h-0" style={{ outline: 'none', minHeight: '500px' }} tabIndex={-1}>
-                            {chartSize.width > 0 && chartSize.height > 0 ? (
-                                <ComposedChart
-                                    width={chartSize.width}
-                                    height={chartSize.height}
-                                    data={visibleData}
-                                    margin={{ top: 5, right: 20, bottom: 5, left: 100 }}
-                                    barCategoryGap="0%"
-                                    stackOffset="sign"
-                                    style={{ outline: 'none' }}
-                                    onClick={(e: any) => {
-                                        if (!e || !e.activePayload || e.activePayload.length === 0 || !e.activeTooltipIndex) {
-                                            setSelectedMonth(null);
-                                        }
-                                    }}
-                                >
-                                    <CartesianGrid stroke="#ffffff20" strokeDasharray="3 3" />
-                                    <XAxis
-                                        dataKey={xAxisKey}
-                                        stroke="#FFD700"
-                                        tick={{ fill: '#FFD700', fontSize: 12 }}
-                                        tickFormatter={(value: string | number) => labelByXAxisValue.get(String(value)) ?? String(value)}
-                                    />
-                                    <YAxis
-                                        stroke="#FFD700"
-                                        tick={{ fill: '#FFD700', fontSize: 12 }}
-                                        tickFormatter={(val) => formatValueByType(val, valueFormat)}
-                                        tickCount={10}
-                                        label={{
-                                            value: yAxisLabel,
-                                            angle: -90,
-                                            position: 'insideLeft',
-                                            style: { textAnchor: 'middle', fill: '#FFD700', fontSize: 14, fontWeight: 'bold' },
-                                            dx: -85
+                        <div className="flex-1 flex flex-row relative min-h-[300px] sm:min-h-[500px]" style={{ outline: 'none' }}>
+                            {!isMobile && yAxisLabel && (
+                                <div className="flex items-center justify-center w-12 shrink-0">
+                                    <div className="-rotate-90 whitespace-nowrap text-imperial-gold font-bold text-xs uppercase tracking-widest">
+                                        {yAxisLabel}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div ref={chartContainerRef} className="relative flex-1" style={{ outline: 'none' }} tabIndex={-1}>
+                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10 select-none">
+                                    <span className="watermark text-imperial-gold/10 text-2xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">
+                                        @fierillo
+                                    </span>
+                                </div>
+                                {chartSize.width > 0 && chartSize.height > 0 ? (
+                                    <ComposedChart
+                                        width={chartSize.width}
+                                        height={chartSize.height}
+                                        data={visibleData}
+                                        margin={{ top: 5, right: 20, bottom: 5, left: isMobile ? 0 : 20 }}
+                                        barCategoryGap="0%"
+                                        stackOffset="sign"
+                                        style={{ outline: 'none' }}
+                                        onClick={(e: any) => {
+                                            if (!e || !e.activePayload || e.activePayload.length === 0 || !e.activeTooltipIndex) {
+                                                setSelectedMonth(null);
+                                            }
                                         }}
-                                        domain={leftAxisDomain}
-                                        allowDataOverflow={true}
-                                        yAxisId="left"
-                                    />
-                                    {secondaryYAxis && (
-                                        <YAxis
-                                            orientation="right"
-                                            stroke={secondaryYAxis.color || "#00BFFF"}
-                                            tick={{
-                                                fill: secondaryYAxis.color || "#00BFFF",
-                                                fontSize: 12
-                                            }}
-                                            tickFormatter={(val) => formatValueByType(val, secondaryYAxis.format)}
-                                            tickCount={10}
-                                            label={{
-                                                value: secondaryYAxis.label,
-                                                angle: 90,
-                                                position: 'insideRight',
-                                                style: { textAnchor: 'middle', fill: secondaryYAxis.color || "#00BFFF", fontSize: 14, fontWeight: 'bold' },
-                                                dx: 15
-                                            }}
-                                            domain={secondaryYAxis?.domain && secondaryYAxis.domain !== 'auto' ? secondaryYAxis.domain : ['auto', 'auto']}
-                                            allowDataOverflow={true}
-                                            yAxisId="right"
+                                    >
+                                        <CartesianGrid stroke="#ffffff20" strokeDasharray="3 3" />
+                                        <XAxis
+                                            dataKey={xAxisKey}
+                                            stroke="#FFD700"
+                                            tick={{ fill: '#FFD700', fontSize: 12 }}
+                                            tickFormatter={(value: string | number) => labelByXAxisValue.get(String(value)) ?? String(value)}
+                                            hide={isMobile}
                                         />
-                                    )}
-                                    <Tooltip
-                                        cursor={{ stroke: '#ffffff50', strokeWidth: 1 }}
-                                        content={(props) => (
-                                            <ChartTooltip
-                                                chartData={sortedData}
-                                                areaConfigs={areas}
-                                                valueFormat={valueFormat}
-                                                tooltipProps={props}
+                                        <YAxis
+                                            stroke="#FFD700"
+                                            tick={{ fill: '#FFD700', fontSize: 12 }}
+                                            tickFormatter={(val) => formatValueByType(val, valueFormat)}
+                                            tickCount={10}
+                                            domain={leftAxisDomain}
+                                            allowDataOverflow={false}
+                                            yAxisId="left"
+                                            width={isMobile ? 0 : 60}
+                                            hide={isMobile}
+                                        />
+                                        {secondaryYAxis && (
+                                            <YAxis
+                                                orientation="right"
+                                                stroke={secondaryYAxis.color || "#00BFFF"}
+                                                tick={{
+                                                    fill: secondaryYAxis.color || "#00BFFF",
+                                                    fontSize: 12
+                                                }}
+                                                tickFormatter={(val) => formatValueByType(val, secondaryYAxis.format)}
+                                                tickCount={10}
+                                                domain={secondaryYAxis?.domain && secondaryYAxis.domain !== 'auto' ? secondaryYAxis.domain : ['auto', 'auto']}
+                                                allowDataOverflow={false}
+                                                yAxisId="right"
+                                                width={isMobile ? 0 : 60}
+                                                hide={isMobile}
                                             />
                                         )}
-                                    />
-                                    {areas.map((areaConfig: AreaConfig) => {
-                                        const isDimmed = dimmedAreas.has(areaConfig.legendKey || areaConfig.key);
-
-                                        if (isDimmed) return null;
-
-                                        if (areaConfig.type === 'line') {
-                                            return <ChartLine key={areaConfig.key} areaConfig={areaConfig} isDimmed={false} />;
-                                        }
-
-                                        if (areaConfig.type === 'bar') {
-                                            return (
-                                                <ChartBar
-                                                    key={areaConfig.key}
-                                                    areaConfig={areaConfig}
-                                                    isDimmed={false}
-                                                    selectedMonth={selectedMonth}
-                                                    onSelectMonth={setSelectedMonth}
+                                        <Tooltip
+                                            cursor={{ stroke: '#ffffff50', strokeWidth: 1 }}
+                                            content={(props) => (
+                                                <ChartTooltip
+                                                    chartData={sortedData}
+                                                    areaConfigs={areas}
+                                                    valueFormat={valueFormat}
+                                                    tooltipProps={props}
                                                 />
-                                            );
-                                        }
+                                            )}
+                                        />
+                                        {areas.map((areaConfig: AreaConfig) => {
+                                            const isDimmed = dimmedAreas.has(areaConfig.legendKey || areaConfig.key);
 
-                                        return <ChartArea key={areaConfig.key} areaConfig={areaConfig} isDimmed={false} />;
-                                    })}
-                                </ComposedChart>
-                            ) : (
-                                <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">
-                                    Cargando gráfico...
+                                            if (isDimmed) return null;
+
+                                            if (areaConfig.type === 'line') {
+                                                return <ChartLine key={areaConfig.key} areaConfig={areaConfig} isDimmed={false} />;
+                                            }
+
+                                            if (areaConfig.type === 'bar') {
+                                                return (
+                                                    <ChartBar
+                                                        key={areaConfig.key}
+                                                        areaConfig={areaConfig}
+                                                        isDimmed={false}
+                                                        selectedMonth={selectedMonth}
+                                                        onSelectMonth={setSelectedMonth}
+                                                    />
+                                                );
+                                            }
+
+                                            return <ChartArea key={areaConfig.key} areaConfig={areaConfig} isDimmed={false} />;
+                                        })}
+                                    </ComposedChart>
+                                ) : (
+                                    <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">
+                                        Cargando gráfico...
+                                    </div>
+                                )}
+                            </div>
+
+                            {!isMobile && secondaryYAxis && (
+                                <div className="flex items-center justify-center w-12 shrink-0">
+                                    <div className="rotate-90 whitespace-nowrap font-bold text-xs uppercase tracking-widest" style={{ color: secondaryYAxis.color || "#00BFFF" }}>
+                                        {secondaryYAxis.label}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -311,7 +345,7 @@ export default function IndicatorCompositeView({
                             onToggleDim={handleToggleDim}
                         />
 
-                        <MethodologySection methodology={methodology} />
+                        <MethodologySection methodology={methodology} forceOpen={isCapturing} />
                     </div>
                 </div>
             </main>
