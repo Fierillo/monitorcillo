@@ -177,52 +177,52 @@ export default function IndicatorCompositeView({
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-6 lg:p-10">
-            <header className="w-[96%] max-w-[1800px] mb-8 border-b-2 border-imperial-gold pb-4 mt-4 flex items-center justify-between">
+        <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-2 sm:p-6 lg:p-10">
+            <header className="w-full sm:w-[96%] max-w-[1800px] mb-4 sm:mb-8 border-b-2 border-imperial-gold pb-4 mt-2 sm:mt-4 flex items-center justify-between px-2">
                 <div>
-                    <h1 className="imperial-title text-2xl sm:text-3xl font-bold tracking-widest text-imperial-gold leading-tight uppercase">
+                    <h1 className="imperial-title text-xl sm:text-3xl font-bold tracking-widest text-imperial-gold leading-tight uppercase">
                         {title}
                     </h1>
-                    {subtitle && <p className="text-imperial-cyan mt-1 font-bold">{subtitle}</p>}
+                    {subtitle && <p className="text-imperial-cyan mt-1 font-bold text-xs sm:text-base">{subtitle}</p>}
                 </div>
                 <Link
                     href="/"
-                    className="shrink-0 border-2 border-imperial-gold text-imperial-gold px-4 py-2 font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors uppercase"
+                    className="shrink-0 border-2 border-imperial-gold text-imperial-gold px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-base font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors uppercase"
                 >
                     Volver
                 </Link>
             </header>
 
-            <main className="w-[96%] max-w-[1800px]">
+            <main className="w-full sm:w-[96%] max-w-[1800px]">
                 <div
-                    className="w-full min-h-[850px] bg-imperial-blue border-2 border-imperial-gold p-4 shadow-lg shadow-imperial-blue/50 flex flex-col"
+                    className="w-full min-h-[600px] sm:min-h-[850px] bg-imperial-blue border-2 border-imperial-gold p-2 sm:p-4 shadow-lg shadow-imperial-blue/50 flex flex-col overflow-hidden"
                     style={{ outline: 'none' }}
                     tabIndex={-1}
                 >
                     <div
                         ref={captureRef}
-                        className="flex-1 flex flex-col bg-imperial-blue"
+                        className="flex-1 flex flex-col bg-imperial-blue overflow-hidden"
                         style={{ outline: 'none' }}
                         tabIndex={-1}
                     >
-                        <div className="flex items-center justify-between mb-2 shrink-0" style={{ outline: 'none' }}>
-                            <div className="flex-1" />
-                            <h2 className="text-imperial-gold text-xl font-bold uppercase tracking-widest text-center flex-1">
+                        <div className="flex flex-col sm:flex-row items-center justify-between mb-2 shrink-0 gap-2" style={{ outline: 'none' }}>
+                            <div className="hidden sm:flex flex-1" />
+                            <h2 className="text-imperial-gold text-base sm:text-xl font-bold uppercase tracking-widest text-center flex-1">
                                 {chartTitle}
                             </h2>
-                            <div className="flex-1 flex justify-end gap-2">
+                            <div className="flex-1 flex justify-end gap-2 w-full sm:w-auto">
                                 <button
                                     onClick={handleDownloadChart}
-                                    className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-2 text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2"
+                                    className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center"
                                     title="Descargar gráfico"
                                 >
-                                    <ImageDown size={18} />
+                                    <ImageDown size={16} />
                                     Guardar
                                 </button>
                             </div>
                         </div>
 
-                        <div className="flex-1 flex flex-row relative min-h-[300px] sm:min-h-[500px]" style={{ outline: 'none' }}>
+                        <div className="flex-1 flex flex-row relative min-h-[300px] sm:min-h-[500px] overflow-hidden" style={{ outline: 'none' }}>
                             {!isMobile && yAxisLabel && (
                                 <div className="flex items-center justify-center w-12 shrink-0">
                                     <div className="-rotate-90 whitespace-nowrap text-imperial-gold font-bold text-xs uppercase tracking-widest">
@@ -231,9 +231,9 @@ export default function IndicatorCompositeView({
                                 </div>
                             )}
 
-                            <div ref={chartContainerRef} className="relative flex-1" style={{ outline: 'none' }} tabIndex={-1}>
+                            <div ref={chartContainerRef} className="relative flex-1 overflow-hidden" style={{ outline: 'none' }} tabIndex={-1}>
                                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10 select-none">
-                                    <span className="watermark text-imperial-gold/10 text-2xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">
+                                    <span className="watermark text-imperial-gold/10 text-xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">
                                         @fierillo
                                     </span>
                                 </div>
@@ -242,7 +242,7 @@ export default function IndicatorCompositeView({
                                         width={chartSize.width}
                                         height={chartSize.height}
                                         data={visibleData}
-                                        margin={{ top: 5, right: 20, bottom: 5, left: isMobile ? 0 : 20 }}
+                                        margin={{ top: 5, right: isMobile ? 5 : 20, bottom: 5, left: isMobile ? 5 : 20 }}
                                         barCategoryGap="0%"
                                         stackOffset="sign"
                                         style={{ outline: 'none' }}
@@ -256,13 +256,13 @@ export default function IndicatorCompositeView({
                                         <XAxis
                                             dataKey={xAxisKey}
                                             stroke="#FFD700"
-                                            tick={{ fill: '#FFD700', fontSize: 12 }}
+                                            tick={{ fill: '#FFD700', fontSize: 10 }}
                                             tickFormatter={(value: string | number) => labelByXAxisValue.get(String(value)) ?? String(value)}
                                             hide={isMobile}
                                         />
                                         <YAxis
                                             stroke="#FFD700"
-                                            tick={{ fill: '#FFD700', fontSize: 12 }}
+                                            tick={{ fill: '#FFD700', fontSize: 10 }}
                                             tickFormatter={(val) => formatValueByType(val, valueFormat)}
                                             tickCount={10}
                                             domain={leftAxisDomain}
@@ -277,7 +277,7 @@ export default function IndicatorCompositeView({
                                                 stroke={secondaryYAxis.color || "#00BFFF"}
                                                 tick={{
                                                     fill: secondaryYAxis.color || "#00BFFF",
-                                                    fontSize: 12
+                                                    fontSize: 10
                                                 }}
                                                 tickFormatter={(val) => formatValueByType(val, secondaryYAxis.format)}
                                                 tickCount={10}
