@@ -80,7 +80,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
 
         const areas: AreaConfig[] = [
             { key: 'blanco', name: 'PA [IS blanco/IPCC]', color: '#FFFFFF', type: 'line' },
-            { key: 'negro', name: 'PA [IS negro/IPCC]', color: '#000000', type: 'line' },
+            { key: 'negro', name: 'PA [IS negro/IPCC]', color: '#2E2D2C', type: 'line' },
             { key: 'privado', name: 'PA [IS privado/IPCC]', color: '#2E64FE', type: 'line' },
             { key: 'publico', name: 'PA [IS publico/IPCC]', color: '#81BEF7', type: 'line' },
             { key: 'ripte', name: 'PA [RIPTE/IPCC]', color: '#31B404', type: 'line' },

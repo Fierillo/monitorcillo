@@ -298,7 +298,8 @@ export async function fetchPoderAdquisitivoRaw(): Promise<any[]> {
     });
 
     // Ensure we also have rows that might only exist in IPC or Jubilaciones (though unlikely for recent data)
-    ipcByFecha.forEach((val, fecha) => {
+    ipcByFecha.forEach((val, fechaKey) => {
+        const fecha = String(fechaKey);
         if (!combinedMap.has(fecha)) {
             combinedMap.set(fecha, {
                 fecha,
