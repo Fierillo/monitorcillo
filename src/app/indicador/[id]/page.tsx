@@ -106,6 +106,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 methodology={methodology}
                 valueFormat="index"
                 yAxisLabel="Base 100 = Ene-17"
+                leftYAxisDomain={['dataMin - 5', 'dataMax + 5']}
             />
         );
     }
@@ -136,6 +137,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
                 methodology={methodology}
                 valueFormat="index"
                 yAxisLabel="Base 100 = Ene-17"
+                leftYAxisDomain={['dataMin - 5', 'dataMax + 5']}
             />
         );
     }
