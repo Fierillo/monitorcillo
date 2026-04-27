@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { isoToFecha, isoToMonthLabel, normalizeEmision, normalizeBma, normalizeRecaudacion } from '../lib/normalize';
+import { isoToFecha, isoToMonthLabel, normalizeEmision, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo } from '../lib/normalize';
+
+describe('normalizePoderAdquisitivo', () => {
+    it('normalizes all series to 100 on 2017-01-01 and shifts informal salary', () => {
+        const rawData = [
+            { fecha: '2017-01-01', ipc_nucleo: 100, salario_registrado: 1000, salario_no_registrado: 500, salario_privado: 1000, salario_publico: 1000, ripte: 1000, jubilacion_minima: 1000 },
+            { fecha: '2017-06-01', ipc_nucleo: 120, salario_registrado: 1200, salario_no_registrado: 800, salario_privado: 1200, salario_publico: 1200, ripte: 1200, jubilacion_minima: 1200 },
+        ];
+
+        const normalized = normalizePoderAdquisitivo(rawData);
+        const jan17 = normalized.find(r => r.iso_fecha === '2017-01-01');
+        
+        expect(jan17).toBeDefined();
+        expect(jan17!.blanco).toBe(100);
+        expect(jan17!.negro).toBe(100);
+    });
+});
 
 describe('normalize.ts formatting helpers', () => {
     it('isoToFecha converts YYYY-MM-DD to DD MMM YY format', () => {
