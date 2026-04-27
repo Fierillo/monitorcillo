@@ -315,56 +315,50 @@ export function normalizeRecaudacion(rawData: any[]): any[] {
 }
 
 export function normalizePoderAdquisitivo(rawData: any[]): any[] {
-    if (!Array.isArray(rawData) || rawData.length === 0) {
-        return [];
-    }
+    if (!Array.isArray(rawData) || rawData.length === 0) return [];
 
-    const baseRow = rawData.find((row: any) => row.fecha === '2017-01-01');
-    if (!baseRow || !baseRow.ipc_nucleo) {
-        return [];
-    }
+    const sorted = [...rawData].sort((a, b) => a.fecha.localeCompare(b.fecha));
+    
+    const baseIdx = sorted.findIndex(r => r.fecha === '2017-01-01');
+    if (baseIdx === -1) return [];
 
-    const baseFactor = (value: number | null | undefined) => {
-        if (value == null || baseRow.ipc_nucleo === 0) return null;
-        return value / baseRow.ipc_nucleo;
+    const baseRow = sorted[baseIdx];
+    const ipcBase = Number(baseRow.ipc_nucleo || 0);
+    if (!ipcBase) return [];
+
+    // Salario informal (negro) reportado 5 meses después corresponde al mes base
+    const negroBaseRaw = sorted[baseIdx + 5]?.salario_no_registrado;
+
+    const factors = {
+        blanco: Number(baseRow.salario_registrado || 0) / ipcBase,
+        negro: Number(negroBaseRaw || 0) / ipcBase,
+        privado: Number(baseRow.salario_privado || 0) / ipcBase,
+        publico: Number(baseRow.salario_publico || 0) / ipcBase,
+        ripte: Number(baseRow.ripte || 0) / ipcBase,
+        jubilacion: Number(baseRow.jubilacion_minima || 0) / ipcBase,
     };
 
-    const baseRegistrado = baseFactor(baseRow.salario_registrado);
-    const baseNoRegistrado = baseFactor(baseRow.salario_no_registrado);
-    const basePrivado = baseFactor(baseRow.salario_privado);
-    const basePublico = baseFactor(baseRow.salario_publico);
-    const baseRipte = baseFactor(baseRow.ripte);
-    const baseJubilacion = baseFactor(baseRow.jubilacion_minima);
+    return sorted.map((row, i) => {
+        const ipc = Number(row.ipc_nucleo || 0);
+        if (!ipc) return null;
 
-    const normalized = rawData
-        .map((row: any) => {
-            if (!row.fecha || row.ipc_nucleo == null || row.ipc_nucleo === 0) return null;
-            const dateObj = new Date(`${row.fecha}T00:00:00Z`);
-            if (Number.isNaN(dateObj.getTime())) return null;
+        const calc = (val: any, factor: number) => {
+            if (val == null || !factor) return null;
+            return (Number(val) / ipc / factor) * 100;
+        };
 
-            const calc = (value: number | null | undefined, base: number | null) => {
-                if (value == null || base == null) return null;
-                return ((value / row.ipc_nucleo) / base) * 100;
-            };
-
-            return {
-                fecha: `${MONTHS_ES[dateObj.getUTCMonth()]} ${String(dateObj.getUTCFullYear()).slice(-2)}`,
-                iso_fecha: row.fecha,
-                blanco: calc(row.salario_registrado, baseRegistrado),
-                negro: calc(row.salario_no_registrado, baseNoRegistrado),
-                privado: calc(row.salario_privado, basePrivado),
-                publico: calc(row.salario_publico, basePublico),
-                ripte: calc(row.ripte, baseRipte),
-                jubilacion: calc(row.jubilacion_minima, baseJubilacion),
-            };
-        })
-        .filter((row: any) => row !== null)
-        .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
-
-    return normalized.map((row: any, index: number) => ({
-        ...row,
-        negro: normalized[index + 5]?.negro ?? null,
-    }));
+        const date = new Date(row.fecha + 'T12:00:00Z');
+        return {
+            fecha: `${MONTHS_ES[date.getUTCMonth()]} ${String(date.getUTCFullYear()).slice(-2)}`,
+            iso_fecha: row.fecha,
+            blanco: calc(row.salario_registrado, factors.blanco),
+            negro: calc(sorted[i + 5]?.salario_no_registrado, factors.negro),
+            privado: calc(row.salario_privado, factors.privado),
+            publico: calc(row.salario_publico, factors.publico),
+            ripte: calc(row.ripte, factors.ripte),
+            jubilacion: calc(row.jubilacion_minima, factors.jubilacion),
+        };
+    }).filter(Boolean);
 }
 
 export default {
