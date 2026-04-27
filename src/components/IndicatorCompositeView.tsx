@@ -104,6 +104,8 @@ export default function IndicatorCompositeView({
     }, []);
 
     const leftAxisDomain: any = useMemo(() => {
+        if (Array.isArray(leftYAxisDomain)) return leftYAxisDomain;
+
         const allValues: number[] = [];
         visibleData.forEach((row: any) => {
             areas.forEach(area => {

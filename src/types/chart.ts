@@ -33,5 +33,5 @@ export interface IndicatorCompositeViewProps {
     valueFormat?: ValueFormat;
     yAxisLabel?: string;
     secondaryYAxis?: YAxisConfig;
-    leftYAxisDomain?: [any, any] | 'auto-pad' | 'auto';
+    leftYAxisDomain?: any[] | 'auto-pad' | 'auto';
 }
