@@ -298,15 +298,13 @@ export function normalizeRecaudacion(rawData: any[]): any[] {
                 ? pbiTrimestral * (emaeDesest / emaeBase) * (ipcActual / ipcBase)
                 : pbiTrimestral;
 
-            const pbiMensual = pbiAnualizado ? pbiAnualizado / 12 : null;
-
-            return pbiMensual
+            return pbiAnualizado
                 ? {
                     fecha: `${MONTHS_ES[monthNum - 1]} ${String(year).slice(-2)}`,
                     iso_fecha: row.fecha,
                     mes: monthStr,
                     year,
-                    pctPbi: (row.recaudacion_total / pbiMensual) * 100,
+                    pctPbi: (row.recaudacion_total / pbiAnualizado) * 100,
                 }
                 : null;
         })
