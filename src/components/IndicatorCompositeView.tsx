@@ -33,7 +33,9 @@ export default function IndicatorCompositeView({
     yAxisLabel,
     secondaryYAxis,
     leftYAxisDomain,
+    indicatorId,
 }: IndicatorCompositeViewProps) {
+    const selectByMonth = indicatorId === 'recaudacion';
     const sortedData = useMemo(() => {
         const getSortKey = (row: any) => {
             if (typeof row?.iso_fecha === 'string' && row.iso_fecha) return row.iso_fecha;
@@ -68,10 +70,13 @@ export default function IndicatorCompositeView({
     const visibleData = sortedData;
 
     useEffect(() => {
-        if (selectedMonth && !visibleData.some((row: any) => (row.iso_fecha || row.fecha) === selectedMonth)) {
+        if (selectedMonth && selectByMonth) {
+            const hasMonth = visibleData.some((row: any) => row.iso_fecha?.slice(5, 7) === selectedMonth);
+            if (!hasMonth) setSelectedMonth(null);
+        } else if (selectedMonth && !visibleData.some((row: any) => (row.iso_fecha || row.fecha) === selectedMonth)) {
             setSelectedMonth(null);
         }
-    }, [visibleData, selectedMonth]);
+    }, [visibleData, selectedMonth, selectByMonth]);
 
     useEffect(() => {
         if (!chartContainerRef.current) return;
@@ -320,6 +325,7 @@ export default function IndicatorCompositeView({
                                                         isDimmed={false}
                                                         selectedMonth={selectedMonth}
                                                         onSelectMonth={setSelectedMonth}
+                                                        selectByMonth={selectByMonth}
                                                     />
                                                 );
                                             }

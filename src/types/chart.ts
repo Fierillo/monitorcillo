@@ -34,4 +34,5 @@ export interface IndicatorCompositeViewProps {
     yAxisLabel?: string;
     secondaryYAxis?: YAxisConfig;
     leftYAxisDomain?: any[] | 'auto-pad' | 'auto';
+    indicatorId?: string;
 }

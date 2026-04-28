@@ -10,6 +10,7 @@ interface ChartBarProps {
     activeMonth: string | null;
     onSelectMonth: (month: string | null) => void;
     onSetActiveMonth: (month: string | null) => void;
+    selectByMonth?: boolean;
 }
 
 export default function ChartBar({
@@ -17,6 +18,7 @@ export default function ChartBar({
     isDimmed,
     selectedMonth,
     onSelectMonth,
+    selectByMonth,
 }: Omit<ChartBarProps, 'activeMonth' | 'onSetActiveMonth'>) {
     return (
         <Bar
@@ -30,12 +32,14 @@ export default function ChartBar({
                     event.stopPropagation();
                 }
                 if (data?.iso_fecha) {
-                    onSelectMonth(selectedMonth === data.iso_fecha ? null : data.iso_fecha);
+                    const monthValue = selectByMonth ? data.iso_fecha.slice(5, 7) : data.iso_fecha;
+                    onSelectMonth(selectedMonth === monthValue ? null : monthValue);
                 }
             }}
             shape={(props: any) => {
                 const { payload } = props;
-                const isSelected = selectedMonth && payload?.iso_fecha === selectedMonth;
+                const monthValue = selectByMonth ? payload?.iso_fecha?.slice(5, 7) : payload?.iso_fecha;
+                const isSelected = selectedMonth && monthValue === selectedMonth;
                 const opacity = selectedMonth ? (isSelected ? 1 : 0.3) : 1;
 
                 return (

@@ -183,26 +183,27 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         chartData = await safeGetIndicatorData('recaudacion');
 
         const areas: AreaConfig[] = [
-            { key: 'pctPbi', name: '% PIB Mensual', color: '#FFD700', type: 'bar', yAxisId: 'left' }
+            { key: 'pctPbi', name: '% PIB Anual', color: '#FFD700', type: 'bar', yAxisId: 'left' }
         ];
 
         const methodology: MethodologyItem[] = [
             { title: 'Recaudación Total', description: 'Recursos tributarios mensuales consolidado (Secretaría de Hacienda 172.3_TL_RECAION_M_0_0_17).' },
-            { title: 'Normalización a % PBI', description: 'Proporción calculada sobre el PBI mensualizado (PBI Anualizado / 12).' },
+            { title: 'Normalización a % PBI', description: 'Peso de la recaudación del mes sobre el PBI anualizado proyectado.' },
             { title: 'Estimación PBI', description: 'El PBI se infiere ajustando el dato trimestral (INDEC 166.2_PPIB_0_0_3) por la variación del EMAE desestacionalizado (143.3_NO_PR_2004_A_31).' },
         ];
 
-        return (
+return (
             <IndicatorCompositeView
                 title={indicator.indicador}
                 subtitle={indicator.fuente}
-                chartTitle="Recaudación Tributaria (% PIB Mensual)"
+                chartTitle="Recaudación Tributaria (% PIB Anualizado)"
                 data={chartData}
                 areas={areas}
                 methodology={methodology}
                 valueFormat="percent"
                 yAxisLabel="% PIB"
                 leftYAxisDomain="auto-pad"
+                indicatorId={indicator.id}
             />
         );
     }
