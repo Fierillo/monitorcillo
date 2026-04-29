@@ -445,7 +445,7 @@ export default function AdminDashboard({ initialData }: { initialData: Indicator
                         </div>
                         <div className="flex items-center gap-4">
                             {emisionMsg && <span className={`font-bold ${emisionMsg.includes('Error') ? 'text-red-500' : 'text-green-500'}`}>{emisionMsg}</span>}
-                            <button onClick={handleSaveEmision} className="bg-imperial-gold text-background font-bold py-2 px-6 uppercase cursor-pointer hover:bg-yellow-500 transition-colors">
+                            <button onClick={handleSaveEmision} className="bg-imperial-gold text-imperial-blue font-bold py-2 px-6 uppercase cursor-pointer hover:bg-yellow-500 transition-colors">
                                 Guardar
                             </button>
                         </div>

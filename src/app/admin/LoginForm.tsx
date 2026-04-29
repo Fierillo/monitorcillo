@@ -37,7 +37,7 @@ export default function LoginForm() {
                     placeholder="Contraseña"
                 />
                 {error && <p className="text-red-500 text-sm font-bold">{error}</p>}
-                <button type="submit" className="bg-imperial-gold text-background font-bold py-2 mt-2 cursor-pointer hover:bg-yellow-500 transition-colors">
+                <button type="submit" className="bg-imperial-gold text-imperial-blue font-bold py-2 mt-2 cursor-pointer hover:bg-yellow-500 transition-colors">
                     Ingresar
                 </button>
             </form>
