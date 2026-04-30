@@ -1,12 +1,6 @@
 'use client';
 
-import { AreaConfig } from '@/types/chart';
-
-interface CustomLegendProps {
-    areas: AreaConfig[];
-    dimmedAreas: Set<string>;
-    onToggleDim: (key: string) => void;
-}
+import type { CustomLegendProps } from '@/types/chart';
 
 export default function CustomLegend({ areas, dimmedAreas, onToggleDim }: CustomLegendProps) {
     const legendAreas = areas.filter((area, index) => {

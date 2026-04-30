@@ -1,6 +1,6 @@
 'use client';
-import { Indicator } from '@/lib/indicators';
 import { useRouter } from 'next/navigation';
+import type { Indicator } from '@/types';
 
 export default function IndicatorsTable({ data }: { data: Indicator[] }) {
     const router = useRouter();

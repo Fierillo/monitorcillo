@@ -3,7 +3,18 @@ import { revalidatePath } from 'next/cache';
 import { getIndicators, saveIndicators } from '@/lib/indicators';
 import { isAuthenticated } from '@/lib/auth';
 import db from '@/lib/db';
-import { normalizeEmision, fechaToISO, isoToFecha } from '@/lib/normalize';
+import { normalizeEmision, fechaToISO } from '@/lib/normalize';
+import type { EmisionPostBody, EmisionRawEditableField, EmisionRawRow, IndicatorsPostBody, NumericValue } from '@/types';
+
+function isEmisionPostBody(body: unknown): body is EmisionPostBody {
+    if (!body || typeof body !== 'object') return false;
+    const candidate = body as { type?: unknown; data?: unknown };
+    return candidate.type === 'emision' && Array.isArray(candidate.data);
+}
+
+function setEmisionRawValue(row: Partial<EmisionRawRow>, key: EmisionRawEditableField, value: NumericValue): void {
+    (row as Record<string, NumericValue>)[key] = value;
+}
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -25,25 +36,24 @@ export async function POST(req: Request) {
     }
 
     try {
-        const body = await req.json();
+        const body = await req.json() as unknown;
         
-        if (body.type === 'emision' && body.data) {
-            const incomingData = Array.isArray(body.data) ? body.data : [];
+        if (isEmisionPostBody(body)) {
+            const incomingData = body.data;
             const existingRaw = await db.getRawData('emision');
             const existingMap = new Map(existingRaw.map(r => [r.fecha, r]));
 
-            const rowsToUpsert: any[] = [];
+            const rowsToUpsert: Array<Partial<EmisionRawRow>> = [];
 
             for (const row of incomingData) {
                 const iso_fecha = row.iso_fecha || (typeof row.fecha === 'string' && row.fecha.includes('-') ? row.fecha : fechaToISO(row.fecha));
                 if (!iso_fecha || !/^\d{4}-\d{2}-\d{2}$/.test(iso_fecha)) {
-                    continue; // Skip invalid dates
+                    continue;
                 }
 
                 const existing = existingMap.get(iso_fecha);
                 
-                // Fields provided by the admin panel (mapped to DB columns)
-                const incomingValues: any = {
+                const incomingValues: Partial<EmisionRawRow> & { fecha: string } = {
                     fecha: iso_fecha,
                     compra_dolares: row.CompraDolares !== undefined ? Number(row.CompraDolares) : undefined,
                     tc: row.TC !== undefined ? Number(row.TC) : undefined,
@@ -54,33 +64,30 @@ export async function POST(req: Request) {
                 };
 
                 if (!existing) {
-                    // New row: include all provided values
-                    const newRow: any = { fecha: iso_fecha };
-                    Object.keys(incomingValues).forEach(k => {
-                        if (incomingValues[k] !== undefined) newRow[k] = incomingValues[k];
-                    });
+                    const newRow: Partial<EmisionRawRow> = { fecha: iso_fecha };
+                    const keys: EmisionRawEditableField[] = ['compra_dolares', 'tc', 'bcra', 'vencimientos', 'licitado', 'resultado_fiscal'];
+                    for (const key of keys) {
+                        if (incomingValues[key] !== undefined) setEmisionRawValue(newRow, key, incomingValues[key]);
+                    }
                     rowsToUpsert.push(newRow);
                 } else {
-                    // Existing row: only include columns that are DIFFERENT or manually editable
-                    const diffRow: any = { fecha: iso_fecha };
+                    const diffRow: Partial<EmisionRawRow> = { fecha: iso_fecha };
                     let hasChanges = false;
 
-                    // Manual columns (Always check these)
-                    const manualKeys = ['vencimientos', 'licitado', 'resultado_fiscal'];
+                    const manualKeys: EmisionRawEditableField[] = ['vencimientos', 'licitado', 'resultado_fiscal'];
                     for (const k of manualKeys) {
                         const val = incomingValues[k];
                         if (val !== undefined && Number(val) !== Number(existing[k] ?? 0)) {
-                            diffRow[k] = val;
+                            setEmisionRawValue(diffRow, k, val);
                             hasChanges = true;
                         }
                     }
 
-                    // API columns (only update if explicitly provided and different)
-                    const apiKeys = ['compra_dolares', 'tc', 'bcra'];
+                    const apiKeys: EmisionRawEditableField[] = ['compra_dolares', 'tc', 'bcra'];
                     for (const k of apiKeys) {
                         const val = incomingValues[k];
                         if (val !== undefined && Number(val) !== Number(existing[k] ?? 0)) {
-                            diffRow[k] = val;
+                            setEmisionRawValue(diffRow, k, val);
                             hasChanges = true;
                         }
                     }
@@ -109,12 +116,16 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: true, updated: rowsToUpsert.length });
         }
         
-        // Save regular indicators
-        await saveIndicators(body);
+        if (!Array.isArray(body)) {
+            return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+        }
+
+        await saveIndicators(body as IndicatorsPostBody);
         revalidatePath('/');
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
         console.error('[api/data] error:', error);
-        return NextResponse.json({ error: error.message || 'Failed to save data' }, { status: 400 });
+        const message = error instanceof Error ? error.message : 'Failed to save data';
+        return NextResponse.json({ error: message }, { status: 400 });
     }
 }

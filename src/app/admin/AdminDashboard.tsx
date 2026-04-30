@@ -1,29 +1,15 @@
 'use client';
 
-import { Indicator } from '@/lib/indicators';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-
-interface EmisionData {
-    fecha: string;
-    TOTAL: number;
-    ACUMULADO?: number;
-    CompraDolares: number;
-    TC: number;
-    BCRA: number;
-    Vencimientos: number;
-    Licitado: number;
-    Licitaciones: number;
-    'Resultado fiscal': number;
-}
+import type { EmisionAdminEditableField, EmisionAdminNumericField, EmisionAdminRow, EmisionDataResponse, Indicator } from '@/types';
 
 export default function AdminDashboard({ initialData }: { initialData: Indicator[] }) {
     const router = useRouter();
     const [data, setData] = useState<Indicator[]>(initialData);
     const [msg, setMsg] = useState('');
 
-    // Estado para datos de emisión
-    const [emisionData, setEmisionData] = useState<EmisionData[]>([]);
+    const [emisionData, setEmisionData] = useState<EmisionAdminRow[]>([]);
     const [emisionMsg, setEmisionMsg] = useState('');
     const [activeTab, setActiveTab] = useState<'indicadores' | 'emision'>('indicadores');
 
@@ -31,11 +17,11 @@ export default function AdminDashboard({ initialData }: { initialData: Indicator
     useEffect(() => {
         fetch('/api/data?type=emision')
             .then(res => res.json())
-            .then(data => {
+            .then((data: EmisionDataResponse) => {
                 if (data && data.data) {
                     let runningSum = 0;
-                    const withTotals = data.data.map((r: any) => {
-                        const total = (r.BCRA || 0) + (r.Licitaciones || 0) + (r['Resultado fiscal'] || 0);
+                    const withTotals = data.data.map((r) => {
+                        const total = (Number(r.BCRA) || 0) + (Number(r.Licitaciones) || 0) + (Number(r['Resultado fiscal']) || 0);
                         runningSum += total;
                         return {
                             ...r,
@@ -101,18 +87,15 @@ export default function AdminDashboard({ initialData }: { initialData: Indicator
     };
 
     // Funciones para manejar datos de emisión
-    const handleEmisionCellChange = (index: number, field: keyof EmisionData, value: string) => {
+    const handleEmisionCellChange = (index: number, field: EmisionAdminEditableField, value: string) => {
         const newData = [...emisionData];
         if (field === 'fecha') {
             newData[index] = { ...newData[index], [field]: value };
         } else {
-            if (value === '-') {
-                newData[index] = { ...newData[index], [field]: '-' as any };
-            } else {
-                const cleaned = value.replace(/\./g, '');
-                const num = isNaN(Number(cleaned)) ? 0 : Number(cleaned);
-                newData[index] = { ...newData[index], [field]: num };
-            }
+            const numericField: EmisionAdminNumericField = field;
+            const cleaned = value.replace(/\./g, '');
+            const fieldValue = value === '-' ? '-' : Number.isNaN(Number(cleaned)) ? 0 : Number(cleaned);
+            newData[index] = { ...newData[index], [numericField]: fieldValue };
             newData[index].BCRA = (Number(newData[index].CompraDolares) || 0) * (Number(newData[index].TC) || 0);
             newData[index].Licitaciones = (Number(newData[index].Vencimientos) || 0) - (Number(newData[index].Licitado) || 0);
             newData[index].TOTAL = (Number(newData[index].BCRA) || 0) + (Number(newData[index].Licitaciones) || 0) + (Number(newData[index]['Resultado fiscal']) || 0);
@@ -153,7 +136,7 @@ export default function AdminDashboard({ initialData }: { initialData: Indicator
 
         let year = new Date().getFullYear();
         if (parts.length === 3) {
-            let y = parseInt(parts[2], 10);
+            const y = parseInt(parts[2], 10);
             if (!isNaN(y)) {
                 year = y < 100 ? 2000 + y : y;
             }

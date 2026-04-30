@@ -1,17 +1,7 @@
 'use client';
 
 import { Bar, Rectangle } from 'recharts';
-import { AreaConfig } from '@/types/chart';
-
-interface ChartBarProps {
-    areaConfig: AreaConfig;
-    isDimmed: boolean;
-    selectedMonth: string | null;
-    activeMonth: string | null;
-    onSelectMonth: (month: string | null) => void;
-    onSetActiveMonth: (month: string | null) => void;
-    selectByMonth?: boolean;
-}
+import type { ChartBarClickEvent, ChartBarProps, ChartBarShapeProps } from '@/types/chart';
 
 export default function ChartBar({
     areaConfig,
@@ -19,7 +9,7 @@ export default function ChartBar({
     selectedMonth,
     onSelectMonth,
     selectByMonth,
-}: Omit<ChartBarProps, 'activeMonth' | 'onSetActiveMonth'>) {
+}: ChartBarProps) {
     return (
         <Bar
             dataKey={areaConfig.key}
@@ -27,24 +17,28 @@ export default function ChartBar({
             fill={areaConfig.color}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
-            onClick={(data: any, index: number, event: any) => {
+            onClick={(data: unknown, _index: number, event: ChartBarClickEvent) => {
                 if (event && event.stopPropagation) {
                     event.stopPropagation();
                 }
-                if (data?.iso_fecha) {
-                    const monthValue = selectByMonth ? data.iso_fecha.slice(5, 7) : data.iso_fecha;
+                const isoFecha = getBarIsoFecha(data);
+                if (isoFecha) {
+                    const monthValue = selectByMonth ? isoFecha.slice(5, 7) : isoFecha;
                     onSelectMonth(selectedMonth === monthValue ? null : monthValue);
                 }
             }}
-            shape={(props: any) => {
-                const { payload } = props;
+            shape={(props: ChartBarShapeProps) => {
+                const { payload, x, y, width, height } = props;
                 const monthValue = selectByMonth ? payload?.iso_fecha?.slice(5, 7) : payload?.iso_fecha;
                 const isSelected = selectedMonth && monthValue === selectedMonth;
                 const opacity = selectedMonth ? (isSelected ? 1 : 0.3) : 1;
 
                 return (
                     <Rectangle
-                        {...props}
+                        x={x}
+                        y={y}
+                        width={width}
+                        height={height}
                         fill={areaConfig.color}
                         stroke={isSelected ? '#FFFFFF' : 'none'}
                         strokeWidth={isSelected ? 1 : 0}
@@ -58,4 +52,15 @@ export default function ChartBar({
             }}
         />
     );
+}
+
+function getBarIsoFecha(data: unknown): string | null {
+    if (!data || typeof data !== 'object') return null;
+    const row = data as Record<string, unknown>;
+    if (typeof row.iso_fecha === 'string') return row.iso_fecha;
+
+    const payload = row.payload;
+    if (!payload || typeof payload !== 'object') return null;
+    const payloadRow = payload as Record<string, unknown>;
+    return typeof payloadRow.iso_fecha === 'string' ? payloadRow.iso_fecha : null;
 }

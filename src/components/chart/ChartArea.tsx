@@ -1,12 +1,7 @@
 'use client';
 
 import { Area } from 'recharts';
-import { AreaConfig } from '@/types/chart';
-
-interface ChartAreaProps {
-    areaConfig: AreaConfig;
-    isDimmed: boolean;
-}
+import type { ChartAreaProps } from '@/types/chart';
 
 export default function ChartArea({ areaConfig, isDimmed }: ChartAreaProps) {
     const areaType = areaConfig.type === 'step' ? 'step' : areaConfig.type === 'monotone' ? 'monotone' : undefined;

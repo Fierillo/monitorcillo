@@ -16,8 +16,9 @@ export async function POST(req: Request) {
     try {
         const results = await runSync();
         return NextResponse.json({ success: true, results });
-    } catch (e: any) {
-        console.error('Sync error:', e);
-        return NextResponse.json({ error: 'Sync failed', details: e.message }, { status: 500 });
+    } catch (error) {
+        console.error('Sync error:', error);
+        const details = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json({ error: 'Sync failed', details }, { status: 500 });
     }
 }

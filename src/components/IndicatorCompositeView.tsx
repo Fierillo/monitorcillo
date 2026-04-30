@@ -5,12 +5,11 @@ import { toPng } from 'html-to-image';
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { ImageDown } from 'lucide-react';
 import { ComposedChart, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import {
-    AreaConfig,
-    MethodologyItem,
-    YAxisConfig,
+import type {
+    ChartAxisDomain,
+    ChartClickState,
+    ChartDataRow,
     IndicatorCompositeViewProps,
-    ValueFormat,
 } from '@/types/chart';
 import { formatValueByType } from './chart/utils';
 import ChartTooltip from './chart/ChartTooltip';
@@ -19,8 +18,6 @@ import ChartBar from './chart/ChartBar';
 import ChartLine from './chart/ChartLine';
 import ChartArea from './chart/ChartArea';
 import MethodologySection from './chart/MethodologySection';
-
-export type { AreaConfig, MethodologyItem, YAxisConfig, ValueFormat } from '@/types/chart';
 
 export default function IndicatorCompositeView({
     title,
@@ -37,17 +34,17 @@ export default function IndicatorCompositeView({
 }: IndicatorCompositeViewProps) {
     const selectByMonth = indicatorId === 'recaudacion';
     const sortedData = useMemo(() => {
-        const getSortKey = (row: any) => {
+        const getSortKey = (row: ChartDataRow) => {
             if (typeof row?.iso_fecha === 'string' && row.iso_fecha) return row.iso_fecha;
             if (typeof row?.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.fecha)) return row.fecha;
             return '';
         };
 
-        return [...data].sort((a: any, b: any) => getSortKey(a).localeCompare(getSortKey(b)));
+        return [...data].sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)));
     }, [data]);
 
     const xAxisKey = useMemo(() => {
-        return sortedData.every((row: any) => typeof row?.iso_fecha === 'string' && row.iso_fecha) ? 'iso_fecha' : 'fecha';
+        return sortedData.every((row) => typeof row?.iso_fecha === 'string' && row.iso_fecha) ? 'iso_fecha' : 'fecha';
     }, [sortedData]);
 
     const labelByXAxisValue = useMemo(() => {
@@ -71,9 +68,9 @@ export default function IndicatorCompositeView({
 
     useEffect(() => {
         if (selectedMonth && selectByMonth) {
-            const hasMonth = visibleData.some((row: any) => row.iso_fecha?.slice(5, 7) === selectedMonth);
+            const hasMonth = visibleData.some((row) => row.iso_fecha?.slice(5, 7) === selectedMonth);
             if (!hasMonth) setSelectedMonth(null);
-        } else if (selectedMonth && !visibleData.some((row: any) => (row.iso_fecha || row.fecha) === selectedMonth)) {
+        } else if (selectedMonth && !visibleData.some((row) => (row.iso_fecha || row.fecha) === selectedMonth)) {
             setSelectedMonth(null);
         }
     }, [visibleData, selectedMonth, selectByMonth]);
@@ -108,15 +105,15 @@ export default function IndicatorCompositeView({
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    const leftAxisDomain: any = useMemo(() => {
+    const leftAxisDomain: ChartAxisDomain = useMemo(() => {
         if (Array.isArray(leftYAxisDomain)) return leftYAxisDomain;
 
         const allValues: number[] = [];
-        visibleData.forEach((row: any) => {
+        visibleData.forEach((row) => {
             areas.forEach(area => {
                 if (dimmedAreas.has(area.legendKey || area.key)) return;
                 const val = row[area.key];
-                if (val !== null && val !== undefined && !isNaN(val)) {
+                if (typeof val === 'number' && !Number.isNaN(val)) {
                     allValues.push(val);
                 }
             });
@@ -253,7 +250,7 @@ export default function IndicatorCompositeView({
                                         barCategoryGap="0%"
                                         stackOffset="sign"
                                         style={{ outline: 'none' }}
-                                        onClick={(e: any) => {
+                                        onClick={(e: ChartClickState | null) => {
                                             if (!e || !e.activePayload || e.activePayload.length === 0 || !e.activeTooltipIndex) {
                                                 setSelectedMonth(null);
                                             }
@@ -308,7 +305,7 @@ export default function IndicatorCompositeView({
                                                 )}
                                             />
                                         )}
-                                        {areas.map((areaConfig: AreaConfig) => {
+                                        {areas.map((areaConfig) => {
                                             const isDimmed = dimmedAreas.has(areaConfig.legendKey || areaConfig.key);
 
                                             if (isDimmed) return null;

@@ -1,21 +1,36 @@
+import type {
+    BcraVariableRow,
+    BmaMonthlyBucket,
+    BmaNormalizedRow,
+    BmaRawRow,
+    EmaeNormalizedRow,
+    EmaeRawRow,
+    EmisionNormalizedRow,
+    EmisionRawRow,
+    NumericValue,
+    PoderAdquisitivoNormalizedRow,
+    PoderAdquisitivoRawRow,
+    RecaudacionNormalizedRow,
+    RecaudacionRawRow,
+} from '@/types';
+
 const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
 const MONTHS_IDX: Record<string, number> = { ENE: 0, FEB: 1, MAR: 2, ABR: 3, MAY: 4, JUN: 5, JUL: 6, AGO: 7, SEPT: 8, SEP: 8, OCT: 9, NOV: 10, DIC: 11 };
 
-const API_CONFIG = {
-    emision: {
-        bcra_variables: { compra: 78, tc: 4 }
-    },
-    emae: {
-        series: {
-            original: '143.3_NO_PR_2004_A_21',
-            desest: '143.3_NO_PR_2004_A_31',
-            tendencia: '143.3_NO_PR_2004_A_28'
-        }
-    },
-    bma: {
-        series: '143.2_NO_PR_2004_A_16'
-    }
-};
+function toNumber(value: NumericValue, fallback = 0): number {
+    const numericValue = Number(value ?? fallback);
+    return Number.isNaN(numericValue) ? fallback : numericValue;
+}
+
+function toNullableNumber(value: NumericValue): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    const numericValue = Number(value);
+    return Number.isNaN(numericValue) ? null : numericValue;
+}
+
+function notNull<T>(value: T | null): value is T {
+    return value !== null;
+}
 
 export function isoToFecha(dateStr: string): string {
     const d = new Date(dateStr + 'T12:00:00Z');
@@ -43,21 +58,21 @@ export function fechaToISO(fecha: string): string {
     return `${year}-${String(MONTHS_IDX[parts[1]] + 1).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`;
 }
 
-export function normalizeEmision(rawData: any[], tcData: any[] = []): any[] {
-    const tcByFecha = new Map(tcData.map((d: any) => [d.fecha, d.valor]));
-    const byFecha = new Map(rawData.map((d: any) => [d.fecha, d]));
+export function normalizeEmision(rawData: EmisionRawRow[], tcData: BcraVariableRow[] = []): EmisionNormalizedRow[] {
+    const tcByFecha = new Map(tcData.map((row) => [row.fecha, row.valor]));
+    const byFecha = new Map(rawData.map((row) => [row.fecha, row]));
 
-    const merged = Array.from(byFecha.values()).sort((a: any, b: any) => String(a.fecha).localeCompare(String(b.fecha)));
+    const merged = Array.from(byFecha.values()).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
 
     let runningTotal = 0;
-    return merged.map((row: any) => {
-        const tc = Number(row.tc ?? tcByFecha.get(row.fecha) ?? 0);
-        const compraDolares = Number(row.compra_dolares ?? row.valor ?? 0);
-        const bcra = Number(row.bcra ?? (compraDolares * tc));
-        const vencimientos = Number(row.vencimientos ?? 0);
-        const licitado = Number(row.licitado ?? 0);
+    return merged.map((row) => {
+        const tc = toNumber(row.tc ?? tcByFecha.get(row.fecha));
+        const compraDolares = toNumber(row.compra_dolares ?? row.valor);
+        const bcra = toNumber(row.bcra, compraDolares * tc);
+        const vencimientos = toNumber(row.vencimientos);
+        const licitado = toNumber(row.licitado);
         const licitaciones = vencimientos - licitado;
-        const resultadoFiscal = Number(row.resultado_fiscal ?? 0);
+        const resultadoFiscal = toNumber(row.resultado_fiscal);
         const total = bcra + licitaciones + resultadoFiscal;
         runningTotal += total;
 
@@ -83,39 +98,42 @@ export function normalizeEmision(rawData: any[], tcData: any[] = []): any[] {
     });
 }
 
-export function normalizeEmae(rawData: any[]): any[] {
+export function normalizeEmae(rawData: EmaeRawRow[]): EmaeNormalizedRow[] {
     if (!Array.isArray(rawData) || rawData.length === 0) {
         return [];
     }
 
-    const baseRow = rawData.find((row: any) => row.fecha === '2017-01-01');
+    const baseRow = rawData.find((row) => row.fecha === '2017-01-01');
     if (!baseRow) {
         return [];
     }
 
-    const baseOriginal = baseRow.emae;
-    const baseDesest = baseRow.emae_desestacionalizado;
-    const baseTendencia = baseRow.emae_tendencia;
+    const baseOriginal = toNullableNumber(baseRow.emae);
+    const baseDesest = toNullableNumber(baseRow.emae_desestacionalizado);
+    const baseTendencia = toNullableNumber(baseRow.emae_tendencia);
 
     return rawData
-        .map((row: any) => {
+        .map((row) => {
             if (!row.fecha || typeof row.fecha !== 'string') return null;
             const dateObj = new Date(`${row.fecha}T00:00:00Z`);
             if (Number.isNaN(dateObj.getTime())) return null;
+            const emae = toNullableNumber(row.emae);
+            const emaeDesestacionalizado = toNullableNumber(row.emae_desestacionalizado);
+            const emaeTendencia = toNullableNumber(row.emae_tendencia);
 
             return {
                 fecha: `${MONTHS_ES[dateObj.getUTCMonth()]} ${String(dateObj.getUTCFullYear()).slice(-2)}`,
                 iso_fecha: row.fecha,
-                emae: baseOriginal ? (row.emae / baseOriginal) * 100 : null,
-                emae_desestacionalizado: baseDesest && row.emae_desestacionalizado ? (row.emae_desestacionalizado / baseDesest) * 100 : null,
-                emae_tendencia: baseTendencia && row.emae_tendencia ? (row.emae_tendencia / baseTendencia) * 100 : null,
+                emae: baseOriginal && emae != null ? (emae / baseOriginal) * 100 : null,
+                emae_desestacionalizado: baseDesest && emaeDesestacionalizado != null ? (emaeDesestacionalizado / baseDesest) * 100 : null,
+                emae_tendencia: baseTendencia && emaeTendencia != null ? (emaeTendencia / baseTendencia) * 100 : null,
             };
         })
-        .filter((row: any) => row !== null)
-        .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
+        .filter(notNull)
+        .sort((a, b) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
 }
 
-export function normalizeBma(rawData: any[]): any[] {
+export function normalizeBma(rawData: BmaRawRow[]): BmaNormalizedRow[] {
     if (!Array.isArray(rawData) || rawData.length === 0) {
         return [];
     }
@@ -126,17 +144,7 @@ export function normalizeBma(rawData: any[]): any[] {
         '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
     };
 
-    const monthly = new Map<string, {
-        bmTotal: number; bmCount: number;
-        pasesTotal: number; pasesCount: number;
-        leliqTotal: number; leliqCount: number;
-        lefiTotal: number; lefiCount: number;
-        otrosTotal: number; otrosCount: number;
-        depositosTesoroTotal: number; depositosTesoroCount: number;
-        pbi_trimestral: number | null;
-        emae_desestacionalizado: number | null;
-        ipc_nucleo: number | null;
-    }>();
+    const monthly = new Map<string, BmaMonthlyBucket>();
 
     for (const row of rawData) {
         if (!row.fecha || typeof row.fecha !== 'string') continue;
@@ -153,31 +161,27 @@ export function normalizeBma(rawData: any[]): any[] {
             ipc_nucleo: null,
         };
 
-        const addAverage = (value: any, totalKey: string, countKey: string) => {
-            if (value === null || value === undefined) return;
-            const numericValue = Number(value);
-            if (Number.isNaN(numericValue)) return;
-            (bucket as any)[totalKey] += numericValue;
-            (bucket as any)[countKey] += 1;
+        const addAverage = (value: NumericValue, apply: (numericValue: number) => void) => {
+            const numericValue = toNullableNumber(value);
+            if (numericValue == null) return;
+            apply(numericValue);
         };
 
-        addAverage(row.base_monetaria, 'bmTotal', 'bmCount');
-        addAverage(row.pases, 'pasesTotal', 'pasesCount');
-        addAverage(row.leliq, 'leliqTotal', 'leliqCount');
-        addAverage(row.lefi, 'lefiTotal', 'lefiCount');
-        addAverage(row.otros, 'otrosTotal', 'otrosCount');
+        addAverage(row.base_monetaria, (value) => { bucket.bmTotal += value; bucket.bmCount += 1; });
+        addAverage(row.pases, (value) => { bucket.pasesTotal += value; bucket.pasesCount += 1; });
+        addAverage(row.leliq, (value) => { bucket.leliqTotal += value; bucket.leliqCount += 1; });
+        addAverage(row.lefi, (value) => { bucket.lefiTotal += value; bucket.lefiCount += 1; });
+        addAverage(row.otros, (value) => { bucket.otrosTotal += value; bucket.otrosCount += 1; });
 
-        if (row.depositos_tesoro !== null && row.depositos_tesoro !== undefined) {
-            const numericDeposito = Number(row.depositos_tesoro);
-            if (!Number.isNaN(numericDeposito)) {
-                bucket.depositosTesoroTotal += numericDeposito;
-                bucket.depositosTesoroCount += 1;
-            }
+        const numericDeposito = toNullableNumber(row.depositos_tesoro);
+        if (numericDeposito != null) {
+            bucket.depositosTesoroTotal += numericDeposito;
+            bucket.depositosTesoroCount += 1;
         }
 
-        if (row.pbi_trimestral != null) bucket.pbi_trimestral = Number(row.pbi_trimestral);
-        if (row.emae_desestacionalizado != null) bucket.emae_desestacionalizado = Number(row.emae_desestacionalizado);
-        if (row.ipc_nucleo != null) bucket.ipc_nucleo = Number(row.ipc_nucleo);
+        if (row.pbi_trimestral != null) bucket.pbi_trimestral = toNullableNumber(row.pbi_trimestral);
+        if (row.emae_desestacionalizado != null) bucket.emae_desestacionalizado = toNullableNumber(row.emae_desestacionalizado);
+        if (row.ipc_nucleo != null) bucket.ipc_nucleo = toNullableNumber(row.ipc_nucleo);
 
         monthly.set(monthKey, bucket);
     }
@@ -186,17 +190,17 @@ export function normalizeBma(rawData: any[]): any[] {
     const ipcMap: Record<string, number> = {};
     for (const row of rawData) {
         if (row.fecha && row.emae_desestacionalizado != null) {
-            emaeMap[row.fecha] = Number(row.emae_desestacionalizado);
+            emaeMap[row.fecha] = toNumber(row.emae_desestacionalizado);
         }
         if (row.fecha && row.ipc_nucleo != null) {
-            ipcMap[row.fecha] = Number(row.ipc_nucleo);
+            ipcMap[row.fecha] = toNumber(row.ipc_nucleo);
         }
     }
 
     const pivotRow = [...rawData].reverse().find(r => r.pbi_trimestral != null);
-    const pivotPbi = pivotRow ? Number(pivotRow.pbi_trimestral) : null;
-    const pivotEmae = pivotRow ? Number(pivotRow.emae_desestacionalizado) : null;
-    const pivotIpc = pivotRow ? Number(pivotRow.ipc_nucleo) : null;
+    const pivotPbi = pivotRow ? toNullableNumber(pivotRow.pbi_trimestral) : null;
+    const pivotEmae = pivotRow ? toNullableNumber(pivotRow.emae_desestacionalizado) : null;
+    const pivotIpc = pivotRow ? toNullableNumber(pivotRow.ipc_nucleo) : null;
 
     const fallbackEmae = Object.values(emaeMap).slice(-1)[0] || null;
     const fallbackIpc = Object.values(ipcMap).slice(-1)[0] || null;
@@ -253,13 +257,13 @@ export function normalizeBma(rawData: any[]): any[] {
                 BMAmplia: calcPct(bmAmpliaRaw),
             };
         })
-        .filter((r: any) => r !== null)
-        .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
+        .filter(notNull)
+        .sort((a, b) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
 
     return result;
 }
 
-export function normalizeRecaudacion(rawData: any[]): any[] {
+export function normalizeRecaudacion(rawData: RecaudacionRawRow[]): RecaudacionNormalizedRow[] {
     if (!Array.isArray(rawData) || rawData.length === 0) {
         return [];
     }
@@ -280,22 +284,22 @@ export function normalizeRecaudacion(rawData: any[]): any[] {
     let lastKnownPbi: number | null = null;
 
     return rawData
-        .filter((row: any) => row.fecha && row.fecha >= '2019-01-01' && row.recaudacion_total != null)
-        .map((row: any) => {
-            const year = row.year;
-            const monthStr = row.mes;
+        .filter((row) => row.fecha && row.fecha >= '2019-01-01' && row.recaudacion_total != null)
+        .map((row) => {
+            const year = row.year ?? Number(row.fecha.slice(0, 4));
+            const monthStr = row.mes ?? row.fecha.slice(5, 7);
             const monthNum = parseInt(monthStr, 10);
             const emaeBase = emaeMap[`${year}-01-01`] || fallbackEmaeBase;
             const ipcBase = ipcMap[`${year}-01-01`] || fallbackIpcBase;
             
-            if (row.pbi_trimestral != null) lastKnownPbi = row.pbi_trimestral;
+            if (row.pbi_trimestral != null) lastKnownPbi = toNullableNumber(row.pbi_trimestral);
 
             const pbiTrimestral = row.pbi_trimestral ?? lastKnownPbi;
             const emaeDesest = row.emae_desestacionalizado ?? Object.values(emaeMap).slice(-1)[0];
             const ipcActual = row.ipc_nucleo ?? Object.values(ipcMap).slice(-1)[0];
 
             const pbiAnualizado = pbiTrimestral && emaeBase && emaeDesest && ipcBase && ipcActual
-                ? pbiTrimestral * (emaeDesest / emaeBase) * (ipcActual / ipcBase)
+                ? toNumber(pbiTrimestral) * (toNumber(emaeDesest) / emaeBase) * (toNumber(ipcActual) / ipcBase)
                 : pbiTrimestral;
 
             return pbiAnualizado
@@ -304,15 +308,15 @@ export function normalizeRecaudacion(rawData: any[]): any[] {
                     iso_fecha: row.fecha,
                     mes: monthStr,
                     year,
-                    pctPbi: (row.recaudacion_total / pbiAnualizado) * 100,
+                    pctPbi: (toNumber(row.recaudacion_total) / toNumber(pbiAnualizado)) * 100,
                 }
                 : null;
         })
-        .filter((row: any) => row !== null)
-        .sort((a: any, b: any) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
+        .filter(notNull)
+        .sort((a, b) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
 }
 
-export function normalizePoderAdquisitivo(rawData: any[]): any[] {
+export function normalizePoderAdquisitivo(rawData: PoderAdquisitivoRawRow[]): PoderAdquisitivoNormalizedRow[] {
     if (!Array.isArray(rawData) || rawData.length === 0) return [];
 
     const sorted = [...rawData].sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -321,26 +325,26 @@ export function normalizePoderAdquisitivo(rawData: any[]): any[] {
     if (baseIdx === -1) return [];
 
     const baseRow = sorted[baseIdx];
-    const ipcBase = Number(baseRow.ipc_nucleo || 0);
+    const ipcBase = toNumber(baseRow.ipc_nucleo);
     if (!ipcBase) return [];
 
     // Salario informal (negro) reportado 5 meses después corresponde al mes base
     const negroBaseRaw = sorted[baseIdx + 5]?.salario_no_registrado;
 
     const factors = {
-        blanco: Number(baseRow.salario_registrado || 0) / ipcBase,
-        negro: Number(negroBaseRaw || 0) / ipcBase,
-        privado: Number(baseRow.salario_privado || 0) / ipcBase,
-        publico: Number(baseRow.salario_publico || 0) / ipcBase,
-        ripte: Number(baseRow.ripte || 0) / ipcBase,
-        jubilacion: Number(baseRow.jubilacion_minima || 0) / ipcBase,
+        blanco: toNumber(baseRow.salario_registrado) / ipcBase,
+        negro: toNumber(negroBaseRaw) / ipcBase,
+        privado: toNumber(baseRow.salario_privado) / ipcBase,
+        publico: toNumber(baseRow.salario_publico) / ipcBase,
+        ripte: toNumber(baseRow.ripte) / ipcBase,
+        jubilacion: toNumber(baseRow.jubilacion_minima) / ipcBase,
     };
 
     return sorted.map((row, i) => {
-        const ipc = Number(row.ipc_nucleo || 0);
+        const ipc = toNumber(row.ipc_nucleo);
         if (!ipc) return null;
 
-        const calc = (val: any, factor: number) => {
+        const calc = (val: NumericValue, factor: number) => {
             if (val == null || !factor) return null;
             return (Number(val) / ipc / factor) * 100;
         };
@@ -356,10 +360,10 @@ export function normalizePoderAdquisitivo(rawData: any[]): any[] {
             ripte: calc(row.ripte, factors.ripte),
             jubilacion: calc(row.jubilacion_minima, factors.jubilacion),
         };
-    }).filter(Boolean);
+    }).filter(notNull);
 }
 
-export default {
+const normalize = {
     isoToFecha,
     isoToMonthLabel,
     fechaToTimestamp,
@@ -370,3 +374,5 @@ export default {
     normalizeRecaudacion,
     normalizePoderAdquisitivo
 };
+
+export default normalize;

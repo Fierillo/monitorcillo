@@ -1,12 +1,7 @@
 'use client';
 
 import { Line } from 'recharts';
-import { AreaConfig } from '@/types/chart';
-
-interface ChartLineProps {
-    areaConfig: AreaConfig;
-    isDimmed: boolean;
-}
+import type { ChartLineProps } from '@/types/chart';
 
 export default function ChartLine({ areaConfig, isDimmed }: ChartLineProps) {
     return (

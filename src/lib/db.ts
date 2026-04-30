@@ -1,64 +1,93 @@
 import { neon } from '@neondatabase/serverless';
-import { fechaToISO, isoToFecha, isoToMonthLabel, normalizeEmision } from './normalize';
+import type {
+    CatalogIndicatorRow,
+    DbRow,
+    DbValue,
+    IndicatorTrend,
+    IndicatorType,
+    NormalizedDataByType,
+    NormalizedDataRow,
+    RawDataByType,
+} from '@/types';
+import { fechaToISO, isoToFecha, isoToMonthLabel } from './normalize';
 
 const sql = neon(process.env.NEON_URL!);
 
-const TABLES = {
+const TABLES: Record<IndicatorType, { raw: string; normalized: string }> = {
     emision: { raw: 'emision_raw', normalized: 'emision_normalized' },
     emae: { raw: 'emae_raw', normalized: 'emae_normalized' },
     bma: { raw: 'bma_raw', normalized: 'bma_normalized' },
     reca: { raw: 'recaudacion_raw', normalized: 'recaudacion_normalized' },
     poder: { raw: 'poder_adquisitivo_raw', normalized: 'poder_adquisitivo_normalized' },
-} as const;
-
-export type IndicatorType = keyof typeof TABLES;
+};
 
 function getTableName(type: IndicatorType, normalized: boolean): string {
     return normalized ? TABLES[type].normalized : TABLES[type].raw;
 }
 
-export async function getRawData(type: IndicatorType): Promise<any[]> {
+function formatDbDate(value: DbValue): string {
+    if (value instanceof Date) return value.toISOString().split('T')[0];
+    return String(value ?? '');
+}
+
+function toNumber(value: DbValue): number {
+    return Number(value ?? 0);
+}
+
+function toNullableNumber(value: DbValue): number | null {
+    if (value === null || value === undefined) return null;
+    return Number(value);
+}
+
+function toCatalogTrend(value: DbValue): IndicatorTrend {
+    if (value === 'up' || value === 'down' || value === 'neutral') return value;
+    return 'neutral';
+}
+
+function toDbRow(row: object): Record<string, DbValue> {
+    return row as Record<string, DbValue>;
+}
+
+export async function getRawData<T extends IndicatorType>(type: T): Promise<Array<RawDataByType[T]>> {
     const table = getTableName(type, false);
     try {
-        const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`, []);
-        return rows.map((r: any) => ({
-            ...r,
-            fecha: r.fecha instanceof Date ? r.fecha.toISOString().split('T')[0] : r.fecha
-        }));
+        const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`, []) as DbRow[];
+        return rows.map((row) => ({
+            ...row,
+            fecha: formatDbDate(row.fecha),
+        })) as Array<RawDataByType[T]>;
     } catch (error) {
         console.error(`[db] getRawData failed for ${type}`, error);
         return [];
     }
 }
 
-export async function saveRawData(type: IndicatorType, data: Record<string, any>[]): Promise<void> {
+export async function saveRawData<T extends IndicatorType>(type: T, data: Array<Partial<RawDataByType[T]>>): Promise<void> {
     const table = getTableName(type, false);
     if (data.length === 0) return;
 
-    // Group rows by their set of keys to send efficient homogeneous batches
-    const groups = new Map<string, Record<string, any>[]>();
+    const groups = new Map<string, Array<Record<string, DbValue>>>();
     for (const row of data) {
-        const keys = Object.keys(row).sort().join(',');
+        const dbRow = toDbRow(row);
+        const keys = Object.keys(dbRow).sort().join(',');
         const group = groups.get(keys) || [];
-        group.push(row);
+        group.push(dbRow);
         groups.set(keys, group);
     }
 
     for (const [keyString, rows] of groups.entries()) {
         const keys = keyString.split(',');
         const BATCH_SIZE = 100;
-        
+
         for (let i = 0; i < rows.length; i += BATCH_SIZE) {
             const batch = rows.slice(i, i + BATCH_SIZE);
             const setClause = keys.filter(k => k !== 'fecha').map((k) => `${k} = EXCLUDED.${k}`).join(', ');
-            
-            const values: any[] = [];
-            const placeholders = batch.map((row, rowIndex) => {
+
+            const values: DbValue[] = [];
+            const placeholders = batch.map((row) => {
                 const rowPlaceholders = keys.map((key) => {
                     const placeholderIndex = values.length + 1;
-                    let val = row[key];
-                    if (val === undefined) val = null;
-                    values.push(val);
+                    values.push(row[key] === undefined ? null : row[key]);
                     return `$${placeholderIndex}`;
                 }).join(', ');
                 return `(${rowPlaceholders})`;
@@ -71,92 +100,87 @@ export async function saveRawData(type: IndicatorType, data: Record<string, any>
     }
 }
 
-export async function replaceRawData(type: IndicatorType, data: Record<string, any>[]): Promise<void> {
+export async function replaceRawData<T extends IndicatorType>(type: T, data: Array<Partial<RawDataByType[T]>>): Promise<void> {
     const table = getTableName(type, false);
     await sql.query(`DELETE FROM ${table}`, []);
     await saveRawData(type, data);
 }
 
-export async function getNormalizedData(type: IndicatorType): Promise<any[] | null> {
+export async function getNormalizedData<T extends IndicatorType>(type: T): Promise<Array<NormalizedDataByType[T]> | null> {
     const table = getTableName(type, true);
 
     try {
-        const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`, []);
+        const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`, []) as DbRow[];
         if (rows.length === 0) return null;
 
-        return rows.map((row: any) => {
-            const iso_fecha = row.fecha instanceof Date ? row.fecha.toISOString().split('T')[0] : row.fecha;
-            
+        return rows.map((row) => {
+            const iso_fecha = formatDbDate(row.fecha);
             const common = {
                 fecha: type === 'emision' ? isoToFecha(iso_fecha) : isoToMonthLabel(iso_fecha),
                 iso_fecha,
             };
 
             if (type === 'emision') {
-                const bcra = Number(row.bcra ?? 0);
-                const licitaciones = Number(row.licitaciones ?? 0);
-                const resultadoFiscal = Number(row.resultado_fiscal ?? 0);
+                const bcra = toNumber(row.bcra);
+                const licitaciones = toNumber(row.licitaciones);
+                const resultadoFiscal = toNumber(row.resultado_fiscal);
                 return {
                     ...common,
                     BCRA: bcra,
                     BCRA_POS: bcra > 0 ? bcra : null,
                     BCRA_NEG: bcra < 0 ? bcra : null,
-                    TC: Number(row.tc ?? 0),
-                    CompraDolares: Number(row.compra_dolares ?? 0),
-                    Vencimientos: Number(row.vencimientos ?? 0),
-                    Licitado: Number(row.licitado ?? 0),
+                    TC: toNumber(row.tc),
+                    CompraDolares: toNumber(row.compra_dolares),
+                    Vencimientos: toNumber(row.vencimientos),
+                    Licitado: toNumber(row.licitado),
                     Licitaciones: licitaciones,
                     Licitaciones_POS: licitaciones > 0 ? licitaciones : null,
                     Licitaciones_NEG: licitaciones < 0 ? licitaciones : null,
                     'Resultado fiscal': resultadoFiscal,
                     ResultadoFiscal_POS: resultadoFiscal > 0 ? resultadoFiscal : null,
                     ResultadoFiscal_NEG: resultadoFiscal < 0 ? resultadoFiscal : null,
-                    TOTAL: Number(row.total ?? 0),
-                    ACUMULADO: Number(row.acumulado ?? 0),
-                };
+                    TOTAL: toNumber(row.total),
+                    ACUMULADO: toNumber(row.acumulado),
+                } as NormalizedDataByType[T];
             }
 
             if (type === 'emae') {
                 return {
                     ...common,
-                    emae: Number(row.emae ?? 0),
-                    emae_desestacionalizado: row.emae_desestacionalizado == null ? null : Number(row.emae_desestacionalizado),
-                    emae_tendencia: row.emae_tendencia == null ? null : Number(row.emae_tendencia),
-                };
+                    emae: toNumber(row.emae),
+                    emae_desestacionalizado: toNullableNumber(row.emae_desestacionalizado),
+                    emae_tendencia: toNullableNumber(row.emae_tendencia),
+                } as NormalizedDataByType[T];
             }
 
             if (type === 'bma') {
                 return {
                     ...common,
-                    BaseMonetaria: row.base_monetaria == null ? null : Number(row.base_monetaria),
-                    PasivosRemunerados: row.pasivos_remunerados == null ? null : Number(row.pasivos_remunerados),
-                    DepositosTesoro: row.depositos_tesoro == null ? null : Number(row.depositos_tesoro),
-                    BMAmplia: row.bma_amplia == null ? null : Number(row.bma_amplia),
-                };
+                    BaseMonetaria: toNullableNumber(row.base_monetaria),
+                    PasivosRemunerados: toNullableNumber(row.pasivos_remunerados),
+                    DepositosTesoro: toNullableNumber(row.depositos_tesoro),
+                    BMAmplia: toNullableNumber(row.bma_amplia),
+                } as NormalizedDataByType[T];
             }
 
             if (type === 'reca') {
                 return {
                     ...common,
-                    mes: row.mes,
-                    year: Number(row.year ?? 0),
-                    pctPbi: row.pct_pbi == null ? null : Number(row.pct_pbi),
-                };
+                    mes: String(row.mes ?? ''),
+                    year: toNumber(row.year),
+                    pctPbi: toNullableNumber(row.pct_pbi),
+                } as NormalizedDataByType[T];
             }
 
-            if (type === 'poder') {
-                return {
-                    ...common,
-                    blanco: row.blanco == null ? null : Number(row.blanco),
-                    negro: row.negro == null ? null : Number(row.negro),
-                    privado: row.privado == null ? null : Number(row.privado),
-                    publico: row.publico == null ? null : Number(row.publico),
-                    ripte: row.ripte == null ? null : Number(row.ripte),
-                    jubilacion: row.jubilacion == null ? null : Number(row.jubilacion),
-                };
-            }
-
-            return row;
+            return {
+                ...common,
+                blanco: toNullableNumber(row.blanco),
+                negro: toNullableNumber(row.negro),
+                privado: toNullableNumber(row.privado),
+                publico: toNullableNumber(row.publico),
+                ripte: toNullableNumber(row.ripte),
+                jubilacion: toNullableNumber(row.jubilacion),
+            } as NormalizedDataByType[T];
         });
     } catch (error) {
         console.error(`[db] getNormalizedData failed for ${type}`, error);
@@ -164,40 +188,41 @@ export async function getNormalizedData(type: IndicatorType): Promise<any[] | nu
     }
 }
 
-export async function saveNormalizedData(type: IndicatorType, data: Record<string, any>[]): Promise<void> {
+export async function saveNormalizedData(type: IndicatorType, data: NormalizedDataRow[]): Promise<void> {
     const table = getTableName(type, true);
     if (data.length === 0) return;
 
     const BATCH_SIZE = 50;
     for (let i = 0; i < data.length; i += BATCH_SIZE) {
         const batch = data.slice(i, i + BATCH_SIZE);
-        
+
         let keys: string[] = [];
         if (type === 'emision') keys = ['fecha', 'bcra', 'tc', 'compra_dolares', 'vencimientos', 'licitado', 'licitaciones', 'resultado_fiscal', 'total', 'acumulado'];
         else if (type === 'emae') keys = ['fecha', 'emae', 'emae_desestacionalizado', 'emae_tendencia'];
         else if (type === 'bma') keys = ['fecha', 'base_monetaria', 'pasivos_remunerados', 'depositos_tesoro', 'bma_amplia'];
         else if (type === 'reca') keys = ['fecha', 'mes', 'year', 'pct_pbi'];
         else if (type === 'poder') keys = ['fecha', 'blanco', 'negro', 'privado', 'publico', 'ripte', 'jubilacion'];
-        
+
         if (keys.length === 0) continue;
 
         const setClause = keys.map(k => `${k} = EXCLUDED.${k}`).join(', ');
-        const values: any[] = [];
-        const placeholders = batch.map((row) => {
-            const fecha = row.iso_fecha || (typeof row.fecha === 'string' && row.fecha.includes('-') ? row.fecha : fechaToISO(row.fecha));
-            if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return null;
+        const values: DbValue[] = [];
+        const placeholders = batch.map((dataRow) => {
+            const row = dataRow as Record<string, DbValue>;
+            const fecha = row.iso_fecha || (typeof row.fecha === 'string' && row.fecha.includes('-') ? row.fecha : fechaToISO(String(row.fecha ?? '')));
+            if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(String(fecha))) return null;
 
-            const rowValues: any[] = [fecha];
+            const rowValues: DbValue[] = [fecha];
             if (type === 'emision') {
-                rowValues.push(Number(row.BCRA ?? 0), Number(row.TC ?? 0), Number(row.CompraDolares ?? 0), Number(row.Vencimientos ?? 0), Number(row.Licitado ?? 0), Number(row.Licitaciones ?? 0), Number(row['Resultado fiscal'] ?? 0), Number(row.TOTAL ?? 0), Number(row.ACUMULADO ?? 0));
+                rowValues.push(toNumber(row.BCRA), toNumber(row.TC), toNumber(row.CompraDolares), toNumber(row.Vencimientos), toNumber(row.Licitado), toNumber(row.Licitaciones), toNumber(row['Resultado fiscal']), toNumber(row.TOTAL), toNumber(row.ACUMULADO));
             } else if (type === 'emae') {
-                rowValues.push(Number(row.emae ?? 0), row.emae_desestacionalizado == null ? null : Number(row.emae_desestacionalizado), row.emae_tendencia == null ? null : Number(row.emae_tendencia));
+                rowValues.push(toNumber(row.emae), toNullableNumber(row.emae_desestacionalizado), toNullableNumber(row.emae_tendencia));
             } else if (type === 'bma') {
-                rowValues.push(row.BaseMonetaria == null ? null : Number(row.BaseMonetaria), row.PasivosRemunerados == null ? null : Number(row.PasivosRemunerados), row.DepositosTesoro == null ? null : Number(row.DepositosTesoro), row.BMAmplia == null ? null : Number(row.BMAmplia));
+                rowValues.push(toNullableNumber(row.BaseMonetaria), toNullableNumber(row.PasivosRemunerados), toNullableNumber(row.DepositosTesoro), toNullableNumber(row.BMAmplia));
             } else if (type === 'reca') {
-                rowValues.push(row.mes ?? null, row.year == null ? null : Number(row.year), row.pctPbi == null ? null : Number(row.pctPbi));
+                rowValues.push(row.mes, toNullableNumber(row.year), toNullableNumber(row.pctPbi));
             } else if (type === 'poder') {
-                rowValues.push(row.blanco == null ? null : Number(row.blanco), row.negro == null ? null : Number(row.negro), row.privado == null ? null : Number(row.privado), row.publico == null ? null : Number(row.publico), row.ripte == null ? null : Number(row.ripte), row.jubilacion == null ? null : Number(row.jubilacion));
+                rowValues.push(toNullableNumber(row.blanco), toNullableNumber(row.negro), toNullableNumber(row.privado), toNullableNumber(row.publico), toNullableNumber(row.ripte), toNullableNumber(row.jubilacion));
             }
 
             const rowPlaceholders = rowValues.map((_, valIndex) => {
@@ -207,7 +232,7 @@ export async function saveNormalizedData(type: IndicatorType, data: Record<strin
 
             values.push(...rowValues);
             return `(${rowPlaceholders})`;
-        }).filter(p => p !== null).join(', ');
+        }).filter((placeholder): placeholder is string => placeholder !== null).join(', ');
 
         if (!placeholders) continue;
 
@@ -216,7 +241,7 @@ export async function saveNormalizedData(type: IndicatorType, data: Record<strin
     }
 }
 
-export async function replaceNormalizedData(type: IndicatorType, data: Record<string, any>[]): Promise<void> {
+export async function replaceNormalizedData(type: IndicatorType, data: NormalizedDataRow[]): Promise<void> {
     const table = getTableName(type, true);
     await sql.query(`DELETE FROM ${table}`, []);
     await saveNormalizedData(type, data);
@@ -225,36 +250,35 @@ export async function replaceNormalizedData(type: IndicatorType, data: Record<st
 export async function getLastUpdate(type: IndicatorType): Promise<string | null> {
     const table = getTableName(type, true);
     try {
-        const rows = await sql.query(`SELECT last_update FROM ${table} ORDER BY last_update DESC LIMIT 1`, []);
-        return rows.length > 0 ? rows[0].last_update : null;
+        const rows = await sql.query(`SELECT last_update FROM ${table} ORDER BY last_update DESC LIMIT 1`, []) as DbRow[];
+        return rows.length > 0 ? String(rows[0].last_update ?? '') : null;
     } catch {
         return null;
     }
 }
 
-export interface CatalogIndicator {
-    id: string;
-    indicador: string;
-    referencia: string;
-    dato: string;
-    fecha: string;
-    fuente: string;
-    trend: string;
-    category: string;
-    has_details: boolean;
-    source_url: string | null;
-}
-
-export async function getIndicatorsCatalog(): Promise<any[]> {
+export async function getIndicatorsCatalog(): Promise<CatalogIndicatorRow[]> {
     try {
-        return await sql.query('SELECT * FROM indicators_catalog ORDER BY category, indicador', []);
+        const rows = await sql.query('SELECT * FROM indicators_catalog ORDER BY category, indicador', []) as DbRow[];
+        return rows.map((row) => ({
+            id: String(row.id ?? ''),
+            indicador: String(row.indicador ?? ''),
+            referencia: String(row.referencia ?? ''),
+            dato: String(row.dato ?? ''),
+            fecha: String(row.fecha ?? ''),
+            fuente: String(row.fuente ?? ''),
+            trend: toCatalogTrend(row.trend),
+            category: String(row.category ?? ''),
+            has_details: Boolean(row.has_details),
+            source_url: row.source_url == null ? null : String(row.source_url),
+        }));
     } catch (error) {
         console.error('[db] getIndicatorsCatalog failed', error);
         return [];
     }
 }
 
-export async function saveIndicatorsCatalog(data: Record<string, any>[]): Promise<void> {
+export async function saveIndicatorsCatalog(data: CatalogIndicatorRow[]): Promise<void> {
     for (const row of data) {
         const query = `
             INSERT INTO indicators_catalog (id, indicador, referencia, dato, fecha, fuente, trend, category, has_details, source_url, updated_at)
@@ -278,7 +302,7 @@ export async function saveIndicatorsCatalog(data: Record<string, any>[]): Promis
     }
 }
 
-export default {
+const db = {
     getRawData,
     saveRawData,
     replaceRawData,
@@ -289,3 +313,5 @@ export default {
     getIndicatorsCatalog,
     saveIndicatorsCatalog
 };
+
+export default db;

@@ -1,20 +1,13 @@
 import { getIndicators } from '@/lib/indicators';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { AreaConfig, ChartDataRow, IndicatorPageProps, MethodologyItem } from '@/types';
+import IndicatorCompositeView from '@/components/IndicatorCompositeView';
+import { getCachedIndicator } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
 
-interface PageProps {
-    params: Promise<{
-        id: string;
-    }>;
-}
-
-import IndicatorCompositeView, { AreaConfig, MethodologyItem } from '@/components/IndicatorCompositeView';
-
-import { getCachedIndicator } from '@/lib/storage';
-
-export default async function IndicatorDetailPage({ params }: PageProps) {
+export default async function IndicatorDetailPage({ params }: IndicatorPageProps) {
     const resolvedParams = await params;
     const data = await getIndicators();
     const indicator = data.find(i => i.id === resolvedParams.id);
@@ -32,11 +25,11 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
         );
     }
 
-    let chartData: any[] = [];
+    let chartData: ChartDataRow[] = [];
 
-    const safeGetIndicatorData = async (id: string) => {
+    const safeGetIndicatorData = async (id: string): Promise<ChartDataRow[]> => {
         try {
-            return (await getCachedIndicator(id)) ?? [];
+            return ((await getCachedIndicator(id)) ?? []) as ChartDataRow[];
         } catch (error) {
             console.error(`[indicator][${id}] failed to load from Neon`, error);
             return [];
@@ -145,7 +138,7 @@ export default async function IndicatorDetailPage({ params }: PageProps) {
     if (indicator.id === 'emision') {
         const cached = await safeGetIndicatorData('emision');
         if (cached) {
-            chartData = [...cached].sort((a: any, b: any) => String(a.iso_fecha ?? '').localeCompare(String(b.iso_fecha ?? '')));
+            chartData = [...cached].sort((a, b) => String(a.iso_fecha ?? '').localeCompare(String(b.iso_fecha ?? '')));
         }
 
         const areas: AreaConfig[] = [

@@ -1,13 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { MethodologyItem } from '@/types/chart';
+import type { MethodologySectionProps } from '@/types/chart';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-
-interface MethodologySectionProps {
-    methodology: MethodologyItem[];
-    forceOpen?: boolean;
-}
 
 export default function MethodologySection({ methodology, forceOpen }: MethodologySectionProps) {
     const [isOpen, setIsOpen] = useState(false);

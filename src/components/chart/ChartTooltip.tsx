@@ -1,18 +1,7 @@
 'use client';
 
-import { AreaConfig, ValueFormat } from '@/types/chart';
+import type { ChartDataRow, ChartTooltipProps } from '@/types/chart';
 import { SPANISH_MONTHS, formatValueByType } from './utils';
-
-interface ChartTooltipProps {
-    chartData: any[];
-    areaConfigs: AreaConfig[];
-    valueFormat: ValueFormat;
-    tooltipProps: {
-        active?: boolean;
-        label?: string | number;
-        payload?: readonly any[];
-    };
-}
 
 export default function ChartTooltip({
     chartData,
@@ -23,18 +12,17 @@ export default function ChartTooltip({
     if (!tooltipProps.active || !tooltipProps.label) return null;
 
     const tooltipLabel = String(tooltipProps.label);
-    const rowData = chartData.find((row: any) => row.fecha === tooltipLabel || row.iso_fecha === tooltipLabel);
-
-
+    const rowData = chartData.find((row) => row.fecha === tooltipLabel || row.iso_fecha === tooltipLabel);
 
     if (!rowData) return null;
 
-    if (rowData.pctPbi && rowData.mes) {
+    const month = rowData.mes;
+    if (rowData.pctPbi && month) {
         const monthlyComparison = chartData
-            .filter((row: any) => row.mes === rowData.mes && row.pctPbi)
-            .sort((a: any, b: any) => b.year - a.year);
+            .filter((row) => row.mes === month && row.pctPbi)
+            .sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
 
-        const rows = monthlyComparison.map((row: any) => {
+        const rows = monthlyComparison.map((row) => {
             const isCurrent = row.year === rowData.year;
             return (
                 <div
@@ -48,7 +36,7 @@ export default function ChartTooltip({
                         paddingBottom: isCurrent ? '4px' : '0'
                     }}
                 >
-                    {SPANISH_MONTHS[rowData.mes]} {String(row.year).slice(-2)}: {row.pctPbi.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% PIB
+                    {SPANISH_MONTHS[month]} {String(row.year).slice(-2)}: {Number(row.pctPbi ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% PIB
                 </div>
             );
         });
@@ -60,23 +48,27 @@ export default function ChartTooltip({
         );
     }
 
-    const valueRows = areaConfigs.map(area => {
-        const value = rowData[area.key];
-        if (value === null || value === undefined) return null;
-
-        return (
-            <div key={area.key} style={{ color: area.color, fontWeight: 'bold' }}>
-                {area.name}: {formatValueByType(Number(value), valueFormat, 1)}
-            </div>
-        );
-    }).filter(Boolean);
+    const valueRows = areaConfigs
+        .map(area => renderValueRow(rowData, area, valueFormat))
+        .filter((row): row is NonNullable<ReturnType<typeof renderValueRow>> => row !== null);
 
     if (valueRows.length === 0) return null;
 
     return (
-            <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.85)', border: '1px solid #FFD700', padding: '10px', color: '#FFF', backdropFilter: 'blur(4px)' }}>
-                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{rowData.fecha}</div>
-                {valueRows}
-            </div>
+        <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.85)', border: '1px solid #FFD700', padding: '10px', color: '#FFF', backdropFilter: 'blur(4px)' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{rowData.fecha}</div>
+            {valueRows}
+        </div>
+    );
+}
+
+function renderValueRow(rowData: ChartDataRow, area: ChartTooltipProps['areaConfigs'][number], valueFormat: ChartTooltipProps['valueFormat']) {
+    const value = rowData[area.key];
+    if (value === null || value === undefined) return null;
+
+    return (
+        <div key={area.key} style={{ color: area.color, fontWeight: 'bold' }}>
+            {area.name}: {formatValueByType(Number(value), valueFormat, 1)}
+        </div>
     );
 }

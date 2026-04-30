@@ -1,6 +1,7 @@
 import https from 'https';
+import type { BcraApiResponse, BcraVariableRow } from '@/types';
 
-export async function fetchBcraVariable(idVariable: number, from: string, to: string): Promise<any[]> {
+export async function fetchBcraVariable(idVariable: number, from: string, to: string): Promise<BcraVariableRow[]> {
     const url = `https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/${idVariable}?Desde=${from}&Hasta=${to}`;
 
     return new Promise((resolve) => {
@@ -12,9 +13,9 @@ export async function fetchBcraVariable(idVariable: number, from: string, to: st
             res.on('end', () => {
                 if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
                     try {
-                        const parsed = JSON.parse(data);
+                        const parsed = JSON.parse(data) as BcraApiResponse;
                         resolve(parsed.results && parsed.results[0] ? parsed.results[0].detalle || [] : []);
-                    } catch (e) {
+                    } catch {
                         resolve([]);
                     }
                 } else {
