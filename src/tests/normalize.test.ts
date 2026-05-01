@@ -5,6 +5,10 @@ describe('normalizePoderAdquisitivo', () => {
     it('normalizes all series to 100 on 2017-01-01 and shifts informal salary', () => {
         const rawData = [
             { fecha: '2017-01-01', ipc_nucleo: 100, salario_registrado: 1000, salario_no_registrado: 500, salario_privado: 1000, salario_publico: 1000, ripte: 1000, jubilacion_minima: 1000 },
+            { fecha: '2017-02-01', ipc_nucleo: 105 },
+            { fecha: '2017-03-01', ipc_nucleo: 110 },
+            { fecha: '2017-04-01', ipc_nucleo: 115 },
+            { fecha: '2017-05-01', ipc_nucleo: 118 },
             { fecha: '2017-06-01', ipc_nucleo: 120, salario_registrado: 1200, salario_no_registrado: 800, salario_privado: 1200, salario_publico: 1200, ripte: 1200, jubilacion_minima: 1200 },
         ];
 
@@ -159,8 +163,7 @@ describe('normalizeBma', () => {
 });
 
 describe('normalizeRecaudacion', () => {
-    it('calculates Recaudacion as % of Monthly GDP', () => {
-        // Monthly GDP = Annualized GDP / 12
+    it('calculates Recaudacion as % of annualized GDP', () => {
         // Annualized GDP = PBI_Trimestral * (EMAE_actual / EMAE_base) * (IPC_actual / IPC_base)
         const rawData = [
             {
@@ -180,13 +183,12 @@ describe('normalizeRecaudacion', () => {
         ];
 
         // Annualized GDP = 36000
-        // Monthly GDP = 36000 / 12 = 3000
-        // % PBI = (100 / 3000) * 100 = 3.3333...
+        // % PBI = (100 / 36000) * 100 = 0.2777...
 
         const normalized = normalizeRecaudacion(rawData);
 
         expect(normalized).toHaveLength(1);
-        expect(normalized[0].pctPbi).toBeCloseTo(3.3333, 4);
+        expect(normalized[0].pctPbi).toBeCloseTo(0.2778, 4);
         expect(normalized[0].fecha).toBe('FEB 26');
         expect(normalized[0].iso_fecha).toBe('2026-02-01');
     });
