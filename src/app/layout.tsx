@@ -15,8 +15,8 @@ const libreBaskerville = Libre_Baskerville({
 });
 
 export const metadata: Metadata = {
-  title: "Monitorcillo Imperial",
-  description: "Datos económicos bajo la luz del imperio",
+  title: "Monitorcillo",
+  description: "El precio de la paz es la eterna vigilancia.",
 };
 
 export default function RootLayout({
