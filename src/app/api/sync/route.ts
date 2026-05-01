@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { runSync } from '@/lib/sync';
 import { isAuthenticated } from '@/lib/auth';
 
@@ -15,6 +16,8 @@ export async function POST(req: Request) {
 
     try {
         const results = await runSync();
+        revalidatePath('/');
+        revalidatePath('/admin');
         return NextResponse.json({ success: true, results });
     } catch (error) {
         console.error('Sync error:', error);

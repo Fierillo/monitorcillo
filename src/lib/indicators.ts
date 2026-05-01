@@ -1,9 +1,10 @@
 import type { CatalogIndicatorRow, Indicator } from '@/types';
-import { getIndicatorsCatalog, saveIndicatorsCatalog } from './db';
+import { saveIndicatorsCatalog } from './db';
+import { buildCurrentIndicatorsCatalog } from './catalog-service';
 
 export async function getIndicators(): Promise<Indicator[]> {
     try {
-        const rows = await getIndicatorsCatalog();
+        const rows = await buildCurrentIndicatorsCatalog();
         
         return rows.map((row) => ({
             id: row.id,

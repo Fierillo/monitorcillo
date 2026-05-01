@@ -1,14 +1,13 @@
 import https from 'https';
 import * as XLSX from 'xlsx';
-import { getRawData, saveRawData, saveIndicatorsCatalog, replaceRawData, replaceNormalizedData, getNormalizedData } from './db';
-import { normalizeEmision, normalizeEmae, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo, fechaToISO, isoToFecha } from './normalize';
+import { getRawData, saveRawData, saveIndicatorsCatalog, replaceRawData, replaceNormalizedData } from './db';
+import { normalizeEmision, normalizeEmae, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo, fechaToISO } from './normalize';
+import { buildCurrentIndicatorsCatalog } from './catalog-service';
 import type {
     BcraApiResponse,
     BcraVariablePage,
     BcraVariableRow,
-    CatalogIndicatorRow,
     BmaRawRow,
-    DataRow,
     DatosGobApiResponse,
     DatosGobSeriesRow,
     EmaeRawRow,
@@ -511,73 +510,10 @@ export async function syncBma(): Promise<SyncResult> {
     return { appended, total: components.length };
 }
 
-const DEFAULT_CATALOG: CatalogIndicatorRow[] = [
-    { id: 'bma', indicador: 'Base Monetaria Amplia', referencia: 'Metrica compuesta', dato: '-', fecha: 'Feb-26', fuente: 'BCRA', trend: 'neutral', category: 'monetario', has_details: true, source_url: null },
-    { id: 'emision', indicador: 'Emisión / Absorción de Pesos', referencia: 'Emisión / Absorción de Pesos', dato: '-', fecha: 'Feb-26', fuente: 'BCRA y MECON', trend: 'neutral', category: 'monetario', has_details: true, source_url: null },
-    { id: 'recaudacion', indicador: 'Recaudación tributaria', referencia: 'Var% interanual', dato: '-', fecha: 'ENE 26', fuente: 'MECON', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: null },
-    { id: 'poder-adquisitivo', indicador: 'Poder adquisitivo (ajustado por IPC nucleo)', referencia: 'Indice 100 = Ene-17', dato: '-', fecha: 'FEB 26', fuente: 'INDEC', trend: 'down', category: 'socioeconomico', has_details: true, source_url: 'https://www.indec.gob.ar/indec/web/Nivel4-Tema-4-31-61' },
-    { id: 'emae', indicador: 'EMAE (Estimador Mensual de Actividad Económica)', referencia: 'Índice Base Ene-17 = 100', dato: '-', fecha: 'FEB 26', fuente: 'INDEC', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: 'https://www.indec.gob.ar/indec/web/Nivel4-Tema-3-9-48' },
-];
-
 export async function syncIndicatorsCatalog(): Promise<SyncResult> {
-    try {
-        const catalog = DEFAULT_CATALOG.map(item => ({ ...item }));
-        const sources: Record<string, IndicatorType> = {
-            'bma': 'bma',
-            'emision': 'emision',
-            'recaudacion': 'reca',
-            'poder-adquisitivo': 'poder',
-            'emae': 'emae'
-        };
-
-        for (const item of catalog) {
-            const type = sources[item.id];
-            if (!type) continue;
-            
-            const data = await getNormalizedData(type);
-            if (!data || data.length === 0) continue;
-
-            const rows = data as DataRow[];
-            const getValue = (row: DataRow) => {
-                if (item.id === 'bma') return row.BMAmplia;
-                if (item.id === 'emision') return row.ACUMULADO;
-                if (item.id === 'recaudacion') return row.pctPbi;
-                if (item.id === 'poder-adquisitivo') return row.blanco;
-                if (item.id === 'emae') return row.emae_desestacionalizado;
-                return null;
-            };
-
-            let latestRow = rows[rows.length - 1];
-            if (getValue(latestRow) == null) {
-                for (let i = rows.length - 1; i >= 0; i--) {
-                    if (getValue(rows[i]) != null) {
-                        latestRow = rows[i];
-                        break;
-                    }
-                }
-            }
-
-            if (typeof latestRow.iso_fecha === 'string') item.fecha = isoToFecha(latestRow.iso_fecha);
-            
-            const val = getValue(latestRow);
-            if (val != null) {
-                const numericValue = Number(val);
-                if (item.id === 'bma' || item.id === 'recaudacion') {
-                    item.dato = `${numericValue.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
-                } else if (item.id === 'emision') {
-                    item.dato = `$${Math.round(numericValue).toLocaleString('es-AR')}M`;
-                } else {
-                    item.dato = numericValue.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-                }
-            }
-        }
-
-        await saveIndicatorsCatalog(catalog);
-        return { appended: catalog.length, total: catalog.length };
-    } catch (error) {
-        console.error('syncIndicatorsCatalog error:', error);
-        return { appended: 0, total: 0 };
-    }
+    const catalog = await buildCurrentIndicatorsCatalog();
+    await saveIndicatorsCatalog(catalog);
+    return { appended: catalog.length, total: catalog.length };
 }
 
 export async function syncRecaudacion(): Promise<SyncResult> {
