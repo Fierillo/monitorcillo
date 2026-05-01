@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { getRawData, saveRawData, saveIndicatorsCatalog, replaceRawData, replaceNormalizedData } from './db';
 import { normalizeEmision, normalizeEmae, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo, fechaToISO } from './normalize';
 import { buildCurrentIndicatorsCatalog } from './catalog-service';
+import { runSyncTasks } from './sync-runner';
 import type {
     BcraApiResponse,
     BcraVariablePage,
@@ -549,22 +550,16 @@ export async function syncPoderAdquisitivo(): Promise<SyncResult> {
 }
 
 export async function runSync(): Promise<SyncResults> {
-    const results: SyncResults = {};
+    const indicatorResults = await runSyncTasks([
+        { key: 'emision', run: syncEmision },
+        { key: 'emae', run: syncEmae },
+        { key: 'bma', run: syncBma },
+        { key: 'recaudacion', run: syncRecaudacion },
+        { key: 'poder_adquisitivo', run: syncPoderAdquisitivo },
+    ]);
+    const catalogResults = await runSyncTasks([{ key: 'catalog', run: syncIndicatorsCatalog }]);
 
-    const emision = await syncEmision().catch(e => { console.error('emision error:', e); return { appended: 0, total: 0 }; });
-    const emae = await syncEmae().catch(e => { console.error('emae error:', e); return { appended: 0, total: 0 }; });
-    const bma = await syncBma().catch(e => { console.error('bma error:', e); return { appended: 0, total: 0 }; });
-    const reca = await syncRecaudacion().catch(e => { console.error('reca error:', e); return { appended: 0, total: 0 }; });
-    const poder = await syncPoderAdquisitivo().catch(e => { console.error('poder error:', e); return { appended: 0, total: 0 }; });
-    const catalog = await syncIndicatorsCatalog().catch(e => { console.error('catalog error:', e); return { appended: 0, total: 0 }; });
-
-    if (emision.total > 0) results.emision = { appended: emision.appended, total: emision.total };
-    if (emae.total > 0) results.emae = { appended: emae.appended, total: emae.total };
-    if (bma.total > 0) results.bma = { appended: bma.appended, total: bma.total };
-    if (reca.total > 0) results.recaudacion = { appended: reca.appended, total: reca.total };
-    if (poder.total > 0) results.poder_adquisitivo = { appended: poder.appended, total: poder.total };
-    if (catalog.total > 0) results.catalog = { appended: catalog.appended, total: catalog.total };
-    return results;
+    return { ...indicatorResults, ...catalogResults };
 }
 
 const sync = {

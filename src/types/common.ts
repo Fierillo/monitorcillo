@@ -12,3 +12,8 @@ export type SyncResult = {
 };
 
 export type SyncResults = Record<string, SyncResult>;
+
+export type SyncTask = {
+    key: string;
+    run: () => Promise<SyncResult>;
+};
