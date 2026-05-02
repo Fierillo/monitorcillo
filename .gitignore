@@ -9,6 +9,7 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+.agents
 
 # testing
 /coverage
@@ -44,4 +45,3 @@ next-env.d.ts
 ,*
  *.js
 /public/*.png
-AGENTS.md
