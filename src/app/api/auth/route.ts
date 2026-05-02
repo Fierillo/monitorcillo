@@ -4,7 +4,7 @@ import { AUTH_COOKIE_NAME, AUTH_MAX_AGE_SECONDS, createAuthToken, getAdminPasswo
 
 export async function POST(req: Request) {
     try {
-        if (!checkRequestRateLimit(req, 'api:auth')) {
+        if (!await checkRequestRateLimit(req, 'api:auth')) {
             return NextResponse.json(
                 { error: 'Too many attempts. Try again in 5 minutes.' },
                 { status: 429 }

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
 
-    if (!checkRequestRateLimit(request, `api:data:get:${type ?? 'catalog'}`, READ_RATE_LIMIT)) {
+    if (!await checkRequestRateLimit(request, `api:data:get:${type ?? 'catalog'}`, READ_RATE_LIMIT)) {
         return NextResponse.json({ error: 'Too many requests. Try again in 5 minutes.' }, { status: 429 });
     }
     
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!checkRequestRateLimit(req, 'api:data:post')) {
+    if (!await checkRequestRateLimit(req, 'api:data:post')) {
         return NextResponse.json({ error: 'Too many requests. Try again in 5 minutes.' }, { status: 429 });
     }
 

@@ -6,16 +6,16 @@ beforeEach(() => {
 });
 
 describe('rate limit profiles', () => {
-    it('allows one strict request per window', () => {
-        expect(checkRateLimit('ip:POST:/api/auth')).toBe(true);
-        expect(checkRateLimit('ip:POST:/api/auth')).toBe(false);
+    it('allows one strict request per window', async () => {
+        await expect(checkRateLimit('ip:POST:/api/auth')).resolves.toBe(true);
+        await expect(checkRateLimit('ip:POST:/api/auth')).resolves.toBe(false);
     });
 
-    it('allows thirty read requests per window', () => {
+    it('allows thirty read requests per window', async () => {
         for (let i = 0; i < 30; i += 1) {
-            expect(checkRateLimit('ip:GET:/api/data', READ_RATE_LIMIT)).toBe(true);
+            await expect(checkRateLimit('ip:GET:/api/data', READ_RATE_LIMIT)).resolves.toBe(true);
         }
 
-        expect(checkRateLimit('ip:GET:/api/data', READ_RATE_LIMIT)).toBe(false);
+        await expect(checkRateLimit('ip:GET:/api/data', READ_RATE_LIMIT)).resolves.toBe(false);
     });
 });

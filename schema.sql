@@ -173,3 +173,15 @@ CREATE TABLE IF NOT EXISTS manual_overrides (
 );
 
 CREATE INDEX IF NOT EXISTS idx_manual_overrides_month ON manual_overrides(month);
+
+-- ============================================
+-- RATE LIMITS (durable API throttling)
+-- ============================================
+CREATE TABLE IF NOT EXISTS rate_limits (
+    key TEXT PRIMARY KEY,
+    count INTEGER NOT NULL,
+    reset_time TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rate_limits_reset_time ON rate_limits(reset_time);
