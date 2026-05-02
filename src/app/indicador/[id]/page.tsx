@@ -5,7 +5,8 @@ import type { AreaConfig, ChartDataRow, IndicatorPageProps, MethodologyItem } fr
 import IndicatorCompositeView from '@/components/IndicatorCompositeView';
 import { getCachedIndicator } from '@/lib/storage';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 21600;
+export const dynamic = 'force-static';
 
 export default async function IndicatorDetailPage({ params }: IndicatorPageProps) {
     const resolvedParams = await params;
