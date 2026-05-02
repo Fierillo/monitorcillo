@@ -16,8 +16,9 @@
     Crea un archivo `.env.local` en la raíz del proyecto:
     ```env
     ADMIN_PASSWORD=miContraseñaSecretaImperial123
+    NEON_URL=postgresql://...
     ```
-    Sin `ADMIN_PASSWORD`, el panel de administración y la sincronización quedan bloqueados.
+    Sin `ADMIN_PASSWORD`, el panel de administración queda bloqueado. Sin `NEON_URL`, la app no puede leer ni sincronizar datos.
 
 3. Levantar el servidor de desarrollo:
    ```bash
@@ -33,7 +34,9 @@ Para editar la base de datos visualmente sin tocar el JSON:
 
 ## Sincronización Automática
 
-El workflow de GitHub Actions usa `secrets.ADMIN_PASSWORD` para llamar a `/api/sync`. Debe coincidir con `ADMIN_PASSWORD` configurado en el deploy.
+El workflow de GitHub Actions corre `pnpm sync` cada 6 horas y ejecuta `runSync()` directamente contra Neon usando `secrets.NEON_URL`.
+
+No existe un endpoint HTTP para disparar sincronizaciones. Las fuentes externas se consultan solo desde ese workflow programado.
 
 ## Construcción de Producción
 

@@ -3,13 +3,24 @@ name: Sync Data
 on:
   schedule:
     - cron: '0 */6 * * *'
-  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Run sync
-        run: |
-          curl --fail-with-body --show-error --silent -X POST "${{ vars.VERCEL_URL }}/api/sync" \
-            -H "x-api-key: ${{ secrets.ADMIN_PASSWORD }}"
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm sync
+        env:
+          NEON_URL: ${{ secrets.NEON_URL }}
