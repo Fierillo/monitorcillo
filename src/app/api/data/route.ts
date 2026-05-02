@@ -4,6 +4,7 @@ import { getIndicators, saveIndicators } from '@/lib/indicators';
 import { isAuthenticated } from '@/lib/auth';
 import db from '@/lib/db';
 import { normalizeEmision, fechaToISO } from '@/lib/normalize';
+import { checkRequestRateLimit, READ_RATE_LIMIT } from '@/lib/rate-limit';
 import type { EmisionPostBody, EmisionRawEditableField, EmisionRawRow, IndicatorsPostBody, NumericValue } from '@/types';
 
 function isEmisionPostBody(body: unknown): body is EmisionPostBody {
@@ -19,6 +20,10 @@ function setEmisionRawValue(row: Partial<EmisionRawRow>, key: EmisionRawEditable
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
+
+    if (!checkRequestRateLimit(request, `api:data:get:${type ?? 'catalog'}`, READ_RATE_LIMIT)) {
+        return NextResponse.json({ error: 'Too many requests. Try again in 5 minutes.' }, { status: 429 });
+    }
     
     if (type === 'emision') {
         const data = await db.getNormalizedData('emision');
@@ -33,6 +38,10 @@ export async function POST(req: Request) {
     const auth = await isAuthenticated();
     if (!auth) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!checkRequestRateLimit(req, 'api:data:post')) {
+        return NextResponse.json({ error: 'Too many requests. Try again in 5 minutes.' }, { status: 429 });
     }
 
     try {
