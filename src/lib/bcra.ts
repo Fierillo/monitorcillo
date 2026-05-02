@@ -5,9 +5,7 @@ export async function fetchBcraVariable(idVariable: number, from: string, to: st
     const url = `https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/${idVariable}?Desde=${from}&Hasta=${to}`;
 
     return new Promise((resolve) => {
-        const agent = new https.Agent({ rejectUnauthorized: false });
-
-        https.get(url, { agent }, (res) => {
+        https.get(url, (res) => {
             let data = '';
             res.on('data', (chunk) => { data += chunk; });
             res.on('end', () => {

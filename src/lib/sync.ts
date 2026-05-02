@@ -39,8 +39,7 @@ const ENGLISH_MONTHS: Record<string, number> = {
 
 function fetchFromUrl(url: string): Promise<DatosGobApiResponse> {
     return new Promise((resolve) => {
-        const agent = new https.Agent({ rejectUnauthorized: false });
-        https.get(url, { agent }, (res) => {
+        https.get(url, (res) => {
             let data = '';
             res.on('data', (chunk) => { data += chunk; });
             res.on('end', () => {
@@ -61,8 +60,7 @@ function fetchFromUrl(url: string): Promise<DatosGobApiResponse> {
 
 function fetchBufferFromUrl(url: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-        const agent = new https.Agent({ rejectUnauthorized: false });
-        https.get(url, { agent }, (res) => {
+        https.get(url, (res) => {
             if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
                 reject(new Error(`Failed to download ${url}. Status ${res.statusCode}`));
                 return;
@@ -132,8 +130,7 @@ function fetchBcraVariablePage(idVariable: number, from: string, to: string, off
     const url = `https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/${idVariable}?Desde=${from}&Hasta=${to}&limit=3000&offset=${offset}`;
 
     return new Promise((resolve) => {
-        const agent = new https.Agent({ rejectUnauthorized: false });
-        https.get(url, { agent }, (res) => {
+        https.get(url, (res) => {
             let data = '';
             res.on('data', (chunk) => { data += chunk; });
             res.on('end', () => {
@@ -272,8 +269,7 @@ function seriesValueMap(rows: DatosGobSeriesRow[]): Map<string, number> {
 
 function fetchCSV(url: string): Promise<string[][]> {
     return new Promise((resolve) => {
-        const agent = new https.Agent({ rejectUnauthorized: false });
-        https.get(url, { agent }, (res) => {
+        https.get(url, (res) => {
             let data = '';
             res.on('data', (chunk) => { data += chunk; });
             res.on('end', () => {
