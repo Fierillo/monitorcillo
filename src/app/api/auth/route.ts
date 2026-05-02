@@ -1,19 +1,10 @@
 import { NextResponse } from 'next/server';
-import { checkRateLimit } from '@/lib/rate-limit';
-
-const AUTH_TOKEN = 'authenticated';
-
-function getClientIP(req: Request): string {
-    const forwarded = req.headers.get('x-forwarded-for');
-    if (forwarded) return forwarded.split(',')[0].trim();
-    return req.headers.get('x-real-ip') || 'unknown';
-}
+import { checkRequestRateLimit } from '@/lib/rate-limit';
+import { AUTH_COOKIE_NAME, AUTH_MAX_AGE_SECONDS, createAuthToken, getAdminPassword, verifyAdminPassword } from '@/lib/auth-token';
 
 export async function POST(req: Request) {
     try {
-        const ip = getClientIP(req);
-        
-        if (!checkRateLimit(ip)) {
+        if (!checkRequestRateLimit(req, 'api:auth')) {
             return NextResponse.json(
                 { error: 'Too many attempts. Try again in 5 minutes.' },
                 { status: 429 }
@@ -21,21 +12,26 @@ export async function POST(req: Request) {
         }
 
         const { password } = await req.json();
-        const adminPass = process.env.ADMIN_PASSWORD || 'monitordefault';
+        const adminPassword = getAdminPassword();
 
-        if (password !== adminPass) {
+        if (!adminPassword) {
+            return NextResponse.json({ error: 'Authentication is not configured' }, { status: 503 });
+        }
+
+        if (!verifyAdminPassword(password, adminPassword)) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const res = NextResponse.json({ success: true });
 
         res.cookies.set({
-            name: 'auth_token',
-            value: AUTH_TOKEN,
+            name: AUTH_COOKIE_NAME,
+            value: createAuthToken(adminPassword),
             httpOnly: true,
             path: '/',
             secure: process.env.NODE_ENV === 'production',
-            maxAge: 60 * 60 * 24
+            sameSite: 'strict',
+            maxAge: AUTH_MAX_AGE_SECONDS,
         });
 
         return res;
@@ -46,6 +42,6 @@ export async function POST(req: Request) {
 
 export async function DELETE() {
     const res = NextResponse.json({ success: true });
-    res.cookies.delete('auth_token');
+    res.cookies.delete(AUTH_COOKIE_NAME);
     return res;
 }

@@ -12,11 +12,12 @@
    pnpm install
    ```
 
-2. Configurar variables de entorno (Opcional, pero recomendado):
-   Crea un archivo `.env.local` en la raíz del proyecto:
-   ```env
-   ADMIN_PASSWORD=miContraseñaSecretaImperial123
-   ```
+2. Configurar variables de entorno:
+    Crea un archivo `.env.local` en la raíz del proyecto:
+    ```env
+    ADMIN_PASSWORD=miContraseñaSecretaImperial123
+    ```
+    Sin `ADMIN_PASSWORD`, el panel de administración y la sincronización quedan bloqueados.
 
 3. Levantar el servidor de desarrollo:
    ```bash
@@ -27,8 +28,12 @@
 
 Para editar la base de datos visualmente sin tocar el JSON:
 1. Ingresar a `http://localhost:3000/admin`.
-2. Colocar la contraseña configurada en `ADMIN_PASSWORD` (Por defecto, si no hay `.env.local`, es `monitordefault`).
+2. Colocar la contraseña configurada en `ADMIN_PASSWORD`.
 3. Modificar el JSON y guardar cambios.
+
+## Sincronización Automática
+
+El workflow de GitHub Actions usa `secrets.ADMIN_PASSWORD` para llamar a `/api/sync`. Debe coincidir con `ADMIN_PASSWORD` configurado en el deploy.
 
 ## Construcción de Producción
 

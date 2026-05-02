@@ -1,8 +1,7 @@
 import { cookies } from 'next/headers';
-
-const AUTH_TOKEN = 'authenticated';
+import { AUTH_COOKIE_NAME, verifyAuthToken } from './auth-token';
 
 export async function isAuthenticated(): Promise<boolean> {
     const cookieStore = await cookies();
-    return cookieStore.get('auth_token')?.value === AUTH_TOKEN;
+    return verifyAuthToken(cookieStore.get(AUTH_COOKIE_NAME)?.value);
 }
