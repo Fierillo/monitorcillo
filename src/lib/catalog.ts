@@ -24,30 +24,35 @@ const formatPbiPercentage = (value: number) => `${formatDecimal(value)}% del PBI
 export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     bma: {
         type: 'bma',
+        normalizedValueColumn: 'bma_amplia',
         selectValue: row => row.BMAmplia,
         rawDateFields: ['base_monetaria', 'pases', 'leliq', 'lefi', 'otros', 'depositos_tesoro'],
         formatValue: formatPbiPercentage,
     },
     emision: {
         type: 'emision',
+        normalizedValueColumn: 'acumulado',
         selectValue: row => row.ACUMULADO,
         rawDateFields: ['compra_dolares', 'tc', 'bcra', 'vencimientos', 'licitado', 'resultado_fiscal'],
         formatValue: value => `$${integerFormatter.format(Math.round(value))}M`,
     },
     recaudacion: {
         type: 'reca',
+        normalizedValueColumn: 'pct_pbi',
         selectValue: row => row.pctPbi,
         rawDateFields: ['recaudacion_total'],
         formatValue: formatPbiPercentage,
     },
     'poder-adquisitivo': {
         type: 'poder',
+        normalizedValueColumn: 'blanco',
         selectValue: row => row.blanco,
         rawDateFields: ['salario_registrado', 'salario_no_registrado', 'salario_privado', 'salario_publico', 'ripte', 'jubilacion_minima'],
         formatValue: formatDecimal,
     },
     emae: {
         type: 'emae',
+        normalizedValueColumn: 'emae_desestacionalizado',
         selectValue: row => row.emae_desestacionalizado,
         rawDateFields: ['emae', 'emae_desestacionalizado', 'emae_tendencia'],
         formatValue: formatDecimal,
@@ -123,4 +128,25 @@ export function buildIndicatorsCatalog(
             dato: spec.formatValue(value),
         };
     });
+}
+
+export function buildIndicatorCatalogItem(
+    item: CatalogIndicatorRow,
+    spec: CatalogIndicatorSpec,
+    valueRow: DataRow | null,
+    rawDate: string | null,
+): CatalogIndicatorRow {
+    if (!valueRow) return { ...item };
+
+    const value = toFiniteNumber(spec.selectValue(valueRow));
+    if (value === null) return { ...item };
+
+    const referenceDate = rowDate(valueRow);
+    const date = rawDate ?? referenceDate;
+
+    return {
+        ...item,
+        fecha: date ? isoToFecha(date) : item.fecha,
+        dato: spec.formatValue(value),
+    };
 }

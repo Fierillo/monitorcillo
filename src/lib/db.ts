@@ -48,6 +48,80 @@ function toDbRow(row: object): Record<string, DbValue> {
     return row as Record<string, DbValue>;
 }
 
+function isSafeColumn(column: string): boolean {
+    return /^[a-z_]+$/.test(column);
+}
+
+function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): NormalizedDataByType[T] {
+    const iso_fecha = formatDbDate(row.fecha);
+    const common = {
+        fecha: type === 'emision' ? isoToFecha(iso_fecha) : isoToMonthLabel(iso_fecha),
+        iso_fecha,
+    };
+
+    if (type === 'emision') {
+        const bcra = toNumber(row.bcra);
+        const licitaciones = toNumber(row.licitaciones);
+        const resultadoFiscal = toNumber(row.resultado_fiscal);
+        return {
+            ...common,
+            BCRA: bcra,
+            BCRA_POS: bcra > 0 ? bcra : null,
+            BCRA_NEG: bcra < 0 ? bcra : null,
+            TC: toNumber(row.tc),
+            CompraDolares: toNumber(row.compra_dolares),
+            Vencimientos: toNumber(row.vencimientos),
+            Licitado: toNumber(row.licitado),
+            Licitaciones: licitaciones,
+            Licitaciones_POS: licitaciones > 0 ? licitaciones : null,
+            Licitaciones_NEG: licitaciones < 0 ? licitaciones : null,
+            'Resultado fiscal': resultadoFiscal,
+            ResultadoFiscal_POS: resultadoFiscal > 0 ? resultadoFiscal : null,
+            ResultadoFiscal_NEG: resultadoFiscal < 0 ? resultadoFiscal : null,
+            TOTAL: toNumber(row.total),
+            ACUMULADO: toNumber(row.acumulado),
+        } as NormalizedDataByType[T];
+    }
+
+    if (type === 'emae') {
+        return {
+            ...common,
+            emae: toNumber(row.emae),
+            emae_desestacionalizado: toNullableNumber(row.emae_desestacionalizado),
+            emae_tendencia: toNullableNumber(row.emae_tendencia),
+        } as NormalizedDataByType[T];
+    }
+
+    if (type === 'bma') {
+        return {
+            ...common,
+            BaseMonetaria: toNullableNumber(row.base_monetaria),
+            PasivosRemunerados: toNullableNumber(row.pasivos_remunerados),
+            DepositosTesoro: toNullableNumber(row.depositos_tesoro),
+            BMAmplia: toNullableNumber(row.bma_amplia),
+        } as NormalizedDataByType[T];
+    }
+
+    if (type === 'reca') {
+        return {
+            ...common,
+            mes: String(row.mes ?? ''),
+            year: toNumber(row.year),
+            pctPbi: toNullableNumber(row.pct_pbi),
+        } as NormalizedDataByType[T];
+    }
+
+    return {
+        ...common,
+        blanco: toNullableNumber(row.blanco),
+        negro: toNullableNumber(row.negro),
+        privado: toNullableNumber(row.privado),
+        publico: toNullableNumber(row.publico),
+        ripte: toNullableNumber(row.ripte),
+        jubilacion: toNullableNumber(row.jubilacion),
+    } as NormalizedDataByType[T];
+}
+
 export async function getRawData<T extends IndicatorType>(type: T): Promise<Array<RawDataByType[T]>> {
     const table = getTableName(type, false);
     try {
@@ -113,77 +187,39 @@ export async function getNormalizedData<T extends IndicatorType>(type: T): Promi
         const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`, []) as DbRow[];
         if (rows.length === 0) return null;
 
-        return rows.map((row) => {
-            const iso_fecha = formatDbDate(row.fecha);
-            const common = {
-                fecha: type === 'emision' ? isoToFecha(iso_fecha) : isoToMonthLabel(iso_fecha),
-                iso_fecha,
-            };
-
-            if (type === 'emision') {
-                const bcra = toNumber(row.bcra);
-                const licitaciones = toNumber(row.licitaciones);
-                const resultadoFiscal = toNumber(row.resultado_fiscal);
-                return {
-                    ...common,
-                    BCRA: bcra,
-                    BCRA_POS: bcra > 0 ? bcra : null,
-                    BCRA_NEG: bcra < 0 ? bcra : null,
-                    TC: toNumber(row.tc),
-                    CompraDolares: toNumber(row.compra_dolares),
-                    Vencimientos: toNumber(row.vencimientos),
-                    Licitado: toNumber(row.licitado),
-                    Licitaciones: licitaciones,
-                    Licitaciones_POS: licitaciones > 0 ? licitaciones : null,
-                    Licitaciones_NEG: licitaciones < 0 ? licitaciones : null,
-                    'Resultado fiscal': resultadoFiscal,
-                    ResultadoFiscal_POS: resultadoFiscal > 0 ? resultadoFiscal : null,
-                    ResultadoFiscal_NEG: resultadoFiscal < 0 ? resultadoFiscal : null,
-                    TOTAL: toNumber(row.total),
-                    ACUMULADO: toNumber(row.acumulado),
-                } as NormalizedDataByType[T];
-            }
-
-            if (type === 'emae') {
-                return {
-                    ...common,
-                    emae: toNumber(row.emae),
-                    emae_desestacionalizado: toNullableNumber(row.emae_desestacionalizado),
-                    emae_tendencia: toNullableNumber(row.emae_tendencia),
-                } as NormalizedDataByType[T];
-            }
-
-            if (type === 'bma') {
-                return {
-                    ...common,
-                    BaseMonetaria: toNullableNumber(row.base_monetaria),
-                    PasivosRemunerados: toNullableNumber(row.pasivos_remunerados),
-                    DepositosTesoro: toNullableNumber(row.depositos_tesoro),
-                    BMAmplia: toNullableNumber(row.bma_amplia),
-                } as NormalizedDataByType[T];
-            }
-
-            if (type === 'reca') {
-                return {
-                    ...common,
-                    mes: String(row.mes ?? ''),
-                    year: toNumber(row.year),
-                    pctPbi: toNullableNumber(row.pct_pbi),
-                } as NormalizedDataByType[T];
-            }
-
-            return {
-                ...common,
-                blanco: toNullableNumber(row.blanco),
-                negro: toNullableNumber(row.negro),
-                privado: toNullableNumber(row.privado),
-                publico: toNullableNumber(row.publico),
-                ripte: toNullableNumber(row.ripte),
-                jubilacion: toNullableNumber(row.jubilacion),
-            } as NormalizedDataByType[T];
-        });
+        return rows.map((row) => toNormalizedRow(type, row));
     } catch (error) {
         console.error(`[db] getNormalizedData failed for ${type}`, error);
+        return null;
+    }
+}
+
+export async function getLatestNormalizedData<T extends IndicatorType>(type: T, valueColumn: string): Promise<NormalizedDataByType[T] | null> {
+    if (!isSafeColumn(valueColumn)) throw new Error(`Invalid normalized column: ${valueColumn}`);
+
+    const table = getTableName(type, true);
+    try {
+        const rows = await sql.query(`SELECT * FROM ${table} WHERE ${valueColumn} IS NOT NULL ORDER BY fecha DESC LIMIT 1`, []) as DbRow[];
+        if (rows.length === 0) return null;
+        return toNormalizedRow(type, rows[0]);
+    } catch (error) {
+        console.error(`[db] getLatestNormalizedData failed for ${type}`, error);
+        return null;
+    }
+}
+
+export async function getLatestRawDate(type: IndicatorType, fields: string[]): Promise<string | null> {
+    if (fields.length === 0) return null;
+    if (fields.some(field => !isSafeColumn(field))) throw new Error(`Invalid raw columns for ${type}`);
+
+    const table = getTableName(type, false);
+    const whereClause = fields.map(field => `${field} IS NOT NULL`).join(' OR ');
+
+    try {
+        const rows = await sql.query(`SELECT fecha FROM ${table} WHERE ${whereClause} ORDER BY fecha DESC LIMIT 1`, []) as DbRow[];
+        return rows.length > 0 ? formatDbDate(rows[0].fecha) : null;
+    } catch (error) {
+        console.error(`[db] getLatestRawDate failed for ${type}`, error);
         return null;
     }
 }
@@ -307,6 +343,8 @@ const db = {
     saveRawData,
     replaceRawData,
     getNormalizedData,
+    getLatestNormalizedData,
+    getLatestRawDate,
     saveNormalizedData,
     replaceNormalizedData,
     getLastUpdate,

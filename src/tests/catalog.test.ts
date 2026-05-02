@@ -88,4 +88,36 @@ describe('buildIndicatorsCatalog', () => {
             dato: '6,7% del PBI',
         });
     });
+
+    it('uses latest-row data sources without loading full raw and normalized tables', async () => {
+        const result = await buildCurrentIndicatorsCatalog({
+            getCatalogRows: async () => [{
+                ...baseCatalogRow,
+                id: 'bma',
+                fecha: '1 ABR 26',
+                dato: '6,7%',
+            }],
+            getLatestNormalizedRow: async (type, valueColumn) => {
+                if (type !== 'bma') return null;
+                expect(valueColumn).toBe('bma_amplia');
+                return { iso_fecha: '2026-04-01', BMAmplia: 6.7 };
+            },
+            getLatestRawDate: async (type, fields) => {
+                if (type !== 'bma') return null;
+                expect(fields).toContain('base_monetaria');
+                return '2026-05-02';
+            },
+            getNormalizedRows: async () => {
+                throw new Error('Full normalized table should not be loaded');
+            },
+            getRawRows: async () => {
+                throw new Error('Full raw table should not be loaded');
+            },
+        });
+
+        expect(result.find(row => row.id === 'bma')).toMatchObject({
+            fecha: '2 MAY 26',
+            dato: '6,7% del PBI',
+        });
+    });
 });
