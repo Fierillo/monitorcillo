@@ -21,6 +21,8 @@ const TABLES: Record<IndicatorType, { raw: string; normalized: string }> = {
     poder: { raw: 'poder_adquisitivo_raw', normalized: 'poder_adquisitivo_normalized' },
 };
 
+let indicatorPublicationsTableReady = false;
+
 function getTableName(type: IndicatorType, normalized: boolean): string {
     return normalized ? TABLES[type].normalized : TABLES[type].raw;
 }
@@ -338,6 +340,43 @@ export async function saveIndicatorsCatalog(data: CatalogIndicatorRow[]): Promis
     }
 }
 
+async function ensureIndicatorPublicationsTable(): Promise<void> {
+    if (indicatorPublicationsTableReady) return;
+
+    await sql.query(`
+        CREATE TABLE IF NOT EXISTS indicator_publications (
+            id VARCHAR(50) PRIMARY KEY,
+            published_at DATE NOT NULL,
+            period_date DATE,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    `, []);
+    indicatorPublicationsTableReady = true;
+}
+
+export async function saveIndicatorPublication(id: string, publishedAt: string, periodDate: string | null = null): Promise<void> {
+    await ensureIndicatorPublicationsTable();
+    await sql.query(`
+        INSERT INTO indicator_publications (id, published_at, period_date, updated_at)
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+            published_at = EXCLUDED.published_at,
+            period_date = EXCLUDED.period_date,
+            updated_at = NOW()
+    `, [id, publishedAt, periodDate]);
+}
+
+export async function getIndicatorPublicationDate(id: string): Promise<string | null> {
+    try {
+        await ensureIndicatorPublicationsTable();
+        const rows = await sql.query('SELECT published_at FROM indicator_publications WHERE id = $1', [id]) as DbRow[];
+        return rows.length > 0 ? formatDbDate(rows[0].published_at) : null;
+    } catch (error) {
+        console.error(`[db] getIndicatorPublicationDate failed for ${id}`, error);
+        return null;
+    }
+}
+
 const db = {
     getRawData,
     saveRawData,
@@ -349,7 +388,9 @@ const db = {
     replaceNormalizedData,
     getLastUpdate,
     getIndicatorsCatalog,
-    saveIndicatorsCatalog
+    saveIndicatorsCatalog,
+    saveIndicatorPublication,
+    getIndicatorPublicationDate,
 };
 
 export default db;

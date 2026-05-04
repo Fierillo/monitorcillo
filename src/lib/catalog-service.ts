@@ -7,6 +7,7 @@ export type CatalogDataSources = {
     getRawRows: (type: IndicatorType) => Promise<DataRow[] | null>;
     getLatestNormalizedRow?: (type: IndicatorType, valueColumn: string) => Promise<DataRow | null>;
     getLatestRawDate?: (type: IndicatorType, fields: string[]) => Promise<string | null>;
+    getPublicationDate?: (id: string) => Promise<string | null>;
 };
 
 async function defaultCatalogDataSources(): Promise<CatalogDataSources> {
@@ -18,6 +19,7 @@ async function defaultCatalogDataSources(): Promise<CatalogDataSources> {
         getRawRows: async (type) => db.getRawData(type) as Promise<DataRow[]>,
         getLatestNormalizedRow: async (type, valueColumn) => db.getLatestNormalizedData(type, valueColumn) as Promise<DataRow | null>,
         getLatestRawDate: db.getLatestRawDate,
+        getPublicationDate: db.getIndicatorPublicationDate,
     };
 }
 
@@ -41,12 +43,13 @@ export async function buildCurrentIndicatorsCatalog(sources?: CatalogDataSources
             const spec = CATALOG_INDICATOR_SPECS[item.id];
             if (!spec) return { ...item };
 
-            const [valueRow, rawDate] = await Promise.all([
+            const [valueRow, rawDate, publicationDate] = await Promise.all([
                 dataSources.getLatestNormalizedRow!(spec.type, spec.normalizedValueColumn),
                 dataSources.getLatestRawDate!(spec.type, spec.rawDateFields),
+                dataSources.getPublicationDate ? dataSources.getPublicationDate(item.id) : Promise.resolve(null),
             ]);
 
-            return buildIndicatorCatalogItem(item, spec, valueRow, rawDate);
+            return buildIndicatorCatalogItem(item, spec, valueRow, rawDate, publicationDate);
         }));
     }
 

@@ -1,9 +1,10 @@
 import https from 'https';
 import * as XLSX from 'xlsx';
-import { getRawData, saveRawData, saveIndicatorsCatalog, replaceRawData, replaceNormalizedData } from './db';
+import { getRawData, saveRawData, saveIndicatorsCatalog, replaceRawData, replaceNormalizedData, saveIndicatorPublication } from './db';
 import { normalizeEmision, normalizeEmae, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo, fechaToISO } from './normalize';
 import { buildCurrentIndicatorsCatalog } from './catalog-service';
 import { runSyncTasks } from './sync-runner';
+import { parseEmaePublicationDate, parseEmaeWorkbook } from './emae-source';
 import type {
     BcraApiResponse,
     BcraVariablePage,
@@ -21,7 +22,10 @@ import type {
 } from '@/types';
 
 const WEEKLY_BALANCE_WORKBOOK_URL = 'https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/Serieanual.xls';
+const EMAE_WORKBOOK_URL = 'https://www.indec.gob.ar/ftp/cuadros/economia/sh_emae_mensual_base2004.xls';
+const EMAE_PUBLICATION_PAGE_URL = 'https://www.indec.gob.ar/Nivel4/Tema/3/9/48';
 const WEEKLY_TREASURY_SERIES_REGEX = /DEPOSITOS DEL GOBIERNO NACIONAL Y OTROS/i;
+let emaeWorkbookRowsPromise: Promise<EmaeRawRow[]> | null = null;
 const ENGLISH_MONTHS: Record<string, number> = {
     Jan: 1,
     Feb: 2,
@@ -71,6 +75,34 @@ function fetchBufferFromUrl(url: string): Promise<Buffer> {
             res.on('end', () => resolve(Buffer.concat(chunks)));
         }).on('error', reject);
     });
+}
+
+function fetchTextFromUrl(url: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        https.get(url, (res) => {
+            if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+                reject(new Error(`Failed to download ${url}. Status ${res.statusCode}`));
+                return;
+            }
+
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => resolve(data));
+        }).on('error', reject);
+    });
+}
+
+async function fetchEmaeWorkbookRows(): Promise<EmaeRawRow[]> {
+    emaeWorkbookRowsPromise ??= fetchBufferFromUrl(EMAE_WORKBOOK_URL).then((buffer) => {
+        const rows = parseEmaeWorkbook(buffer);
+        if (rows.length === 0) {
+            throw new Error('Failed to parse EMAE workbook. No data rows found. Verify INDEC workbook structure.');
+        }
+
+        return rows;
+    });
+
+    return emaeWorkbookRowsPromise;
 }
 
 function parseWorkbookWeeklyDate(value: unknown): string | null {
@@ -179,9 +211,18 @@ export async function fetchEmisionRaw(from: string, to: string): Promise<{ compr
     return { compraData, tcData };
 }
 
-export async function fetchEmaeRaw(): Promise<DatosGobApiResponse> {
-    const ids = '143.3_NO_PR_2004_A_21,143.3_NO_PR_2004_A_31,143.3_NO_PR_2004_A_28';
-    return fetchFromUrl(`https://apis.datos.gob.ar/series/api/series/?ids=${ids}&limit=5000`);
+export async function fetchEmaeRaw(): Promise<{ rows: EmaeRawRow[]; publishedAt: string | null }> {
+    const [rows, publicationHtml] = await Promise.all([
+        fetchEmaeWorkbookRows(),
+        fetchTextFromUrl(EMAE_PUBLICATION_PAGE_URL),
+    ]);
+
+    const publishedAt = parseEmaePublicationDate(publicationHtml);
+    if (!publishedAt) {
+        throw new Error('Failed to parse EMAE publication date. Verify INDEC publication page structure.');
+    }
+
+    return { rows, publishedAt };
 }
 
 export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
@@ -197,7 +238,7 @@ export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
         fetchBcraVariable(198, fromDate, toDate),
         fetchBufferFromUrl(WEEKLY_BALANCE_WORKBOOK_URL),
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=166.2_PPIB_0_0_3&limit=5000'),
-        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=143.3_NO_PR_2004_A_31&limit=5000'),
+        fetchEmaeWorkbookRows(),
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
     ]);
 
@@ -231,7 +272,7 @@ export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
         if (row[1] != null) pbiByQuarter.set(`${year}-Q${quarter}`, Number(row[1]));
     }
 
-    const emaeByFecha = seriesValueMap(emae.data || []);
+    const emaeByFecha = emaeDesestacionalizadoMap(emae);
     const ipcByFecha = seriesValueMap(ipc.data || []);
 
     const monthPrefixes = new Set<string>();
@@ -265,6 +306,12 @@ function seriesValueMap(rows: DatosGobSeriesRow[]): Map<string, number> {
     return new Map(rows
         .filter((row) => typeof row[0] === 'string' && row[1] != null)
         .map((row) => [row[0], Number(row[1])]));
+}
+
+function emaeDesestacionalizadoMap(rows: EmaeRawRow[]): Map<string, number> {
+    return new Map(rows
+        .filter((row) => row.emae_desestacionalizado != null)
+        .map((row) => [row.fecha, Number(row.emae_desestacionalizado)]));
 }
 
 function fetchCSV(url: string): Promise<string[][]> {
@@ -340,7 +387,7 @@ export async function fetchRecaudacionRaw(): Promise<RecaudacionRawRow[]> {
     const [recaudacion, pbi, emae, ipc] = await Promise.all([
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=172.3_TL_RECAION_M_0_0_17&limit=5000'),
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=166.2_PPIB_0_0_3&limit=5000'),
-        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=143.3_NO_PR_2004_A_31&limit=5000'),
+        fetchEmaeWorkbookRows(),
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
     ]);
 
@@ -354,7 +401,7 @@ export async function fetchRecaudacionRaw(): Promise<RecaudacionRawRow[]> {
         if (row[1] != null) pbiByQuarter.set(`${year}-Q${quarter}`, Number(row[1]));
     }
 
-    const emaeByFecha = seriesValueMap(emae.data || []);
+    const emaeByFecha = emaeDesestacionalizadoMap(emae);
     const ipcByFecha = seriesValueMap(ipc.data || []);
 
     return (recaudacion.data || []).map((row) => {
@@ -468,25 +515,17 @@ export async function syncEmae(): Promise<SyncResult> {
     const existingData = (await getRawData(type)) ?? [];
     const existingFechas = new Set(existingData.map((row) => row.fecha));
 
-    const rawData = await fetchEmaeRaw();
-    const rawRows = (rawData.data || [])
-        .map((row): EmaeRawRow | null => {
-            const fecha = row[0];
-            if (!fecha || typeof fecha !== 'string') return null;
-            return {
-                fecha,
-                emae: row[1] ?? null,
-                emae_desestacionalizado: row[2] ?? null,
-                emae_tendencia: row[3] ?? null,
-            };
-        })
-        .filter((row): row is EmaeRawRow => row !== null);
+    const { rows: rawRows, publishedAt } = await fetchEmaeRaw();
 
     const appended = rawRows.filter((row) => !existingFechas.has(row.fecha)).length;
     await replaceRawData(type, rawRows);
 
     const normalized = normalizeEmae(rawRows);
     await replaceNormalizedData(type, normalized);
+
+    if (publishedAt) {
+        await saveIndicatorPublication('emae', publishedAt, rawRows.at(-1)?.fecha ?? null);
+    }
 
     return { appended, total: rawRows.length };
 }

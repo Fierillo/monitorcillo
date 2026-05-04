@@ -1,5 +1,5 @@
 import type { CatalogIndicatorRow, CatalogIndicatorSpec, DataRow, IndicatorType } from '@/types';
-import { isoToFecha } from './normalize';
+import { isoToFecha, isoToMonthLabel } from './normalize';
 
 export const DEFAULT_CATALOG: CatalogIndicatorRow[] = [
     { id: 'bma', indicador: 'Base Monetaria Amplia', referencia: 'Metrica compuesta', dato: '-', fecha: 'Feb-26', fuente: 'BCRA', trend: 'neutral', category: 'monetario', has_details: true, source_url: null },
@@ -24,6 +24,7 @@ const formatPbiPercentage = (value: number) => `${formatDecimal(value)}% del PBI
 export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     bma: {
         type: 'bma',
+        datePrecision: 'day',
         normalizedValueColumn: 'bma_amplia',
         selectValue: row => row.BMAmplia,
         rawDateFields: ['base_monetaria', 'pases', 'leliq', 'lefi', 'otros', 'depositos_tesoro'],
@@ -31,6 +32,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     },
     emision: {
         type: 'emision',
+        datePrecision: 'day',
         normalizedValueColumn: 'acumulado',
         selectValue: row => row.ACUMULADO,
         rawDateFields: ['compra_dolares', 'tc', 'bcra', 'vencimientos', 'licitado', 'resultado_fiscal'],
@@ -38,6 +40,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     },
     recaudacion: {
         type: 'reca',
+        datePrecision: 'month',
         normalizedValueColumn: 'pct_pbi',
         selectValue: row => row.pctPbi,
         rawDateFields: ['recaudacion_total'],
@@ -45,6 +48,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     },
     'poder-adquisitivo': {
         type: 'poder',
+        datePrecision: 'month',
         normalizedValueColumn: 'blanco',
         selectValue: row => row.blanco,
         rawDateFields: ['salario_registrado', 'salario_no_registrado', 'salario_privado', 'salario_publico', 'ripte', 'jubilacion_minima'],
@@ -52,6 +56,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     },
     emae: {
         type: 'emae',
+        datePrecision: 'month',
         normalizedValueColumn: 'emae_desestacionalizado',
         selectValue: row => row.emae_desestacionalizado,
         rawDateFields: ['emae', 'emae_desestacionalizado', 'emae_tendencia'],
@@ -102,6 +107,14 @@ function latestRawDate(rows: DataRow[], spec: CatalogIndicatorSpec): string | nu
     return row ? rowDate(row) : null;
 }
 
+function formatCatalogDate(date: string, precision: CatalogIndicatorSpec['datePrecision']): string {
+    return precision === 'month' ? isoToMonthLabel(date) : isoToFecha(date);
+}
+
+function formatCatalogDisplayDate(date: string, spec: CatalogIndicatorSpec, publicationDate?: string | null): string {
+    return publicationDate ? isoToFecha(publicationDate) : formatCatalogDate(date, spec.datePrecision);
+}
+
 export function buildIndicatorsCatalog(
     catalog: CatalogIndicatorRow[],
     normalizedData: Partial<Record<IndicatorType, DataRow[] | null | undefined>>,
@@ -124,7 +137,7 @@ export function buildIndicatorsCatalog(
 
         return {
             ...item,
-            fecha: date ? isoToFecha(date) : item.fecha,
+            fecha: date ? formatCatalogDate(date, spec.datePrecision) : item.fecha,
             dato: spec.formatValue(value),
         };
     });
@@ -135,6 +148,7 @@ export function buildIndicatorCatalogItem(
     spec: CatalogIndicatorSpec,
     valueRow: DataRow | null,
     rawDate: string | null,
+    publicationDate: string | null = null,
 ): CatalogIndicatorRow {
     if (!valueRow) return { ...item };
 
@@ -146,7 +160,7 @@ export function buildIndicatorCatalogItem(
 
     return {
         ...item,
-        fecha: date ? isoToFecha(date) : item.fecha,
+        fecha: date ? formatCatalogDisplayDate(date, spec, publicationDate) : item.fecha,
         dato: spec.formatValue(value),
     };
 }

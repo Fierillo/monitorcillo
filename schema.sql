@@ -175,6 +175,16 @@ CREATE TABLE IF NOT EXISTS manual_overrides (
 CREATE INDEX IF NOT EXISTS idx_manual_overrides_month ON manual_overrides(month);
 
 -- ============================================
+-- INDICATOR PUBLICATIONS (fechas de publicación oficial)
+-- ============================================
+CREATE TABLE IF NOT EXISTS indicator_publications (
+    id VARCHAR(50) PRIMARY KEY,
+    published_at DATE NOT NULL,
+    period_date DATE,
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
 -- RATE LIMITS (durable API throttling)
 -- ============================================
 CREATE TABLE IF NOT EXISTS rate_limits (
