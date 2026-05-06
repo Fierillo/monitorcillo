@@ -210,6 +210,33 @@ export async function getLatestNormalizedData<T extends IndicatorType>(type: T, 
     }
 }
 
+export async function getNormalizedDataByDate<T extends IndicatorType>(type: T, date: string): Promise<NormalizedDataByType[T] | null> {
+    const table = getTableName(type, true);
+    try {
+        const rows = await sql.query(`SELECT * FROM ${table} WHERE fecha = $1 LIMIT 1`, [date]) as DbRow[];
+        if (rows.length === 0) return null;
+        return toNormalizedRow(type, rows[0]);
+    } catch (error) {
+        console.error(`[db] getNormalizedDataByDate failed for ${type}`, error);
+        return null;
+    }
+}
+
+export async function getRawDataByDate<T extends IndicatorType>(type: T, date: string): Promise<RawDataByType[T] | null> {
+    const table = getTableName(type, false);
+    try {
+        const rows = await sql.query(`SELECT * FROM ${table} WHERE fecha = $1 LIMIT 1`, [date]) as DbRow[];
+        if (rows.length === 0) return null;
+        return {
+            ...rows[0],
+            fecha: formatDbDate(rows[0].fecha),
+        } as RawDataByType[T];
+    } catch (error) {
+        console.error(`[db] getRawDataByDate failed for ${type}`, error);
+        return null;
+    }
+}
+
 export async function getLatestRawDate(type: IndicatorType, fields: string[]): Promise<string | null> {
     if (fields.length === 0) return null;
     if (fields.some(field => !isSafeColumn(field))) throw new Error(`Invalid raw columns for ${type}`);
@@ -383,6 +410,8 @@ const db = {
     replaceRawData,
     getNormalizedData,
     getLatestNormalizedData,
+    getNormalizedDataByDate,
+    getRawDataByDate,
     getLatestRawDate,
     saveNormalizedData,
     replaceNormalizedData,

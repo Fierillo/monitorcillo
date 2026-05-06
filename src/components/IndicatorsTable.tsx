@@ -38,7 +38,18 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                                     </Link>
                                 ) : row.indicador}
                             </td>
-                            <td className="p-2 sm:p-3 text-imperial-cyan font-semibold">{row.referencia}</td>
+                            <td className="p-2 sm:p-3 text-imperial-cyan font-semibold">
+                                <span className="group/reference relative inline-flex items-center focus-within:outline-none">
+                                    <span tabIndex={row.referenceDescription ? 0 : undefined} className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold">
+                                        {row.referencia}
+                                    </span>
+                                    {row.referenceDescription ? (
+                                        <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-max max-w-56 -translate-x-1/2 border border-imperial-gold bg-imperial-blue px-3 py-2 text-xs font-bold uppercase tracking-wide text-imperial-gold opacity-0 shadow-lg shadow-imperial-blue/60 transition-opacity duration-75 group-hover/reference:opacity-100 group-focus-within/reference:opacity-100">
+                                            {row.referenceDescription}
+                                        </span>
+                                    ) : null}
+                                </span>
+                            </td>
                             <td className={`p-2 sm:p-3 font-bold ${row.trend === 'down' ? 'text-red-500' : row.trend === 'up' ? 'text-green-500' : 'text-imperial-gold'}`}>
                                 {row.dato}
                             </td>

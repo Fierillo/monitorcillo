@@ -38,14 +38,15 @@ describe('buildIndicatorsCatalog', () => {
         });
 
         expect(result[0].fecha).toBe('2 MAY 26');
-        expect(result[0].dato).toBe('6,7% del PBI');
+        expect(result[0].dato).toBe('6,7% del PBI real');
     });
 
     it('shows the latest recaudacion period without an artificial day', () => {
-        const catalog = [{ ...baseCatalogRow, id: 'recaudacion' }];
+        const catalog = [{ ...baseCatalogRow, id: 'recaudacion', referencia: 'Referencia vieja' }];
 
         const result = buildIndicatorsCatalog(catalog, {
             reca: [
+                { iso_fecha: '2025-04-01', pctPbi: 3.7 },
                 { iso_fecha: '2026-03-01', pctPbi: null },
                 { iso_fecha: '2026-04-01', pctPbi: 4.2 },
             ],
@@ -58,7 +59,42 @@ describe('buildIndicatorsCatalog', () => {
         });
 
         expect(result[0].fecha).toBe('MAY 26');
-        expect(result[0].dato).toBe('4,2% del PBI');
+        expect(result[0].dato).toBe('4,2% del PBI real');
+        expect(result[0].referencia).toBe('3,7% del PBI real');
+        expect(result[0].reference_description).toBe('Mismo mes año anterior');
+    });
+
+    it('refreshes persisted catalog references from indicator specs', async () => {
+        const result = await buildCurrentIndicatorsCatalog({
+            getCatalogRows: async () => [{
+                ...baseCatalogRow,
+                id: 'bma',
+                referencia: 'Referencia vieja',
+            }],
+            getLatestNormalizedRow: async (type, valueColumn) => {
+                if (type !== 'bma') return null;
+                expect(valueColumn).toBe('bma_amplia');
+                return { iso_fecha: '2026-04-01', BMAmplia: 6.7 };
+            },
+            getLatestRawDate: async (type) => type === 'bma' ? '2026-05-02' : null,
+            getNormalizedRowByDate: async (type, date) => {
+                if (type !== 'bma' || date !== '2026-03-01') return null;
+                return { iso_fecha: '2026-03-01', BMAmplia: 5.8 };
+            },
+            getRawRowByDate: async () => null,
+            getNormalizedRows: async () => {
+                throw new Error('Full normalized table should not be loaded');
+            },
+            getRawRows: async () => {
+                throw new Error('Full raw table should not be loaded');
+            },
+        });
+
+        expect(result.find(row => row.id === 'bma')).toMatchObject({
+            referencia: '5,8% del PBI real',
+            reference_description: 'Mes anterior',
+            dato: '6,7% del PBI real',
+        });
     });
 
     it('shows the latest EMAE period without an artificial day', () => {
@@ -136,7 +172,7 @@ describe('buildIndicatorsCatalog', () => {
 
         expect(result.find(row => row.id === 'bma')).toMatchObject({
             fecha: '2 MAY 26',
-            dato: '6,7% del PBI',
+            dato: '6,7% del PBI real',
         });
     });
 
@@ -168,7 +204,7 @@ describe('buildIndicatorsCatalog', () => {
 
         expect(result.find(row => row.id === 'bma')).toMatchObject({
             fecha: '2 MAY 26',
-            dato: '6,7% del PBI',
+            dato: '6,7% del PBI real',
         });
     });
 
@@ -200,6 +236,68 @@ describe('buildIndicatorsCatalog', () => {
         expect(result.find(row => row.id === 'emae')).toMatchObject({
             fecha: '22 ABR 26',
             dato: '105,2',
+        });
+    });
+
+    it('uses publication date metadata for recaudacion in the current catalog', async () => {
+        const result = await buildCurrentIndicatorsCatalog({
+            getCatalogRows: async () => [{
+                ...baseCatalogRow,
+                id: 'recaudacion',
+            }],
+            getLatestNormalizedRow: async (type, valueColumn) => {
+                if (type !== 'reca') return null;
+                expect(valueColumn).toBe('pct_pbi');
+                return { iso_fecha: '2026-04-01', pctPbi: 2.2 };
+            },
+            getLatestRawDate: async (type, fields) => {
+                if (type !== 'reca') return null;
+                expect(fields).toContain('recaudacion_total');
+                return '2026-04-01';
+            },
+            getPublicationDate: async (id) => id === 'recaudacion' ? '2026-05-04' : null,
+            getNormalizedRows: async () => {
+                throw new Error('Full normalized table should not be loaded');
+            },
+            getRawRows: async () => {
+                throw new Error('Full raw table should not be loaded');
+            },
+        });
+
+        expect(result.find(row => row.id === 'recaudacion')).toMatchObject({
+            fecha: '4 MAY 26',
+            dato: '2,2% del PBI real',
+        });
+    });
+
+    it('uses publication date metadata for poder adquisitivo in the current catalog', async () => {
+        const result = await buildCurrentIndicatorsCatalog({
+            getCatalogRows: async () => [{
+                ...baseCatalogRow,
+                id: 'poder-adquisitivo',
+            }],
+            getLatestNormalizedRow: async (type, valueColumn) => {
+                if (type !== 'poder') return null;
+                expect(valueColumn).toBe('blanco');
+                return { iso_fecha: '2026-02-01', blanco: 88.8 };
+            },
+            getLatestRawDate: async (type, fields) => {
+                if (type !== 'poder') return null;
+                expect(fields).toContain('salario_registrado');
+                return '2026-02-01';
+            },
+            getPublicationDate: async (id) => id === 'poder-adquisitivo' ? '2026-04-17' : null,
+            getNormalizedRows: async () => {
+                throw new Error('Full normalized table should not be loaded');
+            },
+            getRawRows: async () => {
+                throw new Error('Full raw table should not be loaded');
+            },
+        });
+
+        expect(result.find(row => row.id === 'poder-adquisitivo')).toMatchObject({
+            fecha: '17 ABR 26',
+            dato: '88,8',
         });
     });
 });

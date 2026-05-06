@@ -2,11 +2,11 @@ import type { CatalogIndicatorRow, CatalogIndicatorSpec, DataRow, IndicatorType 
 import { isoToFecha, isoToMonthLabel } from './normalize';
 
 export const DEFAULT_CATALOG: CatalogIndicatorRow[] = [
-    { id: 'bma', indicador: 'Base Monetaria Amplia', referencia: 'Metrica compuesta', dato: '-', fecha: 'Feb-26', fuente: 'BCRA', trend: 'neutral', category: 'monetario', has_details: true, source_url: null },
-    { id: 'emision', indicador: 'Emisión / Absorción de Pesos', referencia: 'Emisión / Absorción de Pesos', dato: '-', fecha: 'Feb-26', fuente: 'BCRA y MECON', trend: 'neutral', category: 'monetario', has_details: true, source_url: null },
-    { id: 'recaudacion', indicador: 'Recaudación tributaria', referencia: 'Var% interanual', dato: '-', fecha: 'ENE 26', fuente: 'MECON', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: null },
-    { id: 'poder-adquisitivo', indicador: 'Poder adquisitivo (ajustado por IPC nucleo)', referencia: 'Indice 100 = Ene-17', dato: '-', fecha: 'FEB 26', fuente: 'INDEC', trend: 'down', category: 'socioeconomico', has_details: true, source_url: 'https://www.indec.gob.ar/indec/web/Nivel4-Tema-4-31-61' },
-    { id: 'emae', indicador: 'EMAE (Estimador Mensual de Actividad Económica)', referencia: 'Índice Base Ene-17 = 100', dato: '-', fecha: 'FEB 26', fuente: 'INDEC', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: 'https://www.indec.gob.ar/indec/web/Nivel4-Tema-3-9-48' },
+    { id: 'bma', indicador: 'Base Monetaria Amplia', referencia: 'Mes anterior', dato: '-', fecha: 'Feb-26', fuente: 'BCRA e INDEC', trend: 'neutral', category: 'monetario', has_details: true, source_url: null },
+    { id: 'emision', indicador: 'Emisión / Absorción de Pesos', referencia: 'Día anterior', dato: '-', fecha: 'Feb-26', fuente: 'BCRA y MECON', trend: 'neutral', category: 'monetario', has_details: true, source_url: null },
+    { id: 'recaudacion', indicador: 'Recaudación tributaria', referencia: 'Mismo mes año anterior', dato: '-', fecha: 'ENE 26', fuente: 'MECON', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: null },
+    { id: 'poder-adquisitivo', indicador: 'Poder adquisitivo (ajustado por IPC nucleo)', referencia: 'IPC mismo mes', dato: '-', fecha: 'FEB 26', fuente: 'INDEC', trend: 'down', category: 'socioeconomico', has_details: true, source_url: 'https://www.indec.gob.ar/indec/web/Nivel4-Tema-4-31-61' },
+    { id: 'emae', indicador: 'EMAE (Estimador Mensual de Actividad Económica)', referencia: 'Mes anterior desest.', dato: '-', fecha: 'FEB 26', fuente: 'INDEC', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: 'https://www.indec.gob.ar/indec/web/Nivel4-Tema-3-9-48' },
 ];
 
 const decimalFormatter = new Intl.NumberFormat('es-AR', {
@@ -19,11 +19,31 @@ const integerFormatter = new Intl.NumberFormat('es-AR', {
 });
 
 const formatDecimal = (value: number) => decimalFormatter.format(value);
-const formatPbiPercentage = (value: number) => `${formatDecimal(value)}% del PBI`;
+const formatPbiPercentage = (value: number) => `${formatDecimal(value)}% del PBI real`;
+
+function addDays(date: string, days: number): string {
+    const value = new Date(`${date}T00:00:00Z`);
+    value.setUTCDate(value.getUTCDate() + days);
+    return value.toISOString().split('T')[0];
+}
+
+function addMonths(date: string, months: number): string {
+    const [year, month] = date.split('-').map(Number);
+    const value = new Date(Date.UTC(year, month - 1 + months, 1));
+    return value.toISOString().split('T')[0];
+}
+
+function addYears(date: string, years: number): string {
+    const [year, month] = date.split('-').map(Number);
+    return `${year + years}-${String(month).padStart(2, '0')}-01`;
+}
 
 export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     bma: {
         type: 'bma',
+        referenceLabel: 'Mes anterior',
+        getReferenceDate: date => addMonths(date, -1),
+        selectReferenceValue: row => row.BMAmplia,
         datePrecision: 'day',
         normalizedValueColumn: 'bma_amplia',
         selectValue: row => row.BMAmplia,
@@ -32,6 +52,9 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     },
     emision: {
         type: 'emision',
+        referenceLabel: 'Día anterior',
+        getReferenceDate: date => addDays(date, -1),
+        selectReferenceValue: row => row.ACUMULADO,
         datePrecision: 'day',
         normalizedValueColumn: 'acumulado',
         selectValue: row => row.ACUMULADO,
@@ -40,6 +63,9 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     },
     recaudacion: {
         type: 'reca',
+        referenceLabel: 'Mismo mes año anterior',
+        getReferenceDate: date => addYears(date, -1),
+        selectReferenceValue: row => row.pctPbi,
         datePrecision: 'month',
         normalizedValueColumn: 'pct_pbi',
         selectValue: row => row.pctPbi,
@@ -48,6 +74,11 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     },
     'poder-adquisitivo': {
         type: 'poder',
+        referenceLabel: 'IPC mismo mes',
+        referenceSource: 'raw',
+        getReferenceDate: date => date,
+        selectReferenceValue: row => row.ipc_nucleo,
+        formatReferenceValue: formatDecimal,
         datePrecision: 'month',
         normalizedValueColumn: 'blanco',
         selectValue: row => row.blanco,
@@ -56,6 +87,9 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     },
     emae: {
         type: 'emae',
+        referenceLabel: 'Mes anterior desest.',
+        getReferenceDate: date => addMonths(date, -1),
+        selectReferenceValue: row => row.emae_desestacionalizado,
         datePrecision: 'month',
         normalizedValueColumn: 'emae_desestacionalizado',
         selectValue: row => row.emae_desestacionalizado,
@@ -115,6 +149,29 @@ function formatCatalogDisplayDate(date: string, spec: CatalogIndicatorSpec, publ
     return publicationDate ? isoToFecha(publicationDate) : formatCatalogDate(date, spec.datePrecision);
 }
 
+function formatReferenceValue(spec: CatalogIndicatorSpec, referenceRow: DataRow | null): string {
+    if (!referenceRow) return '-';
+
+    const value = toFiniteNumber(spec.selectReferenceValue(referenceRow));
+    if (value === null) return '-';
+
+    return (spec.formatReferenceValue ?? spec.formatValue)(value);
+}
+
+function referenceRowForSpec(
+    spec: CatalogIndicatorSpec,
+    valueRow: DataRow,
+    normalizedRows: DataRow[],
+    rawRows: DataRow[],
+): DataRow | null {
+    const valueDate = rowDate(valueRow);
+    if (!valueDate) return null;
+
+    const referenceDate = spec.getReferenceDate(valueDate);
+    const sourceRows = spec.referenceSource === 'raw' ? rawRows : normalizedRows;
+    return sourceRows.find(row => rowDate(row) === referenceDate) ?? null;
+}
+
 export function buildIndicatorsCatalog(
     catalog: CatalogIndicatorRow[],
     normalizedData: Partial<Record<IndicatorType, DataRow[] | null | undefined>>,
@@ -134,9 +191,12 @@ export function buildIndicatorsCatalog(
         const referenceDate = rowDate(valueRow);
         const rawRows = rawData[spec.type] ?? [];
         const date = latestRawDate(rawRows, spec) ?? referenceDate;
+        const referenceRow = referenceRowForSpec(spec, valueRow, normalizedRows, rawRows);
 
         return {
             ...item,
+            referencia: formatReferenceValue(spec, referenceRow),
+            reference_description: spec.referenceLabel,
             fecha: date ? formatCatalogDate(date, spec.datePrecision) : item.fecha,
             dato: spec.formatValue(value),
         };
@@ -149,6 +209,7 @@ export function buildIndicatorCatalogItem(
     valueRow: DataRow | null,
     rawDate: string | null,
     publicationDate: string | null = null,
+    referenceRow: DataRow | null = null,
 ): CatalogIndicatorRow {
     if (!valueRow) return { ...item };
 
@@ -160,6 +221,8 @@ export function buildIndicatorCatalogItem(
 
     return {
         ...item,
+        referencia: formatReferenceValue(spec, referenceRow),
+        reference_description: spec.referenceLabel,
         fecha: date ? formatCatalogDisplayDate(date, spec, publicationDate) : item.fecha,
         dato: spec.formatValue(value),
     };

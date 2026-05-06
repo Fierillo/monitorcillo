@@ -8,6 +8,7 @@ export type Indicator = {
     fuente: string;
     indicador: string;
     referencia: string;
+    referenceDescription?: string;
     dato: string;
     trend?: IndicatorTrend;
     category?: string;
@@ -19,6 +20,7 @@ export type CatalogIndicatorRow = {
     id: string;
     indicador: string;
     referencia: string;
+    reference_description?: string;
     dato: string;
     fecha: string;
     fuente: string;

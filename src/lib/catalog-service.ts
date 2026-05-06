@@ -6,6 +6,8 @@ export type CatalogDataSources = {
     getNormalizedRows: (type: IndicatorType) => Promise<DataRow[] | null>;
     getRawRows: (type: IndicatorType) => Promise<DataRow[] | null>;
     getLatestNormalizedRow?: (type: IndicatorType, valueColumn: string) => Promise<DataRow | null>;
+    getNormalizedRowByDate?: (type: IndicatorType, date: string) => Promise<DataRow | null>;
+    getRawRowByDate?: (type: IndicatorType, date: string) => Promise<DataRow | null>;
     getLatestRawDate?: (type: IndicatorType, fields: string[]) => Promise<string | null>;
     getPublicationDate?: (id: string) => Promise<string | null>;
 };
@@ -18,9 +20,18 @@ async function defaultCatalogDataSources(): Promise<CatalogDataSources> {
         getNormalizedRows: async (type) => db.getNormalizedData(type) as Promise<DataRow[] | null>,
         getRawRows: async (type) => db.getRawData(type) as Promise<DataRow[]>,
         getLatestNormalizedRow: async (type, valueColumn) => db.getLatestNormalizedData(type, valueColumn) as Promise<DataRow | null>,
+        getNormalizedRowByDate: async (type, date) => db.getNormalizedDataByDate(type, date) as Promise<DataRow | null>,
+        getRawRowByDate: async (type, date) => db.getRawDataByDate(type, date) as Promise<DataRow | null>,
         getLatestRawDate: db.getLatestRawDate,
         getPublicationDate: db.getIndicatorPublicationDate,
     };
+}
+
+function rowDate(row: DataRow | null): string | null {
+    if (!row) return null;
+    const date = row.iso_fecha ?? row.fecha;
+    if (date instanceof Date) return date.toISOString().split('T')[0];
+    return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
 }
 
 function catalogBaseFromRows(rows: CatalogIndicatorRow[]): CatalogIndicatorRow[] {
@@ -49,7 +60,15 @@ export async function buildCurrentIndicatorsCatalog(sources?: CatalogDataSources
                 dataSources.getPublicationDate ? dataSources.getPublicationDate(item.id) : Promise.resolve(null),
             ]);
 
-            return buildIndicatorCatalogItem(item, spec, valueRow, rawDate, publicationDate);
+            const valueDate = rowDate(valueRow);
+            const referenceDate = valueDate ? spec.getReferenceDate(valueDate) : null;
+            const referenceRow = referenceDate && dataSources.getNormalizedRowByDate && dataSources.getRawRowByDate
+                ? spec.referenceSource === 'raw'
+                    ? await dataSources.getRawRowByDate!(spec.type, referenceDate)
+                    : await dataSources.getNormalizedRowByDate!(spec.type, referenceDate)
+                : null;
+
+            return buildIndicatorCatalogItem(item, spec, valueRow, rawDate, publicationDate, referenceRow);
         }));
     }
 
