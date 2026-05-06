@@ -32,6 +32,16 @@ function notNull<T>(value: T | null): value is T {
     return value !== null;
 }
 
+function baseIpcValue(rows: Array<{ fecha: string; ipc_nucleo?: NumericValue }>): number | null {
+    const baseRow = rows.find(row => row.fecha === '2017-01-01');
+    return baseRow ? toNullableNumber(baseRow.ipc_nucleo ?? null) : null;
+}
+
+function toBasePrices(value: number | null, currentIpc: number | null, baseIpc: number | null): number | null {
+    if (value == null || !currentIpc || !baseIpc) return null;
+    return value * (baseIpc / currentIpc);
+}
+
 export function isoToFecha(dateStr: string): string {
     const d = new Date(dateStr + 'T12:00:00Z');
     return `${d.getUTCDate()} ${MONTHS_ES[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}`;
@@ -145,6 +155,7 @@ export function normalizeBma(rawData: BmaRawRow[]): BmaNormalizedRow[] {
     };
 
     const monthly = new Map<string, BmaMonthlyBucket>();
+    const baseIpc = baseIpcValue(rawData);
 
     for (const row of rawData) {
         if (!row.fecha || typeof row.fecha !== 'string') continue;
@@ -186,53 +197,18 @@ export function normalizeBma(rawData: BmaRawRow[]): BmaNormalizedRow[] {
         monthly.set(monthKey, bucket);
     }
 
-    const emaeMap: Record<string, number> = {};
-    const ipcMap: Record<string, number> = {};
-    for (const row of rawData) {
-        if (row.fecha && row.emae_desestacionalizado != null) {
-            emaeMap[row.fecha] = toNumber(row.emae_desestacionalizado);
-        }
-        if (row.fecha && row.ipc_nucleo != null) {
-            ipcMap[row.fecha] = toNumber(row.ipc_nucleo);
-        }
-    }
-
-    const pivotRow = [...rawData].reverse().find(r => r.pbi_trimestral != null);
-    const pivotPbi = pivotRow ? toNullableNumber(pivotRow.pbi_trimestral) : null;
-    const pivotEmae = pivotRow ? toNullableNumber(pivotRow.emae_desestacionalizado) : null;
-    const pivotIpc = pivotRow ? toNullableNumber(pivotRow.ipc_nucleo) : null;
-
-    const fallbackEmae = Object.values(emaeMap).slice(-1)[0] || null;
-    const fallbackIpc = Object.values(ipcMap).slice(-1)[0] || null;
-
-    let lastKnownPbi: number | null = null;
-
     const result = Array.from(monthly.entries())
         .map(([monthKey, bucket]) => {
             const [yyyy, mm] = monthKey.split('-');
             if (!MONTHS_NAMES[mm]) return null;
 
-            const year = parseInt(yyyy, 10);
-            const emaeBase = emaeMap[`${year}-01-01`] || fallbackEmae;
-            const ipcBase = ipcMap[`${year}-01-01`] || fallbackIpc;
-            
-            if (bucket.pbi_trimestral != null) lastKnownPbi = bucket.pbi_trimestral;
-            const pbiTrimestral = bucket.pbi_trimestral ?? lastKnownPbi;
-            
-            const emaeActual = bucket.emae_desestacionalizado ?? fallbackEmae;
-            const ipcActual = bucket.ipc_nucleo ?? fallbackIpc;
-
-            let pbiAnualizado = pbiTrimestral;
-
-            if (!pbiAnualizado && pivotPbi && pivotEmae && pivotIpc && emaeActual && ipcActual) {
-                pbiAnualizado = pivotPbi * (emaeActual / pivotEmae) * (ipcActual / pivotIpc);
-            } else if (pbiTrimestral && emaeBase && emaeActual && ipcBase && ipcActual) {
-                pbiAnualizado = pbiTrimestral * (emaeActual / emaeBase) * (ipcActual / ipcBase);
-            }
+            const pbiMensual = bucket.pbi_trimestral;
+            const ipcMensual = bucket.ipc_nucleo;
 
             const calcPct = (val: number | null) => {
-                if (val == null || !pbiAnualizado) return null;
-                return (val / pbiAnualizado) * 100;
+                const realValue = toBasePrices(val, ipcMensual, baseIpc);
+                if (realValue == null || !pbiMensual) return null;
+                return (realValue / pbiMensual) * 100;
             };
 
             const bmRaw = bucket.bmCount > 0 ? bucket.bmTotal / bucket.bmCount : null;
@@ -268,20 +244,7 @@ export function normalizeRecaudacion(rawData: RecaudacionRawRow[]): RecaudacionN
         return [];
     }
 
-    const emaeMap: Record<string, number> = {};
-    const ipcMap: Record<string, number> = {};
-    for (const row of rawData) {
-        if (row.fecha && row.emae_desestacionalizado != null) {
-            emaeMap[row.fecha] = Number(row.emae_desestacionalizado);
-        }
-        if (row.fecha && row.ipc_nucleo != null) {
-            ipcMap[row.fecha] = Number(row.ipc_nucleo);
-        }
-    }
-    const fallbackEmaeBase = emaeMap['2024-01-01'] || Object.values(emaeMap)[0] || null;
-    const fallbackIpcBase = ipcMap['2024-01-01'] || Object.values(ipcMap)[0] || null;
-
-    let lastKnownPbi: number | null = null;
+    const baseIpc = baseIpcValue(rawData);
 
     return rawData
         .filter((row) => row.fecha && row.fecha >= '2019-01-01' && row.recaudacion_total != null)
@@ -289,26 +252,20 @@ export function normalizeRecaudacion(rawData: RecaudacionRawRow[]): RecaudacionN
             const year = row.year ?? Number(row.fecha.slice(0, 4));
             const monthStr = row.mes ?? row.fecha.slice(5, 7);
             const monthNum = parseInt(monthStr, 10);
-            const emaeBase = emaeMap[`${year}-01-01`] || fallbackEmaeBase;
-            const ipcBase = ipcMap[`${year}-01-01`] || fallbackIpcBase;
-            
-            if (row.pbi_trimestral != null) lastKnownPbi = toNullableNumber(row.pbi_trimestral);
+            const pbiMensual = toNullableNumber(row.pbi_trimestral);
+            const recaudacionReal = toBasePrices(
+                toNullableNumber(row.recaudacion_total ?? null),
+                toNullableNumber(row.ipc_nucleo ?? null),
+                baseIpc,
+            );
 
-            const pbiTrimestral = row.pbi_trimestral ?? lastKnownPbi;
-            const emaeDesest = row.emae_desestacionalizado ?? Object.values(emaeMap).slice(-1)[0];
-            const ipcActual = row.ipc_nucleo ?? Object.values(ipcMap).slice(-1)[0];
-
-            const pbiAnualizado = pbiTrimestral && emaeBase && emaeDesest && ipcBase && ipcActual
-                ? toNumber(pbiTrimestral) * (toNumber(emaeDesest) / emaeBase) * (toNumber(ipcActual) / ipcBase)
-                : pbiTrimestral;
-
-            return pbiAnualizado
+            return pbiMensual && recaudacionReal != null
                 ? {
                     fecha: `${MONTHS_ES[monthNum - 1]} ${String(year).slice(-2)}`,
                     iso_fecha: row.fecha,
                     mes: monthStr,
                     year,
-                    pctPbi: (toNumber(row.recaudacion_total) / toNumber(pbiAnualizado)) * 100,
+                    pctPbi: (recaudacionReal / pbiMensual) * 100,
                 }
                 : null;
         })

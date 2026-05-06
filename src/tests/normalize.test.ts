@@ -82,12 +82,9 @@ describe('normalizeEmision', () => {
 
 describe('normalizeBma', () => {
     it('averages daily values, calculates % PBI, and strictly calculates BMAmplia', () => {
-        // For % PBI, BMA values are divided by PBI_Anualizado, then * 100.
-        // PBI_Anualizado = PBI_Trimestral * (EMAE_actual / EMAE_base) * (IPC_actual / IPC_base)
-        // Let's set fallback bases to 1.0 for simplicity.
         const rawData = [
             {
-                fecha: '2026-01-01',
+                fecha: '2017-01-01',
                 emae_desestacionalizado: 1.0,
                 ipc_nucleo: 1.0
             },
@@ -99,9 +96,9 @@ describe('normalizeBma', () => {
                 lefi: 50, 
                 otros: 20, 
                 depositos_tesoro: null,
-                pbi_trimestral: 36000, 
+                pbi_trimestral: 45000,
                 emae_desestacionalizado: 1.0,
-                ipc_nucleo: 1.25 // Inflation adjustment: 1.25 factor
+                ipc_nucleo: 1.25
             },
             {
                 fecha: '2026-02-15',
@@ -117,17 +114,6 @@ describe('normalizeBma', () => {
             }
         ];
 
-        // Averages:
-        // bmRaw: 150
-        // pasivosRemuneradosRaw: 120
-        // depositosTesoroRaw: 300
-        // BMAmpliaRaw: 570
-        // PBI_Anualizado = 36000 * 1.0 * 1.25 = 45000
-        // BaseMonetaria %: (150 / 45000) * 100 = 0.3333...
-        // PasivosRemunerados %: (120 / 45000) * 100 = 0.2666...
-        // DepositosTesoro %: (300 / 45000) * 100 = 0.6666...
-        // BMAmplia %: (570 / 45000) * 100 = 1.2666...
-
         const normalized = normalizeBma(rawData);
         
         expect(normalized).toHaveLength(2);
@@ -135,10 +121,10 @@ describe('normalizeBma', () => {
         const bmaRow = normalized.find(r => r.iso_fecha === '2026-02-01');
         expect(bmaRow).toBeDefined();
         
-        expect(bmaRow!.BaseMonetaria).toBeCloseTo(0.33333, 4);
-        expect(bmaRow!.PasivosRemunerados).toBeCloseTo(0.26667, 4);
-        expect(bmaRow!.DepositosTesoro).toBeCloseTo(0.66667, 4);
-        expect(bmaRow!.BMAmplia).toBeCloseTo(1.26667, 4);
+        expect(bmaRow!.BaseMonetaria).toBeCloseTo(0.26667, 4);
+        expect(bmaRow!.PasivosRemunerados).toBeCloseTo(0.21333, 4);
+        expect(bmaRow!.DepositosTesoro).toBeCloseTo(0.53333, 4);
+        expect(bmaRow!.BMAmplia).toBeCloseTo(1.01333, 4);
     });
 
     it('returns BMAmplia as null if DepositosTesoro is missing for the entire month', () => {
@@ -163,13 +149,11 @@ describe('normalizeBma', () => {
 });
 
 describe('normalizeRecaudacion', () => {
-    it('calculates Recaudacion as % of annualized GDP', () => {
-        // Annualized GDP = PBI_Trimestral * (EMAE_actual / EMAE_base) * (IPC_actual / IPC_base)
+    it('calculates Recaudacion as % of monthly PBI', () => {
         const rawData = [
             {
-                fecha: '2024-01-01',
-                emae_desestacionalizado: 1.0, // fallback base
-                ipc_nucleo: 1.0
+                fecha: '2017-01-01',
+                ipc_nucleo: 100,
             },
             {
                 fecha: '2026-02-01',
@@ -177,13 +161,9 @@ describe('normalizeRecaudacion', () => {
                 year: 2026,
                 recaudacion_total: 100,
                 pbi_trimestral: 36000,
-                emae_desestacionalizado: 1.0,
-                ipc_nucleo: 1.0
+                ipc_nucleo: 100,
             }
         ];
-
-        // Annualized GDP = 36000
-        // % PBI = (100 / 36000) * 100 = 0.2777...
 
         const normalized = normalizeRecaudacion(rawData);
 
@@ -191,5 +171,32 @@ describe('normalizeRecaudacion', () => {
         expect(normalized[0].pctPbi).toBeCloseTo(0.2778, 4);
         expect(normalized[0].fecha).toBe('FEB 26');
         expect(normalized[0].iso_fecha).toBe('2026-02-01');
+    });
+
+    it('does not repeat a previous PBI when the month has no monthly PBI value', () => {
+        const normalized = normalizeRecaudacion([
+            {
+                fecha: '2017-01-01',
+                ipc_nucleo: 100,
+            },
+            {
+                fecha: '2026-01-01',
+                mes: '01',
+                year: 2026,
+                recaudacion_total: 100,
+                pbi_trimestral: 1000,
+                ipc_nucleo: 100,
+            },
+            {
+                fecha: '2026-02-01',
+                mes: '02',
+                year: 2026,
+                recaudacion_total: 100,
+                ipc_nucleo: 100,
+            },
+        ]);
+
+        expect(normalized).toHaveLength(1);
+        expect(normalized[0].iso_fecha).toBe('2026-01-01');
     });
 });

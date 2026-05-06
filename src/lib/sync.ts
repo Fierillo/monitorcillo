@@ -5,6 +5,9 @@ import { normalizeEmision, normalizeEmae, normalizeBma, normalizeRecaudacion, no
 import { buildCurrentIndicatorsCatalog } from './catalog-service';
 import { runSyncTasks } from './sync-runner';
 import { parseEmaePublicationDate, parseEmaeWorkbook } from './emae-source';
+import { buildMonthlyPbiSeries, parseLatestPbiWorkbookUrl, parsePbiWorkbook } from './pbi-source';
+import { mergeRecaudacionOfficialReport, parseLatestRecaudacionWorkbookUrl, parseRecaudacionWorkbook } from './recaudacion-source';
+import { parseSalaryPublicationDate } from './salary-source';
 import type {
     BcraApiResponse,
     BcraVariablePage,
@@ -15,7 +18,9 @@ import type {
     EmaeRawRow,
     EmisionRawRow,
     IndicatorType,
+    PbiAnchorRow,
     PoderAdquisitivoRawRow,
+    RecaudacionOfficialReport,
     RecaudacionRawRow,
     SyncResult,
     SyncResults,
@@ -24,8 +29,12 @@ import type {
 const WEEKLY_BALANCE_WORKBOOK_URL = 'https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/Serieanual.xls';
 const EMAE_WORKBOOK_URL = 'https://www.indec.gob.ar/ftp/cuadros/economia/sh_emae_mensual_base2004.xls';
 const EMAE_PUBLICATION_PAGE_URL = 'https://www.indec.gob.ar/Nivel4/Tema/3/9/48';
+const PBI_PAGE_URL = 'https://www.indec.gob.ar/Nivel4/Tema/3/9/47';
+const RECAUDACION_PAGE_URL = 'https://www.argentina.gob.ar/economia/ingresospublicos/dniaf/recaudacion';
+const SALARY_PUBLICATION_PAGE_URL = 'https://www.indec.gob.ar/Nivel4/Tema/4/31/61';
 const WEEKLY_TREASURY_SERIES_REGEX = /DEPOSITOS DEL GOBIERNO NACIONAL Y OTROS/i;
 let emaeWorkbookRowsPromise: Promise<EmaeRawRow[]> | null = null;
+let pbiAnchorRowsPromise: Promise<PbiAnchorRow[]> | null = null;
 const ENGLISH_MONTHS: Record<string, number> = {
     Jan: 1,
     Feb: 2,
@@ -105,6 +114,24 @@ async function fetchEmaeWorkbookRows(): Promise<EmaeRawRow[]> {
     return emaeWorkbookRowsPromise;
 }
 
+async function fetchPbiAnchorRows(): Promise<PbiAnchorRow[]> {
+    pbiAnchorRowsPromise ??= fetchTextFromUrl(PBI_PAGE_URL).then(async (html) => {
+        const workbookUrl = parseLatestPbiWorkbookUrl(html);
+        if (!workbookUrl) {
+            throw new Error('Failed to find latest PBI workbook URL. Verify INDEC PBI page structure.');
+        }
+
+        const rows = parsePbiWorkbook(await fetchBufferFromUrl(workbookUrl));
+        if (rows.length === 0) {
+            throw new Error(`Failed to parse PBI workbook ${workbookUrl}. Verify INDEC workbook structure.`);
+        }
+
+        return rows;
+    });
+
+    return pbiAnchorRowsPromise;
+}
+
 function parseWorkbookWeeklyDate(value: unknown): string | null {
     if (!value) return null;
     const raw = String(value).trim();
@@ -156,6 +183,22 @@ function extractWeeklyGovernmentDepositsSeries(workbookBuffer: Buffer, fromDate:
     return Array.from(byFecha.entries())
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([fecha, valor]) => ({ fecha, valor }));
+}
+
+async function fetchRecaudacionOfficialReport(): Promise<RecaudacionOfficialReport> {
+    const html = await fetchTextFromUrl(RECAUDACION_PAGE_URL);
+    const workbookUrl = parseLatestRecaudacionWorkbookUrl(html);
+    if (!workbookUrl) {
+        throw new Error('Failed to find latest Recaudacion workbook URL. Verify Hacienda page structure.');
+    }
+
+    const workbook = await fetchBufferFromUrl(workbookUrl);
+    const report = parseRecaudacionWorkbook(workbook);
+    if (!report) {
+        throw new Error(`Failed to parse Recaudacion workbook ${workbookUrl}. Verify Hacienda workbook structure.`);
+    }
+
+    return report;
 }
 
 function fetchBcraVariablePage(idVariable: number, from: string, to: string, offset: number): Promise<BcraVariablePage> {
@@ -230,14 +273,14 @@ export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
     const toDate = today.toISOString().split('T')[0];
     const fromDate = '2017-01-01';
 
-    const [baseMonetaria, pases, leliq, lefi, otros, weeklyWorkbook, pbi, emae, ipc] = await Promise.all([
+    const [baseMonetaria, pases, leliq, lefi, otros, weeklyWorkbook, pbiAnchors, emae, ipc] = await Promise.all([
         fetchBcraVariable(15, fromDate, toDate),
         fetchBcraVariable(152, fromDate, toDate),
         fetchBcraVariable(155, fromDate, toDate),
         fetchBcraVariable(196, fromDate, toDate),
         fetchBcraVariable(198, fromDate, toDate),
         fetchBufferFromUrl(WEEKLY_BALANCE_WORKBOOK_URL),
-        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=166.2_PPIB_0_0_3&limit=5000'),
+        fetchPbiAnchorRows(),
         fetchEmaeWorkbookRows(),
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
     ]);
@@ -262,16 +305,6 @@ export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
     mergeSeries(otros, 'otros');
     mergeSeries(depositosTesoro, 'depositos_tesoro');
 
-    const pbiByQuarter = new Map<string, number>();
-    for (const row of pbi.data || []) {
-        const fecha = row[0];
-        if (!fecha || typeof fecha !== 'string') continue;
-        const year = parseInt(fecha.slice(0, 4), 10);
-        const month = parseInt(fecha.slice(5, 7), 10);
-        const quarter = Math.ceil(month / 3);
-        if (row[1] != null) pbiByQuarter.set(`${year}-Q${quarter}`, Number(row[1]));
-    }
-
     const emaeByFecha = emaeDesestacionalizadoMap(emae);
     const ipcByFecha = seriesValueMap(ipc.data || []);
 
@@ -280,15 +313,14 @@ export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
         monthPrefixes.add(fecha.slice(0, 7));
     }
 
+    const firstOfMonthDates = Array.from(monthPrefixes).map(monthPrefix => `${monthPrefix}-01`);
+    const pbiByFecha = buildMonthlyPbiSeries(pbiAnchors, emae, firstOfMonthDates);
+
     for (const monthPrefix of monthPrefixes) {
         const firstOfMonth = `${monthPrefix}-01`;
-        const year = parseInt(monthPrefix.slice(0, 4), 10);
-        const month = parseInt(monthPrefix.slice(5, 7), 10);
-        const quarter = Math.ceil(month / 3);
-        
-        const pbiVal = pbiByQuarter.get(`${year}-Q${quarter}`);
+        const pbiVal = pbiByFecha.get(firstOfMonth);
         const emaeVal = emaeByFecha.get(firstOfMonth);
-        const ipcVal = ipcByFecha.get(firstOfMonth);
+        const ipcVal = valueAtOrBefore(ipcByFecha, firstOfMonth);
         
         if (pbiVal != null || emaeVal != null || ipcVal != null) {
             const row = byFecha.get(firstOfMonth) ?? { fecha: firstOfMonth };
@@ -305,7 +337,19 @@ export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
 function seriesValueMap(rows: DatosGobSeriesRow[]): Map<string, number> {
     return new Map(rows
         .filter((row) => typeof row[0] === 'string' && row[1] != null)
+        .sort((a, b) => a[0].localeCompare(b[0]))
         .map((row) => [row[0], Number(row[1])]));
+}
+
+function valueAtOrBefore(valuesByFecha: Map<string, number>, fecha: string): number | null {
+    let value: number | null = null;
+
+    for (const [candidateFecha, candidateValue] of valuesByFecha) {
+        if (candidateFecha > fecha) break;
+        value = candidateValue;
+    }
+
+    return value;
 }
 
 function emaeDesestacionalizadoMap(rows: EmaeRawRow[]): Map<string, number> {
@@ -333,12 +377,13 @@ function fetchCSV(url: string): Promise<string[][]> {
     });
 }
 
-export async function fetchPoderAdquisitivoRaw(): Promise<PoderAdquisitivoRawRow[]> {
-    const [ipc, jubilaciones, salariosCsv, ripteCsv] = await Promise.all([
+async function fetchPoderAdquisitivoRawReport(): Promise<{ rows: PoderAdquisitivoRawRow[]; publishedAt: string | null }> {
+    const [ipc, jubilaciones, salariosCsv, ripteCsv, publicationHtml] = await Promise.all([
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=58.1_MP_0_M_24&limit=5000'),
         fetchCSV('https://infra.datos.gob.ar/catalog/sspm/dataset/149/distribution/149.1/download/indice-salarios-periodicidad-mensual-base-octubre-2016.csv'),
         fetchCSV('https://infra.datos.gob.ar/catalog/sspm/dataset/158/distribution/158.1/download/remuneracion-imponible-promedio-trabajadores-estables-ripte-total-pais-pesos-serie-mensual.csv'),
+        fetchTextFromUrl(SALARY_PUBLICATION_PAGE_URL),
     ]);
 
     const ipcByFecha = seriesValueMap(ipc.data || []);
@@ -380,46 +425,74 @@ export async function fetchPoderAdquisitivoRaw(): Promise<PoderAdquisitivoRawRow
         }
     });
 
-    return Array.from(combinedMap.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    return {
+        rows: Array.from(combinedMap.values()).sort((a, b) => a.fecha.localeCompare(b.fecha)),
+        publishedAt: parseSalaryPublicationDate(publicationHtml),
+    };
 }
 
-export async function fetchRecaudacionRaw(): Promise<RecaudacionRawRow[]> {
-    const [recaudacion, pbi, emae, ipc] = await Promise.all([
+export async function fetchPoderAdquisitivoRaw(): Promise<PoderAdquisitivoRawRow[]> {
+    return (await fetchPoderAdquisitivoRawReport()).rows;
+}
+
+function buildRecaudacionRawRow(
+    fecha: string,
+    recaudacionTotal: RecaudacionRawRow['recaudacion_total'],
+    pbiByFecha: Map<string, number>,
+    emaeByFecha: Map<string, number>,
+    ipcByFecha: Map<string, number>,
+): RecaudacionRawRow {
+    const year = parseInt(fecha.slice(0, 4), 10);
+    const month = fecha.slice(5, 7);
+
+    return {
+        fecha,
+        mes: month,
+        year,
+        recaudacion_total: recaudacionTotal ?? null,
+        pbi_trimestral: pbiByFecha.get(fecha) ?? null,
+        emae_desestacionalizado: emaeByFecha.get(fecha) ?? null,
+        ipc_nucleo: valueAtOrBefore(ipcByFecha, fecha),
+    };
+}
+
+async function fetchRecaudacionRawReport(): Promise<{ rows: RecaudacionRawRow[]; publishedAt: string | null }> {
+    const [recaudacion, pbiAnchors, emae, ipc, officialReport] = await Promise.all([
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=172.3_TL_RECAION_M_0_0_17&limit=5000'),
-        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=166.2_PPIB_0_0_3&limit=5000'),
+        fetchPbiAnchorRows(),
         fetchEmaeWorkbookRows(),
         fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
+        fetchRecaudacionOfficialReport(),
     ]);
-
-    const pbiByQuarter = new Map<string, number>();
-    for (const row of pbi.data || []) {
-        const fecha = row[0];
-        if (!fecha || typeof fecha !== 'string') continue;
-        const year = parseInt(fecha.slice(0, 4), 10);
-        const month = parseInt(fecha.slice(5, 7), 10);
-        const quarter = Math.ceil(month / 3);
-        if (row[1] != null) pbiByQuarter.set(`${year}-Q${quarter}`, Number(row[1]));
-    }
 
     const emaeByFecha = emaeDesestacionalizadoMap(emae);
     const ipcByFecha = seriesValueMap(ipc.data || []);
+    const recaudacionRows = recaudacion.data || [];
+    const targetDates = [...recaudacionRows.map(row => row[0]), officialReport.row.fecha];
+    const pbiByFecha = buildMonthlyPbiSeries(pbiAnchors, emae, targetDates);
 
-    return (recaudacion.data || []).map((row) => {
-        const fecha = row[0];
-        const year = parseInt(fecha.slice(0, 4), 10);
-        const month = fecha.slice(5, 7);
-        const quarter = Math.ceil(parseInt(month, 10) / 3);
+    const datosGobRows = recaudacionRows.map((row) => (
+        buildRecaudacionRawRow(row[0], row[1] ?? null, pbiByFecha, emaeByFecha, ipcByFecha)
+    ));
+    const officialReportWithMacroFields = {
+        ...officialReport,
+        row: buildRecaudacionRawRow(
+            officialReport.row.fecha,
+            officialReport.row.recaudacion_total ?? null,
+            pbiByFecha,
+            emaeByFecha,
+            ipcByFecha,
+        ),
+    };
 
-        return {
-            fecha,
-            mes: month,
-            year,
-            recaudacion_total: row[1] ?? null,
-            pbi_trimestral: pbiByQuarter.get(`${year}-Q${quarter}`) ?? null,
-            emae_desestacionalizado: emaeByFecha.get(fecha) ?? null,
-            ipc_nucleo: ipcByFecha.get(fecha) ?? null,
-        };
-    });
+    return {
+        rows: mergeRecaudacionOfficialReport(datosGobRows, officialReportWithMacroFields),
+        publishedAt: officialReport.publishedAt,
+    };
+}
+
+export async function fetchRecaudacionRaw(): Promise<RecaudacionRawRow[]> {
+    return (await fetchRecaudacionRawReport()).rows;
 }
 
 export async function syncEmision(): Promise<SyncResult> {
@@ -557,13 +630,17 @@ export async function syncRecaudacion(): Promise<SyncResult> {
     const existingData = (await getRawData(type)) ?? [];
     const existingFechas = new Set(existingData.map((row) => row.fecha));
 
-    const rawData = await fetchRecaudacionRaw();
+    const { rows: rawData, publishedAt } = await fetchRecaudacionRawReport();
     const appended = rawData.filter((row) => !existingFechas.has(row.fecha)).length;
 
     await replaceRawData(type, rawData);
 
     const normalized = normalizeRecaudacion(rawData);
     await replaceNormalizedData(type, normalized);
+
+    if (publishedAt) {
+        await saveIndicatorPublication('recaudacion', publishedAt, rawData.at(-1)?.fecha ?? null);
+    }
 
     return { appended, total: rawData.length };
 }
@@ -573,13 +650,17 @@ export async function syncPoderAdquisitivo(): Promise<SyncResult> {
     const existingData = (await getRawData(type)) ?? [];
     const existingFechas = new Set(existingData.map((row) => row.fecha));
 
-    const rawData = await fetchPoderAdquisitivoRaw();
+    const { rows: rawData, publishedAt } = await fetchPoderAdquisitivoRawReport();
     const appended = rawData.filter((row) => !existingFechas.has(row.fecha)).length;
 
     await replaceRawData(type, rawData);
 
     const normalized = normalizePoderAdquisitivo(rawData);
     await replaceNormalizedData(type, normalized);
+
+    if (publishedAt) {
+        await saveIndicatorPublication('poder-adquisitivo', publishedAt, normalized.at(-1)?.iso_fecha ?? rawData.at(-1)?.fecha ?? null);
+    }
 
     return { appended, total: rawData.length };
 }

@@ -52,6 +52,11 @@ export type EmaeRawRow = {
     emae_tendencia?: NumericValue;
 };
 
+export type PbiAnchorRow = {
+    fecha: string;
+    pbi: number;
+};
+
 export type EmaeNormalizedRow = {
     fecha: string;
     iso_fecha: string;
@@ -108,6 +113,11 @@ export type RecaudacionRawRow = {
     pbi_trimestral?: NumericValue;
     emae_desestacionalizado?: NumericValue;
     ipc_nucleo?: NumericValue;
+};
+
+export type RecaudacionOfficialReport = {
+    publishedAt: string | null;
+    row: RecaudacionRawRow;
 };
 
 export type RecaudacionNormalizedRow = {
