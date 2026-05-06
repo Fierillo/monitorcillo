@@ -31,7 +31,9 @@ export default function ChartBar({
                 const { payload, x, y, width, height } = props;
                 const monthValue = selectByMonth ? payload?.iso_fecha?.slice(5, 7) : payload?.iso_fecha;
                 const isSelected = selectedMonth && monthValue === selectedMonth;
+                const isPreliminary = areaConfig.preliminaryKey ? payload?.[areaConfig.preliminaryKey] === true : false;
                 const opacity = selectedMonth ? (isSelected ? 1 : 0.3) : 1;
+                const fillOpacity = isPreliminary ? 0.45 : 1;
 
                 return (
                     <Rectangle
@@ -40,8 +42,10 @@ export default function ChartBar({
                         width={width}
                         height={height}
                         fill={areaConfig.color}
-                        stroke={isSelected ? '#FFFFFF' : 'none'}
-                        strokeWidth={isSelected ? 1 : 0}
+                        fillOpacity={fillOpacity}
+                        stroke={isSelected ? '#FFFFFF' : isPreliminary ? areaConfig.color : 'none'}
+                        strokeDasharray={isPreliminary && !isSelected ? '4 3' : undefined}
+                        strokeWidth={isSelected || isPreliminary ? 1 : 0}
                         style={{ 
                             opacity: isDimmed ? opacity * 0.2 : opacity, 
                             cursor: 'pointer', 

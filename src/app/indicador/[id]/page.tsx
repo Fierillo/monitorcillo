@@ -48,23 +48,23 @@ export default async function IndicatorDetailPage({ params }: IndicatorPageProps
         ];
 
         const methodology: MethodologyItem[] = [
-            { title: 'Base Monetaria', description: 'Promedio mensual de saldos diarios (BCRA Var. 15).' },
-            { title: 'Pasivos Remunerados', description: 'Promedio mensual agregado de Pases (152), LELIQ/NOTALQ (155), LEFI (196) y Otros (198).' },
-            { title: 'Depósitos del Gobierno', description: 'Promedio de observaciones semanales (BCRA Serieanual.xls).' },
-            { title: 'Base Monetaria Amplia', description: 'Suma de Base Monetaria + Pasivos Remunerados + Depósitos del Gobierno.' },
-            { title: 'Normalización a % PBI', description: 'Proporción calculada sobre el PBI anualizado estimado. El PBI del mes se infiere ajustando el último PBI trimestral (INDEC 166.2_PPIB_0_0_3) por la variación del EMAE desestacionalizado (143.3_NO_PR_2004_A_31).' },
+            { title: 'Base Monetaria', description: 'Promedio mensual de saldos diarios nominales del BCRA (Var. 15), expresado a precios de enero de 2017 con IPC núcleo.' },
+            { title: 'Pasivos Remunerados', description: 'Promedio mensual agregado nominal de Pases (152), LELIQ/NOTALQ (155), LEFI (196) y Otros (198), expresado a precios de enero de 2017 con IPC núcleo.' },
+            { title: 'Depósitos del Gobierno', description: 'Promedio de observaciones semanales nominales (BCRA Serieanual.xls), expresado a precios de enero de 2017 con IPC núcleo.' },
+            { title: 'Base Monetaria Amplia', description: 'Suma real de Base Monetaria + Pasivos Remunerados + Depósitos del Gobierno, todo a precios de enero de 2017.' },
+            { title: 'Normalización a % PBI real', description: 'Cada agregado monetario real se divide por el PBI real desestacionalizado de INDEC, convertido a pesos de enero de 2017 con el mismo factor IPC.' },
         ];
 
         return (
             <IndicatorCompositeView
                 title={indicator.indicador}
-                subtitle={`Fuente: ${indicator.fuente} | Dato: ${indicator.dato}`}
+                subtitle={`Fuente: BCRA e INDEC | Dato: ${indicator.dato}`}
                 chartTitle="Descomposición de Base Monetaria"
                 data={chartData}
                 areas={areas}
                 methodology={methodology}
                 valueFormat="percent"
-                yAxisLabel="% de PBI"
+                yAxisLabel="% de PBI real"
             />
         );
     }
@@ -174,28 +174,37 @@ export default async function IndicatorDetailPage({ params }: IndicatorPageProps
     }
 
     if (indicator.id === 'recaudacion') {
-        chartData = await safeGetIndicatorData('recaudacion');
+        const [recaudacionData, emaeData] = await Promise.all([
+            safeGetIndicatorData('recaudacion'),
+            safeGetIndicatorData('emae'),
+        ]);
+        const emaeDates = new Set(emaeData.map(row => row.iso_fecha));
+        chartData = recaudacionData.map(row => ({
+            ...row,
+            preliminary: typeof row.iso_fecha === 'string' && !emaeDates.has(row.iso_fecha),
+        }));
 
         const areas: AreaConfig[] = [
-            { key: 'pctPbi', name: '% PIB Anual', color: '#FFD700', type: 'bar', yAxisId: 'left' }
+            { key: 'pctPbi', name: '% PBI mensual real', color: '#FFD700', type: 'bar', yAxisId: 'left', preliminaryKey: 'preliminary', preliminaryLabel: 'Preliminar: sin EMAE del mes' }
         ];
 
         const methodology: MethodologyItem[] = [
-            { title: 'Recaudación Total', description: 'Recursos tributarios mensuales consolidado (Secretaría de Hacienda 172.3_TL_RECAION_M_0_0_17).' },
-            { title: 'Normalización a % PBI', description: 'Peso de la recaudación del mes sobre el PBI anualizado proyectado.' },
-            { title: 'Estimación PBI', description: 'El PBI se infiere ajustando el dato trimestral (INDEC 166.2_PPIB_0_0_3) por la variación del EMAE desestacionalizado (143.3_NO_PR_2004_A_31).' },
+            { title: 'Recaudación Total', description: 'Recursos tributarios mensuales consolidados. El último dato se toma del informe oficial de Hacienda.' },
+            { title: 'Normalización a % PBI real', description: 'La recaudación se expresa a precios de enero de 2017 con IPC núcleo y se divide por el PBI real desestacionalizado de INDEC, convertido a pesos de enero de 2017.' },
+            { title: 'Estimación PBI mensual', description: 'El PBI trimestral desestacionalizado se ancla en el mes de publicación y los meses intermedios se estiman con EMAE desestacionalizado.' },
         ];
 
 return (
             <IndicatorCompositeView
                 title={indicator.indicador}
                 subtitle={indicator.fuente}
-                chartTitle="Recaudación Tributaria (% PIB Anualizado)"
+                chartTitle="Recaudación Mensual (% PBI real anualizado)"
                 data={chartData}
                 areas={areas}
                 methodology={methodology}
                 valueFormat="percent"
-                yAxisLabel="% PIB"
+                yAxisDecimals={1}
+                yAxisLabel="% PBI mensual real"
                 leftYAxisDomain="auto-pad"
                 indicatorId={indicator.id}
             />

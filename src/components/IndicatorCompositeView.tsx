@@ -27,6 +27,7 @@ export default function IndicatorCompositeView({
     areas,
     methodology,
     valueFormat = 'billions',
+    yAxisDecimals = 0,
     yAxisLabel,
     secondaryYAxis,
     leftYAxisDomain,
@@ -267,7 +268,7 @@ export default function IndicatorCompositeView({
                                         <YAxis
                                             stroke="#FFD700"
                                             tick={{ fill: '#FFD700', fontSize: 10 }}
-                                            tickFormatter={(val) => formatValueByType(val, valueFormat)}
+                                            tickFormatter={(val) => formatValueByType(val, valueFormat, yAxisDecimals)}
                                             tickCount={10}
                                             domain={leftAxisDomain}
                                             allowDataOverflow={false}

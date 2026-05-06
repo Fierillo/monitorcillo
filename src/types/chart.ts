@@ -9,6 +9,8 @@ export interface AreaConfig {
     yAxisId?: 'left' | 'right';
     legendKey?: string;
     hideInLegend?: boolean;
+    preliminaryKey?: string;
+    preliminaryLabel?: string;
 }
 
 export interface MethodologyItem {
@@ -25,7 +27,7 @@ export interface YAxisConfig {
 
 export type ValueFormat = 'billions' | 'index' | 'millions' | 'percent';
 
-export type ChartValue = string | number | null | undefined;
+export type ChartValue = string | number | boolean | null | undefined;
 
 export type ChartDataRow = {
     fecha?: string;
@@ -33,6 +35,7 @@ export type ChartDataRow = {
     mes?: string;
     year?: number;
     pctPbi?: number | null;
+    preliminary?: boolean;
     [key: string]: ChartValue;
 };
 
@@ -79,6 +82,7 @@ export interface IndicatorCompositeViewProps {
     areas: AreaConfig[];
     methodology: MethodologyItem[];
     valueFormat?: ValueFormat;
+    yAxisDecimals?: number;
     yAxisLabel?: string;
     secondaryYAxis?: YAxisConfig;
     leftYAxisDomain?: ChartAxisDomain;
