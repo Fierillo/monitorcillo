@@ -20,13 +20,16 @@ export default function MethodologySection({ methodology, forceOpen }: Methodolo
             </button>
 
             {show && (
-                <div className="px-2 pb-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
+                <div className="px-2 pb-2">
+                    {forceOpen ? <h3 className="mb-1 text-[10px] font-bold uppercase tracking-wider text-imperial-gold">Fuentes y metodología</h3> : null}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
                     {methodology.map((item, idx) => (
                         <div key={idx} className="text-[7px] leading-[1.1]">
                             <span className="text-imperial-cyan font-bold uppercase">{item.title}:</span>{' '}
                             <span className="text-foreground/50">{item.description}</span>
                         </div>
                     ))}
+                    </div>
                 </div>
             )}
         </div>

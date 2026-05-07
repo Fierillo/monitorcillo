@@ -3,11 +3,7 @@
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import type {
-    ChartAxisDomain,
-    ChartDataRow,
-    IndicatorCompositeViewProps,
-} from '@/types/chart';
+import type { ChartAxisDomain, ChartDataRow, IndicatorCompositeViewProps } from '@/types/chart';
 import CompositeChartCard from './indicators/CompositeChartCard';
 
 export default function IndicatorCompositeView({
@@ -51,6 +47,8 @@ export default function IndicatorCompositeView({
 
     const captureRef = useRef<HTMLDivElement>(null);
     const chartContainerRef = useRef<HTMLDivElement>(null);
+    const mobileCaptureRef = useRef<HTMLDivElement>(null);
+    const mobileChartContainerRef = useRef<HTMLDivElement>(null);
     const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
     const [dimmedAreas, setDimmedAreas] = useState<Set<string>>(new Set());
     const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
@@ -143,15 +141,14 @@ export default function IndicatorCompositeView({
     }, []);
 
     const handleDownloadChart = useCallback(async () => {
-        if (!captureRef.current) return;
-
         try {
             setIsCapturing(true);
-            
-            // Wait for React to re-render with the methodology section open
             await new Promise(resolve => setTimeout(resolve, 400));
 
-            const dataUrl = await toPng(captureRef.current, {
+            const target = isMobile ? mobileCaptureRef.current : captureRef.current;
+            if (!target) return;
+
+            const dataUrl = await toPng(target, {
                 backgroundColor: '#00143F',
                 pixelRatio: 2,
                 filter: (node) => !node.classList?.contains('no-capture'),
@@ -166,7 +163,7 @@ export default function IndicatorCompositeView({
         } finally {
             setIsCapturing(false);
         }
-    }, [title]);
+    }, [isMobile, title]);
 
     if (!sortedData || sortedData.length === 0) {
         return <div className="text-imperial-gold p-8 text-center font-bold">Cargando datos...</div>;
@@ -181,26 +178,33 @@ export default function IndicatorCompositeView({
                     </h1>
                     {subtitle && <p className="text-imperial-cyan mt-1 font-bold text-xs sm:text-base">{subtitle}</p>}
                 </div>
-                <Link
-                    href="/"
-                    className="shrink-0 border-2 border-imperial-gold text-imperial-gold px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-base font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors uppercase"
-                >
-                    Volver
-                </Link>
+                <Link href="/" className="shrink-0 border-2 border-imperial-gold text-imperial-gold px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-base font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors uppercase">Volver</Link>
             </header>
 
             <CompositeChartCard
-                chartTitle={chartTitle} captureRef={captureRef} chartContainerRef={chartContainerRef}
+                title={title} subtitle={subtitle} chartTitle={chartTitle} captureRef={captureRef} chartContainerRef={chartContainerRef}
                 chartSize={chartSize} visibleData={visibleData} sortedData={sortedData}
                 areas={areas} methodology={methodology} valueFormat={valueFormat}
                 yAxisDecimals={yAxisDecimals} yAxisLabel={yAxisLabel} secondaryYAxis={secondaryYAxis}
                 leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}
                 dimmedAreas={dimmedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
-                isMobile={isMobile} isCapturing={isCapturing}
-                onDownloadChart={handleDownloadChart}
-                onSelectMonth={setSelectedMonth}
-                onToggleDim={handleToggleDim}
+                isMobile={isMobile} isCapturing={isCapturing && !isMobile} onDownloadChart={handleDownloadChart}
+                onSelectMonth={setSelectedMonth} onToggleDim={handleToggleDim}
             />
+            {isMobile && isCapturing ? (
+                <div className="fixed left-[-10000px] top-0 z-[-1]">
+                    <CompositeChartCard
+                        title={title} subtitle={subtitle} chartTitle={chartTitle} captureRef={mobileCaptureRef} chartContainerRef={mobileChartContainerRef}
+                        chartSize={{ width: 1260, height: 780 }} visibleData={visibleData} sortedData={sortedData}
+                        areas={areas} methodology={methodology} valueFormat={valueFormat}
+                        yAxisDecimals={yAxisDecimals} yAxisLabel={yAxisLabel} secondaryYAxis={secondaryYAxis}
+                        leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}
+                        dimmedAreas={dimmedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
+                        isMobile={false} isCapturing forceDesktopLayout onDownloadChart={handleDownloadChart}
+                        onSelectMonth={setSelectedMonth} onToggleDim={handleToggleDim}
+                    />
+                </div>
+            ) : null}
         </div>
     );
 }

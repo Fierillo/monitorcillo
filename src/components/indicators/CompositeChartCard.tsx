@@ -10,6 +10,8 @@ import MethodologySection from '../chart/MethodologySection';
 import { formatAxisValueByType, formatValueByType } from '../chart/utils';
 
 type Props = {
+    title: string;
+    subtitle?: string;
     chartTitle: string;
     captureRef: React.RefObject<HTMLDivElement | null>;
     chartContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -30,6 +32,7 @@ type Props = {
     selectByMonth: boolean;
     isMobile: boolean;
     isCapturing: boolean;
+    forceDesktopLayout?: boolean;
     onDownloadChart: () => void;
     onSelectMonth: (month: string | null) => void;
     onToggleDim: (key: string) => void;
@@ -38,26 +41,36 @@ type Props = {
 type ChartRenderProps = Omit<Props, 'captureRef' | 'chartContainerRef'>;
 
 export default function CompositeChartCard({ captureRef, chartContainerRef, ...chartProps }: Props) {
+    const renderProps = chartProps.forceDesktopLayout
+        ? { ...chartProps, isMobile: false, chartSize: { width: 1260, height: 780 } }
+        : chartProps;
+    const captureStyle = chartProps.forceDesktopLayout ? { outline: 'none', width: 1400 } : { outline: 'none' };
+
     return (
-        <main className="w-full sm:w-[96%] max-w-[1800px]">
-            <div className="w-full min-h-[600px] sm:min-h-[850px] bg-imperial-blue border-2 border-imperial-gold p-2 sm:p-4 shadow-lg shadow-imperial-blue/50 flex flex-col overflow-hidden" style={{ outline: 'none' }} tabIndex={-1}>
-                <div ref={captureRef} className="flex-1 flex flex-col bg-imperial-blue overflow-hidden" style={{ outline: 'none' }} tabIndex={-1}>
-                    <ChartHeader chartTitle={chartProps.chartTitle} onDownloadChart={chartProps.onDownloadChart} />
-                    <ChartCanvas {...chartProps} chartContainerRef={chartContainerRef} />
-                    <CustomLegend areas={chartProps.areas} dimmedAreas={chartProps.dimmedAreas} onToggleDim={chartProps.onToggleDim} />
-                    <MethodologySection methodology={chartProps.methodology} forceOpen={chartProps.isCapturing} />
+        <main className={chartProps.forceDesktopLayout ? 'w-[1400px] max-w-none' : 'w-full sm:w-[96%] max-w-[1800px]'}>
+            <div className={`${chartProps.forceDesktopLayout ? 'w-[1400px] min-h-[850px] p-4' : 'w-full min-h-[600px] sm:min-h-[850px] p-2 sm:p-4'} bg-imperial-blue border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 flex flex-col overflow-hidden`} style={{ outline: 'none' }} tabIndex={-1}>
+                <div ref={captureRef} className="flex-1 flex flex-col bg-imperial-blue overflow-hidden" style={captureStyle} tabIndex={-1}>
+                    {renderProps.isCapturing ? <ExportHeader title={renderProps.title} subtitle={renderProps.subtitle} /> : null}
+                    <ChartHeader chartTitle={renderProps.chartTitle} onDownloadChart={renderProps.onDownloadChart} forceDesktopLayout={!!renderProps.forceDesktopLayout} />
+                    <ChartCanvas {...renderProps} chartContainerRef={chartContainerRef} />
+                    <CustomLegend areas={renderProps.areas} dimmedAreas={renderProps.dimmedAreas} onToggleDim={renderProps.onToggleDim} />
+                    <MethodologySection methodology={renderProps.methodology} forceOpen={renderProps.isCapturing} />
                 </div>
             </div>
         </main>
     );
 }
 
-function ChartHeader({ chartTitle, onDownloadChart }: { chartTitle: string; onDownloadChart: () => void }) {
+function ExportHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+    return <div className="mb-3 border-b border-imperial-gold/40 pb-3 text-center"><h1 className="imperial-title text-2xl font-bold uppercase tracking-widest text-imperial-gold">{title}</h1>{subtitle ? <p className="mt-1 text-sm font-bold uppercase tracking-wide text-imperial-cyan">{subtitle}</p> : null}</div>;
+}
+
+function ChartHeader({ chartTitle, onDownloadChart, forceDesktopLayout }: { chartTitle: string; onDownloadChart: () => void; forceDesktopLayout: boolean }) {
     return (
-        <div className="flex flex-col sm:flex-row items-center justify-between mb-2 shrink-0 gap-2" style={{ outline: 'none' }}>
-            <div className="hidden sm:flex flex-1" />
-            <h2 className="text-imperial-gold text-base sm:text-xl font-bold uppercase tracking-widest text-center flex-1">{chartTitle}</h2>
-            <div className="flex-1 flex justify-end gap-2 w-full sm:w-auto">
+        <div className={`flex ${forceDesktopLayout ? 'flex-row' : 'flex-col sm:flex-row'} items-center justify-between mb-2 shrink-0 gap-2`} style={{ outline: 'none' }}>
+            <div className={`${forceDesktopLayout ? 'flex' : 'hidden sm:flex'} flex-1`} />
+            <h2 className={`text-imperial-gold ${forceDesktopLayout ? 'text-xl' : 'text-base sm:text-xl'} font-bold uppercase tracking-widest text-center flex-1`}>{chartTitle}</h2>
+            <div className={`flex-1 flex justify-end gap-2 ${forceDesktopLayout ? 'w-auto' : 'w-full sm:w-auto'}`}>
                 <button onClick={onDownloadChart} className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center" title="Descargar gráfico">
                     <ImageDown size={16} /> Guardar
                 </button>
@@ -67,9 +80,12 @@ function ChartHeader({ chartTitle, onDownloadChart }: { chartTitle: string; onDo
 }
 
 function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chartContainerRef: React.RefObject<HTMLDivElement | null> }) {
+    const captureCanvasStyle = props.forceDesktopLayout ? { outline: 'none', height: 780 } : { outline: 'none' };
+    const captureChartStyle = props.forceDesktopLayout ? { outline: 'none', width: 1260, height: 780 } : { outline: 'none' };
+
     return (
-        <div className="flex-1 flex flex-row relative min-h-[300px] sm:min-h-[500px] overflow-hidden" style={{ outline: 'none' }}>
-            <div ref={chartContainerRef} className="relative flex-1 overflow-hidden" style={{ outline: 'none' }} tabIndex={-1}>
+        <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? 'min-h-[780px]' : 'min-h-[300px] sm:min-h-[500px]'} overflow-hidden`} style={captureCanvasStyle}>
+            <div ref={chartContainerRef} className={props.forceDesktopLayout ? 'relative overflow-hidden' : 'relative flex-1 overflow-hidden'} style={captureChartStyle} tabIndex={-1}>
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none"><span className="watermark text-imperial-gold/21 text-xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">@fierillo</span></div>
                 {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
             </div>
