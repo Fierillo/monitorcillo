@@ -19,6 +19,16 @@ export function formatValueByType(value: number, format?: ValueFormat, decimals:
     return value.toLocaleString('es-AR', options);
 }
 
+export function formatAxisValueByType(value: number, format?: ValueFormat, decimals: number = 0): string {
+    if (format !== 'millions') return formatValueByType(value, format, decimals);
+
+    const absValue = Math.abs(value);
+    const step = absValue >= 1_000_000 ? 100_000 : absValue >= 100_000 ? 10_000 : 1_000;
+    const roundedValue = Math.round(value / step) * step;
+
+    return `$${roundedValue.toLocaleString('es-AR')}M`;
+}
+
 export function calculateYAxisDomain(params: ChartAxisDomainParams): [number, number] {
     const { chartData, areaKeys } = params;
     

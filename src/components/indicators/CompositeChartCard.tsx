@@ -7,7 +7,7 @@ import ChartLine from '../chart/ChartLine';
 import ChartTooltip from '../chart/ChartTooltip';
 import CustomLegend from '../chart/CustomLegend';
 import MethodologySection from '../chart/MethodologySection';
-import { formatValueByType } from '../chart/utils';
+import { formatAxisValueByType, formatValueByType } from '../chart/utils';
 
 type Props = {
     chartTitle: string;
@@ -69,12 +69,11 @@ function ChartHeader({ chartTitle, onDownloadChart }: { chartTitle: string; onDo
 function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chartContainerRef: React.RefObject<HTMLDivElement | null> }) {
     return (
         <div className="flex-1 flex flex-row relative min-h-[300px] sm:min-h-[500px] overflow-hidden" style={{ outline: 'none' }}>
-            {!props.isMobile && props.yAxisLabel && <AxisLabel label={props.yAxisLabel} />}
             <div ref={chartContainerRef} className="relative flex-1 overflow-hidden" style={{ outline: 'none' }} tabIndex={-1}>
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none"><span className="watermark text-imperial-gold/21 text-xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">@fierillo</span></div>
                 {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
             </div>
-            {!props.isMobile && props.secondaryYAxis && <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right />}
+            {!props.isMobile && (props.secondaryYAxis ? <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right /> : props.yAxisLabel && <AxisLabel label={props.yAxisLabel} right />)}
         </div>
     );
 }
@@ -84,18 +83,56 @@ function AxisLabel({ label, color, right = false }: { label: string; color?: str
 }
 
 function ResponsiveComposedChart(props: ChartRenderProps) {
-    const leftDomain = Array.isArray(props.leftAxisDomain) ? props.leftAxisDomain : ['auto', 'auto'];
+    const leftTicks = axisTicks(props, 'left', !Array.isArray(props.leftAxisDomain));
+    const rightTicks = axisTicks(props, 'right', !Array.isArray(props.secondaryYAxis?.domain));
 
     return (
         <ComposedChart width={props.chartSize.width} height={props.chartSize.height} data={props.visibleData} margin={{ top: 5, right: props.isMobile ? 5 : 20, bottom: 5, left: props.isMobile ? 5 : 20 }} barCategoryGap="0%" stackOffset="sign" style={{ outline: 'none' }} onClick={(e: ChartClickState | null) => { if (!e?.activePayload?.length || !e.activeTooltipIndex) props.onSelectMonth(null); }}>
-            <CartesianGrid stroke="#ffffff20" strokeDasharray="3 3" />
+            <CartesianGrid vertical={false} horizontal stroke="#ffffff66" strokeWidth={0.75} />
             <XAxis dataKey={props.xAxisKey} stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)} hide={props.isMobile} />
-            <YAxis stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.valueFormat, props.yAxisDecimals)} tickCount={10} domain={leftDomain as [number | string, number | string]} allowDataOverflow={false} yAxisId="left" width={props.isMobile ? 0 : 60} hide={props.isMobile} />
-            {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} tickCount={10} domain={props.secondaryYAxis?.domain && props.secondaryYAxis.domain !== 'auto' ? props.secondaryYAxis.domain : ['auto', 'auto']} allowDataOverflow={false} yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
+            <YAxis orientation="right" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={[leftTicks[0], leftTicks.at(-1) ?? 0]} allowDecimals={props.valueFormat !== 'millions'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : 60} hide={props.isMobile} />
+            {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={[rightTicks[0], rightTicks.at(-1) ?? 0]} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
             {!props.isCapturing && <Tooltip cursor={{ stroke: '#ffffff50', strokeWidth: 1 }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={props.areas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} />} />}
             {props.areas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}
         </ComposedChart>
     );
+}
+
+function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZero: boolean): number[] {
+    const values = props.visibleData.flatMap(row => props.areas
+        .filter(area => (area.yAxisId ?? 'left') === axisId)
+        .filter(area => !props.dimmedAreas.has(area.legendKey || area.key))
+        .map(area => row[area.key])
+        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value)));
+
+    if (values.length === 0) return [0, 1];
+
+    const dataMin = Math.min(...values);
+    const dataMax = Math.max(...values);
+    const range = dataMax - dataMin;
+    const padding = includeZero ? 0 : Math.max(range * 0.05, 1);
+    const min = includeZero ? Math.min(0, dataMin) : dataMin - padding;
+    const max = includeZero ? Math.max(0, dataMax) : dataMax + padding;
+    const step = niceStep((max - min) / 12);
+    const start = Math.floor(min / step) * step;
+    const end = Math.ceil(max / step) * step;
+    const ticks: number[] = [];
+
+    for (let value = start; value <= end + step / 2; value += step) {
+        ticks.push(Number(value.toPrecision(12)));
+    }
+
+    return includeZero && !ticks.includes(0) ? [...ticks, 0].sort((a, b) => a - b) : ticks;
+}
+
+function niceStep(rawStep: number): number {
+    if (!Number.isFinite(rawStep) || rawStep <= 0) return 1;
+    const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+    const residual = rawStep / magnitude;
+    if (residual <= 1) return magnitude;
+    if (residual <= 2) return 2 * magnitude;
+    if (residual <= 5) return 5 * magnitude;
+    return 10 * magnitude;
 }
 
 function ChartSeries({ areaConfig, props }: { areaConfig: AreaConfig; props: ChartRenderProps }) {
