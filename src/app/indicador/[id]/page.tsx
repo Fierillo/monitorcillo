@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { AreaConfig, ChartDataRow, IndicatorPageProps, MethodologyItem } from '@/types';
 import IndicatorCompositeView from '@/components/IndicatorCompositeView';
-import { getCachedIndicator } from '@/lib/storage';
+import { safeGetIndicatorData } from '@/lib/storage';
 
 export const revalidate = 21600;
 export const dynamic = 'force-static';
@@ -18,24 +18,10 @@ export default async function IndicatorDetailPage({ params }: IndicatorPageProps
     }
 
     if (!indicator.hasDetails) {
-        return (
-            <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-8 text-center">
-                <h1 className="text-2xl text-imperial-gold mb-4">No hay detalles disponibles para este indicador.</h1>
-                <Link href="/" className="text-imperial-cyan font-bold hover:underline">Volver atrás</Link>
-            </div>
-        );
+        return <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-8 text-center"><h1 className="text-2xl text-imperial-gold mb-4">No hay detalles disponibles para este indicador.</h1><Link href="/" className="text-imperial-cyan font-bold hover:underline">Volver atrás</Link></div>;
     }
 
     let chartData: ChartDataRow[] = [];
-
-    const safeGetIndicatorData = async (id: string): Promise<ChartDataRow[]> => {
-        try {
-            return ((await getCachedIndicator(id)) ?? []) as ChartDataRow[];
-        } catch (error) {
-            console.error(`[indicator][${id}] failed to load from Neon`, error);
-            return [];
-        }
-    };
 
     if (indicator.id === 'bma') {
         chartData = await safeGetIndicatorData('bma');
@@ -185,41 +171,40 @@ export default async function IndicatorDetailPage({ params }: IndicatorPageProps
         }));
 
         const areas: AreaConfig[] = [
-            { key: 'pctPbi', name: '% PBI mensual real', color: '#FFD700', type: 'bar', yAxisId: 'left', preliminaryKey: 'preliminary', preliminaryLabel: 'Preliminar: sin EMAE del mes' }
+            { key: 'pctPbi', name: '% PBI mensual real', color: '#FFD700', type: 'bar', yAxisId: 'left', preliminaryKey: 'preliminary', preliminaryLabel: 'Preliminar: sin EMAE del mes' },
+            { key: 'pctPbiMm12', name: '% PBI real MM12', color: '#00BFFF', type: 'line', yAxisId: 'left' },
         ];
 
         const methodology: MethodologyItem[] = [
             { title: 'Recaudación Total', description: 'Recursos tributarios mensuales consolidados. El último dato se toma del informe oficial de Hacienda.' },
-            { title: 'Normalización a % PBI real', description: 'La recaudación se expresa a precios de enero de 2017 con IPC núcleo y se divide por el PBI real desestacionalizado de INDEC, convertido a pesos de enero de 2017.' },
+            { title: 'Normalización a % PBI real', description: 'La recaudación se expresa a precios de enero de 2017 con IPC núcleo y se divide por el PBI real desestacionalizado de INDEC.' },
+            { title: 'Serie MM12', description: 'La línea celeste aplica una media móvil simple de 12 meses al numerador real antes de dividir por el PBI real mensual.' },
             { title: 'Estimación PBI mensual', description: 'El PBI trimestral desestacionalizado se ancla en el mes de publicación y los meses intermedios se estiman con EMAE desestacionalizado.' },
         ];
 
-return (
+        return (
             <IndicatorCompositeView
                 title={indicator.indicador}
                 subtitle={indicator.fuente}
-                chartTitle="Recaudación Mensual (% PBI real anualizado)"
+                chartTitle="Recaudación Mensual (% PBI real)"
                 data={chartData}
                 areas={areas}
                 methodology={methodology}
                 valueFormat="percent"
                 yAxisDecimals={1}
-                yAxisLabel="% PBI mensual real"
+                yAxisLabel="% PBI real"
                 leftYAxisDomain="auto-pad"
                 indicatorId={indicator.id}
             />
         );
     }
 
-    // Fallback for other indicators
-    return (
-        <IndicatorCompositeView
+    return <IndicatorCompositeView
             title={indicator.indicador}
             subtitle={`Fuente: ${indicator.fuente} | Dato: ${indicator.dato}`}
             chartTitle={`Evolución de ${indicator.indicador}`}
-            data={[{ fecha: '2024-01', valor: 0 }]} // Placeholder
+            data={[{ fecha: '2024-01', valor: 0 }]}
             areas={[{ key: 'valor', name: indicator.indicador, color: '#FFD700', type: 'line' }]}
             methodology={[{ title: indicator.indicador, description: 'Datos históricos pendientes de integración.' }]}
-        />
-    );
+        />;
 }

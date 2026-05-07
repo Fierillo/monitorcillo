@@ -1,0 +1,79 @@
+import type { DbRow, IndicatorTrend, IndicatorType, NormalizedDataByType } from '@/types';
+import { isoToFecha, isoToMonthLabel } from '../normalize';
+import { formatDbDate, toNullableNumber, toNumber } from './tables';
+
+export function toCatalogTrend(value: unknown): IndicatorTrend {
+    if (value === 'up' || value === 'down' || value === 'neutral') return value;
+    return 'neutral';
+}
+
+export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): NormalizedDataByType[T] {
+    const iso_fecha = formatDbDate(row.fecha);
+    const common = {
+        fecha: type === 'emision' ? isoToFecha(iso_fecha) : isoToMonthLabel(iso_fecha),
+        iso_fecha,
+    };
+
+    if (type === 'emision') {
+        const bcra = toNumber(row.bcra);
+        const licitaciones = toNumber(row.licitaciones);
+        const resultadoFiscal = toNumber(row.resultado_fiscal);
+        return {
+            ...common,
+            BCRA: bcra,
+            BCRA_POS: bcra > 0 ? bcra : null,
+            BCRA_NEG: bcra < 0 ? bcra : null,
+            TC: toNumber(row.tc),
+            CompraDolares: toNumber(row.compra_dolares),
+            Vencimientos: toNumber(row.vencimientos),
+            Licitado: toNumber(row.licitado),
+            Licitaciones: licitaciones,
+            Licitaciones_POS: licitaciones > 0 ? licitaciones : null,
+            Licitaciones_NEG: licitaciones < 0 ? licitaciones : null,
+            'Resultado fiscal': resultadoFiscal,
+            ResultadoFiscal_POS: resultadoFiscal > 0 ? resultadoFiscal : null,
+            ResultadoFiscal_NEG: resultadoFiscal < 0 ? resultadoFiscal : null,
+            TOTAL: toNumber(row.total),
+            ACUMULADO: toNumber(row.acumulado),
+        } as NormalizedDataByType[T];
+    }
+
+    if (type === 'emae') {
+        return {
+            ...common,
+            emae: toNumber(row.emae),
+            emae_desestacionalizado: toNullableNumber(row.emae_desestacionalizado),
+            emae_tendencia: toNullableNumber(row.emae_tendencia),
+        } as NormalizedDataByType[T];
+    }
+
+    if (type === 'bma') {
+        return {
+            ...common,
+            BaseMonetaria: toNullableNumber(row.base_monetaria),
+            PasivosRemunerados: toNullableNumber(row.pasivos_remunerados),
+            DepositosTesoro: toNullableNumber(row.depositos_tesoro),
+            BMAmplia: toNullableNumber(row.bma_amplia),
+        } as NormalizedDataByType[T];
+    }
+
+    if (type === 'reca') {
+        return {
+            ...common,
+            mes: String(row.mes ?? ''),
+            year: toNumber(row.year),
+            pctPbi: toNullableNumber(row.pct_pbi),
+            pctPbiMm12: toNullableNumber(row.pct_pbi_mm12),
+        } as NormalizedDataByType[T];
+    }
+
+    return {
+        ...common,
+        blanco: toNullableNumber(row.blanco),
+        negro: toNullableNumber(row.negro),
+        privado: toNullableNumber(row.privado),
+        publico: toNullableNumber(row.publico),
+        ripte: toNullableNumber(row.ripte),
+        jubilacion: toNullableNumber(row.jubilacion),
+    } as NormalizedDataByType[T];
+}

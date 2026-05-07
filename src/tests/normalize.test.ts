@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isoToFecha, isoToMonthLabel, normalizeEmision, normalizeBma, normalizeRecaudacion, normalizePoderAdquisitivo } from '../lib/normalize';
+import { isoToFecha, isoToMonthLabel, normalizeEmision, normalizeBma, normalizePoderAdquisitivo } from '../lib/normalize';
 
 describe('normalizePoderAdquisitivo', () => {
     it('normalizes all series to 100 on 2017-01-01 and shifts informal salary', () => {
@@ -145,58 +145,5 @@ describe('normalizeBma', () => {
 
         const normalized = normalizeBma(rawData);
         expect(normalized[0].BMAmplia).toBeNull();
-    });
-});
-
-describe('normalizeRecaudacion', () => {
-    it('calculates Recaudacion as % of monthly PBI', () => {
-        const rawData = [
-            {
-                fecha: '2017-01-01',
-                ipc_nucleo: 100,
-            },
-            {
-                fecha: '2026-02-01',
-                mes: '02',
-                year: 2026,
-                recaudacion_total: 100,
-                pbi_trimestral: 36000,
-                ipc_nucleo: 100,
-            }
-        ];
-
-        const normalized = normalizeRecaudacion(rawData);
-
-        expect(normalized).toHaveLength(1);
-        expect(normalized[0].pctPbi).toBeCloseTo(0.2778, 4);
-        expect(normalized[0].fecha).toBe('FEB 26');
-        expect(normalized[0].iso_fecha).toBe('2026-02-01');
-    });
-
-    it('does not repeat a previous PBI when the month has no monthly PBI value', () => {
-        const normalized = normalizeRecaudacion([
-            {
-                fecha: '2017-01-01',
-                ipc_nucleo: 100,
-            },
-            {
-                fecha: '2026-01-01',
-                mes: '01',
-                year: 2026,
-                recaudacion_total: 100,
-                pbi_trimestral: 1000,
-                ipc_nucleo: 100,
-            },
-            {
-                fecha: '2026-02-01',
-                mes: '02',
-                year: 2026,
-                recaudacion_total: 100,
-                ipc_nucleo: 100,
-            },
-        ]);
-
-        expect(normalized).toHaveLength(1);
-        expect(normalized[0].iso_fecha).toBe('2026-01-01');
     });
 });

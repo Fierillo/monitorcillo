@@ -35,6 +35,7 @@ export type ChartDataRow = {
     mes?: string;
     year?: number;
     pctPbi?: number | null;
+    pctPbiMm12?: number | null;
     preliminary?: boolean;
     [key: string]: ChartValue;
 };

@@ -1,5 +1,5 @@
 import { getNormalizedData, saveNormalizedData } from './db';
-import type { IndicatorType, NormalizedDataRow } from '@/types';
+import type { ChartDataRow, IndicatorType, NormalizedDataRow } from '@/types';
 
 const MAPPING: Record<string, IndicatorType> = {
     emision: 'emision',
@@ -16,6 +16,15 @@ export async function getCachedIndicator(id: string): Promise<NormalizedDataRow[
     if (!type) return null;
 
     return getNormalizedData(type);
+}
+
+export async function safeGetIndicatorData(id: string): Promise<ChartDataRow[]> {
+    try {
+        return ((await getCachedIndicator(id)) ?? []) as ChartDataRow[];
+    } catch (error) {
+        console.error(`[indicator][${id}] failed to load from Neon`, error);
+        return [];
+    }
 }
 
 export async function getStaleCache(id: string): Promise<NormalizedDataRow[] | null> {

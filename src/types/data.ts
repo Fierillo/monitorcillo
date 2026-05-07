@@ -126,6 +126,7 @@ export type RecaudacionNormalizedRow = {
     mes: string;
     year: number;
     pctPbi: number | null;
+    pctPbiMm12?: number | null;
 };
 
 export type PoderAdquisitivoRawRow = {
