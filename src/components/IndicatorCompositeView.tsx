@@ -3,21 +3,12 @@
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import { ImageDown } from 'lucide-react';
-import { ComposedChart, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import type {
     ChartAxisDomain,
-    ChartClickState,
     ChartDataRow,
     IndicatorCompositeViewProps,
 } from '@/types/chart';
-import { formatValueByType } from './chart/utils';
-import ChartTooltip from './chart/ChartTooltip';
-import CustomLegend from './chart/CustomLegend';
-import ChartBar from './chart/ChartBar';
-import ChartLine from './chart/ChartLine';
-import ChartArea from './chart/ChartArea';
-import MethodologySection from './chart/MethodologySection';
+import CompositeChartCard from './indicators/CompositeChartCard';
 
 export default function IndicatorCompositeView({
     title,
@@ -198,165 +189,18 @@ export default function IndicatorCompositeView({
                 </Link>
             </header>
 
-            <main className="w-full sm:w-[96%] max-w-[1800px]">
-                <div
-                    className="w-full min-h-[600px] sm:min-h-[850px] bg-imperial-blue border-2 border-imperial-gold p-2 sm:p-4 shadow-lg shadow-imperial-blue/50 flex flex-col overflow-hidden"
-                    style={{ outline: 'none' }}
-                    tabIndex={-1}
-                >
-                    <div
-                        ref={captureRef}
-                        className="flex-1 flex flex-col bg-imperial-blue overflow-hidden"
-                        style={{ outline: 'none' }}
-                        tabIndex={-1}
-                    >
-                        <div className="flex flex-col sm:flex-row items-center justify-between mb-2 shrink-0 gap-2" style={{ outline: 'none' }}>
-                            <div className="hidden sm:flex flex-1" />
-                            <h2 className="text-imperial-gold text-base sm:text-xl font-bold uppercase tracking-widest text-center flex-1">
-                                {chartTitle}
-                            </h2>
-                            <div className="flex-1 flex justify-end gap-2 w-full sm:w-auto">
-                                <button
-                                    onClick={handleDownloadChart}
-                                    className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center"
-                                    title="Descargar gráfico"
-                                >
-                                    <ImageDown size={16} />
-                                    Guardar
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="flex-1 flex flex-row relative min-h-[300px] sm:min-h-[500px] overflow-hidden" style={{ outline: 'none' }}>
-                            {!isMobile && yAxisLabel && (
-                                <div className="flex items-center justify-center w-12 shrink-0">
-                                    <div className="-rotate-90 whitespace-nowrap text-imperial-gold font-bold text-xs uppercase tracking-widest">
-                                        {yAxisLabel}
-                                    </div>
-                                </div>
-                            )}
-
-                            <div ref={chartContainerRef} className="relative flex-1 overflow-hidden" style={{ outline: 'none' }} tabIndex={-1}>
-                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none">
-                                    <span className="watermark text-imperial-gold/21 text-xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">
-                                        @fierillo
-                                    </span>
-                                </div>
-                                {chartSize.width > 0 && chartSize.height > 0 ? (
-                                    <ComposedChart
-                                        width={chartSize.width}
-                                        height={chartSize.height}
-                                        data={visibleData}
-                                        margin={{ top: 5, right: isMobile ? 5 : 20, bottom: 5, left: isMobile ? 5 : 20 }}
-                                        barCategoryGap="0%"
-                                        stackOffset="sign"
-                                        style={{ outline: 'none' }}
-                                        onClick={(e: ChartClickState | null) => {
-                                            if (!e || !e.activePayload || e.activePayload.length === 0 || !e.activeTooltipIndex) {
-                                                setSelectedMonth(null);
-                                            }
-                                        }}
-                                    >
-                                        <CartesianGrid stroke="#ffffff20" strokeDasharray="3 3" />
-                                        <XAxis
-                                            dataKey={xAxisKey}
-                                            stroke="#FFD700"
-                                            tick={{ fill: '#FFD700', fontSize: 10 }}
-                                            tickFormatter={(value: string | number) => labelByXAxisValue.get(String(value)) ?? String(value)}
-                                            hide={isMobile}
-                                        />
-                                        <YAxis
-                                            stroke="#FFD700"
-                                            tick={{ fill: '#FFD700', fontSize: 10 }}
-                                            tickFormatter={(val) => formatValueByType(val, valueFormat, yAxisDecimals)}
-                                            tickCount={10}
-                                            domain={leftAxisDomain}
-                                            allowDataOverflow={false}
-                                            yAxisId="left"
-                                            width={isMobile ? 0 : 60}
-                                            hide={isMobile}
-                                        />
-                                        {secondaryYAxis && (
-                                            <YAxis
-                                                orientation="right"
-                                                stroke={secondaryYAxis.color || "#00BFFF"}
-                                                tick={{
-                                                    fill: secondaryYAxis.color || "#00BFFF",
-                                                    fontSize: 10
-                                                }}
-                                                tickFormatter={(val) => formatValueByType(val, secondaryYAxis.format)}
-                                                tickCount={10}
-                                                domain={secondaryYAxis?.domain && secondaryYAxis.domain !== 'auto' ? secondaryYAxis.domain : ['auto', 'auto']}
-                                                allowDataOverflow={false}
-                                                yAxisId="right"
-                                                width={isMobile ? 0 : 60}
-                                                hide={isMobile}
-                                            />
-                                        )}
-                                        {!isCapturing && (
-                                            <Tooltip
-                                                cursor={{ stroke: '#ffffff50', strokeWidth: 1 }}
-                                                content={(props) => (
-                                                    <ChartTooltip
-                                                        chartData={sortedData}
-                                                        areaConfigs={areas}
-                                                        valueFormat={valueFormat}
-                                                        tooltipProps={props}
-                                                    />
-                                                )}
-                                            />
-                                        )}
-                                        {areas.map((areaConfig) => {
-                                            const isDimmed = dimmedAreas.has(areaConfig.legendKey || areaConfig.key);
-
-                                            if (isDimmed) return null;
-
-                                            if (areaConfig.type === 'line') {
-                                                return <ChartLine key={areaConfig.key} areaConfig={areaConfig} isDimmed={false} />;
-                                            }
-
-                                            if (areaConfig.type === 'bar') {
-                                                return (
-                                                    <ChartBar
-                                                        key={areaConfig.key}
-                                                        areaConfig={areaConfig}
-                                                        isDimmed={false}
-                                                        selectedMonth={selectedMonth}
-                                                        onSelectMonth={setSelectedMonth}
-                                                        selectByMonth={selectByMonth}
-                                                    />
-                                                );
-                                            }
-
-                                            return <ChartArea key={areaConfig.key} areaConfig={areaConfig} isDimmed={false} />;
-                                        })}
-                                    </ComposedChart>
-                                ) : (
-                                    <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">
-                                        Cargando gráfico...
-                                    </div>
-                                )}
-                            </div>
-
-                            {!isMobile && secondaryYAxis && (
-                                <div className="flex items-center justify-center w-12 shrink-0">
-                                    <div className="rotate-90 whitespace-nowrap font-bold text-xs uppercase tracking-widest" style={{ color: secondaryYAxis.color || "#00BFFF" }}>
-                                        {secondaryYAxis.label}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <CustomLegend
-                            areas={areas}
-                            dimmedAreas={dimmedAreas}
-                            onToggleDim={handleToggleDim}
-                        />
-
-                        <MethodologySection methodology={methodology} forceOpen={isCapturing} />
-                    </div>
-                </div>
-            </main>
+            <CompositeChartCard
+                chartTitle={chartTitle} captureRef={captureRef} chartContainerRef={chartContainerRef}
+                chartSize={chartSize} visibleData={visibleData} sortedData={sortedData}
+                areas={areas} methodology={methodology} valueFormat={valueFormat}
+                yAxisDecimals={yAxisDecimals} yAxisLabel={yAxisLabel} secondaryYAxis={secondaryYAxis}
+                leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}
+                dimmedAreas={dimmedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
+                isMobile={isMobile} isCapturing={isCapturing}
+                onDownloadChart={handleDownloadChart}
+                onSelectMonth={setSelectedMonth}
+                onToggleDim={handleToggleDim}
+            />
         </div>
     );
 }
