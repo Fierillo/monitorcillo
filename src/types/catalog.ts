@@ -7,6 +7,7 @@ export type CatalogIndicatorSpec = {
     type: IndicatorType;
     referenceLabel: string;
     referenceSource?: 'normalized' | 'raw';
+    betterWhen: 'higher' | 'lower';
     getReferenceDate: (date: string) => string;
     selectReferenceValue: (row: DataRow) => unknown;
     formatReferenceValue?: (value: number) => string;

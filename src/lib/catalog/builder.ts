@@ -1,0 +1,74 @@
+import type { CatalogIndicatorRow, CatalogIndicatorSpec, DataRow, IndicatorType } from '@/types';
+import { CATALOG_INDICATOR_SPECS } from './specs';
+import {
+    comparisonTrend,
+    formatCatalogDate,
+    formatCatalogDisplayDate,
+    formatReferenceValue,
+    latestRawDate,
+    latestRow,
+    referenceNumericValue,
+    referenceRowForSpec,
+    rowDate,
+    toFiniteNumber,
+} from './rows';
+
+export function buildIndicatorsCatalog(
+    catalog: CatalogIndicatorRow[],
+    normalizedData: Partial<Record<IndicatorType, DataRow[] | null | undefined>>,
+    rawData: Partial<Record<IndicatorType, DataRow[] | null | undefined>> = {},
+): CatalogIndicatorRow[] {
+    return catalog.map(item => {
+        const spec = CATALOG_INDICATOR_SPECS[item.id];
+        if (!spec) return { ...item };
+
+        const normalizedRows = normalizedData[spec.type] ?? [];
+        const valueRow = latestRow(normalizedRows, row => toFiniteNumber(spec.selectValue(row)) !== null);
+        if (!valueRow) return { ...item };
+
+        const value = toFiniteNumber(spec.selectValue(valueRow));
+        if (value === null) return { ...item };
+
+        const referenceDate = rowDate(valueRow);
+        const rawRows = rawData[spec.type] ?? [];
+        const date = latestRawDate(rawRows, spec) ?? referenceDate;
+        const referenceRow = referenceRowForSpec(spec, valueRow, normalizedRows, rawRows);
+        const referenceValue = referenceNumericValue(spec, referenceRow);
+
+        return {
+            ...item,
+            referencia: formatReferenceValue(spec, referenceRow),
+            reference_description: spec.referenceLabel,
+            trend: comparisonTrend(spec, value, referenceValue),
+            fecha: date ? formatCatalogDate(date, spec.datePrecision) : item.fecha,
+            dato: spec.formatValue(value),
+        };
+    });
+}
+
+export function buildIndicatorCatalogItem(
+    item: CatalogIndicatorRow,
+    spec: CatalogIndicatorSpec,
+    valueRow: DataRow | null,
+    rawDate: string | null,
+    publicationDate: string | null = null,
+    referenceRow: DataRow | null = null,
+): CatalogIndicatorRow {
+    if (!valueRow) return { ...item };
+
+    const value = toFiniteNumber(spec.selectValue(valueRow));
+    if (value === null) return { ...item };
+
+    const referenceDate = rowDate(valueRow);
+    const date = rawDate ?? referenceDate;
+    const referenceValue = referenceNumericValue(spec, referenceRow);
+
+    return {
+        ...item,
+        referencia: formatReferenceValue(spec, referenceRow),
+        reference_description: spec.referenceLabel,
+        trend: comparisonTrend(spec, value, referenceValue),
+        fecha: date ? formatCatalogDisplayDate(date, spec, publicationDate) : item.fecha,
+        dato: spec.formatValue(value),
+    };
+}
