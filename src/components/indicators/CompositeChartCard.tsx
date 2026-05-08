@@ -51,7 +51,7 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
             <div className={`${chartProps.forceDesktopLayout ? 'w-[1400px] min-h-[850px] p-4' : 'w-full min-h-[600px] sm:min-h-[850px] p-2 sm:p-4'} bg-imperial-blue border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 flex flex-col overflow-hidden`} style={{ outline: 'none' }} tabIndex={-1}>
                 <div ref={captureRef} className="flex-1 flex flex-col bg-imperial-blue overflow-hidden" style={captureStyle} tabIndex={-1}>
                     {renderProps.isCapturing ? <ExportHeader title={renderProps.title} subtitle={renderProps.subtitle} /> : null}
-                    <ChartHeader chartTitle={renderProps.chartTitle} onDownloadChart={renderProps.onDownloadChart} forceDesktopLayout={!!renderProps.forceDesktopLayout} />
+                    <ChartHeader onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} />
                     <ChartCanvas {...renderProps} chartContainerRef={chartContainerRef} />
                     <CustomLegend areas={renderProps.areas} dimmedAreas={renderProps.dimmedAreas} onToggleDim={renderProps.onToggleDim} />
                     <MethodologySection methodology={renderProps.methodology} forceOpen={renderProps.isCapturing} />
@@ -65,12 +65,12 @@ function ExportHeader({ title, subtitle }: { title: string; subtitle?: string })
     return <div className="mb-3 border-b border-imperial-gold/40 pb-3 text-center"><h1 className="imperial-title text-2xl font-bold uppercase tracking-widest text-imperial-gold">{title}</h1>{subtitle ? <p className="mt-1 text-sm font-bold uppercase tracking-wide text-imperial-cyan">{subtitle}</p> : null}</div>;
 }
 
-function ChartHeader({ chartTitle, onDownloadChart, forceDesktopLayout }: { chartTitle: string; onDownloadChart: () => void; forceDesktopLayout: boolean }) {
+function ChartHeader({ onDownloadChart, isCapturing }: { onDownloadChart: () => void; isCapturing: boolean }) {
+    if (isCapturing) return null;
+
     return (
-        <div className={`flex ${forceDesktopLayout ? 'flex-row' : 'flex-col sm:flex-row'} items-center justify-between mb-2 shrink-0 gap-2`} style={{ outline: 'none' }}>
-            <div className={`${forceDesktopLayout ? 'flex' : 'hidden sm:flex'} flex-1`} />
-            <h2 className={`text-imperial-gold ${forceDesktopLayout ? 'text-xl' : 'text-base sm:text-xl'} font-bold uppercase tracking-widest text-center flex-1`}>{chartTitle}</h2>
-            <div className={`flex-1 flex justify-end gap-2 ${forceDesktopLayout ? 'w-auto' : 'w-full sm:w-auto'}`}>
+        <div className="mb-2 flex shrink-0 justify-end" style={{ outline: 'none' }}>
+            <div className="flex justify-end gap-2 w-full sm:w-auto">
                 <button onClick={onDownloadChart} className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center" title="Descargar gráfico">
                     <ImageDown size={16} /> Guardar
                 </button>
