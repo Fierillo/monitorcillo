@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isoToFecha, isoToMonthLabel, normalizeEmision, normalizeBma, normalizePoderAdquisitivo } from '../lib/normalize';
+import { isoToFecha, isoToMonthLabel, normalizeEmision, normalizeBma, normalizeEmae, normalizePoderAdquisitivo } from '../lib/normalize';
 
 describe('normalizePoderAdquisitivo', () => {
     it('normalizes all series to 100 on 2017-01-01 and shifts informal salary', () => {
@@ -145,5 +145,26 @@ describe('normalizeBma', () => {
 
         const normalized = normalizeBma(rawData);
         expect(normalized[0].BMAmplia).toBeNull();
+    });
+});
+
+describe('normalizeEmae', () => {
+    it('normalizes sector series and calculates trailing MM12', () => {
+        const rawData = Array.from({ length: 24 }, (_, index) => {
+            const date = new Date(Date.UTC(2016, index, 1)).toISOString().split('T')[0];
+            return {
+                fecha: date,
+                emae: 100,
+                emae_desestacionalizado: 100,
+                emae_tendencia: 100,
+                industria: 100 + index,
+            };
+        });
+
+        const normalized = normalizeEmae(rawData);
+
+        expect(normalized.find(row => row.iso_fecha === '2016-11-01')?.industria_mm12).toBeNull();
+        expect(normalized.find(row => row.iso_fecha === '2017-01-01')?.industria_mm12).toBe(100);
+        expect(normalized.find(row => row.iso_fecha === '2017-02-01')?.industria_mm12).toBeCloseTo(107.5 / 106.5 * 100, 6);
     });
 });

@@ -1,4 +1,5 @@
 import { ImageDown } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { CartesianGrid, ComposedChart, Tooltip, XAxis, YAxis } from 'recharts';
 import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartDataRow, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
 import ChartArea from '../chart/ChartArea';
@@ -27,15 +28,16 @@ type Props = {
     leftAxisDomain: ChartAxisDomain;
     xAxisKey: 'iso_fecha' | 'fecha';
     labelByXAxisValue: Map<string, string>;
-    dimmedAreas: Set<string>;
+    highlightedAreas: Set<string>;
     selectedMonth: string | null;
     selectByMonth: boolean;
     isMobile: boolean;
     isCapturing: boolean;
     forceDesktopLayout?: boolean;
+    viewSelector?: ReactNode;
     onDownloadChart: () => void;
     onSelectMonth: (month: string | null) => void;
-    onToggleDim: (key: string) => void;
+    onToggleHighlight: (key: string) => void;
 };
 
 type ChartRenderProps = Omit<Props, 'captureRef' | 'chartContainerRef'>;
@@ -51,9 +53,9 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
             <div className={`${chartProps.forceDesktopLayout ? 'w-[1400px] min-h-[850px] p-4' : 'w-full min-h-[600px] sm:min-h-[850px] p-2 sm:p-4'} bg-imperial-blue border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 flex flex-col overflow-hidden`} style={{ outline: 'none' }} tabIndex={-1}>
                 <div ref={captureRef} className="flex-1 flex flex-col bg-imperial-blue overflow-hidden" style={captureStyle} tabIndex={-1}>
                     {renderProps.isCapturing ? <ExportHeader title={renderProps.title} subtitle={renderProps.subtitle} /> : null}
-                    <ChartHeader onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} />
+                    <ChartHeader onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} viewSelector={renderProps.viewSelector} />
                     <ChartCanvas {...renderProps} chartContainerRef={chartContainerRef} />
-                    <CustomLegend areas={renderProps.areas} dimmedAreas={renderProps.dimmedAreas} onToggleDim={renderProps.onToggleDim} />
+                    <CustomLegend areas={renderProps.areas} highlightedAreas={renderProps.highlightedAreas} onToggleHighlight={renderProps.onToggleHighlight} />
                     <MethodologySection methodology={renderProps.methodology} forceOpen={renderProps.isCapturing} />
                 </div>
             </div>
@@ -65,11 +67,12 @@ function ExportHeader({ title, subtitle }: { title: string; subtitle?: string })
     return <div className="mb-3 border-b border-imperial-gold/40 pb-3 text-center"><h1 className="imperial-title text-2xl font-bold uppercase tracking-widest text-imperial-gold">{title}</h1>{subtitle ? <p className="mt-1 text-sm font-bold uppercase tracking-wide text-imperial-cyan">{subtitle}</p> : null}</div>;
 }
 
-function ChartHeader({ onDownloadChart, isCapturing }: { onDownloadChart: () => void; isCapturing: boolean }) {
+function ChartHeader({ onDownloadChart, isCapturing, viewSelector }: { onDownloadChart: () => void; isCapturing: boolean; viewSelector?: ReactNode }) {
     if (isCapturing) return null;
 
     return (
-        <div className="mb-2 flex shrink-0 justify-end" style={{ outline: 'none' }}>
+        <div className="mb-2 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" style={{ outline: 'none' }}>
+            <div>{viewSelector}</div>
             <div className="flex justify-end gap-2 w-full sm:w-auto">
                 <button onClick={onDownloadChart} className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center" title="Descargar gráfico">
                     <ImageDown size={16} /> Guardar
@@ -118,7 +121,7 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
 function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZero: boolean): number[] {
     const values = props.visibleData.flatMap(row => props.areas
         .filter(area => (area.yAxisId ?? 'left') === axisId)
-        .filter(area => !props.dimmedAreas.has(area.legendKey || area.key))
+        .filter(area => props.highlightedAreas.size === 0 || props.highlightedAreas.has(area.legendKey || area.key))
         .map(area => row[area.key])
         .filter((value): value is number => typeof value === 'number' && Number.isFinite(value)));
 
@@ -153,8 +156,8 @@ function niceStep(rawStep: number): number {
 }
 
 function ChartSeries({ areaConfig, props }: { areaConfig: AreaConfig; props: ChartRenderProps }) {
-    if (props.dimmedAreas.has(areaConfig.legendKey || areaConfig.key)) return null;
-    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={false} />;
-    if (areaConfig.type === 'bar') return <ChartBar areaConfig={areaConfig} isDimmed={false} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} />;
-    return <ChartArea areaConfig={areaConfig} isDimmed={false} />;
+    const isDimmed = props.highlightedAreas.size > 0 && !props.highlightedAreas.has(areaConfig.legendKey || areaConfig.key);
+    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={isDimmed} />;
+    if (areaConfig.type === 'bar') return <ChartBar areaConfig={areaConfig} isDimmed={isDimmed} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} />;
+    return <ChartArea areaConfig={areaConfig} isDimmed={isDimmed} />;
 }

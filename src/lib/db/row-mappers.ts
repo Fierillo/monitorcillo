@@ -1,4 +1,5 @@
 import type { DbRow, IndicatorTrend, IndicatorType, NormalizedDataByType } from '@/types';
+import { EMAE_SECTOR_MM12_KEYS } from '../emae-sectors';
 import { isoToFecha, isoToMonthLabel } from '../normalize';
 import { formatDbDate, toNullableNumber, toNumber } from './tables';
 
@@ -39,12 +40,14 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
     }
 
     if (type === 'emae') {
-        return {
+        const normalized = {
             ...common,
             emae: toNumber(row.emae),
             emae_desestacionalizado: toNullableNumber(row.emae_desestacionalizado),
             emae_tendencia: toNullableNumber(row.emae_tendencia),
-        } as NormalizedDataByType[T];
+        } as Record<string, unknown>;
+        for (const key of EMAE_SECTOR_MM12_KEYS) normalized[key] = toNullableNumber(row[key]);
+        return normalized as NormalizedDataByType[T];
     }
 
     if (type === 'bma') {

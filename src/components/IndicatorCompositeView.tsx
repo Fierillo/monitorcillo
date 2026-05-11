@@ -6,6 +6,11 @@ import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import type { ChartAxisDomain, ChartDataRow, IndicatorCompositeViewProps } from '@/types/chart';
 import CompositeChartCard from './indicators/CompositeChartCard';
 
+type PersistedChartConfig = {
+    selectedViewId?: string;
+    highlightedAreasByView?: Record<string, string[]>;
+};
+
 export default function IndicatorCompositeView({
     title,
     subtitle,
@@ -19,8 +24,23 @@ export default function IndicatorCompositeView({
     secondaryYAxis,
     leftYAxisDomain,
     indicatorId,
+    views,
 }: IndicatorCompositeViewProps) {
     const selectByMonth = indicatorId === 'recaudacion';
+    const [selectedViewId, setSelectedViewId] = useState(views?.[0]?.id ?? 'default');
+    const [highlightedAreasByView, setHighlightedAreasByView] = useState<Record<string, Set<string>>>({});
+    const [isConfigLoaded, setIsConfigLoaded] = useState(false);
+    const selectedView = views?.find(view => view.id === selectedViewId) ?? views?.[0];
+    const activeViewId = selectedView?.id ?? selectedViewId;
+    const activeChartTitle = selectedView?.chartTitle ?? chartTitle;
+    const activeData = selectedView?.data ?? data;
+    const activeAreas = selectedView?.areas ?? areas;
+    const activeMethodology = selectedView?.methodology ?? methodology;
+    const activeValueFormat = selectedView?.valueFormat ?? valueFormat;
+    const activeYAxisDecimals = selectedView?.yAxisDecimals ?? yAxisDecimals;
+    const activeYAxisLabel = selectedView?.yAxisLabel ?? yAxisLabel;
+    const activeSecondaryYAxis = selectedView?.secondaryYAxis ?? secondaryYAxis;
+    const activeLeftYAxisDomain = selectedView?.leftYAxisDomain ?? leftYAxisDomain;
     const sortedData = useMemo(() => {
         const getSortKey = (row: ChartDataRow) => {
             if (typeof row?.iso_fecha === 'string' && row.iso_fecha) return row.iso_fecha;
@@ -28,8 +48,8 @@ export default function IndicatorCompositeView({
             return '';
         };
 
-        return [...data].sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)));
-    }, [data]);
+        return [...activeData].sort((a, b) => getSortKey(a).localeCompare(getSortKey(b)));
+    }, [activeData]);
 
     const xAxisKey = useMemo(() => {
         return sortedData.every((row) => typeof row?.iso_fecha === 'string' && row.iso_fecha) ? 'iso_fecha' : 'fecha';
@@ -50,11 +70,36 @@ export default function IndicatorCompositeView({
     const mobileCaptureRef = useRef<HTMLDivElement>(null);
     const mobileChartContainerRef = useRef<HTMLDivElement>(null);
     const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-    const [dimmedAreas, setDimmedAreas] = useState<Set<string>>(new Set());
     const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
     const [isCapturing, setIsCapturing] = useState(false);
 
     const visibleData = sortedData;
+    const highlightedAreas = useMemo(() => highlightedAreasByView[activeViewId] ?? new Set<string>(), [highlightedAreasByView, activeViewId]);
+    const storageKey = `monitorcillo:chart:${indicatorId ?? title}`;
+
+    useEffect(() => {
+        try {
+            const stored = window.localStorage.getItem(storageKey);
+            if (!stored) {
+                setIsConfigLoaded(true);
+                return;
+            }
+            const parsed = JSON.parse(stored) as PersistedChartConfig;
+            const validViewIds = new Set((views?.map(view => view.id) ?? ['default']));
+            if (parsed.selectedViewId && validViewIds.has(parsed.selectedViewId)) setSelectedViewId(parsed.selectedViewId);
+            if (parsed.highlightedAreasByView) setHighlightedAreasByView(Object.fromEntries(Object.entries(parsed.highlightedAreasByView).map(([viewId, keys]) => [viewId, new Set(keys)])));
+        } catch {
+            window.localStorage.removeItem(storageKey);
+        } finally {
+            setIsConfigLoaded(true);
+        }
+    }, [storageKey, views]);
+
+    useEffect(() => {
+        if (!isConfigLoaded) return;
+        const highlightedAreasPayload = Object.fromEntries(Object.entries(highlightedAreasByView).map(([viewId, keys]) => [viewId, [...keys]]));
+        window.localStorage.setItem(storageKey, JSON.stringify({ selectedViewId, highlightedAreasByView: highlightedAreasPayload }));
+    }, [storageKey, selectedViewId, highlightedAreasByView, isConfigLoaded]);
 
     useEffect(() => {
         if (selectedMonth && selectByMonth) {
@@ -96,12 +141,12 @@ export default function IndicatorCompositeView({
     }, []);
 
     const leftAxisDomain: ChartAxisDomain = useMemo(() => {
-        if (Array.isArray(leftYAxisDomain)) return leftYAxisDomain;
+        if (Array.isArray(activeLeftYAxisDomain)) return activeLeftYAxisDomain;
 
         const allValues: number[] = [];
         visibleData.forEach((row) => {
-            areas.forEach(area => {
-                if (dimmedAreas.has(area.legendKey || area.key)) return;
+            activeAreas.forEach(area => {
+                if (highlightedAreas.size > 0 && !highlightedAreas.has(area.legendKey || area.key)) return;
                 const val = row[area.key];
                 if (typeof val === 'number' && !Number.isNaN(val)) {
                     allValues.push(val);
@@ -115,30 +160,39 @@ export default function IndicatorCompositeView({
         const max = Math.max(...allValues);
         const range = max - min;
         
-        if (leftYAxisDomain === 'auto-pad') {
+        if (activeLeftYAxisDomain === 'auto-pad') {
             const pad = range * 0.1;
             return [min < 0 ? min - pad : 0, max + pad];
         }
         
-        if (leftYAxisDomain === 'auto' || !leftYAxisDomain) {
+        if (activeLeftYAxisDomain === 'auto' || !activeLeftYAxisDomain) {
             const pad = range === 0 ? 1 : range * 0.05;
             return [min < 0 ? min - pad : 0, max + pad];
         }
 
         return [min, max];
-    }, [visibleData, areas, leftYAxisDomain, dimmedAreas]);
+    }, [visibleData, activeAreas, activeLeftYAxisDomain, highlightedAreas]);
 
-    const handleToggleDim = useCallback((key: string) => {
-        setDimmedAreas(prev => {
-            const next = new Set(prev);
+    const viewSelector = views && views.length > 1 ? (
+        <div className="no-capture flex w-full gap-1 sm:w-auto">
+            {views.map(view => {
+                const isActive = view.id === (selectedView?.id ?? selectedViewId);
+                return <button key={view.id} type="button" onClick={() => setSelectedViewId(view.id)} className={`border px-2 py-1 text-[10px] sm:text-xs font-bold uppercase transition-colors ${isActive ? 'border-imperial-gold bg-imperial-gold text-imperial-blue' : 'border-imperial-gold text-imperial-gold hover:bg-imperial-gold hover:text-imperial-blue'}`}>{view.label}</button>;
+            })}
+        </div>
+    ) : null;
+
+    const handleToggleHighlight = useCallback((key: string) => {
+        setHighlightedAreasByView(prev => {
+            const next = new Set(prev[activeViewId] ?? []);
             if (next.has(key)) {
                 next.delete(key);
             } else {
                 next.add(key);
             }
-            return next;
+            return { ...prev, [activeViewId]: next };
         });
-    }, []);
+    }, [activeViewId]);
 
     const handleDownloadChart = useCallback(async () => {
         try {
@@ -182,26 +236,26 @@ export default function IndicatorCompositeView({
             </header>
 
             <CompositeChartCard
-                title={title} subtitle={subtitle} chartTitle={chartTitle} captureRef={captureRef} chartContainerRef={chartContainerRef}
+                title={title} subtitle={subtitle} chartTitle={activeChartTitle} captureRef={captureRef} chartContainerRef={chartContainerRef}
                 chartSize={chartSize} visibleData={visibleData} sortedData={sortedData}
-                areas={areas} methodology={methodology} valueFormat={valueFormat}
-                yAxisDecimals={yAxisDecimals} yAxisLabel={yAxisLabel} secondaryYAxis={secondaryYAxis}
+                areas={activeAreas} methodology={activeMethodology} valueFormat={activeValueFormat}
+                yAxisDecimals={activeYAxisDecimals} yAxisLabel={activeYAxisLabel} secondaryYAxis={activeSecondaryYAxis}
                 leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}
-                dimmedAreas={dimmedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
+                highlightedAreas={highlightedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
                 isMobile={isMobile} isCapturing={isCapturing && !isMobile} onDownloadChart={handleDownloadChart}
-                onSelectMonth={setSelectedMonth} onToggleDim={handleToggleDim}
+                onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} viewSelector={viewSelector}
             />
             {isMobile && isCapturing ? (
                 <div className="fixed left-[-10000px] top-0 z-[-1]">
                     <CompositeChartCard
-                        title={title} subtitle={subtitle} chartTitle={chartTitle} captureRef={mobileCaptureRef} chartContainerRef={mobileChartContainerRef}
+                        title={title} subtitle={subtitle} chartTitle={activeChartTitle} captureRef={mobileCaptureRef} chartContainerRef={mobileChartContainerRef}
                         chartSize={{ width: 1260, height: 780 }} visibleData={visibleData} sortedData={sortedData}
-                        areas={areas} methodology={methodology} valueFormat={valueFormat}
-                        yAxisDecimals={yAxisDecimals} yAxisLabel={yAxisLabel} secondaryYAxis={secondaryYAxis}
+                        areas={activeAreas} methodology={activeMethodology} valueFormat={activeValueFormat}
+                        yAxisDecimals={activeYAxisDecimals} yAxisLabel={activeYAxisLabel} secondaryYAxis={activeSecondaryYAxis}
                         leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}
-                        dimmedAreas={dimmedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
+                        highlightedAreas={highlightedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
                         isMobile={false} isCapturing forceDesktopLayout onDownloadChart={handleDownloadChart}
-                        onSelectMonth={setSelectedMonth} onToggleDim={handleToggleDim}
+                        onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight}
                     />
                 </div>
             ) : null}

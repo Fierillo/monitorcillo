@@ -9,7 +9,7 @@ export default function ChartLine({ areaConfig, isDimmed }: ChartLineProps) {
             type="monotone"
             dataKey={areaConfig.key}
             stroke={areaConfig.color}
-            strokeWidth={3}
+            strokeWidth={areaConfig.strokeWidth ?? 3}
             strokeDasharray={areaConfig.dash ? areaConfig.dash.join(' ') : undefined}
             dot={false}
             name={areaConfig.name}

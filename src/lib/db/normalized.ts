@@ -1,4 +1,5 @@
 import type { DbRow, DbValue, IndicatorType, NormalizedDataByType, NormalizedDataRow } from '@/types';
+import { EMAE_SECTOR_MM12_KEYS } from '../emae-sectors';
 import { fechaToISO } from '../normalize';
 import { sql } from './client';
 import { toNormalizedRow } from './row-mappers';
@@ -6,7 +7,7 @@ import { getTableName, isMissingTableError, isSafeColumn, toNullableNumber, toNu
 
 const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     emision: ['fecha', 'bcra', 'tc', 'compra_dolares', 'vencimientos', 'licitado', 'licitaciones', 'resultado_fiscal', 'total', 'acumulado'],
-    emae: ['fecha', 'emae', 'emae_desestacionalizado', 'emae_tendencia'],
+    emae: ['fecha', 'emae', 'emae_desestacionalizado', 'emae_tendencia', ...EMAE_SECTOR_MM12_KEYS],
     bma: ['fecha', 'base_monetaria', 'pasivos_remunerados', 'depositos_tesoro', 'bma_amplia'],
     reca: ['fecha', 'mes', 'year', 'pct_pbi', 'pct_pbi_mm12'],
     poder: ['fecha', 'blanco', 'negro', 'privado', 'publico', 'ripte', 'jubilacion'],
@@ -56,7 +57,7 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
     if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(String(fecha))) return null;
 
     if (type === 'emision') return [fecha, toNumber(row.BCRA), toNumber(row.TC), toNumber(row.CompraDolares), toNumber(row.Vencimientos), toNumber(row.Licitado), toNumber(row.Licitaciones), toNumber(row['Resultado fiscal']), toNumber(row.TOTAL), toNumber(row.ACUMULADO)];
-    if (type === 'emae') return [fecha, toNumber(row.emae), toNullableNumber(row.emae_desestacionalizado), toNullableNumber(row.emae_tendencia)];
+    if (type === 'emae') return [fecha, toNumber(row.emae), toNullableNumber(row.emae_desestacionalizado), toNullableNumber(row.emae_tendencia), ...EMAE_SECTOR_MM12_KEYS.map(key => toNullableNumber(row[key]))];
     if (type === 'bma') return [fecha, toNullableNumber(row.BaseMonetaria), toNullableNumber(row.PasivosRemunerados), toNullableNumber(row.DepositosTesoro), toNullableNumber(row.BMAmplia)];
     if (type === 'reca') return [fecha, row.mes, toNullableNumber(row.year), toNullableNumber(row.pctPbi), toNullableNumber(row.pctPbiMm12)];
     if (type === 'deuda') return [fecha, toNullableNumber(row.toma_deuda), toNullableNumber(row.vencimientos), toNullableNumber(row.vencimientos_proyectados), toNullableNumber(row.pagos), toNullableNumber(row.deuda_pbi), toNullableNumber(row.deuda_proyectada), toNullableNumber(row.acumulado), toNullableNumber(row.total)];
@@ -66,6 +67,7 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
 export async function saveNormalizedData(type: IndicatorType, data: NormalizedDataRow[]): Promise<void> {
     const table = getTableName(type, true);
     if (data.length === 0) return;
+    if (type === 'emae') await ensureEmaeSectorColumns(table);
     if (type === 'reca') await ensureRecaudacionMm12Column(table);
     if (type === 'deuda') await ensureDeudaAcumuladoColumn(table);
 
@@ -89,6 +91,10 @@ export async function saveNormalizedData(type: IndicatorType, data: NormalizedDa
 
 async function ensureRecaudacionMm12Column(table: string): Promise<void> {
     await sql.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS pct_pbi_mm12 NUMERIC`, []);
+}
+
+async function ensureEmaeSectorColumns(table: string): Promise<void> {
+    for (const column of EMAE_SECTOR_MM12_KEYS) await sql.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} NUMERIC`, []);
 }
 
 async function ensureDeudaAcumuladoColumn(table: string): Promise<void> {

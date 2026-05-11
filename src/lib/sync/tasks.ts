@@ -5,7 +5,7 @@ import { fechaToISO, normalizeBma, normalizeDeuda, normalizeEmae, normalizeEmisi
 import { runSyncTasks } from '../sync-runner';
 import { fetchEmisionRaw } from './bcra';
 import { fetchBmaRaw } from './bma';
-import { fetchEmaeRaw } from './emae';
+import { ensureEmaeSectorTables, fetchEmaeRaw } from './emae';
 import { fetchPoderAdquisitivoRawReport } from './poder-adquisitivo';
 import { fetchRecaudacionRawReport } from './recaudacion';
 import { ensureDeudaTables, fetchDeudaRaw } from './deuda';
@@ -49,6 +49,7 @@ export async function syncEmision(): Promise<SyncResult> {
 
 export async function syncEmae(): Promise<SyncResult> {
     const type: IndicatorType = 'emae';
+    await ensureEmaeSectorTables();
     const existingData = (await getRawData(type)) ?? [];
     const existingFechas = new Set(existingData.map((row) => row.fecha));
     const { rows: rawRows, publishedAt } = await fetchEmaeRaw();

@@ -50,6 +50,20 @@ export type ChartAxisDomainValue = number | string;
 
 export type ChartAxisDomain = [ChartAxisDomainValue, ChartAxisDomainValue] | 'auto-pad' | 'auto';
 
+export type ChartViewConfig = {
+    id: string;
+    label: string;
+    chartTitle: string;
+    data: ChartDataRow[];
+    areas: AreaConfig[];
+    methodology: MethodologyItem[];
+    valueFormat?: ValueFormat;
+    yAxisDecimals?: number;
+    yAxisLabel?: string;
+    secondaryYAxis?: YAxisConfig;
+    leftYAxisDomain?: ChartAxisDomain;
+};
+
 export type TooltipPayload = {
     payload?: ChartDataRow;
     value?: ChartValue;
@@ -94,6 +108,7 @@ export interface IndicatorCompositeViewProps {
     secondaryYAxis?: YAxisConfig;
     leftYAxisDomain?: ChartAxisDomain;
     indicatorId?: string;
+    views?: ChartViewConfig[];
 }
 
 export type ChartTooltipProps = {
@@ -123,8 +138,8 @@ export type ChartLineProps = {
 
 export type CustomLegendProps = {
     areas: AreaConfig[];
-    dimmedAreas: Set<string>;
-    onToggleDim: (key: string) => void;
+    highlightedAreas: Set<string>;
+    onToggleHighlight: (key: string) => void;
 };
 
 export type MethodologySectionProps = {

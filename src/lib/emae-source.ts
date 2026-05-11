@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { EmaeRawRow, NumericValue } from '@/types';
+import { EMAE_SECTORS } from './emae-sectors';
 
 const MONTHS_ES: Record<string, string> = {
     enero: '01',
@@ -23,6 +24,10 @@ function normalizeText(value: unknown): string {
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
+}
+
+function normalizedIncludes(value: unknown, expected: string): boolean {
+    return normalizeText(value).includes(normalizeText(expected));
 }
 
 function parseMonth(value: unknown): string | null {
@@ -63,6 +68,44 @@ export function parseEmaeWorkbook(buffer: Buffer): EmaeRawRow[] {
             emae_desestacionalizado: emaeDesestacionalizado,
             emae_tendencia: emaeTendencia,
         });
+    }
+
+    return parsedRows.sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+export function parseEmaeSectorWorkbook(buffer: Buffer): EmaeRawRow[] {
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets['Tabla Letras'];
+    if (!sheet) return [];
+
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null }) as unknown[][];
+    const headerRow = rows.find(row => EMAE_SECTORS.some(sector => row.some(cell => normalizedIncludes(cell, sector.header))));
+    if (!headerRow) return [];
+
+    const columnByKey = new Map<string, number>();
+    for (const sector of EMAE_SECTORS) {
+        const index = headerRow.findIndex(cell => normalizedIncludes(cell, sector.header));
+        if (index >= 0) columnByKey.set(sector.key, index);
+    }
+
+    const parsedRows: EmaeRawRow[] = [];
+    let year: number | null = null;
+
+    for (const row of rows) {
+        const yearValue = String(row[0] ?? '').trim();
+        if (/^\d{4}$/.test(yearValue)) year = Number(yearValue);
+
+        const month = parseMonth(row[1]);
+        if (!year || !month) continue;
+
+        const parsedRow: EmaeRawRow = { fecha: `${year}-${month}-01` };
+        for (const sector of EMAE_SECTORS) {
+            const column = columnByKey.get(sector.key);
+            if (column == null) continue;
+            parsedRow[sector.key] = parseNumber(row[column]);
+        }
+
+        if (EMAE_SECTORS.some(sector => parsedRow[sector.key] != null)) parsedRows.push(parsedRow);
     }
 
     return parsedRows.sort((a, b) => a.fecha.localeCompare(b.fecha));

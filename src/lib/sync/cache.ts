@@ -1,10 +1,11 @@
 import type { EmaeRawRow, PbiAnchorRow } from '@/types';
-import { parseEmaeWorkbook } from '../emae-source';
+import { parseEmaeSectorWorkbook, parseEmaeWorkbook } from '../emae-source';
 import { parseLatestPbiWorkbookUrl, parsePbiWorkbook } from '../pbi-source';
-import { EMAE_WORKBOOK_URL, PBI_PAGE_URL } from './constants';
+import { EMAE_SECTOR_WORKBOOK_URL, EMAE_WORKBOOK_URL, PBI_PAGE_URL } from './constants';
 import { fetchBufferFromUrl, fetchTextFromUrl } from './http-client';
 
 let emaeWorkbookRowsPromise: Promise<EmaeRawRow[]> | null = null;
+let emaeSectorWorkbookRowsPromise: Promise<EmaeRawRow[]> | null = null;
 let pbiAnchorRowsPromise: Promise<PbiAnchorRow[]> | null = null;
 
 export async function fetchEmaeWorkbookRows(): Promise<EmaeRawRow[]> {
@@ -18,6 +19,19 @@ export async function fetchEmaeWorkbookRows(): Promise<EmaeRawRow[]> {
     });
 
     return emaeWorkbookRowsPromise;
+}
+
+export async function fetchEmaeSectorWorkbookRows(): Promise<EmaeRawRow[]> {
+    emaeSectorWorkbookRowsPromise ??= fetchBufferFromUrl(EMAE_SECTOR_WORKBOOK_URL).then((buffer) => {
+        const rows = parseEmaeSectorWorkbook(buffer);
+        if (rows.length === 0) {
+            throw new Error('Failed to parse EMAE sector workbook. No data rows found. Verify INDEC workbook structure.');
+        }
+
+        return rows;
+    });
+
+    return emaeSectorWorkbookRowsPromise;
 }
 
 export async function fetchPbiAnchorRows(): Promise<PbiAnchorRow[]> {

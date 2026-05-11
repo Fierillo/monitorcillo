@@ -45,12 +45,15 @@ export type EmisionNormalizedRow = {
     ACUMULADO: number;
 };
 
+export type EmaeSectorKey = 'agro' | 'pesca' | 'mineria' | 'industria' | 'energia' | 'construccion' | 'comercio' | 'hoteles' | 'transporte' | 'finanzas' | 'inmobiliarias' | 'administracion_publica' | 'ensenanza' | 'salud' | 'otros_servicios' | 'impuestos';
+export type EmaeSectorMm12Key = `${EmaeSectorKey}_mm12`;
+
 export type EmaeRawRow = {
     fecha: string;
     emae?: NumericValue;
     emae_desestacionalizado?: NumericValue;
     emae_tendencia?: NumericValue;
-};
+} & Partial<Record<EmaeSectorKey, NumericValue>>;
 
 export type PbiAnchorRow = {
     fecha: string;
@@ -63,7 +66,7 @@ export type EmaeNormalizedRow = {
     emae: number | null;
     emae_desestacionalizado: number | null;
     emae_tendencia: number | null;
-};
+} & Partial<Record<EmaeSectorKey | EmaeSectorMm12Key, number | null>>;
 
 export type BmaRawRow = {
     fecha: string;

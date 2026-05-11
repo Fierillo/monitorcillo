@@ -1,4 +1,5 @@
 import type { AreaConfig, ChartDataRow, Indicator, IndicatorCompositeViewProps, MethodologyItem } from '@/types';
+import { EMAE_SECTORS } from './emae-sectors';
 import { safeGetIndicatorData } from './storage';
 
 type DetailConfig = Omit<IndicatorCompositeViewProps, 'title' | 'subtitle'> & { subtitle?: string };
@@ -51,6 +52,8 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
 }
 
 async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
+    const data = await safeGetIndicatorData('emae');
+    const sectorData = data.filter(row => typeof row.iso_fecha === 'string' && row.iso_fecha >= '2017-01-01');
     const areas: AreaConfig[] = [
         { key: 'emae', name: 'EMAE Original', color: '#FFD700', type: 'line' },
         { key: 'emae_desestacionalizado', name: 'EMAE Desestacionalizado', color: '#00BFFF', type: 'line' },
@@ -62,7 +65,26 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'EMAE Tendencia-Ciclo', description: 'Evolución de largo plazo suavizada (INDEC 143.3_NO_PR_2004_A_28).' },
         { title: 'Normalización', description: 'Índice Base Enero 2017 = 100 para comparabilidad histórica.' },
     ];
-    return { subtitle: indicator.fuente, chartTitle: 'Evolución del EMAE', data: await safeGetIndicatorData('emae'), areas, methodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] };
+    const sectorAreas: AreaConfig[] = EMAE_SECTORS.map(sector => ({ key: `${sector.key}_mm12`, name: sector.label, color: sector.color, type: 'line', strokeWidth: 2 }));
+    const sectorMethodology = [
+        { title: 'Series sectoriales', description: 'Índices originales por actividad publicados por INDEC en base 2004=100.' },
+        { title: 'Normalización', description: 'Cada sector se expresa como índice Base Enero 2017 = 100.' },
+        { title: 'Suavizado MM12', description: 'Se aplica media móvil simple trailing de 12 meses sobre cada índice sectorial original y luego se normaliza cada serie a Base Enero 2017 = 100. No es una serie desestacionalizada oficial de INDEC.' },
+    ];
+    return {
+        subtitle: indicator.fuente,
+        chartTitle: 'Evolución del EMAE',
+        data,
+        areas,
+        methodology,
+        valueFormat: 'index',
+        yAxisLabel: 'Base 100 = Ene-17',
+        leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'],
+        views: [
+            { id: 'agregado', label: 'Agregado', chartTitle: 'Evolución del EMAE', data, areas, methodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] },
+            { id: 'sectores', label: 'Por sectores', chartTitle: 'EMAE por sector (MM12)', data: sectorData, areas: sectorAreas, methodology: sectorMethodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] },
+        ],
+    };
 }
 
 async function emisionConfig(indicator: Indicator): Promise<DetailConfig> {
