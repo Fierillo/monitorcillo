@@ -13,7 +13,7 @@ export default function ChartBar({
     return (
         <Bar
             dataKey={areaConfig.key}
-            stackId={areaConfig.stackId || '1'}
+            stackId={areaConfig.stackId}
             fill={areaConfig.color}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
@@ -33,7 +33,10 @@ export default function ChartBar({
                 const isSelected = selectedMonth && monthValue === selectedMonth;
                 const isPreliminary = areaConfig.preliminaryKey ? payload?.[areaConfig.preliminaryKey] === true : false;
                 const opacity = selectedMonth ? (isSelected ? 1 : 0.3) : 1;
-                const fillOpacity = isPreliminary ? 0.45 : 1;
+                const fillOpacity = isPreliminary ? 0.45 : (areaConfig.fill === false ? 0 : 1);
+                const strokeColor = areaConfig.borderColor ?? (isSelected ? '#FFFFFF' : isPreliminary ? areaConfig.color : 'none');
+                const strokeWidth = areaConfig.borderWidth ?? (isSelected || isPreliminary ? 1 : 0);
+                const dash = areaConfig.dash;
 
                 return (
                     <Rectangle
@@ -43,9 +46,9 @@ export default function ChartBar({
                         height={height}
                         fill={areaConfig.color}
                         fillOpacity={fillOpacity}
-                        stroke={isSelected ? '#FFFFFF' : isPreliminary ? areaConfig.color : 'none'}
-                        strokeDasharray={isPreliminary && !isSelected ? '4 3' : undefined}
-                        strokeWidth={isSelected || isPreliminary ? 1 : 0}
+                        stroke={strokeColor}
+                        strokeDasharray={dash ? dash.join(' ') : (isPreliminary && !isSelected ? '4 3' : undefined)}
+                        strokeWidth={strokeWidth}
                         style={{ 
                             opacity: isDimmed ? opacity * 0.2 : opacity, 
                             cursor: 'pointer', 

@@ -7,6 +7,7 @@ const MAPPING: Record<string, IndicatorType> = {
     bma: 'bma',
     reca: 'reca',
     recaudacion: 'reca',
+    deuda: 'deuda',
     poder: 'poder',
     'poder-adquisitivo': 'poder',
 };

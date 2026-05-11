@@ -67,6 +67,20 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
         } as NormalizedDataByType[T];
     }
 
+    if (type === 'deuda') {
+        return {
+            ...common,
+            toma_deuda: toNullableNumber(row.toma_deuda),
+            vencimientos: toNullableNumber(row.vencimientos),
+            vencimientos_proyectados: toNullableNumber(row.vencimientos_proyectados),
+            pagos: toNullableNumber(row.pagos),
+            deuda_pbi: toNullableNumber(row.deuda_pbi),
+            deuda_proyectada: toNullableNumber(row.deuda_proyectada),
+            acumulado: toNullableNumber(row.acumulado),
+            total: toNullableNumber(row.total),
+        } as NormalizedDataByType[T];
+    }
+
     return {
         ...common,
         blanco: toNullableNumber(row.blanco),

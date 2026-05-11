@@ -88,4 +88,16 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: ['emae', 'emae_desestacionalizado', 'emae_tendencia'],
         formatValue: formatDecimal,
     },
+    deuda: {
+        type: 'deuda',
+        referenceLabel: 'Año anterior',
+        betterWhen: 'lower',
+        getReferenceDate: date => addYears(date, -1),
+        selectReferenceValue: row => row.total,
+        datePrecision: 'month',
+        normalizedValueColumn: 'total',
+        selectValue: row => row.total,
+        rawDateFields: ['stock_inicial_usd', 'stock_deuda_usd', 'toma_deuda', 'toma_deuda_usd', 'vencimientos', 'vencimientos_proyectados', 'pagos'],
+        formatValue: formatPbiPercentage,
+    },
 };

@@ -10,6 +10,7 @@ export default function ChartLine({ areaConfig, isDimmed }: ChartLineProps) {
             dataKey={areaConfig.key}
             stroke={areaConfig.color}
             strokeWidth={3}
+            strokeDasharray={areaConfig.dash ? areaConfig.dash.join(' ') : undefined}
             dot={false}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}

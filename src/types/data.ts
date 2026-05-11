@@ -151,12 +151,41 @@ export type PoderAdquisitivoNormalizedRow = {
     jubilacion: number | null;
 };
 
+export type DeudaRawRow = {
+    fecha: string;
+    stock_inicial_usd?: NumericValue;
+    stock_deuda_usd?: NumericValue;
+    toma_deuda?: NumericValue;
+    toma_deuda_usd?: NumericValue;
+    vencimientos?: NumericValue;
+    vencimientos_proyectados?: NumericValue;
+    pagos?: NumericValue;
+    tc?: NumericValue;
+    ipc_nucleo?: NumericValue;
+    pbi_trimestral?: NumericValue;
+    emae_desestacionalizado?: NumericValue;
+};
+
+export type DeudaNormalizedRow = {
+    fecha: string;
+    iso_fecha: string;
+    toma_deuda: number | null;
+    vencimientos: number | null;
+    vencimientos_proyectados: number | null;
+    pagos: number | null;
+    deuda_pbi: number | null;
+    deuda_proyectada: number | null;
+    acumulado: number | null;
+    total: number | null;
+};
+
 export type RawDataByType = {
     emision: EmisionRawRow;
     emae: EmaeRawRow;
     bma: BmaRawRow;
     reca: RecaudacionRawRow;
     poder: PoderAdquisitivoRawRow;
+    deuda: DeudaRawRow;
 };
 
 export type NormalizedDataByType = {
@@ -165,6 +194,7 @@ export type NormalizedDataByType = {
     bma: BmaNormalizedRow;
     reca: RecaudacionNormalizedRow;
     poder: PoderAdquisitivoNormalizedRow;
+    deuda: DeudaNormalizedRow;
 };
 
 export type RawDataRow = RawDataByType[IndicatorType];

@@ -4,6 +4,7 @@ export * from './normalize/emae';
 export * from './normalize/bma';
 export * from './normalize/recaudacion';
 export * from './normalize/poder';
+export * from './normalize/deuda';
 
 import { fechaToISO, fechaToTimestamp, isoToFecha, isoToMonthLabel } from './normalize/dates';
 import { normalizeEmision } from './normalize/emision';
@@ -11,6 +12,7 @@ import { normalizeEmae } from './normalize/emae';
 import { normalizeBma } from './normalize/bma';
 import { normalizeRecaudacion } from './normalize/recaudacion';
 import { normalizePoderAdquisitivo } from './normalize/poder';
+import { normalizeDeuda } from './normalize/deuda';
 
 const normalize = {
     isoToFecha,
@@ -22,6 +24,7 @@ const normalize = {
     normalizeBma,
     normalizeRecaudacion,
     normalizePoderAdquisitivo,
+    normalizeDeuda,
 };
 
 export default normalize;

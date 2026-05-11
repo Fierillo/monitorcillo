@@ -11,6 +11,12 @@ export interface AreaConfig {
     hideInLegend?: boolean;
     preliminaryKey?: string;
     preliminaryLabel?: string;
+    dash?: number[];
+    borderColor?: string;
+    borderWidth?: number;
+    fill?: boolean;
+    strokeWidth?: number;
+    legendFilled?: boolean;
 }
 
 export interface MethodologyItem {

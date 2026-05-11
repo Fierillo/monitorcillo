@@ -2,7 +2,7 @@ import type { DbRow, DbValue, IndicatorType, NormalizedDataByType, NormalizedDat
 import { fechaToISO } from '../normalize';
 import { sql } from './client';
 import { toNormalizedRow } from './row-mappers';
-import { getTableName, isSafeColumn, toNullableNumber, toNumber } from './tables';
+import { getTableName, isMissingTableError, isSafeColumn, toNullableNumber, toNumber } from './tables';
 
 const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     emision: ['fecha', 'bcra', 'tc', 'compra_dolares', 'vencimientos', 'licitado', 'licitaciones', 'resultado_fiscal', 'total', 'acumulado'],
@@ -10,6 +10,7 @@ const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     bma: ['fecha', 'base_monetaria', 'pasivos_remunerados', 'depositos_tesoro', 'bma_amplia'],
     reca: ['fecha', 'mes', 'year', 'pct_pbi', 'pct_pbi_mm12'],
     poder: ['fecha', 'blanco', 'negro', 'privado', 'publico', 'ripte', 'jubilacion'],
+    deuda: ['fecha', 'toma_deuda', 'vencimientos', 'vencimientos_proyectados', 'pagos', 'deuda_pbi', 'deuda_proyectada', 'acumulado', 'total'],
 };
 
 export async function getNormalizedData<T extends IndicatorType>(type: T): Promise<Array<NormalizedDataByType[T]> | null> {
@@ -18,6 +19,7 @@ export async function getNormalizedData<T extends IndicatorType>(type: T): Promi
         const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`, []) as DbRow[];
         return rows.length === 0 ? null : rows.map((row) => toNormalizedRow(type, row));
     } catch (error) {
+        if (isMissingTableError(error)) return null;
         console.error(`[db] getNormalizedData failed for ${type}`, error);
         return null;
     }
@@ -30,6 +32,7 @@ export async function getLatestNormalizedData<T extends IndicatorType>(type: T, 
         const rows = await sql.query(`SELECT * FROM ${table} WHERE ${valueColumn} IS NOT NULL ORDER BY fecha DESC LIMIT 1`, []) as DbRow[];
         return rows.length === 0 ? null : toNormalizedRow(type, rows[0]);
     } catch (error) {
+        if (isMissingTableError(error)) return null;
         console.error(`[db] getLatestNormalizedData failed for ${type}`, error);
         return null;
     }
@@ -41,6 +44,7 @@ export async function getNormalizedDataByDate<T extends IndicatorType>(type: T, 
         const rows = await sql.query(`SELECT * FROM ${table} WHERE fecha = $1 LIMIT 1`, [date]) as DbRow[];
         return rows.length === 0 ? null : toNormalizedRow(type, rows[0]);
     } catch (error) {
+        if (isMissingTableError(error)) return null;
         console.error(`[db] getNormalizedDataByDate failed for ${type}`, error);
         return null;
     }
@@ -55,6 +59,7 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
     if (type === 'emae') return [fecha, toNumber(row.emae), toNullableNumber(row.emae_desestacionalizado), toNullableNumber(row.emae_tendencia)];
     if (type === 'bma') return [fecha, toNullableNumber(row.BaseMonetaria), toNullableNumber(row.PasivosRemunerados), toNullableNumber(row.DepositosTesoro), toNullableNumber(row.BMAmplia)];
     if (type === 'reca') return [fecha, row.mes, toNullableNumber(row.year), toNullableNumber(row.pctPbi), toNullableNumber(row.pctPbiMm12)];
+    if (type === 'deuda') return [fecha, toNullableNumber(row.toma_deuda), toNullableNumber(row.vencimientos), toNullableNumber(row.vencimientos_proyectados), toNullableNumber(row.pagos), toNullableNumber(row.deuda_pbi), toNullableNumber(row.deuda_proyectada), toNullableNumber(row.acumulado), toNullableNumber(row.total)];
     return [fecha, toNullableNumber(row.blanco), toNullableNumber(row.negro), toNullableNumber(row.privado), toNullableNumber(row.publico), toNullableNumber(row.ripte), toNullableNumber(row.jubilacion)];
 }
 
@@ -62,6 +67,7 @@ export async function saveNormalizedData(type: IndicatorType, data: NormalizedDa
     const table = getTableName(type, true);
     if (data.length === 0) return;
     if (type === 'reca') await ensureRecaudacionMm12Column(table);
+    if (type === 'deuda') await ensureDeudaAcumuladoColumn(table);
 
     const BATCH_SIZE = 50;
     for (let i = 0; i < data.length; i += BATCH_SIZE) {
@@ -83,6 +89,10 @@ export async function saveNormalizedData(type: IndicatorType, data: NormalizedDa
 
 async function ensureRecaudacionMm12Column(table: string): Promise<void> {
     await sql.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS pct_pbi_mm12 NUMERIC`, []);
+}
+
+async function ensureDeudaAcumuladoColumn(table: string): Promise<void> {
+    await sql.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS acumulado NUMERIC`, []);
 }
 
 export async function replaceNormalizedData(type: IndicatorType, data: NormalizedDataRow[]): Promise<void> {

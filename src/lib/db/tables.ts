@@ -6,6 +6,7 @@ const TABLES: Record<IndicatorType, { raw: string; normalized: string }> = {
     bma: { raw: 'bma_raw', normalized: 'bma_normalized' },
     reca: { raw: 'recaudacion_raw', normalized: 'recaudacion_normalized' },
     poder: { raw: 'poder_adquisitivo_raw', normalized: 'poder_adquisitivo_normalized' },
+    deuda: { raw: 'deuda_raw', normalized: 'deuda_normalized' },
 };
 
 export function getTableName(type: IndicatorType, normalized: boolean): string {
@@ -32,4 +33,12 @@ export function toDbRow(row: object): Record<string, DbValue> {
 
 export function isSafeColumn(column: string): boolean {
     return /^[a-z_]+$/.test(column);
+}
+
+export function isMissingTableError(error: unknown): boolean {
+    return typeof error === 'object' && error !== null && 'code' in error && error.code === '42P01';
+}
+
+export function isMissingColumnError(error: unknown): boolean {
+    return typeof error === 'object' && error !== null && 'code' in error && error.code === '42703';
 }

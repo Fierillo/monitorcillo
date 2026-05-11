@@ -85,11 +85,12 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
 
     return (
         <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? 'min-h-[780px]' : 'min-h-[300px] sm:min-h-[500px]'} overflow-hidden`} style={captureCanvasStyle}>
+            {!props.isMobile && props.yAxisLabel && <AxisLabel label={props.yAxisLabel} />}
             <div ref={chartContainerRef} className={props.forceDesktopLayout ? 'relative overflow-hidden' : 'relative flex-1 overflow-hidden'} style={captureChartStyle} tabIndex={-1}>
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none"><span className="watermark text-imperial-gold/21 text-xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">@fierillo</span></div>
                 {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
             </div>
-            {!props.isMobile && (props.secondaryYAxis ? <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right /> : props.yAxisLabel && <AxisLabel label={props.yAxisLabel} right />)}
+            {!props.isMobile && props.secondaryYAxis && <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right />}
         </div>
     );
 }
@@ -106,7 +107,7 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
         <ComposedChart width={props.chartSize.width} height={props.chartSize.height} data={props.visibleData} margin={{ top: 5, right: props.isMobile ? 5 : 20, bottom: 5, left: props.isMobile ? 5 : 20 }} barCategoryGap="0%" stackOffset="sign" style={{ outline: 'none' }} onClick={(e: ChartClickState | null) => { if (!e?.activePayload?.length || !e.activeTooltipIndex) props.onSelectMonth(null); }}>
             <CartesianGrid vertical={false} horizontal stroke="#ffffff66" strokeWidth={0.75} />
             <XAxis dataKey={props.xAxisKey} stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)} hide={props.isMobile} />
-            <YAxis orientation="right" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={[leftTicks[0], leftTicks.at(-1) ?? 0]} allowDecimals={props.valueFormat !== 'millions'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : 60} hide={props.isMobile} />
+            <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={[leftTicks[0], leftTicks.at(-1) ?? 0]} allowDecimals={props.valueFormat !== 'millions'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : 60} hide={props.isMobile} />
             {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={[rightTicks[0], rightTicks.at(-1) ?? 0]} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
             {!props.isCapturing && <Tooltip cursor={{ stroke: '#ffffff50', strokeWidth: 1 }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={props.areas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} />} />}
             {props.areas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}

@@ -1,13 +1,14 @@
 import type { EmisionRawRow, IndicatorType, SyncResult, SyncResults } from '@/types';
 import { getRawData, replaceNormalizedData, replaceRawData, saveIndicatorPublication, saveIndicatorsCatalog, saveRawData } from '../db';
 import { buildCurrentIndicatorsCatalog } from '../catalog-service';
-import { fechaToISO, normalizeBma, normalizeEmae, normalizeEmision, normalizePoderAdquisitivo, normalizeRecaudacion } from '../normalize';
+import { fechaToISO, normalizeBma, normalizeDeuda, normalizeEmae, normalizeEmision, normalizePoderAdquisitivo, normalizeRecaudacion } from '../normalize';
 import { runSyncTasks } from '../sync-runner';
 import { fetchEmisionRaw } from './bcra';
 import { fetchBmaRaw } from './bma';
 import { fetchEmaeRaw } from './emae';
 import { fetchPoderAdquisitivoRawReport } from './poder-adquisitivo';
 import { fetchRecaudacionRawReport } from './recaudacion';
+import { ensureDeudaTables, fetchDeudaRaw } from './deuda';
 
 function normalizeEmisionRawRow(row: EmisionRawRow): EmisionRawRow {
     return {
@@ -97,6 +98,17 @@ export async function syncPoderAdquisitivo(): Promise<SyncResult> {
     return { appended: rawData.filter((row) => !existingFechas.has(row.fecha)).length, total: rawData.length };
 }
 
+export async function syncDeuda(): Promise<SyncResult> {
+    const type: IndicatorType = 'deuda';
+    await ensureDeudaTables();
+    const existingData = (await getRawData(type)) ?? [];
+    const existingFechas = new Set(existingData.map((row) => row.fecha));
+    const rawData = await fetchDeudaRaw();
+    await replaceRawData(type, rawData);
+    await replaceNormalizedData(type, normalizeDeuda(rawData));
+    return { appended: rawData.filter((row) => !existingFechas.has(row.fecha)).length, total: rawData.length };
+}
+
 export async function runSync(): Promise<SyncResults> {
     const indicatorResults = await runSyncTasks([
         { key: 'emision', run: syncEmision },
@@ -104,6 +116,7 @@ export async function runSync(): Promise<SyncResults> {
         { key: 'bma', run: syncBma },
         { key: 'recaudacion', run: syncRecaudacion },
         { key: 'poder_adquisitivo', run: syncPoderAdquisitivo },
+        { key: 'deuda', run: syncDeuda },
     ]);
     const catalogResults = await runSyncTasks([{ key: 'catalog', run: syncIndicatorsCatalog }]);
     return { ...indicatorResults, ...catalogResults };

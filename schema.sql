@@ -151,6 +151,31 @@ CREATE TABLE IF NOT EXISTS poder_adquisitivo_normalized (
 );
 
 -- ============================================
+-- DEUDA PUBLICA (perfil de compromisos)
+-- ============================================
+CREATE TABLE IF NOT EXISTS deuda_raw (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    nacion DECIMAL,
+    pagos DECIMAL,
+    tc DECIMAL,
+    ipc_nucleo DECIMAL,
+    pbi_trimestral DECIMAL,
+    emae_desestacionalizado DECIMAL,
+    fetched_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS deuda_normalized (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    nacion DECIMAL,
+    pagos DECIMAL,
+    acumulado DECIMAL,
+    total DECIMAL,
+    last_update TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
 -- INDEXES
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_indicators_catalog_id ON indicators_catalog(id);
@@ -159,6 +184,7 @@ CREATE INDEX IF NOT EXISTS idx_emae_fecha ON emae_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_bma_fecha ON bma_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_recaudacion_fecha ON recaudacion_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_poder_fecha ON poder_adquisitivo_raw(fecha);
+CREATE INDEX IF NOT EXISTS idx_deuda_fecha ON deuda_raw(fecha);
 
 -- ============================================
 -- MANUAL OVERRIDES (datos manuales que prevalecen sobre API)

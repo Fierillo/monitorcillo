@@ -30,7 +30,7 @@ export default function CustomLegend({ areas, dimmedAreas, onToggleDim }: Custom
                         }}
                     >
                         <svg width="10" height="10">
-                            <circle cx="5" cy="5" r="5" fill={isDimmed ? '#666' : area.color} />
+                            <circle cx="5" cy="5" r="5" fill={area.legendFilled === false ? 'transparent' : (isDimmed ? '#666' : area.color)} stroke={isDimmed ? '#666' : area.color} strokeWidth={area.legendFilled === false ? 1.5 : 0} />
                         </svg>
                         {area.name}
                     </span>

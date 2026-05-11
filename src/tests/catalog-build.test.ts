@@ -57,4 +57,12 @@ describe('buildIndicatorsCatalog', () => {
         expect(result[0].fecha).toBe('2 MAY 26');
         expect(result[0].dato).toBe('$100M');
     });
+
+    it('derives debt catalog values from total PBI share', () => {
+        const result = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'deuda' }], {
+            deuda: [{ iso_fecha: '2023-01-01', total: 2.4 }, { iso_fecha: '2024-01-01', total: 1.9 }],
+        }, { deuda: [{ fecha: '2024-01-01', vencimientos: 1 }] });
+
+        expect(result[0]).toMatchObject({ dato: '1,9% del PBI real', referencia: '2,4% del PBI real', reference_description: 'Año anterior', trend: 'up' });
+    });
 });

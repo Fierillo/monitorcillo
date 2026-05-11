@@ -1,6 +1,6 @@
 import type { DbRow, DbValue, IndicatorType, RawDataByType } from '@/types';
 import { sql } from './client';
-import { formatDbDate, getTableName, isSafeColumn, toDbRow } from './tables';
+import { formatDbDate, getTableName, isMissingColumnError, isMissingTableError, isSafeColumn, toDbRow } from './tables';
 
 export async function getRawData<T extends IndicatorType>(type: T): Promise<Array<RawDataByType[T]>> {
     const table = getTableName(type, false);
@@ -8,6 +8,7 @@ export async function getRawData<T extends IndicatorType>(type: T): Promise<Arra
         const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`, []) as DbRow[];
         return rows.map((row) => ({ ...row, fecha: formatDbDate(row.fecha) })) as Array<RawDataByType[T]>;
     } catch (error) {
+        if (isMissingTableError(error)) return [];
         console.error(`[db] getRawData failed for ${type}`, error);
         return [];
     }
@@ -59,6 +60,7 @@ export async function getRawDataByDate<T extends IndicatorType>(type: T, date: s
         const rows = await sql.query(`SELECT * FROM ${table} WHERE fecha = $1 LIMIT 1`, [date]) as DbRow[];
         return rows.length === 0 ? null : { ...rows[0], fecha: formatDbDate(rows[0].fecha) } as RawDataByType[T];
     } catch (error) {
+        if (isMissingTableError(error)) return null;
         console.error(`[db] getRawDataByDate failed for ${type}`, error);
         return null;
     }
@@ -74,6 +76,7 @@ export async function getLatestRawDate(type: IndicatorType, fields: string[]): P
         const rows = await sql.query(`SELECT fecha FROM ${table} WHERE ${whereClause} ORDER BY fecha DESC LIMIT 1`, []) as DbRow[];
         return rows.length > 0 ? formatDbDate(rows[0].fecha) : null;
     } catch (error) {
+        if (isMissingTableError(error) || isMissingColumnError(error)) return null;
         console.error(`[db] getLatestRawDate failed for ${type}`, error);
         return null;
     }
