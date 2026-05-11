@@ -46,7 +46,7 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
     const renderProps = chartProps.forceDesktopLayout
         ? { ...chartProps, isMobile: false, chartSize: { width: 1260, height: 780 } }
         : chartProps;
-    const captureStyle = chartProps.forceDesktopLayout ? { outline: 'none', width: 1400 } : { outline: 'none' };
+    const captureStyle = chartProps.forceDesktopLayout ? { outline: 'none', width: 1400, padding: 16 } : { outline: 'none', padding: chartProps.isCapturing ? 12 : 0 };
 
     return (
         <main className={chartProps.forceDesktopLayout ? 'w-[1400px] max-w-none' : 'w-full sm:w-[96%] max-w-[1800px]'}>
@@ -57,6 +57,7 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
                     <ChartCanvas {...renderProps} chartContainerRef={chartContainerRef} />
                     <CustomLegend areas={renderProps.areas} highlightedAreas={renderProps.highlightedAreas} onToggleHighlight={renderProps.onToggleHighlight} />
                     <MethodologySection methodology={renderProps.methodology} forceOpen={renderProps.isCapturing} />
+                    {renderProps.isCapturing ? <ExportFooter /> : null}
                 </div>
             </div>
         </main>
@@ -65,6 +66,10 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
 
 function ExportHeader({ title, subtitle }: { title: string; subtitle?: string }) {
     return <div className="mb-3 border-b border-imperial-gold/40 pb-3 text-center"><h1 className="imperial-title text-2xl font-bold uppercase tracking-widest text-imperial-gold">{title}</h1>{subtitle ? <p className="mt-1 text-sm font-bold uppercase tracking-wide text-imperial-cyan">{subtitle}</p> : null}</div>;
+}
+
+function ExportFooter() {
+    return <div className="mt-3 border-t border-imperial-gold/40 pt-3 text-center text-xs font-bold uppercase tracking-widest text-imperial-cyan"><span className="text-imperial-gold">Monitorcillo</span> fue hecho con amor por <span className="text-imperial-gold">Fierillo</span></div>;
 }
 
 function ChartHeader({ onDownloadChart, isCapturing, viewSelector }: { onDownloadChart: () => void; isCapturing: boolean; viewSelector?: ReactNode }) {
@@ -99,7 +104,7 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
 }
 
 function AxisLabel({ label, color, right = false }: { label: string; color?: string; right?: boolean }) {
-    return <div className="flex items-center justify-center w-12 shrink-0"><div className={`${right ? 'rotate-90' : '-rotate-90'} whitespace-nowrap ${color ? '' : 'text-imperial-gold'} font-bold text-xs uppercase tracking-widest`} style={{ color }}>{label}</div></div>;
+    return <div className="flex w-12 shrink-0 items-center justify-center"><div className={`${right ? 'rotate-90' : '-rotate-90'} whitespace-nowrap ${color ? '' : 'text-imperial-gold'} font-bold text-xs uppercase tracking-widest`} style={{ color }}>{label}</div></div>;
 }
 
 function ResponsiveComposedChart(props: ChartRenderProps) {
@@ -107,7 +112,7 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
     const rightTicks = axisTicks(props, 'right', !Array.isArray(props.secondaryYAxis?.domain));
 
     return (
-        <ComposedChart width={props.chartSize.width} height={props.chartSize.height} data={props.visibleData} margin={{ top: 5, right: props.isMobile ? 5 : 20, bottom: 5, left: props.isMobile ? 5 : 20 }} barCategoryGap="0%" stackOffset="sign" style={{ outline: 'none' }} onClick={(e: ChartClickState | null) => { if (!e?.activePayload?.length || !e.activeTooltipIndex) props.onSelectMonth(null); }}>
+        <ComposedChart width={props.chartSize.width} height={props.chartSize.height} data={props.visibleData} margin={{ top: 5, right: props.isMobile ? 5 : 8, bottom: 5, left: props.isMobile ? 5 : 8 }} barCategoryGap="0%" stackOffset="sign" style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }} onClick={(e: ChartClickState | null) => { if (!e?.activePayload?.length || !e.activeTooltipIndex) props.onSelectMonth(null); }}>
             <CartesianGrid vertical={false} horizontal stroke="#ffffff66" strokeWidth={0.75} />
             <XAxis dataKey={props.xAxisKey} stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)} hide={props.isMobile} />
             <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={[leftTicks[0], leftTicks.at(-1) ?? 0]} allowDecimals={props.valueFormat !== 'millions'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : 60} hide={props.isMobile} />

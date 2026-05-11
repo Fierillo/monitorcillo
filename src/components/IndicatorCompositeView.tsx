@@ -195,9 +195,11 @@ export default function IndicatorCompositeView({
     }, [activeViewId]);
 
     const handleDownloadChart = useCallback(async () => {
+        const prevSelectedMonth = selectedMonth;
         try {
+            setSelectedMonth(null);
             setIsCapturing(true);
-            await new Promise(resolve => setTimeout(resolve, 400));
+            await new Promise(resolve => setTimeout(resolve, 600));
 
             const target = isMobile ? mobileCaptureRef.current : captureRef.current;
             if (!target) return;
@@ -205,7 +207,11 @@ export default function IndicatorCompositeView({
             const dataUrl = await toPng(target, {
                 backgroundColor: '#00143F',
                 pixelRatio: 2,
-                filter: (node) => !node.classList?.contains('no-capture'),
+                filter: (node) => {
+                    if (node.classList?.contains('no-capture')) return false;
+                    if (node.classList?.contains('recharts-tooltip-wrapper')) return false;
+                    return true;
+                },
             });
 
             const link = document.createElement('a');
@@ -216,8 +222,9 @@ export default function IndicatorCompositeView({
             console.error('Error al descargar el gráfico:', err);
         } finally {
             setIsCapturing(false);
+            setSelectedMonth(prevSelectedMonth);
         }
-    }, [isMobile, title]);
+    }, [isMobile, title, selectedMonth]);
 
     if (!sortedData || sortedData.length === 0) {
         return <div className="text-imperial-gold p-8 text-center font-bold">Cargando datos...</div>;
