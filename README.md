@@ -27,8 +27,6 @@
 
 Monitorcillo consolida indicadores económicos argentinos en una interfaz compacta, cacheada y lista para consultar. Toma datos de BCRA, INDEC, MECON y otras fuentes oficiales, los normaliza con reglas propias del proyecto y publica tablas y gráficos comparables.
 
-El objetivo no es acumular documentación paralela: el comportamiento vive en el código, los schemas y los normalizadores.
-
 ## Indicadores
 
 | Indicador | Fuente | Vista |
@@ -39,6 +37,7 @@ El objetivo no es acumular documentación paralela: el comportamiento vive en el
 | Poder adquisitivo | INDEC, RIPTE y ANSES | Índices reales base enero 2017 |
 | EMAE | INDEC | Agregado, desestacionalizado, tendencia y sectores MM12 |
 | Deuda pública | MECON, BCRA e INDEC | Perfil de compromisos y deuda/PBI |
+| Pobreza | INDEC y UTDT | Serie oficial semestral y nowcast reciente |
 
 ## Stack
 
