@@ -8,6 +8,7 @@ const MAPPING: Record<string, IndicatorType> = {
     reca: 'reca',
     recaudacion: 'reca',
     deuda: 'deuda',
+    pobreza: 'pobreza',
     poder: 'poder',
     'poder-adquisitivo': 'poder',
 };

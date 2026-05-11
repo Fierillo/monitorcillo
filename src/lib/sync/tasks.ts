@@ -1,7 +1,7 @@
 import type { EmisionRawRow, IndicatorType, SyncResult, SyncResults } from '@/types';
 import { getRawData, replaceNormalizedData, replaceRawData, saveIndicatorPublication, saveIndicatorsCatalog, saveRawData } from '../db';
 import { buildCurrentIndicatorsCatalog } from '../catalog-service';
-import { fechaToISO, normalizeBma, normalizeDeuda, normalizeEmae, normalizeEmision, normalizePoderAdquisitivo, normalizeRecaudacion } from '../normalize';
+import { fechaToISO, normalizeBma, normalizeDeuda, normalizeEmae, normalizeEmision, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion } from '../normalize';
 import { runSyncTasks } from '../sync-runner';
 import { fetchEmisionRaw } from './bcra';
 import { fetchBmaRaw } from './bma';
@@ -9,6 +9,7 @@ import { ensureEmaeSectorTables, fetchEmaeRaw } from './emae';
 import { fetchPoderAdquisitivoRawReport } from './poder-adquisitivo';
 import { fetchRecaudacionRawReport } from './recaudacion';
 import { ensureDeudaTables, fetchDeudaRaw } from './deuda';
+import { ensurePobrezaTables, fetchPobrezaRaw } from './pobreza';
 
 function normalizeEmisionRawRow(row: EmisionRawRow): EmisionRawRow {
     return {
@@ -110,6 +111,17 @@ export async function syncDeuda(): Promise<SyncResult> {
     return { appended: rawData.filter((row) => !existingFechas.has(row.fecha)).length, total: rawData.length };
 }
 
+export async function syncPobreza(): Promise<SyncResult> {
+    const type: IndicatorType = 'pobreza';
+    await ensurePobrezaTables();
+    const existingData = (await getRawData(type)) ?? [];
+    const existingFechas = new Set(existingData.map((row) => row.fecha));
+    const rawData = await fetchPobrezaRaw();
+    await replaceRawData(type, rawData);
+    await replaceNormalizedData(type, normalizePobreza(rawData));
+    return { appended: rawData.filter((row) => !existingFechas.has(row.fecha)).length, total: rawData.length };
+}
+
 export async function runSync(): Promise<SyncResults> {
     const indicatorResults = await runSyncTasks([
         { key: 'emision', run: syncEmision },
@@ -118,6 +130,7 @@ export async function runSync(): Promise<SyncResults> {
         { key: 'recaudacion', run: syncRecaudacion },
         { key: 'poder_adquisitivo', run: syncPoderAdquisitivo },
         { key: 'deuda', run: syncDeuda },
+        { key: 'pobreza', run: syncPobreza },
     ]);
     const catalogResults = await runSyncTasks([{ key: 'catalog', run: syncIndicatorsCatalog }]);
     return { ...indicatorResults, ...catalogResults };

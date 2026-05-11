@@ -11,6 +11,7 @@ export async function getIndicatorDetailConfig(indicator: Indicator): Promise<De
     if (indicator.id === 'emision') return emisionConfig(indicator);
     if (indicator.id === 'recaudacion') return recaudacionConfig(indicator);
     if (indicator.id === 'deuda') return deudaConfig(indicator);
+    if (indicator.id === 'pobreza') return pobrezaConfig(indicator);
     return null;
 }
 
@@ -144,4 +145,24 @@ const areas: AreaConfig[] = [
         { title: 'Normalización', description: 'Las colocaciones en pesos y los vencimientos convertidos a pesos se expresan a precios de enero de 2017 con IPC núcleo y se dividen por el PBI real estimado disponible.' },
     ];
     return { subtitle: indicator.fuente, chartTitle: 'Perfil de compromisos de deuda pública', data, areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: 'Flujo mensual (% PBI real)', secondaryYAxis: { label: 'Deuda / PBI real', color: '#FF4D4D', format: 'percent' }, leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
+}
+
+async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {
+    const areas: AreaConfig[] = [
+        { key: 'pobreza_indec', name: 'Pobreza oficial INDEC', color: '#FFD700', type: 'line', strokeWidth: 2 },
+        { key: 'pobreza_utdt', name: 'Pobreza UTDT', color: '#00BFFF', type: 'line', strokeWidth: 2 },
+        { key: 'pobreza_utdt_lower', name: 'UTDT IC 95% inferior', color: '#7DD3FC', type: 'line', dash: [2, 4], strokeWidth: 1 },
+        { key: 'pobreza_utdt_upper', name: 'UTDT IC 95% superior', color: '#7DD3FC', type: 'line', dash: [2, 4], strokeWidth: 1 },
+        { key: 'pobreza_utdt_proyectada', name: 'Proyección UTDT', color: '#22C55E', type: 'line', dash: [4, 4], strokeWidth: 2 },
+        { key: 'pobreza_utdt_proyectada_lower', name: 'Proyección UTDT IC 95% inferior', color: '#86EFAC', type: 'line', dash: [2, 4], strokeWidth: 1 },
+        { key: 'pobreza_utdt_proyectada_upper', name: 'Proyección UTDT IC 95% superior', color: '#86EFAC', type: 'line', dash: [2, 4], strokeWidth: 1 },
+    ];
+    const methodology = [
+        { title: 'INDEC', description: 'Serie oficial de población con ingresos debajo de la línea de pobreza, total EPH continua, publicada por INDEC vía Series API.' },
+        { title: 'UTDT', description: 'Mediciones de pobreza de Martín González-Rozada, Universidad Torcuato Di Tella.' },
+        { title: 'Proyección UTDT', description: 'Nowcast mensual de UTDT expresado en una serie separada y usado como dato preliminar hasta la próxima medición oficial.' },
+        { title: 'Serie principal', description: 'El dato destacado usa INDEC en meses oficiales y la proyección UTDT solo en los meses preliminares posteriores al último semestre oficial.' },
+        { title: 'Frecuencia', description: 'La serie se expande a frecuencia mensual para distinguir meses cubiertos por INDEC y meses preliminares cubiertos por UTDT.' },
+    ];
+    return { subtitle: indicator.fuente, chartTitle: 'Incidencia de la pobreza', data: await safeGetIndicatorData('pobreza'), areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% de población', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
 }

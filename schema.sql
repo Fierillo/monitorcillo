@@ -208,6 +208,39 @@ CREATE TABLE IF NOT EXISTS deuda_normalized (
 );
 
 -- ============================================
+-- POBREZA (semestral)
+-- ============================================
+CREATE TABLE IF NOT EXISTS pobreza_raw (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    pobreza_indec DECIMAL,
+    pobreza_utdt DECIMAL,
+    pobreza_utdt_first_quarter DECIMAL,
+    pobreza_utdt_second_quarter DECIMAL,
+    pobreza_utdt_lower DECIMAL,
+    pobreza_utdt_upper DECIMAL,
+    pobreza_utdt_proyectada DECIMAL,
+    pobreza_utdt_proyectada_lower DECIMAL,
+    pobreza_utdt_proyectada_upper DECIMAL,
+    fetched_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS pobreza_normalized (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    pobreza_indec DECIMAL,
+    pobreza_utdt DECIMAL,
+    pobreza_utdt_lower DECIMAL,
+    pobreza_utdt_upper DECIMAL,
+    pobreza_utdt_proyectada DECIMAL,
+    pobreza_utdt_proyectada_lower DECIMAL,
+    pobreza_utdt_proyectada_upper DECIMAL,
+    pobreza DECIMAL,
+    preliminar BOOLEAN DEFAULT false,
+    last_update TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
 -- INDEXES
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_indicators_catalog_id ON indicators_catalog(id);
@@ -217,6 +250,7 @@ CREATE INDEX IF NOT EXISTS idx_bma_fecha ON bma_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_recaudacion_fecha ON recaudacion_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_poder_fecha ON poder_adquisitivo_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_deuda_fecha ON deuda_raw(fecha);
+CREATE INDEX IF NOT EXISTS idx_pobreza_fecha ON pobreza_raw(fecha);
 
 -- ============================================
 -- MANUAL OVERRIDES (datos manuales que prevalecen sobre API)

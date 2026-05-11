@@ -65,4 +65,12 @@ describe('buildIndicatorsCatalog', () => {
 
         expect(result[0]).toMatchObject({ dato: '1,9% del PBI real', referencia: '2,4% del PBI real', reference_description: 'Año anterior', trend: 'up' });
     });
+
+    it('derives poverty catalog values from the combined principal series', () => {
+        const result = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'pobreza' }], {
+            pobreza: [{ iso_fecha: '2025-03-01', pobreza: 38.1 }, { iso_fecha: '2026-03-01', pobreza: 29, preliminar: true }],
+        }, { pobreza: [{ fecha: '2026-01-01', pobreza_utdt: 29 }] });
+
+        expect(result[0]).toMatchObject({ dato: '29,0%', referencia: '38,1%', reference_description: 'Mismo semestre año anterior', trend: 'up' });
+    });
 });

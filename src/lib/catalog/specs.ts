@@ -9,6 +9,7 @@ const integerFormatter = new Intl.NumberFormat('es-AR', { maximumFractionDigits:
 const formatDecimal = (value: number) => decimalFormatter.format(value);
 const formatPbiPercentage = (value: number) => `${formatDecimal(value)}% del PBI real`;
 const formatPaBlanco = (value: number) => `PA blanco: ${formatDecimal(value)}`;
+const formatPercentage = (value: number) => `${formatDecimal(value)}%`;
 
 function addDays(date: string, days: number): string {
     const value = new Date(`${date}T00:00:00Z`);
@@ -99,5 +100,17 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         selectValue: row => row.total,
         rawDateFields: ['stock_inicial_usd', 'stock_deuda_usd', 'toma_deuda', 'toma_deuda_usd', 'vencimientos', 'vencimientos_proyectados', 'pagos'],
         formatValue: formatPbiPercentage,
+    },
+    pobreza: {
+        type: 'pobreza',
+        referenceLabel: 'Mismo semestre año anterior',
+        betterWhen: 'lower',
+        getReferenceDate: date => addYears(date, -1),
+        selectReferenceValue: row => row.pobreza,
+        datePrecision: 'month',
+        normalizedValueColumn: 'pobreza',
+        selectValue: row => row.pobreza,
+        rawDateFields: [],
+        formatValue: formatPercentage,
     },
 };

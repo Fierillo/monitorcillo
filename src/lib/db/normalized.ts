@@ -12,6 +12,7 @@ const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     reca: ['fecha', 'mes', 'year', 'pct_pbi', 'pct_pbi_mm12'],
     poder: ['fecha', 'blanco', 'negro', 'privado', 'publico', 'ripte', 'jubilacion'],
     deuda: ['fecha', 'toma_deuda', 'vencimientos', 'vencimientos_proyectados', 'pagos', 'deuda_pbi', 'deuda_proyectada', 'acumulado', 'total'],
+    pobreza: ['fecha', 'pobreza_indec', 'pobreza_utdt', 'pobreza_utdt_lower', 'pobreza_utdt_upper', 'pobreza_utdt_proyectada', 'pobreza_utdt_proyectada_lower', 'pobreza_utdt_proyectada_upper', 'pobreza', 'preliminar'],
 };
 
 export async function getNormalizedData<T extends IndicatorType>(type: T): Promise<Array<NormalizedDataByType[T]> | null> {
@@ -61,6 +62,7 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
     if (type === 'bma') return [fecha, toNullableNumber(row.BaseMonetaria), toNullableNumber(row.PasivosRemunerados), toNullableNumber(row.DepositosTesoro), toNullableNumber(row.BMAmplia)];
     if (type === 'reca') return [fecha, row.mes, toNullableNumber(row.year), toNullableNumber(row.pctPbi), toNullableNumber(row.pctPbiMm12)];
     if (type === 'deuda') return [fecha, toNullableNumber(row.toma_deuda), toNullableNumber(row.vencimientos), toNullableNumber(row.vencimientos_proyectados), toNullableNumber(row.pagos), toNullableNumber(row.deuda_pbi), toNullableNumber(row.deuda_proyectada), toNullableNumber(row.acumulado), toNullableNumber(row.total)];
+    if (type === 'pobreza') return [fecha, toNullableNumber(row.pobreza_indec), toNullableNumber(row.pobreza_utdt), toNullableNumber(row.pobreza_utdt_lower), toNullableNumber(row.pobreza_utdt_upper), toNullableNumber(row.pobreza_utdt_proyectada), toNullableNumber(row.pobreza_utdt_proyectada_lower), toNullableNumber(row.pobreza_utdt_proyectada_upper), toNullableNumber(row.pobreza), Boolean(row.preliminar)];
     return [fecha, toNullableNumber(row.blanco), toNullableNumber(row.negro), toNullableNumber(row.privado), toNullableNumber(row.publico), toNullableNumber(row.ripte), toNullableNumber(row.jubilacion)];
 }
 
