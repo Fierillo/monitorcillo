@@ -1,5 +1,5 @@
 import type { EmaeRawRow } from '@/types';
-import { EMAE_SECTOR_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae-sectors';
+import { EMAE_SECTOR_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
 import { parseEmaePublicationDate } from '../emae-source';
 import { sql } from '../db/client';
 import { EMAE_PUBLICATION_PAGE_URL } from './constants';

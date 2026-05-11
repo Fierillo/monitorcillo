@@ -1,5 +1,5 @@
 import type { AreaConfig, ChartDataRow, Indicator, IndicatorCompositeViewProps, MethodologyItem } from '@/types';
-import { EMAE_SECTORS } from './emae-sectors';
+import { EMAE_SECTORS } from './emae/schema';
 import { safeGetIndicatorData } from './storage';
 
 type DetailConfig = Omit<IndicatorCompositeViewProps, 'title' | 'subtitle'> & { subtitle?: string };

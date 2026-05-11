@@ -1,5 +1,5 @@
 import type { EmaeNormalizedRow, EmaeRawRow } from '@/types';
-import { EMAE_SECTOR_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae-sectors';
+import { EMAE_SECTOR_KEYS, EMAE_SECTOR_MM12_KEYS, type EmaeSectorKey } from '../emae/schema';
 import { fechaToTimestamp, MONTHS_ES } from './dates';
 import { notNull, toNullableNumber } from './numbers';
 
@@ -9,7 +9,7 @@ function average(values: number[]): number | null {
     return values.length === MM12_PERIODS ? values.reduce((sum, value) => sum + value, 0) / MM12_PERIODS : null;
 }
 
-function sectorMm12(rawData: EmaeRawRow[], key: string, rowIndex: number): number | null {
+function sectorMm12(rawData: EmaeRawRow[], key: EmaeSectorKey, rowIndex: number): number | null {
     const values = rawData
         .slice(Math.max(0, rowIndex - MM12_PERIODS + 1), rowIndex + 1)
         .map(row => toNullableNumber(row[key] ?? null))
@@ -28,7 +28,7 @@ export function normalizeEmae(rawData: EmaeRawRow[]): EmaeNormalizedRow[] {
     const baseTendencia = toNullableNumber(baseRow.emae_tendencia);
     const sortedRawData = [...rawData].sort((a, b) => a.fecha.localeCompare(b.fecha));
     const baseRowIndex = sortedRawData.findIndex(row => row.fecha === '2017-01-01');
-    const baseSectors = Object.fromEntries(EMAE_SECTOR_KEYS.map(key => [key, sectorMm12(sortedRawData, key, baseRowIndex)]));
+    const baseSectors: Partial<Record<EmaeSectorKey, number | null>> = Object.fromEntries(EMAE_SECTOR_KEYS.map(key => [key, sectorMm12(sortedRawData, key, baseRowIndex)]));
 
     return sortedRawData
         .map((row, rowIndex) => {

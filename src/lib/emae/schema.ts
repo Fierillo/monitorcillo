@@ -1,5 +1,3 @@
-import type { EmaeSectorKey, EmaeSectorMm12Key } from '@/types';
-
 export const EMAE_SECTORS = [
     { key: 'agro', label: 'Agro', header: 'Agricultura, ganaderia, caza y silvicultura', color: '#84CC16' },
     { key: 'pesca', label: 'Pesca', header: 'Pesca', color: '#06B6D4' },
@@ -19,5 +17,10 @@ export const EMAE_SECTORS = [
     { key: 'impuestos', label: 'Impuestos', header: 'Impuestos netos de subsidios', color: '#FFFFFF' },
 ] as const;
 
+export type EmaeSectorKey = typeof EMAE_SECTORS[number]['key'];
+export type EmaeSectorMm12Key = `${EmaeSectorKey}_mm12`;
+
 export const EMAE_SECTOR_KEYS = EMAE_SECTORS.map(sector => sector.key) as EmaeSectorKey[];
-export const EMAE_SECTOR_MM12_KEYS = EMAE_SECTORS.map(sector => `${sector.key}_mm12`) as EmaeSectorMm12Key[];
+export const EMAE_SECTOR_MM12_KEYS = EMAE_SECTOR_KEYS.map(key => `${key}_mm12`) as EmaeSectorMm12Key[];
+export const EMAE_BASE_KEYS = ['emae', 'emae_desestacionalizado', 'emae_tendencia'] as const;
+export const EMAE_NORMALIZED_DB_COLUMNS = ['fecha', ...EMAE_BASE_KEYS, ...EMAE_SECTOR_MM12_KEYS] as const;

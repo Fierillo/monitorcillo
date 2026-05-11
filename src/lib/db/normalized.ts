@@ -1,5 +1,5 @@
 import type { DbRow, DbValue, IndicatorType, NormalizedDataByType, NormalizedDataRow } from '@/types';
-import { EMAE_SECTOR_MM12_KEYS } from '../emae-sectors';
+import { EMAE_NORMALIZED_DB_COLUMNS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
 import { fechaToISO } from '../normalize';
 import { sql } from './client';
 import { toNormalizedRow } from './row-mappers';
@@ -7,7 +7,7 @@ import { getTableName, isMissingTableError, isSafeColumn, toNullableNumber, toNu
 
 const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     emision: ['fecha', 'bcra', 'tc', 'compra_dolares', 'vencimientos', 'licitado', 'licitaciones', 'resultado_fiscal', 'total', 'acumulado'],
-    emae: ['fecha', 'emae', 'emae_desestacionalizado', 'emae_tendencia', ...EMAE_SECTOR_MM12_KEYS],
+    emae: [...EMAE_NORMALIZED_DB_COLUMNS],
     bma: ['fecha', 'base_monetaria', 'pasivos_remunerados', 'depositos_tesoro', 'bma_amplia'],
     reca: ['fecha', 'mes', 'year', 'pct_pbi', 'pct_pbi_mm12'],
     poder: ['fecha', 'blanco', 'negro', 'privado', 'publico', 'ripte', 'jubilacion'],

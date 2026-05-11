@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { EmaeRawRow, NumericValue } from '@/types';
-import { EMAE_SECTORS } from './emae-sectors';
+import { EMAE_SECTORS } from './emae/schema';
 
 const MONTHS_ES: Record<string, string> = {
     enero: '01',

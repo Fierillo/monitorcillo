@@ -1,5 +1,8 @@
+import type { EmaeSectorKey, EmaeSectorMm12Key } from '@/lib/emae/schema';
 import type { NumericValue } from './common';
 import type { IndicatorType } from './indicators';
+
+export type { EmaeSectorKey, EmaeSectorMm12Key };
 
 export type BcraVariableRow = {
     fecha: string;
@@ -44,9 +47,6 @@ export type EmisionNormalizedRow = {
     TOTAL: number;
     ACUMULADO: number;
 };
-
-export type EmaeSectorKey = 'agro' | 'pesca' | 'mineria' | 'industria' | 'energia' | 'construccion' | 'comercio' | 'hoteles' | 'transporte' | 'finanzas' | 'inmobiliarias' | 'administracion_publica' | 'ensenanza' | 'salud' | 'otros_servicios' | 'impuestos';
-export type EmaeSectorMm12Key = `${EmaeSectorKey}_mm12`;
 
 export type EmaeRawRow = {
     fecha: string;

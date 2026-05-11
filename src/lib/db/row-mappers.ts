@@ -1,5 +1,5 @@
 import type { DbRow, IndicatorTrend, IndicatorType, NormalizedDataByType } from '@/types';
-import { EMAE_SECTOR_MM12_KEYS } from '../emae-sectors';
+import { EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
 import { isoToFecha, isoToMonthLabel } from '../normalize';
 import { formatDbDate, toNullableNumber, toNumber } from './tables';
 
