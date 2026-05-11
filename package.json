@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "sync": "node --env-file=.env --import tsx src/scripts/sync.ts",
+    "sync": "node --env-file-if-exists=.env --import tsx src/scripts/sync.ts",
     "sync-indec": "pnpm sync",
     "start": "next start",
     "lint": "eslint",
