@@ -113,4 +113,16 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: [],
         formatValue: formatPercentage,
     },
+    inflacion: {
+        type: 'inflacion',
+        referenceLabel: 'Mes anterior',
+        betterWhen: 'lower',
+        getReferenceDate: date => addMonths(date, -1),
+        selectReferenceValue: row => row.ipc,
+        datePrecision: 'month',
+        normalizedValueColumn: 'ipc',
+        selectValue: row => row.ipc,
+        rawDateFields: ['ipc_indec_general', 'ipc_indec_nucleo', 'ipc_equilibra', 'ipc_online'],
+        formatValue: formatPercentage,
+    },
 };

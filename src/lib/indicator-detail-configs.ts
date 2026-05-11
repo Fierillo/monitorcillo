@@ -12,6 +12,7 @@ export async function getIndicatorDetailConfig(indicator: Indicator): Promise<De
     if (indicator.id === 'recaudacion') return recaudacionConfig(indicator);
     if (indicator.id === 'deuda') return deudaConfig(indicator);
     if (indicator.id === 'pobreza') return pobrezaConfig(indicator);
+    if (indicator.id === 'inflacion') return inflacionConfig(indicator);
     return null;
 }
 
@@ -165,4 +166,20 @@ async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Frecuencia', description: 'La serie se expande a frecuencia mensual para distinguir meses cubiertos por INDEC y meses preliminares cubiertos por UTDT.' },
     ];
     return { subtitle: indicator.fuente, chartTitle: 'Incidencia de la pobreza', data: await safeGetIndicatorData('pobreza'), areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% de población', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
+}
+
+async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
+    const areas: AreaConfig[] = [
+        { key: 'ipc_indec', name: 'IPC INDEC', color: '#FFD700', type: 'line', strokeWidth: 2 },
+        { key: 'ipc_nucleo_indec', name: 'IPC Núcleo INDEC', color: '#00BFFF', type: 'line', strokeWidth: 2 },
+        { key: 'ipc_equilibra', name: 'IPC Equilibra', color: '#FF6B6B', type: 'line', dash: [4, 4], strokeWidth: 2 },
+        { key: 'ipc_online', name: 'IPC Online', color: '#22C55E', type: 'line', dash: [2, 4], strokeWidth: 2 },
+    ];
+    const methodology = [
+        { title: 'INDEC', description: 'Índice de Precios al Consumidor Nacional (IPC General y Núcleo) base diciembre 2016=100. La variación mensual se calcula como (índice actual - índice anterior) / índice anterior * 100.' },
+        { title: 'Equilibra', description: 'Proyección mensual de inflación de Equilibra.ar basada en relevamientos de precios propios.' },
+        { title: 'IPC Online', description: 'Índice de Precios al Consumidor Online de Bahía Blanca (Hyperia Big Data), relevamiento online de precios.' },
+        { title: 'Serie principal', description: 'El dato destacado usa INDEC General como principal. Las consultoras se muestran superpuestas para comparabilidad.' },
+    ];
+    return { subtitle: indicator.fuente, chartTitle: 'Inflación mensual', data: await safeGetIndicatorData('inflacion'), areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% mensual', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
 }
