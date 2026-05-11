@@ -171,9 +171,9 @@ async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {
 async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
     const areas: AreaConfig[] = [
         { key: 'ipc_indec', name: 'IPC INDEC', color: '#FFD700', type: 'line', strokeWidth: 2 },
-        { key: 'ipc_nucleo_indec', name: 'IPC Núcleo INDEC', color: '#00BFFF', type: 'line', strokeWidth: 2 },
-        { key: 'ipc_equilibra', name: 'IPC Equilibra', color: '#FF6B6B', type: 'line', strokeWidth: 2, dot: { r: 4 } },
-        { key: 'ipc_online', name: 'IPC Online', color: '#22C55E', type: 'line', strokeWidth: 2, dot: { r: 4 } },
+        { key: 'ipc_nucleo_indec', name: 'IPC Núcleo INDEC', color: '#FFD700', type: 'line', strokeWidth: 2, dash: [6, 3] },
+        { key: 'ipc_equilibra', name: 'IPC Equilibra', color: '#FF6B6B', type: 'line', strokeWidth: 2 },
+        { key: 'ipc_online', name: 'IPC Online', color: '#22C55E', type: 'line', strokeWidth: 2 },
     ];
     const methodology = [
         { title: 'INDEC', description: 'Índice de Precios al Consumidor Nacional (IPC General y Núcleo) base diciembre 2016=100. La variación mensual se calcula como (índice actual - índice anterior) / índice anterior * 100.' },
