@@ -241,6 +241,30 @@ CREATE TABLE IF NOT EXISTS pobreza_normalized (
 );
 
 -- ============================================
+-- INFLACION (mensual)
+-- ============================================
+CREATE TABLE IF NOT EXISTS inflacion_raw (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    ipc_indec_general DECIMAL,
+    ipc_indec_nucleo DECIMAL,
+    ipc_equilibra DECIMAL,
+    ipc_online DECIMAL,
+    fetched_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS inflacion_normalized (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    ipc_indec DECIMAL,
+    ipc_nucleo_indec DECIMAL,
+    ipc_equilibra DECIMAL,
+    ipc_online DECIMAL,
+    ipc DECIMAL,
+    last_update TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
 -- INDEXES
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_indicators_catalog_id ON indicators_catalog(id);
@@ -251,6 +275,7 @@ CREATE INDEX IF NOT EXISTS idx_recaudacion_fecha ON recaudacion_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_poder_fecha ON poder_adquisitivo_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_deuda_fecha ON deuda_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_pobreza_fecha ON pobreza_raw(fecha);
+CREATE INDEX IF NOT EXISTS idx_inflacion_fecha ON inflacion_raw(fecha);
 
 -- ============================================
 -- MANUAL OVERRIDES (datos manuales que prevalecen sobre API)

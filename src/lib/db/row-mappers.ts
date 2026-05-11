@@ -99,6 +99,17 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
         } as NormalizedDataByType[T];
     }
 
+    if (type === 'inflacion') {
+        return {
+            ...common,
+            ipc_indec: toNullableNumber(row.ipc_indec),
+            ipc_nucleo_indec: toNullableNumber(row.ipc_nucleo_indec),
+            ipc_equilibra: toNullableNumber(row.ipc_equilibra),
+            ipc_online: toNullableNumber(row.ipc_online),
+            ipc: toNullableNumber(row.ipc),
+        } as NormalizedDataByType[T];
+    }
+
     return {
         ...common,
         blanco: toNullableNumber(row.blanco),
