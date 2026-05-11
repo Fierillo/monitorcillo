@@ -28,6 +28,25 @@ export default function RootLayout({
     <html lang="es" className={`${cinzel.variable} ${libreBaskerville.variable}`}>
       <body className={`${cinzel.variable} ${libreBaskerville.variable} antialiased`}>
         {children}
+        <footer className="border-t border-imperial-gold/40 px-4 py-5 text-center text-xs font-bold tracking-widest text-imperial-cyan sm:text-sm">
+          <a
+            href="https://github.com/Fierillo/monitorcillo"
+            target="_blank"
+            rel="noreferrer"
+            className="text-imperial-gold transition-colors hover:text-white focus-visible:text-white"
+          >
+            Monitorcillo
+          </a>{' '}
+          fue hecho con amor por{' '}
+          <a
+            href="https://github.com/Fierillo"
+            target="_blank"
+            rel="noreferrer"
+            className="text-imperial-gold transition-colors hover:text-white focus-visible:text-white"
+          >
+            Fierillo
+          </a>
+        </footer>
       </body>
     </html>
   );
