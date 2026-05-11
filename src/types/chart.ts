@@ -17,6 +17,7 @@ export interface AreaConfig {
     fill?: boolean;
     strokeWidth?: number;
     legendFilled?: boolean;
+    dot?: boolean | { r?: number };
 }
 
 export interface MethodologyItem {
