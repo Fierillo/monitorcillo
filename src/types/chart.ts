@@ -17,7 +17,6 @@ export interface AreaConfig {
     fill?: boolean;
     strokeWidth?: number;
     legendFilled?: boolean;
-    dot?: boolean | { r?: number };
 }
 
 export interface MethodologyItem {
@@ -135,6 +134,7 @@ export type ChartAreaProps = {
 export type ChartLineProps = {
     areaConfig: AreaConfig;
     isDimmed: boolean;
+    data?: ChartDataRow[];
 };
 
 export type CustomLegendProps = {

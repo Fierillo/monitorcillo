@@ -162,7 +162,7 @@ function niceStep(rawStep: number): number {
 
 function ChartSeries({ areaConfig, props }: { areaConfig: AreaConfig; props: ChartRenderProps }) {
     const isDimmed = props.highlightedAreas.size > 0 && !props.highlightedAreas.has(areaConfig.legendKey || areaConfig.key);
-    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={isDimmed} />;
+    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={isDimmed} data={props.visibleData} />;
     if (areaConfig.type === 'bar') return <ChartBar areaConfig={areaConfig} isDimmed={isDimmed} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} />;
     return <ChartArea areaConfig={areaConfig} isDimmed={isDimmed} />;
 }

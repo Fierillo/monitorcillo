@@ -1,15 +1,22 @@
 'use client';
 
 import { Line } from 'recharts';
-import type { ChartLineProps } from '@/types/chart';
+import type { ChartDataRow, ChartLineProps } from '@/types/chart';
 
-function dotProps(dot: boolean | { r?: number } | undefined) {
-    if (!dot) return false;
-    if (dot === true) return { r: 3, fill: '#fff', strokeWidth: 2 };
-    return { r: dot.r ?? 3, fill: '#fff', strokeWidth: 2 };
+function isIsolatedPoint(data: ChartDataRow[] | undefined, index: number, key: string): boolean {
+    if (!data || index < 0 || index >= data.length) return false;
+    const current = data[index][key];
+    if (current == null || (typeof current === 'number' && !Number.isFinite(current))) return false;
+    const prev = data[index - 1]?.[key];
+    const next = data[index + 1]?.[key];
+    const hasPrev = prev != null && (typeof prev !== 'number' || Number.isFinite(prev));
+    const hasNext = next != null && (typeof next !== 'number' || Number.isFinite(next));
+    return !hasPrev || !hasNext;
 }
 
-export default function ChartLine({ areaConfig, isDimmed }: ChartLineProps) {
+export default function ChartLine({ areaConfig, isDimmed, data }: ChartLineProps) {
+    const color = areaConfig.color;
+
     return (
         <Line
             type="monotone"
@@ -17,7 +24,20 @@ export default function ChartLine({ areaConfig, isDimmed }: ChartLineProps) {
             stroke={areaConfig.color}
             strokeWidth={areaConfig.strokeWidth ?? 3}
             strokeDasharray={areaConfig.dash ? areaConfig.dash.join(' ') : undefined}
-            dot={dotProps(areaConfig.dot)}
+            dot={(dotProps: { index?: number; cx?: number; cy?: number }) => {
+                const index = dotProps.index ?? 0;
+                if (!isIsolatedPoint(data, index, areaConfig.key)) return null;
+                return (
+                    <circle
+                        cx={dotProps.cx}
+                        cy={dotProps.cy}
+                        r={4}
+                        fill="#fff"
+                        stroke={color}
+                        strokeWidth={2}
+                    />
+                );
+            }}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
             style={{ opacity: isDimmed ? 0.2 : 1 }}
