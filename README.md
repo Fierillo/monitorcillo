@@ -100,7 +100,6 @@ Variables principales:
 | --- | --- |
 | `NEON_URL` | Conexión Postgres serverless |
 | `ADMIN_PASSWORD` | Acceso al panel admin |
-| `SYNC_API_KEY` | Autorización para sync externo |
 
 Comandos:
 
