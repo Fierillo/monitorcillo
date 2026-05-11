@@ -1,4 +1,4 @@
-export type IndicatorType = 'emision' | 'emae' | 'bma' | 'reca' | 'poder' | 'deuda' | 'pobreza';
+export type IndicatorType = 'emision' | 'emae' | 'bma' | 'reca' | 'poder' | 'deuda' | 'pobreza' | 'inflacion';
 
 export type IndicatorTrend = 'up' | 'down' | 'neutral';
 

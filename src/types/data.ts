@@ -209,6 +209,24 @@ export type PobrezaNormalizedRow = {
     preliminar: boolean;
 };
 
+export type InflacionRawRow = {
+    fecha: string;
+    ipc_indec_general?: NumericValue;
+    ipc_indec_nucleo?: NumericValue;
+    ipc_equilibra?: NumericValue;
+    ipc_online?: NumericValue;
+};
+
+export type InflacionNormalizedRow = {
+    fecha: string;
+    iso_fecha: string;
+    ipc_indec: number | null;
+    ipc_nucleo_indec: number | null;
+    ipc_equilibra: number | null;
+    ipc_online: number | null;
+    ipc: number | null;
+};
+
 export type RawDataByType = {
     emision: EmisionRawRow;
     emae: EmaeRawRow;
@@ -217,6 +235,7 @@ export type RawDataByType = {
     poder: PoderAdquisitivoRawRow;
     deuda: DeudaRawRow;
     pobreza: PobrezaRawRow;
+    inflacion: InflacionRawRow;
 };
 
 export type NormalizedDataByType = {
@@ -227,6 +246,7 @@ export type NormalizedDataByType = {
     poder: PoderAdquisitivoNormalizedRow;
     deuda: DeudaNormalizedRow;
     pobreza: PobrezaNormalizedRow;
+    inflacion: InflacionNormalizedRow;
 };
 
 export type RawDataRow = RawDataByType[IndicatorType];
