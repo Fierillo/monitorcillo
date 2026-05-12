@@ -16,6 +16,20 @@ function isIsolatedPoint(data: ChartDataRow[] | undefined, index: number, key: s
 
 export default function ChartLine({ areaConfig, isDimmed, data }: ChartLineProps) {
     const color = areaConfig.color;
+    const dot = isDimmed ? false : (dotProps: { index?: number; cx?: number; cy?: number }) => {
+        const index = dotProps.index ?? 0;
+        if (!isIsolatedPoint(data, index, areaConfig.key)) return null;
+        return (
+            <circle
+                cx={dotProps.cx}
+                cy={dotProps.cy}
+                r={4}
+                fill="#fff"
+                stroke={color}
+                strokeWidth={2}
+            />
+        );
+    };
 
     return (
         <Line
@@ -24,23 +38,8 @@ export default function ChartLine({ areaConfig, isDimmed, data }: ChartLineProps
             stroke={areaConfig.color}
             strokeWidth={areaConfig.strokeWidth ?? 3}
             strokeDasharray={areaConfig.dash ? areaConfig.dash.join(' ') : undefined}
-            dot={(dotProps: { index?: number; cx?: number; cy?: number }) => {
-                const index = dotProps.index ?? 0;
-                if (!isIsolatedPoint(data, index, areaConfig.key)) return null;
-                if (isDimmed) {
-                    return <circle cx={dotProps.cx} cy={dotProps.cy} r={0} fill="transparent" />;
-                }
-                return (
-                    <circle
-                        cx={dotProps.cx}
-                        cy={dotProps.cy}
-                        r={4}
-                        fill="#fff"
-                        stroke={color}
-                        strokeWidth={2}
-                    />
-                );
-            }}
+            dot={dot}
+            isAnimationActive={!isDimmed}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
             style={{ opacity: isDimmed ? 0.2 : 1 }}

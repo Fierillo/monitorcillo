@@ -113,12 +113,8 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
     const leftTicks = axisTicks(props, 'left', !Array.isArray(props.leftAxisDomain));
     const rightTicks = axisTicks(props, 'right', !Array.isArray(props.secondaryYAxis?.domain));
 
-    const leftDomain = Array.isArray(props.leftAxisDomain)
-        ? props.leftAxisDomain
-        : [leftTicks[0], leftTicks.at(-1) ?? 0];
-    const rightDomain = Array.isArray(props.secondaryYAxis?.domain)
-        ? props.secondaryYAxis.domain
-        : [rightTicks[0], rightTicks.at(-1) ?? 0];
+    const leftDomain = [leftTicks[0], leftTicks.at(-1) ?? 0];
+    const rightDomain = [rightTicks[0], rightTicks.at(-1) ?? 0];
 
     return (
         <ComposedChart width={props.chartSize.width} height={props.chartSize.height} data={props.visibleData} margin={{ top: 5, right: props.isMobile ? 5 : 8, bottom: 5, left: props.isMobile ? 5 : 8 }} barCategoryGap="0%" stackOffset="sign" style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }} onClick={(e: ChartClickState | null) => { if (!e?.activePayload?.length || !e.activeTooltipIndex) props.onSelectMonth(null); }}>
