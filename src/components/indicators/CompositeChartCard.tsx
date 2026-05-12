@@ -35,6 +35,7 @@ type Props = {
     isCapturing: boolean;
     forceDesktopLayout?: boolean;
     viewSelector?: ReactNode;
+    timeRangeSlider?: ReactNode;
     onDownloadChart: () => void;
     onSelectMonth: (month: string | null) => void;
     onToggleHighlight: (key: string) => void;
@@ -56,6 +57,7 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
                     <ChartHeader onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} viewSelector={renderProps.viewSelector} />
                     <ChartCanvas {...renderProps} chartContainerRef={chartContainerRef} />
                     <CustomLegend areas={renderProps.areas} highlightedAreas={renderProps.highlightedAreas} onToggleHighlight={renderProps.onToggleHighlight} />
+                    {renderProps.timeRangeSlider ? <div className="no-capture my-2">{renderProps.timeRangeSlider}</div> : null}
                     <MethodologySection methodology={renderProps.methodology} forceOpen={renderProps.isCapturing} />
                     {renderProps.isCapturing ? <ExportFooter /> : null}
                 </div>

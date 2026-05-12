@@ -5,10 +5,12 @@ import { toPng } from 'html-to-image';
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import type { ChartAxisDomain, ChartDataRow, IndicatorCompositeViewProps } from '@/types/chart';
 import CompositeChartCard from './indicators/CompositeChartCard';
+import TimeRangeSlider from './chart/TimeRangeSlider';
 
 type PersistedChartConfig = {
     selectedViewId?: string;
     highlightedAreasByView?: Record<string, string[]>;
+    rangeByView?: Record<string, [number, number]>;
 };
 
 export default function IndicatorCompositeView({
@@ -72,8 +74,11 @@ export default function IndicatorCompositeView({
     const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
     const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
     const [isCapturing, setIsCapturing] = useState(false);
+    const [startIndex, setStartIndex] = useState(0);
+    const [endIndex, setEndIndex] = useState(Math.max(0, sortedData.length - 1));
+    const prevViewIdRef = useRef<string | null>(null);
 
-    const visibleData = sortedData;
+    const visibleData = useMemo(() => sortedData.slice(startIndex, endIndex + 1), [sortedData, startIndex, endIndex]);
     const highlightedAreas = useMemo(() => highlightedAreasByView[activeViewId] ?? new Set<string>(), [highlightedAreasByView, activeViewId]);
     const storageKey = `monitorcillo:chart:${indicatorId ?? title}`;
 
@@ -88,6 +93,18 @@ export default function IndicatorCompositeView({
             const validViewIds = new Set((views?.map(view => view.id) ?? ['default']));
             if (parsed.selectedViewId && validViewIds.has(parsed.selectedViewId)) setSelectedViewId(parsed.selectedViewId);
             if (parsed.highlightedAreasByView) setHighlightedAreasByView(Object.fromEntries(Object.entries(parsed.highlightedAreasByView).map(([viewId, keys]) => [viewId, new Set(keys)])));
+            if (parsed.rangeByView) {
+                const viewIdForRange = parsed.selectedViewId && validViewIds.has(parsed.selectedViewId) ? parsed.selectedViewId : (views?.[0]?.id ?? 'default');
+                const range = parsed.rangeByView[viewIdForRange];
+                const viewForRange = views?.find(v => v.id === viewIdForRange);
+                const dataForRange = viewForRange?.data ?? data;
+                const maxIndex = Math.max(0, dataForRange.length - 1);
+                if (range && Array.isArray(range) && range.length === 2) {
+                    const [savedStart, savedEnd] = range;
+                    setStartIndex(Math.max(0, Math.min(savedStart, maxIndex)));
+                    setEndIndex(Math.max(0, Math.min(savedEnd, maxIndex)));
+                }
+            }
         } catch {
             window.localStorage.removeItem(storageKey);
         } finally {
@@ -98,8 +115,17 @@ export default function IndicatorCompositeView({
     useEffect(() => {
         if (!isConfigLoaded) return;
         const highlightedAreasPayload = Object.fromEntries(Object.entries(highlightedAreasByView).map(([viewId, keys]) => [viewId, [...keys]]));
-        window.localStorage.setItem(storageKey, JSON.stringify({ selectedViewId, highlightedAreasByView: highlightedAreasPayload }));
-    }, [storageKey, selectedViewId, highlightedAreasByView, isConfigLoaded]);
+        let rangeByViewPayload: Record<string, [number, number]> = {};
+        try {
+            const stored = window.localStorage.getItem(storageKey);
+            if (stored) {
+                const parsed = JSON.parse(stored) as PersistedChartConfig;
+                if (parsed.rangeByView) rangeByViewPayload = parsed.rangeByView;
+            }
+        } catch { /* ignore */ }
+        rangeByViewPayload[activeViewId] = [startIndex, endIndex];
+        window.localStorage.setItem(storageKey, JSON.stringify({ selectedViewId, highlightedAreasByView: highlightedAreasPayload, rangeByView: rangeByViewPayload }));
+    }, [storageKey, selectedViewId, highlightedAreasByView, startIndex, endIndex, activeViewId, isConfigLoaded]);
 
     useEffect(() => {
         if (selectedMonth && selectByMonth) {
@@ -109,6 +135,32 @@ export default function IndicatorCompositeView({
             setSelectedMonth(null);
         }
     }, [visibleData, selectedMonth, selectByMonth]);
+
+    useEffect(() => {
+        if (!isConfigLoaded) return;
+        if (prevViewIdRef.current === null) {
+            prevViewIdRef.current = activeViewId;
+            return;
+        }
+        if (prevViewIdRef.current !== activeViewId) {
+            prevViewIdRef.current = activeViewId;
+            const max = Math.max(0, sortedData.length - 1);
+            setStartIndex(0);
+            setEndIndex(max);
+        }
+    }, [activeViewId, isConfigLoaded, sortedData.length]);
+
+    useEffect(() => {
+        const max = Math.max(0, sortedData.length - 1);
+        setStartIndex(prevStart => {
+            const nextStart = Math.min(prevStart, max);
+            setEndIndex(prevEnd => {
+                const nextEnd = Math.min(prevEnd, max);
+                return Math.max(nextStart, nextEnd);
+            });
+            return nextStart;
+        });
+    }, [sortedData.length]);
 
     useEffect(() => {
         if (!chartContainerRef.current) return;
@@ -251,6 +303,16 @@ export default function IndicatorCompositeView({
                 highlightedAreas={highlightedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
                 isMobile={isMobile} isCapturing={isCapturing && !isMobile} onDownloadChart={handleDownloadChart}
                 onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} viewSelector={viewSelector}
+                timeRangeSlider={!isCapturing && sortedData.length > 1 ? (
+                    <TimeRangeSlider
+                        data={sortedData}
+                        startIndex={startIndex}
+                        endIndex={endIndex}
+                        xAxisKey={xAxisKey}
+                        labelByXAxisValue={labelByXAxisValue}
+                        onChange={(start, end) => { setStartIndex(start); setEndIndex(end); }}
+                    />
+                ) : null}
             />
             {isMobile && isCapturing ? (
                 <div className="fixed left-[-10000px] top-0 z-[-1]">
@@ -263,6 +325,7 @@ export default function IndicatorCompositeView({
                         highlightedAreas={highlightedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
                         isMobile={false} isCapturing forceDesktopLayout onDownloadChart={handleDownloadChart}
                         onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight}
+                        timeRangeSlider={null}
                     />
                 </div>
             ) : null}
