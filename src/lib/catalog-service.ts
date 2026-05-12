@@ -54,8 +54,15 @@ export async function buildCurrentIndicatorsCatalog(sources?: CatalogDataSources
             const spec = CATALOG_INDICATOR_SPECS[item.id];
             if (!spec) return { ...item };
 
-            const [valueRow, rawDate, publicationDate] = await Promise.all([
-                dataSources.getLatestNormalizedRow!(spec.type, spec.normalizedValueColumn),
+            let valueRow = await dataSources.getLatestNormalizedRow!(spec.type, spec.normalizedValueColumn);
+            if (!valueRow && spec.fallbackValueColumns) {
+                for (const col of spec.fallbackValueColumns) {
+                    valueRow = await dataSources.getLatestNormalizedRow!(spec.type, col);
+                    if (valueRow) break;
+                }
+            }
+
+            const [rawDate, publicationDate] = await Promise.all([
                 dataSources.getLatestRawDate!(spec.type, spec.rawDateFields),
                 dataSources.getPublicationDate ? dataSources.getPublicationDate(item.id) : Promise.resolve(null),
             ]);

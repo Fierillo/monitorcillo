@@ -23,7 +23,13 @@ export function buildIndicatorsCatalog(
         if (!spec) return { ...item };
 
         const normalizedRows = normalizedData[spec.type] ?? [];
-        const valueRow = latestRow(normalizedRows, row => toFiniteNumber(spec.selectValue(row)) !== null);
+        let valueRow = latestRow(normalizedRows, row => toFiniteNumber(spec.selectValue(row)) !== null);
+        if (!valueRow && spec.fallbackValueColumns) {
+            for (const col of spec.fallbackValueColumns) {
+                valueRow = latestRow(normalizedRows, row => toFiniteNumber(row[col]) !== null);
+                if (valueRow) break;
+            }
+        }
         if (!valueRow) return { ...item };
 
         const value = toFiniteNumber(spec.selectValue(valueRow));
