@@ -27,6 +27,9 @@ export default function ChartLine({ areaConfig, isDimmed, data }: ChartLineProps
             dot={(dotProps: { index?: number; cx?: number; cy?: number }) => {
                 const index = dotProps.index ?? 0;
                 if (!isIsolatedPoint(data, index, areaConfig.key)) return null;
+                if (isDimmed) {
+                    return <circle cx={dotProps.cx} cy={dotProps.cy} r={0} fill="transparent" />;
+                }
                 return (
                     <circle
                         cx={dotProps.cx}
