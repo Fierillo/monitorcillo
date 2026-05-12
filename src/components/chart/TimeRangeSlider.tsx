@@ -76,7 +76,12 @@ export default function TimeRangeSlider({
         const x = e.clientX - rect.left;
         const pct = (x / rect.width) * 100;
 
-        const inSelectedRange = pct >= startPct - 1 && pct <= endPct + 1;
+        const thumbBufferPct = Math.max(4, (16 / rect.width) * 100);
+        const isNearStart = Math.abs(pct - startPct) <= thumbBufferPct;
+        const isNearEnd = Math.abs(pct - endPct) <= thumbBufferPct;
+        if (isNearStart || isNearEnd) return;
+
+        const inSelectedRange = pct >= startPct && pct <= endPct;
         if (!inSelectedRange) return;
 
         e.preventDefault();
