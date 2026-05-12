@@ -113,12 +113,19 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
     const leftTicks = axisTicks(props, 'left', !Array.isArray(props.leftAxisDomain));
     const rightTicks = axisTicks(props, 'right', !Array.isArray(props.secondaryYAxis?.domain));
 
+    const leftDomain = Array.isArray(props.leftAxisDomain)
+        ? props.leftAxisDomain
+        : [leftTicks[0], leftTicks.at(-1) ?? 0];
+    const rightDomain = Array.isArray(props.secondaryYAxis?.domain)
+        ? props.secondaryYAxis.domain
+        : [rightTicks[0], rightTicks.at(-1) ?? 0];
+
     return (
         <ComposedChart width={props.chartSize.width} height={props.chartSize.height} data={props.visibleData} margin={{ top: 5, right: props.isMobile ? 5 : 8, bottom: 5, left: props.isMobile ? 5 : 8 }} barCategoryGap="0%" stackOffset="sign" style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }} onClick={(e: ChartClickState | null) => { if (!e?.activePayload?.length || !e.activeTooltipIndex) props.onSelectMonth(null); }}>
             <CartesianGrid vertical={false} horizontal stroke="#ffffff66" strokeWidth={0.75} />
             <XAxis dataKey={props.xAxisKey} stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)} hide={props.isMobile} />
-            <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={[leftTicks[0], leftTicks.at(-1) ?? 0]} allowDecimals={props.valueFormat !== 'millions'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : 60} hide={props.isMobile} />
-            {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={[rightTicks[0], rightTicks.at(-1) ?? 0]} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
+            <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : 60} hide={props.isMobile} />
+            {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
             {!props.isCapturing && <Tooltip cursor={{ stroke: '#ffffff50', strokeWidth: 1 }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={props.areas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} />} />}
             {props.areas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}
         </ComposedChart>
@@ -138,8 +145,15 @@ function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZer
     const dataMax = Math.max(...values);
     const range = dataMax - dataMin;
     const padding = includeZero ? 0 : Math.max(range * 0.05, 1);
-    const min = includeZero ? Math.min(0, dataMin) : dataMin - padding;
-    const max = includeZero ? Math.max(0, dataMax) : dataMax + padding;
+    let min = includeZero ? Math.min(0, dataMin) : dataMin - padding;
+    let max = includeZero ? Math.max(0, dataMax) : dataMax + padding;
+
+    const domain = axisId === 'left' ? props.leftAxisDomain : props.secondaryYAxis?.domain;
+    if (Array.isArray(domain)) {
+        if (typeof domain[0] === 'number') min = domain[0];
+        if (typeof domain[1] === 'number') max = domain[1];
+    }
+
     const step = niceStep((max - min) / 12);
     const start = Math.floor(min / step) * step;
     const end = Math.ceil(max / step) * step;

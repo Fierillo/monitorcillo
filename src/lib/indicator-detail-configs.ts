@@ -30,7 +30,7 @@ async function bmaConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Base Monetaria Amplia', description: 'Suma real de Base Monetaria + Pasivos Remunerados + Depósitos del Gobierno, todo a precios de enero de 2017.' },
         { title: 'Normalización a % PBI real', description: 'Cada agregado monetario real se divide por el PBI real desestacionalizado de INDEC, convertido a pesos de enero de 2017 con el mismo factor IPC.' },
     ];
-    return { subtitle: `Fuente: BCRA e INDEC | Dato: ${indicator.dato}`, chartTitle: 'Descomposición de Base Monetaria', data: await safeGetIndicatorData('bma'), areas, methodology, valueFormat: 'percent', yAxisLabel: '% de PBI real' };
+    return { subtitle: `Fuente: BCRA e INDEC | Dato: ${indicator.dato}`, chartTitle: 'Descomposición de Base Monetaria', data: await safeGetIndicatorData('bma'), areas, methodology, valueFormat: 'percent', yAxisLabel: '% de PBI real', leftYAxisDomain: [0, 'auto'] };
 }
 
 async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
