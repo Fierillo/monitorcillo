@@ -64,15 +64,26 @@ export default function TimeRangeSlider({
     const trackGradient = `linear-gradient(to right, #ffffff22 0%, #ffffff22 ${startPct}%, #FFD700 ${startPct}%, #FFD700 ${endPct}%, #ffffff22 ${endPct}%, #ffffff22 100%)`;
 
     const containerRef = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
+    const isDraggingRef = useRef(false);
     const dragStartXRef = useRef(0);
     const dragStartIndicesRef = useRef({ start: 0, end: 0 });
+    const [isDragging, setIsDragging] = useState(false);
 
-    const handleRangePointerDown = (e: React.PointerEvent) => {
-        if (!containerRef.current) return;
+    const handleContainerPointerDown = (e: React.PointerEvent) => {
+        if (!containerRef.current || maxIndex === 0) return;
+
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const pct = (x / rect.width) * 100;
+
+        const inSelectedRange = pct >= startPct - 1 && pct <= endPct + 1;
+        if (!inSelectedRange) return;
+
+        e.preventDefault();
         containerRef.current.setPointerCapture(e.pointerId);
         dragStartXRef.current = e.clientX;
         dragStartIndicesRef.current = { start: safeStart, end: safeEnd };
+        isDraggingRef.current = true;
         setIsDragging(true);
     };
 
@@ -80,7 +91,7 @@ export default function TimeRangeSlider({
         if (!isDragging) return;
 
         const handlePointerMove = (e: PointerEvent) => {
-            if (!containerRef.current) return;
+            if (!isDraggingRef.current || !containerRef.current) return;
             const rect = containerRef.current.getBoundingClientRect();
             const dx = e.clientX - dragStartXRef.current;
             const indexDelta = Math.round((dx / rect.width) * maxIndex);
@@ -94,6 +105,7 @@ export default function TimeRangeSlider({
         };
 
         const handlePointerUp = () => {
+            isDraggingRef.current = false;
             setIsDragging(false);
         };
 
@@ -107,25 +119,17 @@ export default function TimeRangeSlider({
 
     return (
         <div className="w-full px-1 py-3 select-none">
-            <div ref={containerRef} className="relative h-6">
+            <div
+                ref={containerRef}
+                className={`relative h-6 ${isDragging ? 'cursor-grabbing' : 'cursor-default'}`}
+                style={{ touchAction: 'none' }}
+                onPointerDown={handleContainerPointerDown}
+            >
                 {/* Track background */}
                 <div
-                    className="absolute top-1/2 left-0 right-0 h-1.5 -translate-y-1/2 rounded-full"
+                    className="absolute top-1/2 left-0 right-0 h-1.5 -translate-y-1/2 rounded-full pointer-events-none"
                     style={{ background: trackGradient }}
                 />
-
-                {/* Draggable selected range overlay */}
-                {maxIndex > 0 && (
-                    <div
-                        className="absolute top-0 h-full cursor-grab active:cursor-grabbing"
-                        style={{
-                            left: `${startPct}%`,
-                            width: `${endPct - startPct}%`,
-                            zIndex: 1,
-                        }}
-                        onPointerDown={handleRangePointerDown}
-                    />
-                )}
 
                 {/* Start range input */}
                 <input
