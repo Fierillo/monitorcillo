@@ -13,6 +13,7 @@ export type CatalogIndicatorSpec = {
     formatReferenceValue?: (value: number) => string;
     datePrecision: CatalogDatePrecision;
     normalizedValueColumn: string;
+    fallbackValueColumns?: string[];
     selectValue: (row: DataRow) => unknown;
     rawDateFields: string[];
     formatValue: (value: number) => string;
