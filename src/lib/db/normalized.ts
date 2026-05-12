@@ -28,11 +28,14 @@ export async function getNormalizedData<T extends IndicatorType>(type: T): Promi
     }
 }
 
-export async function getLatestNormalizedData<T extends IndicatorType>(type: T, valueColumn: string): Promise<NormalizedDataByType[T] | null> {
+export async function getLatestNormalizedData<T extends IndicatorType>(type: T, valueColumn: string, fallbackColumns: string[] = []): Promise<NormalizedDataByType[T] | null> {
     if (!isSafeColumn(valueColumn)) throw new Error(`Invalid normalized column: ${valueColumn}`);
+    const allColumns = [valueColumn, ...fallbackColumns].filter(isSafeColumn);
+    if (allColumns.length === 0) throw new Error(`No valid columns for ${type}`);
+    const whereClause = allColumns.map(col => `${col} IS NOT NULL`).join(' OR ');
     const table = getTableName(type, true);
     try {
-        const rows = await sql.query(`SELECT * FROM ${table} WHERE ${valueColumn} IS NOT NULL ORDER BY fecha DESC LIMIT 1`, []) as DbRow[];
+        const rows = await sql.query(`SELECT * FROM ${table} WHERE ${whereClause} ORDER BY fecha DESC LIMIT 1`, []) as DbRow[];
         return rows.length === 0 ? null : toNormalizedRow(type, rows[0]);
     } catch (error) {
         if (isMissingTableError(error)) return null;

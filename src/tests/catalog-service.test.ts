@@ -7,7 +7,7 @@ describe('buildCurrentIndicatorsCatalog', () => {
     it('refreshes persisted catalog references from indicator specs', async () => {
         const result = await buildCurrentIndicatorsCatalog({
             getCatalogRows: async () => [{ ...baseCatalogRow, id: 'bma', referencia: 'Referencia vieja' }],
-            getLatestNormalizedRow: async (type, valueColumn) => {
+            getLatestNormalizedRow: async (type, valueColumn, fallbackColumns) => {
                 if (type !== 'bma') return null;
                 expect(valueColumn).toBe('bma_amplia');
                 return { iso_fecha: '2026-04-01', BMAmplia: 6.7 };
@@ -35,7 +35,7 @@ describe('buildCurrentIndicatorsCatalog', () => {
     it('uses latest-row data sources without loading full tables', async () => {
         const result = await buildCurrentIndicatorsCatalog({
             getCatalogRows: async () => [{ ...baseCatalogRow, id: 'bma', fecha: '1 ABR 26', dato: '6,7%' }],
-            getLatestNormalizedRow: async (type, valueColumn) => {
+            getLatestNormalizedRow: async (type, valueColumn, fallbackColumns) => {
                 if (type !== 'bma') return null;
                 expect(valueColumn).toBe('bma_amplia');
                 return { iso_fecha: '2026-04-01', BMAmplia: 6.7 };
@@ -60,7 +60,7 @@ describe('buildCurrentIndicatorsCatalog', () => {
     it('uses publication date metadata and previous-month reference for poder adquisitivo', async () => {
         const result = await buildCurrentIndicatorsCatalog({
             getCatalogRows: async () => [{ ...baseCatalogRow, id: 'poder-adquisitivo' }],
-            getLatestNormalizedRow: async (type, valueColumn) => {
+            getLatestNormalizedRow: async (type, valueColumn, fallbackColumns) => {
                 if (type !== 'poder') return null;
                 expect(valueColumn).toBe('blanco');
                 return { iso_fecha: '2026-02-01', blanco: 88.8 };
@@ -80,11 +80,12 @@ describe('buildCurrentIndicatorsCatalog', () => {
 async function expectPublishedDate(id: string, type: IndicatorType, valueColumn: string, row: DataRow, publicationDate: string, expected: object) {
     const result = await buildCurrentIndicatorsCatalog({
         getCatalogRows: async () => [{ ...baseCatalogRow, id }],
-        getLatestNormalizedRow: async (candidateType, candidateValueColumn) => {
-            if (candidateType !== type) return null;
-            expect(candidateValueColumn).toBe(valueColumn);
-            return row;
-        },
+            getLatestNormalizedRow: async (candidateType, candidateValueColumn, candidateFallbackColumns) => {
+                if (candidateType !== type) return null;
+                expect(candidateValueColumn).toBe(valueColumn);
+                expect(candidateFallbackColumns).toBeUndefined();
+                return row;
+            },
         getLatestRawDate: async () => String(row.iso_fecha ?? row.fecha ?? ''),
         getPublicationDate: async (candidateId) => candidateId === id ? publicationDate : null,
         getNormalizedRows: async () => { throw new Error('Full normalized table should not be loaded'); },

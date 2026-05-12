@@ -5,7 +5,7 @@ export type CatalogDataSources = {
     getCatalogRows: () => Promise<CatalogIndicatorRow[]>;
     getNormalizedRows: (type: IndicatorType) => Promise<DataRow[] | null>;
     getRawRows: (type: IndicatorType) => Promise<DataRow[] | null>;
-    getLatestNormalizedRow?: (type: IndicatorType, valueColumn: string) => Promise<DataRow | null>;
+    getLatestNormalizedRow?: (type: IndicatorType, valueColumn: string, fallbackColumns?: string[]) => Promise<DataRow | null>;
     getNormalizedRowByDate?: (type: IndicatorType, date: string) => Promise<DataRow | null>;
     getRawRowByDate?: (type: IndicatorType, date: string) => Promise<DataRow | null>;
     getLatestRawDate?: (type: IndicatorType, fields: string[]) => Promise<string | null>;
@@ -19,7 +19,7 @@ async function defaultCatalogDataSources(): Promise<CatalogDataSources> {
         getCatalogRows: db.getIndicatorsCatalog,
         getNormalizedRows: async (type) => db.getNormalizedData(type) as Promise<DataRow[] | null>,
         getRawRows: async (type) => db.getRawData(type) as Promise<DataRow[]>,
-        getLatestNormalizedRow: async (type, valueColumn) => db.getLatestNormalizedData(type, valueColumn) as Promise<DataRow | null>,
+        getLatestNormalizedRow: async (type, valueColumn, fallbackColumns) => db.getLatestNormalizedData(type, valueColumn, fallbackColumns ?? []) as Promise<DataRow | null>,
         getNormalizedRowByDate: async (type, date) => db.getNormalizedDataByDate(type, date) as Promise<DataRow | null>,
         getRawRowByDate: async (type, date) => db.getRawDataByDate(type, date) as Promise<DataRow | null>,
         getLatestRawDate: db.getLatestRawDate,
@@ -54,13 +54,7 @@ export async function buildCurrentIndicatorsCatalog(sources?: CatalogDataSources
             const spec = CATALOG_INDICATOR_SPECS[item.id];
             if (!spec) return { ...item };
 
-            let valueRow = await dataSources.getLatestNormalizedRow!(spec.type, spec.normalizedValueColumn);
-            if (!valueRow && spec.fallbackValueColumns) {
-                for (const col of spec.fallbackValueColumns) {
-                    valueRow = await dataSources.getLatestNormalizedRow!(spec.type, col);
-                    if (valueRow) break;
-                }
-            }
+            const valueRow = await dataSources.getLatestNormalizedRow!(spec.type, spec.normalizedValueColumn, spec.fallbackValueColumns);
 
             const [rawDate, publicationDate] = await Promise.all([
                 dataSources.getLatestRawDate!(spec.type, spec.rawDateFields),
