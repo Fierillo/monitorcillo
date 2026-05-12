@@ -73,4 +73,27 @@ describe('buildIndicatorsCatalog', () => {
 
         expect(result[0]).toMatchObject({ dato: '29,0%', referencia: '38,1%', reference_description: 'Mismo semestre año anterior', trend: 'up' });
     });
+
+    it('uses fallback columns for poverty when principal value is null', () => {
+        const result = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'pobreza' }], {
+            pobreza: [
+                { iso_fecha: '2025-03-01', pobreza: 38.1 },
+                { iso_fecha: '2026-03-01', pobreza: null, pobreza_utdt_proyectada: 29, preliminar: true },
+            ],
+        }, { pobreza: [{ fecha: '2026-01-01', pobreza_utdt: 29 }] });
+
+        expect(result[0]).toMatchObject({ fecha: 'MAR 26', dato: '29,0%', referencia: '38,1%', trend: 'up' });
+    });
+
+    it('uses fallback columns for inflation when principal value is null', () => {
+        const result = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'inflacion' }], {
+            inflacion: [
+                { iso_fecha: '2025-03-01', ipc: 5.2 },
+                { iso_fecha: '2026-02-01', ipc: 5.5 },
+                { iso_fecha: '2026-03-01', ipc: null, ipc_equilibra: 6.1 },
+            ],
+        }, { inflacion: [{ fecha: '2026-03-01', ipc_equilibra: 6.1 }] });
+
+        expect(result[0]).toMatchObject({ fecha: 'MAR 26', dato: '6,1%', referencia: '5,5%', trend: 'down' });
+    });
 });
