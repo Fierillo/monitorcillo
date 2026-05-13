@@ -17,4 +17,5 @@ export type CatalogIndicatorSpec = {
     selectValue: (row: DataRow) => unknown;
     rawDateFields: string[];
     formatValue: (value: number) => string;
+    getNextExpectedDate: (latestDate: string) => string;
 };

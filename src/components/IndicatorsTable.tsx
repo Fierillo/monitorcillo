@@ -28,6 +28,7 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                     <thead>
                         <tr className="bg-imperial-gold text-imperial-blue text-xs sm:text-base uppercase tracking-wider imperial-title">
                             <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20">Fecha</th>
+                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20">Próxima</th>
                             <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20">Fuente</th>
                             <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20">Indicador</th>
                             <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20">Referencia</th>
@@ -41,6 +42,7 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                                 className={`${i % 2 === 0 ? 'bg-imperial-blue' : 'bg-background'} border-t border-imperial-cyan/30 hover:bg-white/10 transition-colors ${row.hasDetails ? 'hover:border-imperial-gold hover:shadow-inner' : ''}`}
                             >
                                 <td className="p-2 sm:p-3 text-imperial-gold font-bold whitespace-nowrap">{row.fecha}</td>
+                                <td className="p-2 sm:p-3 text-imperial-cyan font-semibold whitespace-nowrap">{row.proximaFecha ?? '-'}</td>
                                 <td className="p-2 sm:p-3 font-semibold whitespace-nowrap text-white">{row.fuente}</td>
                                 <td className="p-2 sm:p-3 font-bold text-white flex items-center gap-2">
                                     {row.hasDetails ? (

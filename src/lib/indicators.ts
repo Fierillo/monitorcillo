@@ -18,6 +18,7 @@ export async function getIndicators(): Promise<Indicator[]> {
             category: row.category,
             hasDetails: row.has_details,
             sourceUrl: row.source_url,
+            proximaFecha: row.proxima_fecha,
         }));
     } catch {
         return [];
@@ -37,6 +38,7 @@ export async function saveIndicators(data: Indicator[]): Promise<void> {
         category: ind.category || 'default',
         has_details: ind.hasDetails || false,
         source_url: ind.sourceUrl || null,
+        proxima_fecha: ind.proximaFecha,
     }));
     await saveIndicatorsCatalog(mapped);
 }

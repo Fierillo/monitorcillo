@@ -14,6 +14,7 @@ export type Indicator = {
     category?: string;
     hasDetails?: boolean;
     sourceUrl?: string | null;
+    proximaFecha?: string;
 };
 
 export type CatalogIndicatorRow = {
@@ -28,4 +29,5 @@ export type CatalogIndicatorRow = {
     category: string;
     has_details: boolean;
     source_url: string | null;
+    proxima_fecha?: string;
 };

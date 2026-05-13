@@ -19,6 +19,7 @@ describe('buildIndicatorsCatalog', () => {
 
         expect(result[0].fecha).toBe('2 MAY 26');
         expect(result[0].dato).toBe('6,7% del PBI real');
+        expect(result[0].proxima_fecha).toBe('4 MAY 26');
     });
 
     it('shows the latest recaudacion period without an artificial day', () => {
@@ -34,6 +35,7 @@ describe('buildIndicatorsCatalog', () => {
             referencia: '3,7% del PBI real',
             reference_description: 'Mismo mes año anterior',
             trend: 'up',
+            proxima_fecha: '2 JUN 26',
         });
     });
 
@@ -45,8 +47,8 @@ describe('buildIndicatorsCatalog', () => {
             poder: [{ iso_fecha: '2026-04-01', blanco: 90.1 }, { iso_fecha: '2026-05-01', blanco: 88.8 }],
         }, { poder: [{ fecha: '2026-05-01', salario_registrado: 100 }] });
 
-        expect(emae[0]).toMatchObject({ fecha: 'MAY 26', dato: '108,2' });
-        expect(poder[0]).toMatchObject({ fecha: 'MAY 26', dato: 'PA blanco: 88,8', referencia: 'PA blanco: 90,1', trend: 'down' });
+        expect(emae[0]).toMatchObject({ fecha: 'MAY 26', dato: '108,2', proxima_fecha: '1 JUN 26' });
+        expect(poder[0]).toMatchObject({ fecha: 'MAY 26', dato: 'PA blanco: 88,8', referencia: 'PA blanco: 90,1', trend: 'down', proxima_fecha: '1 JUN 26' });
     });
 
     it('keeps day labels for daily emission data', () => {
@@ -56,6 +58,7 @@ describe('buildIndicatorsCatalog', () => {
 
         expect(result[0].fecha).toBe('2 MAY 26');
         expect(result[0].dato).toBe('$100M');
+        expect(result[0].proxima_fecha).toBe('4 MAY 26');
     });
 
     it('derives debt catalog values from total PBI share', () => {
@@ -63,7 +66,7 @@ describe('buildIndicatorsCatalog', () => {
             deuda: [{ iso_fecha: '2023-01-01', total: 2.4 }, { iso_fecha: '2024-01-01', total: 1.9 }],
         }, { deuda: [{ fecha: '2024-01-01', vencimientos: 1 }] });
 
-        expect(result[0]).toMatchObject({ dato: '1,9% del PBI real', referencia: '2,4% del PBI real', reference_description: 'Año anterior', trend: 'up' });
+        expect(result[0]).toMatchObject({ dato: '1,9% del PBI real', referencia: '2,4% del PBI real', reference_description: 'Año anterior', trend: 'up', proxima_fecha: '1 FEB 24' });
     });
 
     it('derives poverty catalog values from the combined principal series', () => {
@@ -71,7 +74,7 @@ describe('buildIndicatorsCatalog', () => {
             pobreza: [{ iso_fecha: '2025-03-01', pobreza: 38.1 }, { iso_fecha: '2026-03-01', pobreza: 29, preliminar: true }],
         }, { pobreza: [{ fecha: '2026-01-01', pobreza_utdt: 29 }] });
 
-        expect(result[0]).toMatchObject({ dato: '29,0%', referencia: '38,1%', reference_description: 'Mismo semestre año anterior', trend: 'up' });
+        expect(result[0]).toMatchObject({ dato: '29,0%', referencia: '38,1%', reference_description: 'Mismo semestre año anterior', trend: 'up', proxima_fecha: '1 SEPT 26' });
     });
 
     it('uses fallback columns for poverty when principal value is null', () => {
@@ -82,7 +85,7 @@ describe('buildIndicatorsCatalog', () => {
             ],
         }, { pobreza: [{ fecha: '2026-01-01', pobreza_utdt: 29 }] });
 
-        expect(result[0]).toMatchObject({ fecha: 'MAR 26', dato: '29,0%', referencia: '38,1%', trend: 'up' });
+        expect(result[0]).toMatchObject({ fecha: '1 MAR 26', dato: '29,0%', referencia: '38,1%', trend: 'up', proxima_fecha: '1 SEPT 26' });
     });
 
     it('uses fallback columns for inflation when principal value is null', () => {
@@ -94,6 +97,6 @@ describe('buildIndicatorsCatalog', () => {
             ],
         }, { inflacion: [{ fecha: '2026-03-01', ipc_equilibra: 6.1 }] });
 
-        expect(result[0]).toMatchObject({ fecha: 'MAR 26', dato: '6,1%', referencia: '5,5%', trend: 'down' });
+        expect(result[0]).toMatchObject({ fecha: '1 MAR 26', dato: '6,1%', referencia: '5,5%', trend: 'down', proxima_fecha: '1 ABR 26' });
     });
 });

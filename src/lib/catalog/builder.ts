@@ -4,6 +4,7 @@ import {
     comparisonTrend,
     formatCatalogDate,
     formatCatalogDisplayDate,
+    formatNextExpectedDate,
     formatReferenceValue,
     latestRawDate,
     latestRow,
@@ -48,6 +49,7 @@ export function buildIndicatorsCatalog(
             trend: comparisonTrend(spec, value, referenceValue),
             fecha: date ? formatCatalogDate(date, spec.datePrecision) : item.fecha,
             dato: spec.formatValue(value),
+            proxima_fecha: formatNextExpectedDate(date, referenceDate, spec, null),
         };
     });
 }
@@ -76,5 +78,6 @@ export function buildIndicatorCatalogItem(
         trend: comparisonTrend(spec, value, referenceValue),
         fecha: date ? formatCatalogDisplayDate(date, spec, publicationDate) : item.fecha,
         dato: spec.formatValue(value),
+        proxima_fecha: formatNextExpectedDate(date, referenceDate, spec, publicationDate),
     };
 }

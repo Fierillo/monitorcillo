@@ -19,6 +19,7 @@ export async function getIndicatorsCatalog(): Promise<CatalogIndicatorRow[]> {
             category: String(row.category ?? ''),
             has_details: Boolean(row.has_details),
             source_url: row.source_url == null ? null : String(row.source_url),
+            proxima_fecha: row.proxima_fecha == null ? undefined : String(row.proxima_fecha),
         }));
     } catch (error) {
         console.error('[db] getIndicatorsCatalog failed', error);
@@ -27,10 +28,11 @@ export async function getIndicatorsCatalog(): Promise<CatalogIndicatorRow[]> {
 }
 
 export async function saveIndicatorsCatalog(data: CatalogIndicatorRow[]): Promise<void> {
+    await sql.query(`ALTER TABLE indicators_catalog ADD COLUMN IF NOT EXISTS proxima_fecha VARCHAR(20)`, []);
     for (const row of data) {
         const query = `
-            INSERT INTO indicators_catalog (id, indicador, referencia, dato, fecha, fuente, trend, category, has_details, source_url, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+            INSERT INTO indicators_catalog (id, indicador, referencia, dato, fecha, fuente, trend, category, has_details, source_url, proxima_fecha, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
             ON CONFLICT (id) DO UPDATE SET
                 indicador = EXCLUDED.indicador,
                 referencia = EXCLUDED.referencia,
@@ -41,9 +43,10 @@ export async function saveIndicatorsCatalog(data: CatalogIndicatorRow[]): Promis
                 category = EXCLUDED.category,
                 has_details = EXCLUDED.has_details,
                 source_url = EXCLUDED.source_url,
+                proxima_fecha = EXCLUDED.proxima_fecha,
                 updated_at = NOW()
         `;
-        await sql.query(query, [row.id, row.indicador, row.referencia, row.dato, row.fecha, row.fuente, row.trend, row.category, row.has_details, row.source_url]);
+        await sql.query(query, [row.id, row.indicador, row.referencia, row.dato, row.fecha, row.fuente, row.trend, row.category, row.has_details, row.source_url, row.proxima_fecha ?? null]);
     }
 }
 

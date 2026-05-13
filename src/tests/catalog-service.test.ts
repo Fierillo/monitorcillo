@@ -53,8 +53,8 @@ describe('buildCurrentIndicatorsCatalog', () => {
     });
 
     it('uses publication date metadata for monthly indicators', async () => {
-        await expectPublishedDate('emae', 'emae', 'emae_desestacionalizado', { iso_fecha: '2026-02-01', emae_desestacionalizado: 105.2 }, '2026-04-22', { fecha: '22 ABR 26', dato: '105,2' });
-        await expectPublishedDate('recaudacion', 'reca', 'pct_pbi', { iso_fecha: '2026-04-01', pctPbi: 2.2 }, '2026-05-04', { fecha: '4 MAY 26', dato: '2,2% del PBI real' });
+        await expectPublishedDate('emae', 'emae', 'emae_desestacionalizado', { iso_fecha: '2026-02-01', emae_desestacionalizado: 105.2 }, '2026-04-22', { fecha: '22 ABR 26', dato: '105,2', proxima_fecha: '22 MAY 26' });
+        await expectPublishedDate('recaudacion', 'reca', 'pct_pbi', { iso_fecha: '2026-04-01', pctPbi: 2.2 }, '2026-05-04', { fecha: '4 MAY 26', dato: '2,2% del PBI real', proxima_fecha: '4 JUN 26' });
     });
 
     it('uses publication date metadata and previous-month reference for poder adquisitivo', async () => {
@@ -73,21 +73,27 @@ describe('buildCurrentIndicatorsCatalog', () => {
             getRawRows: async () => { throw new Error('Full raw table should not be loaded'); },
         });
 
-        expect(result.find(row => row.id === 'poder-adquisitivo')).toMatchObject({ fecha: '17 ABR 26', referencia: 'PA blanco: 91,2', reference_description: 'Mes anterior', dato: 'PA blanco: 88,8', trend: 'down' });
+        expect(result.find(row => row.id === 'poder-adquisitivo')).toMatchObject({ fecha: '17 ABR 26', referencia: 'PA blanco: 91,2', reference_description: 'Mes anterior', dato: 'PA blanco: 88,8', trend: 'down', proxima_fecha: '17 MAY 26' });
+    });
+
+    it('uses publication date metadata for inflation', async () => {
+        await expectPublishedDate('inflacion', 'inflacion', 'ipc', { iso_fecha: '2026-03-01', ipc: 6.1 }, '2026-04-15', { fecha: '15 ABR 26', dato: '6,1%', reference_description: 'Mes anterior', trend: 'down', proxima_fecha: '15 MAY 26' }, ['ipc_equilibra', 'ipc_online', 'ipc_indec', 'ipc_nucleo_indec'], { iso_fecha: '2026-02-01', ipc: 5.5 });
     });
 });
 
-async function expectPublishedDate(id: string, type: IndicatorType, valueColumn: string, row: DataRow, publicationDate: string, expected: object) {
+async function expectPublishedDate(id: string, type: IndicatorType, valueColumn: string, row: DataRow, publicationDate: string, expected: object, expectedFallbackColumns?: string[], referenceRow?: DataRow) {
     const result = await buildCurrentIndicatorsCatalog({
         getCatalogRows: async () => [{ ...baseCatalogRow, id }],
             getLatestNormalizedRow: async (candidateType, candidateValueColumn, candidateFallbackColumns) => {
                 if (candidateType !== type) return null;
                 expect(candidateValueColumn).toBe(valueColumn);
-                expect(candidateFallbackColumns).toBeUndefined();
+                expect(candidateFallbackColumns ?? []).toEqual(expectedFallbackColumns ?? []);
                 return row;
             },
         getLatestRawDate: async () => String(row.iso_fecha ?? row.fecha ?? ''),
         getPublicationDate: async (candidateId) => candidateId === id ? publicationDate : null,
+        getNormalizedRowByDate: async (candidateType, date) => candidateType === type && referenceRow && date === (referenceRow.iso_fecha ?? referenceRow.fecha) ? referenceRow : null,
+        getRawRowByDate: async () => null,
         getNormalizedRows: async () => { throw new Error('Full normalized table should not be loaded'); },
         getRawRows: async () => { throw new Error('Full raw table should not be loaded'); },
     });

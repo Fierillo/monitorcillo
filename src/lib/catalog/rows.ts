@@ -61,6 +61,13 @@ export function comparisonTrend(spec: CatalogIndicatorSpec, value: number, refer
     return isBetter ? 'up' : 'down';
 }
 
+export function formatNextExpectedDate(date: string | null, referenceDate: string | null, spec: CatalogIndicatorSpec, publicationDate: string | null = null): string | undefined {
+    const baseDate = publicationDate ?? date ?? referenceDate;
+    if (!baseDate) return undefined;
+    const nextDate = spec.getNextExpectedDate(baseDate);
+    return isoToFecha(nextDate);
+}
+
 export function referenceRowForSpec(spec: CatalogIndicatorSpec, valueRow: DataRow, normalizedRows: DataRow[], rawRows: DataRow[]): DataRow | null {
     const valueDate = rowDate(valueRow);
     if (!valueDate) return null;
