@@ -4,12 +4,7 @@ import { toNullableNumber } from './numbers';
 
 type MonthlyPovertyRow = {
     pobreza_indec: number | null;
-    pobreza_utdt: number | null;
-    pobreza_utdt_lower: number | null;
-    pobreza_utdt_upper: number | null;
     pobreza_utdt_proyectada: number | null;
-    pobreza_utdt_proyectada_lower: number | null;
-    pobreza_utdt_proyectada_upper: number | null;
     preliminar: boolean;
 };
 
@@ -25,7 +20,7 @@ function monthRange(start: string, end: string): string[] {
 }
 
 function emptyMonthlyRow(): MonthlyPovertyRow {
-    return { pobreza_indec: null, pobreza_utdt: null, pobreza_utdt_lower: null, pobreza_utdt_upper: null, pobreza_utdt_proyectada: null, pobreza_utdt_proyectada_lower: null, pobreza_utdt_proyectada_upper: null, preliminar: false };
+    return { pobreza_indec: null, pobreza_utdt_proyectada: null, preliminar: false };
 }
 
 function setMonthlyValue(rowsByFecha: Map<string, MonthlyPovertyRow>, fecha: string, values: Partial<MonthlyPovertyRow>) {
@@ -40,53 +35,32 @@ export function normalizePobreza(rawData: PobrezaRawRow[]): PobrezaNormalizedRow
         .sort((a, b) => a.fecha.localeCompare(b.fecha))
         .filter(row => /^\d{4}-\d{2}-\d{2}$/.test(row.fecha));
 
+    // Expand INDEC semestral data to 6 months
+    // INDEC dates represent the end of semester (e.g., 2026-01-01 = semestre jul-dic 2025)
+    // We subtract 1 month to get the actual last month of the semester (e.g., 2025-12-01)
     for (const row of sortedRows) {
         const pobrezaIndec = toNullableNumber(row.pobreza_indec ?? null);
         if (pobrezaIndec == null) continue;
-        const start = addMonths(row.fecha, -6);
-        const end = addMonths(row.fecha, -1);
-        for (const fecha of monthRange(start, end)) setMonthlyValue(rowsByFecha, fecha, { pobreza_indec: pobrezaIndec, preliminar: false });
+        const semesterEnd = addMonths(row.fecha, -1);
+        const start = addMonths(semesterEnd, -5);
+        const end = semesterEnd;
+        for (const fecha of monthRange(start, end)) {
+            setMonthlyValue(rowsByFecha, fecha, { pobreza_indec: pobrezaIndec, preliminar: false });
+        }
     }
 
-    const lastOfficialMonth = Array.from(rowsByFecha.keys()).sort().at(-1) ?? null;
-
+    // Add UTDT nowcast only for months without INDEC data
     for (const row of sortedRows) {
-        const pobrezaUtdt = toNullableNumber(row.pobreza_utdt ?? null);
         const pobrezaUtdtProyectada = toNullableNumber(row.pobreza_utdt_proyectada ?? null);
-        if (pobrezaUtdt != null && row.pobreza_utdt_first_quarter == null && row.pobreza_utdt_second_quarter == null) {
-            setMonthlyValue(rowsByFecha, row.fecha, {
-                pobreza_utdt: pobrezaUtdt,
-                pobreza_utdt_lower: toNullableNumber(row.pobreza_utdt_lower ?? null),
-                pobreza_utdt_upper: toNullableNumber(row.pobreza_utdt_upper ?? null),
-            });
-            continue;
-        }
-        if (pobrezaUtdtProyectada != null) {
-            if (lastOfficialMonth && row.fecha <= lastOfficialMonth) continue;
-            setMonthlyValue(rowsByFecha, row.fecha, {
-                pobreza_utdt_proyectada: pobrezaUtdtProyectada,
-                pobreza_utdt_proyectada_lower: toNullableNumber(row.pobreza_utdt_proyectada_lower ?? null),
-                pobreza_utdt_proyectada_upper: toNullableNumber(row.pobreza_utdt_proyectada_upper ?? null),
-                preliminar: true,
-            });
-            continue;
-        }
-        if (pobrezaUtdt == null) continue;
+        if (pobrezaUtdtProyectada == null) continue;
 
-        const start = addMonths(row.fecha, -3);
-        const end = addMonths(row.fecha, 2);
-        const firstQuarterValue = toNullableNumber(row.pobreza_utdt_first_quarter ?? null) ?? pobrezaUtdt;
-        const secondQuarterValue = toNullableNumber(row.pobreza_utdt_second_quarter ?? null) ?? pobrezaUtdt;
-        for (const [index, fecha] of monthRange(start, end).entries()) {
-            if (lastOfficialMonth && fecha <= lastOfficialMonth) continue;
-            const monthlyPovertyUtdt = index < 3 ? firstQuarterValue : secondQuarterValue;
-            setMonthlyValue(rowsByFecha, fecha, {
-                pobreza_utdt_proyectada: monthlyPovertyUtdt,
-                pobreza_utdt_proyectada_lower: toNullableNumber(row.pobreza_utdt_lower ?? null),
-                pobreza_utdt_proyectada_upper: toNullableNumber(row.pobreza_utdt_upper ?? null),
-                preliminar: true,
-            });
-        }
+        // Skip if this month already has INDEC data
+        if (rowsByFecha.get(row.fecha)?.pobreza_indec != null) continue;
+
+        setMonthlyValue(rowsByFecha, row.fecha, {
+            pobreza_utdt_proyectada: pobrezaUtdtProyectada,
+            preliminar: true,
+        });
     }
 
     const normalizedRows: PobrezaNormalizedRow[] = [];
@@ -99,12 +73,7 @@ export function normalizePobreza(rawData: PobrezaRawRow[]): PobrezaNormalizedRow
             fecha: `${MONTHS_ES[date.getUTCMonth()]} ${String(date.getUTCFullYear()).slice(-2)}`,
             iso_fecha: fecha,
             pobreza_indec: row.pobreza_indec,
-            pobreza_utdt: row.pobreza_utdt,
-            pobreza_utdt_lower: row.pobreza_utdt_lower,
-            pobreza_utdt_upper: row.pobreza_utdt_upper,
             pobreza_utdt_proyectada: row.pobreza_utdt_proyectada,
-            pobreza_utdt_proyectada_lower: row.pobreza_utdt_proyectada_lower,
-            pobreza_utdt_proyectada_upper: row.pobreza_utdt_proyectada_upper,
             pobreza,
             preliminar: row.pobreza_indec == null && row.pobreza_utdt_proyectada != null,
         });
