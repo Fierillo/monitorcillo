@@ -140,17 +140,20 @@ function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZer
     const dataMin = Math.min(...values);
     const dataMax = Math.max(...values);
     const range = dataMax - dataMin;
-    const padding = includeZero ? 0 : Math.max(range * 0.05, 1);
-    let min = includeZero ? Math.min(0, dataMin) : dataMin - padding;
-    let max = includeZero ? Math.max(0, dataMax) : dataMax + padding;
+    const padding = range === 0 ? 1 : range * 0.05;
+    let min = dataMin - padding;
+    let max = dataMax + padding;
 
     const domain = axisId === 'left' ? props.leftAxisDomain : props.secondaryYAxis?.domain;
-    if (Array.isArray(domain)) {
-        if (typeof domain[0] === 'number') min = domain[0];
-        if (typeof domain[1] === 'number') max = domain[1];
+    if (Array.isArray(domain) && typeof domain[0] === 'number' && typeof domain[1] === 'number') {
+        min = domain[0];
+        max = domain[1];
+    } else if (includeZero) {
+        min = Math.min(0, min);
+        max = Math.max(0, max);
     }
 
-    const step = niceStep((max - min) / 12);
+    const step = niceStep((max - min) / 8);
     const start = Math.floor(min / step) * step;
     const end = Math.ceil(max / step) * step;
     const ticks: number[] = [];
@@ -159,6 +162,7 @@ function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZer
         ticks.push(Number(value.toPrecision(12)));
     }
 
+    if (ticks.length < 2) return [min, max];
     return includeZero && !ticks.includes(0) ? [...ticks, 0].sort((a, b) => a - b) : ticks;
 }
 

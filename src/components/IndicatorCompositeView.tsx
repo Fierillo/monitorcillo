@@ -195,9 +195,10 @@ export default function IndicatorCompositeView({
     const leftAxisDomain: ChartAxisDomain = useMemo(() => {
         if (Array.isArray(activeLeftYAxisDomain)) return activeLeftYAxisDomain;
 
+        const leftAreas = activeAreas.filter(area => (area.yAxisId ?? 'left') === 'left');
         const allValues: number[] = [];
         visibleData.forEach((row) => {
-            activeAreas.forEach(area => {
+            leftAreas.forEach(area => {
                 if (highlightedAreas.size > 0 && !highlightedAreas.has(area.legendKey || area.key)) return;
                 const val = row[area.key];
                 if (typeof val === 'number' && !Number.isNaN(val)) {
