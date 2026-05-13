@@ -5,8 +5,7 @@ import type { IndicatorPageProps } from '@/types';
 import IndicatorCompositeView from '@/components/IndicatorCompositeView';
 import { getIndicatorDetailConfig } from '@/lib/indicator-detail-configs';
 
-export const revalidate = 21600;
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 export default async function IndicatorDetailPage({ params }: IndicatorPageProps) {
     const resolvedParams = await params;

@@ -152,13 +152,10 @@ export default function IndicatorCompositeView({
 
     useEffect(() => {
         const max = Math.max(0, sortedData.length - 1);
-        setStartIndex(prevStart => {
-            const nextStart = Math.min(prevStart, max);
-            setEndIndex(prevEnd => {
-                const nextEnd = Math.min(prevEnd, max);
-                return Math.max(nextStart, nextEnd);
-            });
-            return nextStart;
+        setStartIndex(prevStart => Math.min(prevStart, max));
+        setEndIndex(prevEnd => {
+            const wasViewingEnd = prevEnd >= max - 5 || prevEnd >= Math.max(0, sortedData.length - 6);
+            return wasViewingEnd ? max : Math.min(prevEnd, max);
         });
     }, [sortedData.length]);
 
