@@ -17,6 +17,7 @@ export interface AreaConfig {
     fill?: boolean;
     strokeWidth?: number;
     legendFilled?: boolean;
+    connectNulls?: boolean;
 }
 
 export interface MethodologyItem {

@@ -247,9 +247,7 @@ export default function IndicatorCompositeView({
     }, [activeViewId]);
 
     const handleDownloadChart = useCallback(async () => {
-        const prevSelectedMonth = selectedMonth;
         try {
-            setSelectedMonth(null);
             setIsCapturing(true);
             await new Promise(resolve => setTimeout(resolve, 600));
 
@@ -274,9 +272,8 @@ export default function IndicatorCompositeView({
             console.error('Error al descargar el gráfico:', err);
         } finally {
             setIsCapturing(false);
-            setSelectedMonth(prevSelectedMonth);
         }
-    }, [isMobile, title, selectedMonth]);
+    }, [isMobile, title]);
 
     if (!sortedData || sortedData.length === 0) {
         return <div className="text-imperial-gold p-8 text-center font-bold">Cargando datos...</div>;

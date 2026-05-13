@@ -3,28 +3,49 @@
 import { Line } from 'recharts';
 import type { ChartDataRow, ChartLineProps } from '@/types/chart';
 
-function isIsolatedPoint(data: ChartDataRow[] | undefined, index: number, key: string): boolean {
+function hasValue(data: ChartDataRow[] | undefined, index: number, key: string): boolean {
     if (!data || index < 0 || index >= data.length) return false;
     const current = data[index][key];
-    if (current == null || (typeof current === 'number' && !Number.isFinite(current))) return false;
-    const prev = data[index - 1]?.[key];
-    const next = data[index + 1]?.[key];
+    return current != null && (typeof current !== 'number' || Number.isFinite(current));
+}
+
+function isIsolatedPoint(data: ChartDataRow[] | undefined, index: number, key: string): boolean {
+    if (!hasValue(data, index, key)) return false;
+    const prev = data![index - 1]?.[key];
+    const next = data![index + 1]?.[key];
     const hasPrev = prev != null && (typeof prev !== 'number' || Number.isFinite(prev));
     const hasNext = next != null && (typeof next !== 'number' || Number.isFinite(next));
     return !hasPrev || !hasNext;
 }
 
+function isValueChange(data: ChartDataRow[] | undefined, index: number, key: string): boolean {
+    if (!hasValue(data, index, key)) return false;
+    if (!data) return true;
+    const current = data[index][key];
+    const next = data[index + 1]?.[key];
+    const hasNext = next != null && (typeof next !== 'number' || Number.isFinite(next));
+    return !hasNext || current !== next;
+}
+
 export default function ChartLine({ areaConfig, isDimmed, data }: ChartLineProps) {
     const color = areaConfig.color;
+    const showAllDots = areaConfig.connectNulls;
+
     const dot = isDimmed ? false : (dotProps: { index?: number; cx?: number; cy?: number }) => {
         const index = dotProps.index ?? 0;
-        if (!isIsolatedPoint(data, index, areaConfig.key)) return null;
+        const isDataPoint = hasValue(data, index, areaConfig.key);
+        if (!isDataPoint) return null;
+        const isIsolated = isIsolatedPoint(data, index, areaConfig.key);
+        const isChange = isValueChange(data, index, areaConfig.key);
+        const isHighlighted = showAllDots ? isChange : isIsolated;
+        if (!isHighlighted) return null;
+
         return (
             <circle
                 cx={dotProps.cx}
                 cy={dotProps.cy}
-                r={4}
-                fill="#fff"
+                r={showAllDots ? 5 : 4}
+                fill={showAllDots ? color : '#fff'}
                 stroke={color}
                 strokeWidth={2}
             />
@@ -39,6 +60,7 @@ export default function ChartLine({ areaConfig, isDimmed, data }: ChartLineProps
             strokeWidth={areaConfig.strokeWidth ?? 3}
             strokeDasharray={areaConfig.dash ? areaConfig.dash.join(' ') : undefined}
             dot={dot}
+            connectNulls={areaConfig.connectNulls}
             isAnimationActive={!isDimmed}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
