@@ -46,7 +46,7 @@ Monitorcillo consolida indicadores económicos argentinos en una interfaz compac
 | App | Next.js 16, React 19, TypeScript |
 | UI | Tailwind CSS 4, Recharts, html-to-image |
 | Datos | Neon Serverless Postgres |
-| Sync | GitHub Actions, scripts Node con `tsx` |
+| Sync | GitHub Actions, scripts Node con `tsx`, `tesseract.js` (OCR) |
 | Calidad | ESLint, Vitest, typecheck estricto |
 | Deploy | Vercel |
 
