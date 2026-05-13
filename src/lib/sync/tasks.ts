@@ -10,7 +10,7 @@ import { fetchPoderAdquisitivoRawReport } from './poder-adquisitivo';
 import { fetchRecaudacionRawReport } from './recaudacion';
 import { ensureDeudaTables, fetchDeudaRaw } from './deuda';
 import { ensurePobrezaTables, fetchPobrezaRaw } from './pobreza';
-import { ensureInflacionTables, fetchInflacionRaw } from './inflacion';
+import { ensureInflacionTables, fetchInflacionRaw, fetchInflacionRawReport } from './inflacion';
 
 function normalizeEmisionRawRow(row: EmisionRawRow): EmisionRawRow {
     return {
@@ -128,9 +128,11 @@ export async function syncInflacion(): Promise<SyncResult> {
     await ensureInflacionTables();
     const existingData = (await getRawData(type)) ?? [];
     const existingFechas = new Set(existingData.map((row) => row.fecha));
-    const rawData = await fetchInflacionRaw();
+    const { rows: rawData, publishedAt } = await fetchInflacionRawReport();
     await replaceRawData(type, rawData);
-    await replaceNormalizedData(type, normalizeInflacion(rawData));
+    const normalized = normalizeInflacion(rawData);
+    await replaceNormalizedData(type, normalized);
+    if (publishedAt) await saveIndicatorPublication('inflacion', publishedAt, normalized.at(-1)?.iso_fecha ?? rawData.at(-1)?.fecha ?? null);
     return { appended: rawData.filter((row) => !existingFechas.has(row.fecha)).length, total: rawData.length };
 }
 

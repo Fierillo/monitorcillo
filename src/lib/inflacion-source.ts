@@ -11,8 +11,25 @@ const MONTHS_ES: Record<string, number> = {
     julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
 };
 
+type InflacionSourceReport = {
+    rows: InflacionRawRow[];
+    publishedAt: string | null;
+};
+
 function parseDecimal(value: string): number {
     return Number(value.replace(',', '.'));
+}
+
+function isoDateFromValue(value: string | undefined): string | null {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
+}
+
+function latestDate(a: string | null, b: string | null): string | null {
+    if (!a) return b;
+    if (!b) return a;
+    return a > b ? a : b;
 }
 
 export async function fetchIndecIpcRows(seriesId: string): Promise<{ fecha: string; valor: number }[]> {
@@ -89,15 +106,20 @@ function parseEquilibraPostHtml(html: string): number | null {
 }
 
 export async function fetchEquilibraIpcRows(): Promise<InflacionRawRow[]> {
+    return (await fetchEquilibraIpcReport()).rows;
+}
+
+async function fetchEquilibraIpcReport(): Promise<InflacionSourceReport> {
     try {
         const apiText = await fetchTextFromUrl('https://equilibra.ar/wp-json/wp/v2/posts?categories=19&per_page=100');
-        const posts = JSON.parse(apiText) as Array<{ title?: { rendered?: string }; link?: string }>;
+        const posts = JSON.parse(apiText) as Array<{ date?: string; title?: { rendered?: string }; link?: string }>;
         const mensualPosts = posts
             .filter(p => /mensual/i.test(p.title?.rendered ?? ''))
-            .map(p => ({ title: p.title?.rendered ?? '', link: p.link ?? '' }));
+            .map(p => ({ title: p.title?.rendered ?? '', link: p.link ?? '', publishedAt: isoDateFromValue(p.date) }));
 
         const rows: InflacionRawRow[] = [];
         const seenFechas = new Set<string>();
+        let publishedAt: string | null = null;
 
         const BATCH_SIZE = 5;
         for (let i = 0; i < mensualPosts.length; i += BATCH_SIZE) {
@@ -114,18 +136,20 @@ export async function fetchEquilibraIpcRows(): Promise<InflacionRawRow[]> {
                     if (ipc == null) return null;
 
                     seenFechas.add(fecha);
-                    return { fecha, ipc_equilibra: ipc };
+                    return { row: { fecha, ipc_equilibra: ipc }, publishedAt: post.publishedAt };
                 })
             );
-            for (const row of results) {
-                if (row) rows.push(row);
+            for (const result of results) {
+                if (!result) continue;
+                rows.push(result.row);
+                publishedAt = latestDate(publishedAt, result.publishedAt);
             }
         }
 
-        return rows.sort((a, b) => a.fecha.localeCompare(b.fecha));
+        return { rows: rows.sort((a, b) => a.fecha.localeCompare(b.fecha)), publishedAt };
     } catch (error) {
         console.error('[inflacion-source] Failed to fetch Equilibra:', error);
-        return [];
+        return { rows: [], publishedAt: null };
     }
 }
 
@@ -145,9 +169,14 @@ export function parseIpcOnlineRssItem(xml: string): InflacionRawRow | null {
 }
 
 export async function fetchIpcOnlineRows(): Promise<InflacionRawRow[]> {
+    return (await fetchIpcOnlineReport()).rows;
+}
+
+async function fetchIpcOnlineReport(): Promise<InflacionSourceReport> {
     try {
         const rows: InflacionRawRow[] = [];
         const seenFechas = new Set<string>();
+        let publishedAt: string | null = null;
 
         const pages = [IPC_ONLINE_FEED_URL, `${IPC_ONLINE_FEED_URL}?paged=2`, `${IPC_ONLINE_FEED_URL}?paged=3`, `${IPC_ONLINE_FEED_URL}?paged=4`, `${IPC_ONLINE_FEED_URL}?paged=5`, `${IPC_ONLINE_FEED_URL}?paged=6`, `${IPC_ONLINE_FEED_URL}?paged=7`, `${IPC_ONLINE_FEED_URL}?paged=8`, `${IPC_ONLINE_FEED_URL}?paged=9`, `${IPC_ONLINE_FEED_URL}?paged=10`];
         for (const url of pages) {
@@ -161,24 +190,29 @@ export async function fetchIpcOnlineRows(): Promise<InflacionRawRow[]> {
                 if (!row || seenFechas.has(row.fecha)) continue;
                 seenFechas.add(row.fecha);
                 rows.push(row);
+                publishedAt = latestDate(publishedAt, isoDateFromValue(item.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1]));
                 newItems++;
             }
             if (newItems === 0) break;
         }
 
-        return rows.sort((a, b) => a.fecha.localeCompare(b.fecha));
+        return { rows: rows.sort((a, b) => a.fecha.localeCompare(b.fecha)), publishedAt };
     } catch (error) {
         console.error('[inflacion-source] Failed to fetch IPC Online:', error);
-        return [];
+        return { rows: [], publishedAt: null };
     }
 }
 
 export async function fetchInflacionRaw(): Promise<InflacionRawRow[]> {
-    const [indecGeneral, indecNucleo, equilibraRows, onlineRows] = await Promise.all([
+    return (await fetchInflacionRawReport()).rows;
+}
+
+export async function fetchInflacionRawReport(): Promise<InflacionSourceReport> {
+    const [indecGeneral, indecNucleo, equilibraReport, onlineReport] = await Promise.all([
         fetchIndecIpcRows(INDEC_GENERAL_SERIES_ID),
         fetchIndecIpcRows(INDEC_NUCLEO_SERIES_ID),
-        fetchEquilibraIpcRows(),
-        fetchIpcOnlineRows(),
+        fetchEquilibraIpcReport(),
+        fetchIpcOnlineReport(),
     ]);
 
     const byFecha = new Map<string, InflacionRawRow>();
@@ -189,12 +223,15 @@ export async function fetchInflacionRaw(): Promise<InflacionRawRow[]> {
     for (const row of indecNucleo) {
         byFecha.set(row.fecha, { ...byFecha.get(row.fecha), fecha: row.fecha, ipc_indec_nucleo: row.valor });
     }
-    for (const row of equilibraRows) {
+    for (const row of equilibraReport.rows) {
         byFecha.set(row.fecha, { ...byFecha.get(row.fecha), ...row });
     }
-    for (const row of onlineRows) {
+    for (const row of onlineReport.rows) {
         byFecha.set(row.fecha, { ...byFecha.get(row.fecha), ...row });
     }
 
-    return Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    return {
+        rows: Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha)),
+        publishedAt: latestDate(equilibraReport.publishedAt, onlineReport.publishedAt),
+    };
 }
