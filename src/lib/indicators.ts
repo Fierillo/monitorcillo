@@ -19,6 +19,7 @@ export async function getIndicators(): Promise<Indicator[]> {
             hasDetails: row.has_details,
             sourceUrl: row.source_url,
             proximaFecha: row.proxima_fecha,
+            proximaFechaDescription: row.proxima_fecha_description,
         }));
     } catch {
         return [];

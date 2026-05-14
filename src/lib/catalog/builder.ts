@@ -4,10 +4,10 @@ import {
     comparisonTrend,
     formatCatalogDate,
     formatCatalogDisplayDate,
-    formatNextExpectedDate,
     formatReferenceValue,
     latestRawDate,
     latestRow,
+    nextExpectedCatalogEvent,
     referenceNumericValue,
     referenceRowForSpec,
     rowDate,
@@ -41,6 +41,7 @@ export function buildIndicatorsCatalog(
         const date = latestRawDate(rawRows, spec) ?? referenceDate;
         const referenceRow = referenceRowForSpec(spec, valueRow, normalizedRows, rawRows);
         const referenceValue = referenceNumericValue(spec, referenceRow);
+        const nextEvent = nextExpectedCatalogEvent(spec, valueRow, referenceDate, date, null, undefined, normalizedRows, rawRows);
 
         return {
             ...item,
@@ -49,7 +50,8 @@ export function buildIndicatorsCatalog(
             trend: comparisonTrend(spec, value, referenceValue),
             fecha: date ? formatCatalogDate(date, spec.datePrecision) : item.fecha,
             dato: spec.formatValue(value),
-            proxima_fecha: formatNextExpectedDate(date, referenceDate, spec, null),
+            proxima_fecha: nextEvent?.date,
+            proxima_fecha_description: nextEvent?.description ?? null,
         };
     });
 }
@@ -61,6 +63,9 @@ export function buildIndicatorCatalogItem(
     rawDate: string | null,
     publicationDate: string | null = null,
     referenceRow: DataRow | null = null,
+    normalizedRows: DataRow[] = [],
+    rawRows: DataRow[] = [],
+    sourcePublicationDates?: Record<string, string | null>,
 ): CatalogIndicatorRow {
     if (!valueRow) return { ...item };
 
@@ -70,6 +75,7 @@ export function buildIndicatorCatalogItem(
     const referenceDate = rowDate(valueRow);
     const date = rawDate ?? referenceDate;
     const referenceValue = referenceNumericValue(spec, referenceRow);
+    const nextEvent = nextExpectedCatalogEvent(spec, valueRow, referenceDate, date, publicationDate, sourcePublicationDates, normalizedRows, rawRows);
 
     return {
         ...item,
@@ -78,6 +84,7 @@ export function buildIndicatorCatalogItem(
         trend: comparisonTrend(spec, value, referenceValue),
         fecha: date ? formatCatalogDisplayDate(date, spec, publicationDate) : item.fecha,
         dato: spec.formatValue(value),
-        proxima_fecha: formatNextExpectedDate(date, referenceDate, spec, publicationDate),
+        proxima_fecha: nextEvent?.date,
+        proxima_fecha_description: nextEvent?.description ?? null,
     };
 }

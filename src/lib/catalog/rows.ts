@@ -68,6 +68,27 @@ export function formatNextExpectedDate(date: string | null, referenceDate: strin
     return isoToFecha(nextDate);
 }
 
+export function nextExpectedCatalogEvent(
+    spec: CatalogIndicatorSpec,
+    valueRow: DataRow,
+    referenceDate: string | null,
+    rawDate: string | null,
+    publicationDate: string | null,
+    sourcePublicationDates: Record<string, string | null> | undefined,
+    normalizedRows: DataRow[],
+    rawRows: DataRow[],
+): { date: string; description: string } | null {
+    if (!spec.getNextExpectedEvents) return null;
+
+    const today = new Date().toISOString().split('T')[0];
+    const events = spec.getNextExpectedEvents({ valueRow, referenceDate, rawDate, publicationDate, sourcePublicationDates, normalizedRows, rawRows, today })
+        .filter(event => /^\d{4}-\d{2}-\d{2}$/.test(event.date) && event.date > today)
+        .sort((a, b) => a.date.localeCompare(b.date) || (b.priority ?? 0) - (a.priority ?? 0));
+
+    const event = events[0];
+    return event ? { date: isoToFecha(event.date), description: event.label } : null;
+}
+
 export function referenceRowForSpec(spec: CatalogIndicatorSpec, valueRow: DataRow, normalizedRows: DataRow[], rawRows: DataRow[]): DataRow | null {
     const valueDate = rowDate(valueRow);
     if (!valueDate) return null;

@@ -3,6 +3,26 @@ import { buildCurrentIndicatorsCatalog } from '../lib/catalog-service';
 import type { DataRow, IndicatorType } from '@/types';
 import { baseCatalogRow } from './catalog-test-utils';
 
+const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
+
+function addMonthsFromDate(date: string, months: number): string {
+    const d = new Date(`${date}T12:00:00Z`);
+    d.setUTCMonth(d.getUTCMonth() + months);
+    return d.toISOString().split('T')[0];
+}
+
+function futureMonthly(baseDate: string): string {
+    const today = new Date().toISOString().split('T')[0];
+    let date = addMonthsFromDate(baseDate, 1);
+    while (date <= today) date = addMonthsFromDate(date, 1);
+    return date;
+}
+
+function formatDay(date: string): string {
+    const d = new Date(`${date}T12:00:00Z`);
+    return `${d.getUTCDate()} ${MONTHS_ES[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}`;
+}
+
 describe('buildCurrentIndicatorsCatalog', () => {
     it('refreshes persisted catalog references from indicator specs', async () => {
         const result = await buildCurrentIndicatorsCatalog({
@@ -53,8 +73,8 @@ describe('buildCurrentIndicatorsCatalog', () => {
     });
 
     it('uses publication date metadata for monthly indicators', async () => {
-        await expectPublishedDate('emae', 'emae', 'emae_desestacionalizado', { iso_fecha: '2026-02-01', emae_desestacionalizado: 105.2 }, '2026-04-22', { fecha: '22 ABR 26', dato: '105,2', proxima_fecha: '22 MAY 26' });
-        await expectPublishedDate('recaudacion', 'reca', 'pct_pbi', { iso_fecha: '2026-04-01', pctPbi: 2.2 }, '2026-05-04', { fecha: '4 MAY 26', dato: '2,2% del PBI real', proxima_fecha: '4 JUN 26' });
+        await expectPublishedDate('emae', 'emae', 'emae_desestacionalizado', { iso_fecha: '2026-02-01', emae_desestacionalizado: 105.2 }, '2026-04-22', { fecha: '22 ABR 26', dato: '105,2', proxima_fecha: formatDay(futureMonthly('2026-04-22')) });
+        await expectPublishedDate('recaudacion', 'reca', 'pct_pbi', { iso_fecha: '2026-04-01', pctPbi: 2.2 }, '2026-05-04', { fecha: '4 MAY 26', dato: '2,2% del PBI real', proxima_fecha: formatDay(futureMonthly('2026-05-04')) });
     });
 
     it('uses publication date metadata and previous-month reference for poder adquisitivo', async () => {
@@ -73,11 +93,55 @@ describe('buildCurrentIndicatorsCatalog', () => {
             getRawRows: async () => { throw new Error('Full raw table should not be loaded'); },
         });
 
-        expect(result.find(row => row.id === 'poder-adquisitivo')).toMatchObject({ fecha: '17 ABR 26', referencia: 'PA blanco: 91,2', reference_description: 'Mes anterior', dato: 'PA blanco: 88,8', trend: 'down', proxima_fecha: '17 MAY 26' });
+        expect(result.find(row => row.id === 'poder-adquisitivo')).toMatchObject({ fecha: '17 ABR 26', referencia: 'PA blanco: 91,2', reference_description: 'Mes anterior', dato: 'PA blanco: 88,8', trend: 'down', proxima_fecha: formatDay(futureMonthly('2026-04-17')) });
     });
 
     it('uses publication date metadata for inflation', async () => {
-        await expectPublishedDate('inflacion', 'inflacion', 'ipc', { iso_fecha: '2026-03-01', ipc: 6.1 }, '2026-04-15', { fecha: '15 ABR 26', dato: '6,1%', reference_description: 'Mes anterior', trend: 'down', proxima_fecha: '15 MAY 26' }, ['ipc_equilibra', 'ipc_online', 'ipc_indec', 'ipc_nucleo_indec'], { iso_fecha: '2026-02-01', ipc: 5.5 });
+        await expectPublishedDate('inflacion', 'inflacion', 'ipc', { iso_fecha: '2026-03-01', ipc: 6.1 }, '2026-04-15', { fecha: '15 ABR 26', dato: '6,1%', reference_description: 'Mes anterior', trend: 'down', proxima_fecha: formatDay(futureMonthly('2026-04-15')) }, ['ipc_equilibra', 'ipc_online', 'ipc_indec', 'ipc_nucleo_indec'], { iso_fecha: '2026-02-01', ipc: 5.5 });
+    });
+
+    it('uses INDEC publication date and nearest inflation source for next date', async () => {
+        const result = await buildCurrentIndicatorsCatalog({
+            getCatalogRows: async () => [{ ...baseCatalogRow, id: 'inflacion' }],
+            getLatestNormalizedRow: async (type) => type === 'inflacion' ? { iso_fecha: '2026-04-01', ipc: 2.6 } : null,
+            getLatestRawDate: async () => '2026-04-01',
+            getPublicationDate: async (id) => id === 'inflacion' ? '2026-05-14' : null,
+            getPublicationDates: async () => ({
+                'inflacion-indec': '2026-05-14',
+                'inflacion-equilibra': '2026-05-10',
+                'inflacion-ipc-online': '2026-05-03',
+            }),
+            getNormalizedRowByDate: async (type, date) => type === 'inflacion' && date === '2026-03-01' ? { iso_fecha: '2026-03-01', ipc: 3.4 } : null,
+            getRawRowByDate: async () => null,
+            getNormalizedRows: async () => [],
+            getRawRows: async () => [{ fecha: '2026-04-01', ipc_indec_general: 1, ipc_equilibra: 1, ipc_online: 1 }],
+        });
+
+        expect(result.find(row => row.id === 'inflacion')).toMatchObject({
+            fecha: '14 MAY 26',
+            proxima_fecha: formatDay(futureMonthly('2026-05-03')),
+            proxima_fecha_description: 'IPC Online',
+        });
+    });
+
+    it('uses UTDT publication date and nowcast source for poverty', async () => {
+        const result = await buildCurrentIndicatorsCatalog({
+            getCatalogRows: async () => [{ ...baseCatalogRow, id: 'pobreza' }],
+            getLatestNormalizedRow: async (type) => type === 'pobreza' ? { iso_fecha: '2026-03-01', pobreza_utdt: 29 } : null,
+            getLatestRawDate: async () => '2026-03-01',
+            getPublicationDate: async (id) => id === 'pobreza' ? '2026-05-14' : null,
+            getPublicationDates: async () => ({ 'pobreza-utdt': '2026-05-14' }),
+            getNormalizedRowByDate: async (type, date) => type === 'pobreza' && date === '2025-03-01' ? { iso_fecha: '2025-03-01', pobreza_indec: 38.1 } : null,
+            getRawRowByDate: async () => null,
+            getNormalizedRows: async () => [],
+            getRawRows: async () => [{ fecha: '2026-03-01', pobreza_utdt: 29 }, { fecha: '2026-01-01', pobreza_indec: 28.2 }],
+        });
+
+        expect(result.find(row => row.id === 'pobreza')).toMatchObject({
+            fecha: '14 MAY 26',
+            proxima_fecha: formatDay(futureMonthly('2026-05-14')),
+            proxima_fecha_description: 'Nowcast UTDT',
+        });
     });
 });
 

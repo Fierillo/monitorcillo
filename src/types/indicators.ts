@@ -15,6 +15,7 @@ export type Indicator = {
     hasDetails?: boolean;
     sourceUrl?: string | null;
     proximaFecha?: string;
+    proximaFechaDescription?: string | null;
 };
 
 export type CatalogIndicatorRow = {
@@ -30,4 +31,5 @@ export type CatalogIndicatorRow = {
     has_details: boolean;
     source_url: string | null;
     proxima_fecha?: string;
+    proxima_fecha_description?: string | null;
 };
