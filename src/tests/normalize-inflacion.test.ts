@@ -38,6 +38,17 @@ describe('normalizeInflacion', () => {
         expect(normalized[1].ipc).toBeCloseTo(3, 2);
     });
 
+    it('keeps using existing normalized INDEC columns for completed official indices', () => {
+        const raw = [
+            { fecha: '2026-03-01', ipc_indec_general: 100, ipc_indec_nucleo: 100 },
+            { fecha: '2026-04-01', ipc_indec_general: 102.6, ipc_indec_nucleo: 102.3, ipc_equilibra: 2.4 },
+        ];
+        const normalized = normalizeInflacion(raw);
+        expect(normalized[1].ipc_indec).toBe(2.6);
+        expect(normalized[1].ipc_nucleo_indec).toBe(2.3);
+        expect(normalized[1].ipc).toBe(2.6);
+    });
+
     it('falls back to equilibra then online for principal ipc', () => {
         const raw = [
             { fecha: '2026-02-01', ipc_online: 1.8 },

@@ -185,16 +185,14 @@ export type DeudaNormalizedRow = {
 export type PobrezaRawRow = {
     fecha: string;
     pobreza_indec?: NumericValue;
-    pobreza_utdt_proyectada?: NumericValue;
+    pobreza_utdt?: NumericValue;
 };
 
 export type PobrezaNormalizedRow = {
     fecha: string;
     iso_fecha: string;
     pobreza_indec: number | null;
-    pobreza_utdt_proyectada: number | null;
-    pobreza: number | null;
-    preliminar: boolean;
+    pobreza_utdt: number | null;
 };
 
 export type InflacionRawRow = {

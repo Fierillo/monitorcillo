@@ -9,7 +9,7 @@ import { ensureEmaeSectorTables, fetchEmaeRaw } from './emae';
 import { fetchPoderAdquisitivoRawReport } from './poder-adquisitivo';
 import { fetchRecaudacionRawReport } from './recaudacion';
 import { ensureDeudaTables, fetchDeudaRaw } from './deuda';
-import { ensurePobrezaTables, fetchPobrezaRaw } from './pobreza';
+import { ensurePobrezaTables, fetchPobrezaRawReport } from './pobreza';
 import { ensureInflacionTables, fetchInflacionRaw, fetchInflacionRawReport } from './inflacion';
 
 function normalizeEmisionRawRow(row: EmisionRawRow): EmisionRawRow {
@@ -117,9 +117,11 @@ export async function syncPobreza(): Promise<SyncResult> {
     await ensurePobrezaTables();
     const existingData = (await getRawData(type)) ?? [];
     const existingFechas = new Set(existingData.map((row) => row.fecha));
-    const rawData = await fetchPobrezaRaw();
+    const { rows: rawData, publishedAt, sourcePublications } = await fetchPobrezaRawReport();
     await replaceRawData(type, rawData);
     await replaceNormalizedData(type, normalizePobreza(rawData));
+    if (publishedAt) await saveIndicatorPublication('pobreza', publishedAt, rawData.at(-1)?.fecha ?? null);
+    await Promise.all((sourcePublications ?? []).map(source => saveIndicatorPublication(source.id, source.publishedAt, source.periodDate)));
     return { appended: rawData.filter((row) => !existingFechas.has(row.fecha)).length, total: rawData.length };
 }
 
@@ -128,11 +130,12 @@ export async function syncInflacion(): Promise<SyncResult> {
     await ensureInflacionTables();
     const existingData = (await getRawData(type)) ?? [];
     const existingFechas = new Set(existingData.map((row) => row.fecha));
-    const { rows: rawData, publishedAt } = await fetchInflacionRawReport();
+    const { rows: rawData, publishedAt, sourcePublications } = await fetchInflacionRawReport();
     await replaceRawData(type, rawData);
     const normalized = normalizeInflacion(rawData);
     await replaceNormalizedData(type, normalized);
     if (publishedAt) await saveIndicatorPublication('inflacion', publishedAt, normalized.at(-1)?.iso_fecha ?? rawData.at(-1)?.fecha ?? null);
+    await Promise.all((sourcePublications ?? []).map(source => saveIndicatorPublication(source.id, source.publishedAt, source.periodDate)));
     return { appended: rawData.filter((row) => !existingFechas.has(row.fecha)).length, total: rawData.length };
 }
 

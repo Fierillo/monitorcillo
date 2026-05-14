@@ -1,8 +1,10 @@
 import type { InflacionRawRow } from '@/types';
+import * as XLSX from 'xlsx';
 import { fetchFromUrl, fetchTextFromUrl } from './sync/http-client';
 
 const INDEC_GENERAL_SERIES_ID = '145.3_INGNACNAL_DICI_M_15';
 const INDEC_NUCLEO_SERIES_ID = '148.3_INUCLEONAL_DICI_M_19';
+const INDEC_IPC_WORKBOOK_BASE_URL = 'https://www.indec.gob.ar/ftp/cuadros/economia';
 const EQUILIBRA_FEED_URL = 'https://equilibra.ar/feed/?cat=19';
 const IPC_ONLINE_FEED_URL = 'https://ipconlinebb.wordpress.com/feed/';
 
@@ -11,13 +13,45 @@ const MONTHS_ES: Record<string, number> = {
     julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
 };
 
+const MONTHS_XLS: Record<string, number> = {
+    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+    jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+    ene: 1, abr: 4, ago: 8, dic: 12,
+};
+
 type InflacionSourceReport = {
     rows: InflacionRawRow[];
+    publishedAt: string | null;
+    sourcePublications?: Array<{ id: string; publishedAt: string; periodDate: string | null }>;
+};
+
+type IndecIpcVariationRow = {
+    fecha: string;
+    ipc_indec: number | null;
+    ipc_nucleo_indec: number | null;
+};
+
+type IndecIpcWorkbookReport = {
+    rows: IndecIpcVariationRow[];
     publishedAt: string | null;
 };
 
 function parseDecimal(value: string): number {
     return Number(value.replace(',', '.'));
+}
+
+function parseOptionalDecimal(value: unknown): number | null {
+    if (value == null || value === '') return null;
+    const parsed = Number(String(value).replace('%', '').replace(',', '.'));
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseWorkbookMonth(value: unknown): string | null {
+    const match = String(value ?? '').trim().match(/^([A-Za-zÁÉÍÓÚáéíóú]{3})-(\d{2})$/);
+    if (!match) return null;
+    const month = MONTHS_XLS[match[1].toLowerCase()];
+    if (!month) return null;
+    return `20${match[2]}-${String(month).padStart(2, '0')}-01`;
 }
 
 function isoDateFromValue(value: string | undefined): string | null {
@@ -39,6 +73,94 @@ export async function fetchIndecIpcRows(seriesId: string): Promise<{ fecha: stri
         .filter((row): row is [string, number] => typeof row[0] === 'string' && row[1] != null)
         .map(row => ({ fecha: row[0], valor: Number(row[1]) }))
         .sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+function latestIndecWorkbookUrls(): string[] {
+    const date = new Date();
+    const urls: string[] = [];
+    for (let offset = 0; offset < 12; offset++) {
+        const candidate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - offset, 1));
+        const month = String(candidate.getUTCMonth() + 1).padStart(2, '0');
+        const year = String(candidate.getUTCFullYear()).slice(-2);
+        urls.push(`${INDEC_IPC_WORKBOOK_BASE_URL}/sh_ipc_${month}_${year}.xls`);
+    }
+    return urls;
+}
+
+export function parseIndecIpcWorkbook(buffer: Buffer): IndecIpcVariationRow[] {
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames.find(name => /variaci[oó]n mensual IPC nacional/i.test(name));
+    if (!sheetName) return [];
+
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: null }) as unknown[][];
+    const headerIndex = rows.findIndex(row => /^total nacional$/i.test(String(row[0] ?? '').trim()));
+    if (headerIndex < 0) return [];
+
+    const general = rows.slice(headerIndex + 1).find(row => /^nivel general$/i.test(String(row[0] ?? '').trim()));
+    const nucleo = rows.slice(headerIndex + 1).find(row => /^n[uú]cleo$/i.test(String(row[0] ?? '').trim()));
+    if (!general || !nucleo) return [];
+
+    return rows[headerIndex]
+        .slice(1)
+        .map((value, index): IndecIpcVariationRow | null => {
+            const fecha = parseWorkbookMonth(value);
+            if (!fecha) return null;
+            const ipcIndecVariacion = parseOptionalDecimal(general[index + 1]);
+            const ipcNucleoIndecVariacion = parseOptionalDecimal(nucleo[index + 1]);
+            if (ipcIndecVariacion == null && ipcNucleoIndecVariacion == null) return null;
+            return {
+                fecha,
+                ipc_indec: ipcIndecVariacion,
+                ipc_nucleo_indec: ipcNucleoIndecVariacion,
+            };
+        })
+        .filter((row): row is IndecIpcVariationRow => row !== null);
+}
+
+function isoDateFromHttpDate(value: string | null): string | null {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
+}
+
+async function fetchIndecIpcWorkbookReport(): Promise<IndecIpcWorkbookReport> {
+    for (const url of latestIndecWorkbookUrls()) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) continue;
+            const rows = parseIndecIpcWorkbook(Buffer.from(await response.arrayBuffer()));
+            return { rows, publishedAt: isoDateFromHttpDate(response.headers.get('last-modified')) };
+        } catch {
+            continue;
+        }
+    }
+    return { rows: [], publishedAt: null };
+}
+
+function completeIndecIndexRows(byFecha: Map<string, InflacionRawRow>, variations: IndecIpcVariationRow[]): void {
+    for (const row of variations.sort((a, b) => a.fecha.localeCompare(b.fecha))) {
+        const prevFecha = new Date(`${row.fecha}T00:00:00Z`);
+        prevFecha.setUTCMonth(prevFecha.getUTCMonth() - 1);
+        const previous = byFecha.get(prevFecha.toISOString().split('T')[0]);
+        const current = byFecha.get(row.fecha) ?? { fecha: row.fecha };
+
+        const ipcIndecGeneral = current.ipc_indec_general ?? (
+            previous?.ipc_indec_general != null && row.ipc_indec != null
+                ? Number(previous.ipc_indec_general) * (1 + row.ipc_indec / 100)
+                : undefined
+        );
+        const ipcIndecNucleo = current.ipc_indec_nucleo ?? (
+            previous?.ipc_indec_nucleo != null && row.ipc_nucleo_indec != null
+                ? Number(previous.ipc_indec_nucleo) * (1 + row.ipc_nucleo_indec / 100)
+                : undefined
+        );
+
+        byFecha.set(row.fecha, {
+            ...current,
+            ipc_indec_general: ipcIndecGeneral,
+            ipc_indec_nucleo: ipcIndecNucleo,
+        });
+    }
 }
 
 function extractIpcFromText(text: string): number | null {
@@ -208,9 +330,10 @@ export async function fetchInflacionRaw(): Promise<InflacionRawRow[]> {
 }
 
 export async function fetchInflacionRawReport(): Promise<InflacionSourceReport> {
-    const [indecGeneral, indecNucleo, equilibraReport, onlineReport] = await Promise.all([
+    const [indecGeneral, indecNucleo, indecWorkbookReport, equilibraReport, onlineReport] = await Promise.all([
         fetchIndecIpcRows(INDEC_GENERAL_SERIES_ID),
         fetchIndecIpcRows(INDEC_NUCLEO_SERIES_ID),
+        fetchIndecIpcWorkbookReport(),
         fetchEquilibraIpcReport(),
         fetchIpcOnlineReport(),
     ]);
@@ -223,6 +346,7 @@ export async function fetchInflacionRawReport(): Promise<InflacionSourceReport> 
     for (const row of indecNucleo) {
         byFecha.set(row.fecha, { ...byFecha.get(row.fecha), fecha: row.fecha, ipc_indec_nucleo: row.valor });
     }
+    completeIndecIndexRows(byFecha, indecWorkbookReport.rows);
     for (const row of equilibraReport.rows) {
         byFecha.set(row.fecha, { ...byFecha.get(row.fecha), ...row });
     }
@@ -232,6 +356,11 @@ export async function fetchInflacionRawReport(): Promise<InflacionSourceReport> 
 
     return {
         rows: Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha)),
-        publishedAt: latestDate(equilibraReport.publishedAt, onlineReport.publishedAt),
+        publishedAt: latestDate(indecWorkbookReport.publishedAt, latestDate(equilibraReport.publishedAt, onlineReport.publishedAt)),
+        sourcePublications: [
+            { id: 'inflacion-indec', publishedAt: indecWorkbookReport.publishedAt, periodDate: indecWorkbookReport.rows.at(-1)?.fecha ?? null },
+            { id: 'inflacion-equilibra', publishedAt: equilibraReport.publishedAt, periodDate: equilibraReport.rows.at(-1)?.fecha ?? null },
+            { id: 'inflacion-ipc-online', publishedAt: onlineReport.publishedAt, periodDate: onlineReport.rows.at(-1)?.fecha ?? null },
+        ].filter((source): source is { id: string; publishedAt: string; periodDate: string | null } => source.publishedAt !== null),
     };
 }

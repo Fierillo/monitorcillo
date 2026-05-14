@@ -151,7 +151,7 @@ const areas: AreaConfig[] = [
 async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {
     const areas: AreaConfig[] = [
         { key: 'pobreza_indec', name: 'Pobreza INDEC', color: '#FFD700', type: 'line', strokeWidth: 2, connectNulls: true },
-        { key: 'pobreza_utdt_proyectada', name: 'Nowcast UTDT', color: '#FF4D4D', type: 'line', dash: [4, 4], strokeWidth: 2 },
+        { key: 'pobreza_utdt', name: 'Nowcast UTDT', color: '#FF4D4D', type: 'line', dash: [4, 4], strokeWidth: 2 },
     ];
     const methodology = [
         { title: 'INDEC', description: 'Serie oficial semestral de población con ingresos debajo de la línea de pobreza, total EPH continua. La línea amarilla conecta los datos oficiales; los puntos marcan el mes exacto de publicación.' },

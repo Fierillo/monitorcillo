@@ -1,5 +1,37 @@
+import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
-import { parseEquilibraRssItem, parseIpcOnlineRssItem } from '../lib/inflacion-source';
+import { parseEquilibraRssItem, parseIndecIpcWorkbook, parseIpcOnlineRssItem } from '../lib/inflacion-source';
+
+function createWorkbook(rows: unknown[][]): Buffer {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), 'Variación mensual IPC Nacional');
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+}
+
+describe('parseIndecIpcWorkbook', () => {
+    it('extracts national monthly general and core IPC variations', () => {
+        const result = parseIndecIpcWorkbook(createWorkbook([
+            [],
+            [],
+            [],
+            [],
+            [],
+            ['Total nacional', 'Mar-26', 'Apr-26'],
+            [],
+            ['Nivel general y divisiones COICOP'],
+            [],
+            ['Nivel general', '3.4', '2.6'],
+            [],
+            ['Núcleo', '3.2', '2.3'],
+        ]));
+
+        expect(result).toContainEqual({
+            fecha: '2026-04-01',
+            ipc_indec: 2.6,
+            ipc_nucleo_indec: 2.3,
+        });
+    });
+});
 
 describe('parseEquilibraRssItem', () => {
     it('extracts IPC Nacional from RSS content', () => {

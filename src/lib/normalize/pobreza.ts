@@ -4,8 +4,7 @@ import { toNullableNumber } from './numbers';
 
 type MonthlyPovertyRow = {
     pobreza_indec: number | null;
-    pobreza_utdt_proyectada: number | null;
-    preliminar: boolean;
+    pobreza_utdt: number | null;
 };
 
 function addMonths(fecha: string, offset: number): string {
@@ -20,7 +19,7 @@ function monthRange(start: string, end: string): string[] {
 }
 
 function emptyMonthlyRow(): MonthlyPovertyRow {
-    return { pobreza_indec: null, pobreza_utdt_proyectada: null, preliminar: false };
+    return { pobreza_indec: null, pobreza_utdt: null };
 }
 
 function setMonthlyValue(rowsByFecha: Map<string, MonthlyPovertyRow>, fecha: string, values: Partial<MonthlyPovertyRow>) {
@@ -45,37 +44,31 @@ export function normalizePobreza(rawData: PobrezaRawRow[]): PobrezaNormalizedRow
         const start = addMonths(semesterEnd, -5);
         const end = semesterEnd;
         for (const fecha of monthRange(start, end)) {
-            setMonthlyValue(rowsByFecha, fecha, { pobreza_indec: pobrezaIndec, preliminar: false });
+            setMonthlyValue(rowsByFecha, fecha, { pobreza_indec: pobrezaIndec });
         }
     }
 
-    // Add UTDT nowcast only for months without INDEC data
+    // Add UTDT nowcast as its own series, including overlap with INDEC.
     for (const row of sortedRows) {
-        const pobrezaUtdtProyectada = toNullableNumber(row.pobreza_utdt_proyectada ?? null);
-        if (pobrezaUtdtProyectada == null) continue;
-
-        // Skip if this month already has INDEC data
-        if (rowsByFecha.get(row.fecha)?.pobreza_indec != null) continue;
+        const pobrezaUtdt = toNullableNumber(row.pobreza_utdt ?? null);
+        if (pobrezaUtdt == null) continue;
 
         setMonthlyValue(rowsByFecha, row.fecha, {
-            pobreza_utdt_proyectada: pobrezaUtdtProyectada,
-            preliminar: true,
+            pobreza_utdt: pobrezaUtdt,
         });
     }
 
     const normalizedRows: PobrezaNormalizedRow[] = [];
     for (const [fecha, row] of Array.from(rowsByFecha.entries()).sort(([a], [b]) => a.localeCompare(b))) {
         const date = new Date(`${fecha}T00:00:00Z`);
-        const pobreza = row.pobreza_indec ?? row.pobreza_utdt_proyectada;
-        if (pobreza == null || Number.isNaN(date.getTime())) continue;
+        if (row.pobreza_indec == null && row.pobreza_utdt == null) continue;
+        if (Number.isNaN(date.getTime())) continue;
 
         normalizedRows.push({
             fecha: `${MONTHS_ES[date.getUTCMonth()]} ${String(date.getUTCFullYear()).slice(-2)}`,
             iso_fecha: fecha,
             pobreza_indec: row.pobreza_indec,
-            pobreza_utdt_proyectada: row.pobreza_utdt_proyectada,
-            pobreza,
-            preliminar: row.pobreza_indec == null && row.pobreza_utdt_proyectada != null,
+            pobreza_utdt: row.pobreza_utdt,
         });
     }
 
