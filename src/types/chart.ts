@@ -142,6 +142,7 @@ export type CustomLegendProps = {
     areas: AreaConfig[];
     highlightedAreas: Set<string>;
     onToggleHighlight: (key: string) => void;
+    compact?: boolean;
 };
 
 export type MethodologySectionProps = {

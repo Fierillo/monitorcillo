@@ -45,9 +45,9 @@ type ChartRenderProps = Omit<Props, 'captureRef' | 'chartContainerRef'>;
 
 export default function CompositeChartCard({ captureRef, chartContainerRef, ...chartProps }: Props) {
     const renderProps = chartProps.forceDesktopLayout
-        ? { ...chartProps, isMobile: false, chartSize: { width: 1260, height: 780 } }
+        ? { ...chartProps, isMobile: false, chartSize: { width: 1240, height: 780 } }
         : chartProps;
-    const captureStyle = chartProps.forceDesktopLayout ? { outline: 'none', width: 1400, padding: 16 } : { outline: 'none', padding: chartProps.isCapturing ? 12 : 0 };
+    const captureStyle = chartProps.forceDesktopLayout ? { outline: 'none', width: '100%', padding: 16, boxSizing: 'border-box' as const } : { outline: 'none', padding: 0, flex: chartProps.isCapturing ? '0 0 auto' : undefined };
 
     return (
         <main className={chartProps.forceDesktopLayout ? 'w-[1400px] max-w-none' : 'w-full sm:w-[96%] max-w-[1800px]'}>
@@ -56,7 +56,7 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
                     {renderProps.isCapturing ? <ExportHeader title={renderProps.title} subtitle={renderProps.subtitle} /> : null}
                     <ChartHeader onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} viewSelector={renderProps.viewSelector} />
                     <ChartCanvas {...renderProps} chartContainerRef={chartContainerRef} />
-                    <CustomLegend areas={renderProps.areas} highlightedAreas={renderProps.highlightedAreas} onToggleHighlight={renderProps.onToggleHighlight} />
+                    <CustomLegend areas={renderProps.areas} highlightedAreas={renderProps.highlightedAreas} onToggleHighlight={renderProps.onToggleHighlight} compact={renderProps.isCapturing} />
                     {renderProps.timeRangeSlider ? <div className="no-capture my-2">{renderProps.timeRangeSlider}</div> : null}
                     <MethodologySection methodology={renderProps.methodology} forceOpen={renderProps.isCapturing} />
                     {renderProps.isCapturing ? <ExportFooter /> : null}
@@ -71,7 +71,7 @@ function ExportHeader({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 function ExportFooter() {
-    return <div className="mt-3 border-t border-imperial-gold/40 pt-3 text-center text-xs font-bold uppercase tracking-widest text-imperial-cyan"><span className="text-imperial-gold">Monitorcillo</span> fue hecho con amor por <span className="text-imperial-gold">Fierillo</span></div>;
+    return <div className="mt-0.5 border-t border-imperial-gold/40 pt-1 text-center text-[3px] font-bold uppercase tracking-wider text-imperial-cyan"><span className="text-imperial-gold">Monitorcillo</span> fue hecho con amor por <span className="text-imperial-gold">Fierillo</span></div>;
 }
 
 function ChartHeader({ onDownloadChart, isCapturing, viewSelector }: { onDownloadChart: () => void; isCapturing: boolean; viewSelector?: ReactNode }) {
@@ -91,7 +91,7 @@ function ChartHeader({ onDownloadChart, isCapturing, viewSelector }: { onDownloa
 
 function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chartContainerRef: React.RefObject<HTMLDivElement | null> }) {
     const captureCanvasStyle = props.forceDesktopLayout ? { outline: 'none', height: 780 } : { outline: 'none' };
-    const captureChartStyle = props.forceDesktopLayout ? { outline: 'none', width: 1260, height: 780 } : { outline: 'none' };
+    const captureChartStyle = props.forceDesktopLayout ? { outline: 'none', width: 1240, height: 780 } : { outline: 'none' };
 
     return (
         <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? 'min-h-[780px]' : 'min-h-[300px] sm:min-h-[500px]'} overflow-hidden`} style={captureCanvasStyle}>
@@ -106,7 +106,7 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
 }
 
 function AxisLabel({ label, color, right = false }: { label: string; color?: string; right?: boolean }) {
-    return <div className="flex w-12 shrink-0 items-center justify-center"><div className={`${right ? 'rotate-90' : '-rotate-90'} whitespace-nowrap ${color ? '' : 'text-imperial-gold'} font-bold text-xs uppercase tracking-widest`} style={{ color }}>{label}</div></div>;
+    return <div className="flex w-5 shrink-0 items-center justify-center"><div className={`${right ? 'rotate-90' : '-rotate-90'} whitespace-nowrap ${color ? '' : 'text-imperial-gold'} font-bold text-xs uppercase tracking-widest`} style={{ color }}>{label}</div></div>;
 }
 
 function ResponsiveComposedChart(props: ChartRenderProps) {
@@ -116,8 +116,12 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
     const leftDomain = [leftTicks[0], leftTicks.at(-1) ?? 0];
     const rightDomain = [rightTicks[0], rightTicks.at(-1) ?? 0];
 
+    const yAxisWidth = props.isMobile ? 0 : (props.valueFormat === 'millions' ? 76 : 52);
+    const leftMargin = props.isMobile ? 5 : yAxisWidth + -50;
+    const rightMargin = props.isMobile ? 5 : (props.secondaryYAxis ? 15 : 10);
+
     return (
-        <ComposedChart width={props.chartSize.width} height={props.chartSize.height} data={props.visibleData} margin={{ top: 5, right: props.isMobile ? 5 : 8, bottom: 5, left: props.isMobile ? 5 : 8 }} barCategoryGap="0%" stackOffset="sign" style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }} onClick={(e: ChartClickState | null) => { if (!e?.activePayload?.length || !e.activeTooltipIndex) props.onSelectMonth(null); }}>
+        <ComposedChart width={props.chartSize.width} height={props.chartSize.height} data={props.visibleData} margin={{ top: 5, right: rightMargin, bottom: 5, left: leftMargin }} barCategoryGap="0%" stackOffset="sign" style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }} onClick={(e: ChartClickState | null) => { if (!e?.activePayload?.length || !e.activeTooltipIndex) props.onSelectMonth(null); }}>
             <CartesianGrid vertical={false} horizontal stroke="#ffffff66" strokeWidth={0.75} />
             <XAxis dataKey={props.xAxisKey} stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)} hide={props.isMobile} />
             <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />

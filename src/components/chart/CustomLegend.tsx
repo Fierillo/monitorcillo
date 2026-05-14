@@ -2,7 +2,7 @@
 
 import type { CustomLegendProps } from '@/types/chart';
 
-export default function CustomLegend({ areas, highlightedAreas, onToggleHighlight }: CustomLegendProps) {
+export default function CustomLegend({ areas, highlightedAreas, onToggleHighlight, compact = false }: CustomLegendProps) {
     const legendAreas = areas.filter((area, index) => {
         if (area.hideInLegend) return false;
         const toggleKey = area.legendKey || area.key;
@@ -12,7 +12,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
     const hasHighlights = highlightedAreas.size > 0;
 
     return (
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px 24px', paddingTop: '10px', paddingBottom: '10px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: compact ? '4px 20px' : '8px 24px', paddingTop: compact ? '4px' : '10px', paddingBottom: compact ? '4px' : '10px' }}>
             {legendAreas.map(area => {
                 const toggleKey = area.legendKey || area.key;
                 const isHighlighted = highlightedAreas.has(toggleKey);

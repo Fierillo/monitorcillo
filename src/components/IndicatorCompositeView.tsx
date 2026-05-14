@@ -13,6 +13,28 @@ type PersistedChartConfig = {
     rangeByView?: Record<string, [number, number]>;
 };
 
+async function addImagePadding(dataUrl: string, horizontalPadding: number, verticalPadding: number, backgroundColor: string) {
+    const image = new Image();
+    image.src = dataUrl;
+    await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('Failed to add margins to chart image.'));
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width + horizontalPadding * 2;
+    canvas.height = image.height + verticalPadding * 2;
+
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Failed to create chart image canvas.');
+
+    context.fillStyle = backgroundColor;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, horizontalPadding, verticalPadding);
+
+    return canvas.toDataURL('image/png');
+}
+
 export default function IndicatorCompositeView({
     title,
     subtitle,
@@ -251,7 +273,6 @@ export default function IndicatorCompositeView({
 
             const target = isMobile ? mobileCaptureRef.current : captureRef.current;
             if (!target) return;
-
             const dataUrl = await toPng(target, {
                 backgroundColor: '#00143F',
                 pixelRatio: 2,
@@ -264,7 +285,7 @@ export default function IndicatorCompositeView({
 
             const link = document.createElement('a');
             link.download = `${title.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.png`;
-            link.href = dataUrl;
+            link.href = await addImagePadding(dataUrl, 32, 24, '#00143F');
             link.click();
         } catch (err) {
             console.error('Error al descargar el gráfico:', err);
@@ -313,7 +334,7 @@ export default function IndicatorCompositeView({
                 <div className="fixed left-[-10000px] top-0 z-[-1]">
                     <CompositeChartCard
                         title={title} subtitle={subtitle} chartTitle={activeChartTitle} captureRef={mobileCaptureRef} chartContainerRef={mobileChartContainerRef}
-                        chartSize={{ width: 1260, height: 780 }} visibleData={visibleData} sortedData={sortedData}
+                        chartSize={{ width: 1240, height: 780 }} visibleData={visibleData} sortedData={sortedData}
                         areas={activeAreas} methodology={activeMethodology} valueFormat={activeValueFormat}
                         yAxisDecimals={activeYAxisDecimals} yAxisLabel={activeYAxisLabel} secondaryYAxis={activeSecondaryYAxis}
                         leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}

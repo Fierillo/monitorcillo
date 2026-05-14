@@ -9,7 +9,7 @@ export default function MethodologySection({ methodology, forceOpen }: Methodolo
     const show = isOpen || forceOpen;
 
     return (
-        <div className="mt-4 border-t border-imperial-gold/20 pt-1">
+        <div className={`${forceOpen ? 'mt-1' : 'mt-4'} border-t border-imperial-gold/20 pt-1`}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
@@ -20,8 +20,8 @@ export default function MethodologySection({ methodology, forceOpen }: Methodolo
             </button>
 
             {show && (
-                <div className="px-2 pb-2">
-                    {forceOpen ? <h3 className="mb-1 text-[10px] font-bold uppercase tracking-wider text-imperial-gold">Fuentes y metodología</h3> : null}
+                <div className={`px-2 ${forceOpen ? 'pb-1' : 'pb-2'}`}>
+                    {forceOpen ? <h3 className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-imperial-gold">Fuentes y metodología</h3> : null}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
                     {methodology.map((item, idx) => (
                         <div key={idx} className="text-[7px] leading-[1.1]">
