@@ -81,6 +81,13 @@ export type TooltipProps = {
 export type ChartClickState = {
     activePayload?: readonly TooltipPayload[];
     activeTooltipIndex?: number | string | null;
+    activeCoordinate?: { x?: number; y?: number };
+};
+
+export type ChartCrosshairState = {
+    x: number;
+    y: number;
+    locked: boolean;
 };
 
 export type ChartBarClickEvent = {

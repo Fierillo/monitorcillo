@@ -30,6 +30,7 @@ function isValueChange(data: ChartDataRow[] | undefined, index: number, key: str
 export default function ChartLine({ areaConfig, isDimmed, data }: ChartLineProps) {
     const color = areaConfig.color;
     const showAllDots = areaConfig.connectNulls;
+    const strokeWidth = areaConfig.strokeWidth ?? 3;
 
     const dot = isDimmed ? false : (dotProps: { index?: number; cx?: number; cy?: number }) => {
         const index = dotProps.index ?? 0;
@@ -52,12 +53,27 @@ export default function ChartLine({ areaConfig, isDimmed, data }: ChartLineProps
         );
     };
 
-    return (
+    return <>
+        {areaConfig.borderColor ? <Line
+            type="monotone"
+            dataKey={areaConfig.key}
+            stroke={areaConfig.borderColor}
+            strokeWidth={areaConfig.borderWidth ?? strokeWidth + 2}
+            strokeDasharray={areaConfig.dash ? areaConfig.dash.join(' ') : undefined}
+            dot={false}
+            activeDot={false}
+            connectNulls={areaConfig.connectNulls}
+            isAnimationActive={false}
+            name={areaConfig.name}
+            yAxisId={areaConfig.yAxisId || 'left'}
+            tooltipType="none"
+            style={{ opacity: isDimmed ? 0.2 : 1 }}
+        /> : null}
         <Line
             type="monotone"
             dataKey={areaConfig.key}
             stroke={areaConfig.color}
-            strokeWidth={areaConfig.strokeWidth ?? 3}
+            strokeWidth={strokeWidth}
             strokeDasharray={areaConfig.dash ? areaConfig.dash.join(' ') : undefined}
             dot={dot}
             connectNulls={areaConfig.connectNulls}
@@ -66,5 +82,5 @@ export default function ChartLine({ areaConfig, isDimmed, data }: ChartLineProps
             yAxisId={areaConfig.yAxisId || 'left'}
             style={{ opacity: isDimmed ? 0.2 : 1 }}
         />
-    );
+    </>;
 }

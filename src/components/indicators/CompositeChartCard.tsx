@@ -1,7 +1,9 @@
 import { ImageDown } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import type { MouseEvent } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { CartesianGrid, ComposedChart, Tooltip, XAxis, YAxis } from 'recharts';
-import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartDataRow, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
+import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
 import ChartArea from '../chart/ChartArea';
 import ChartBar from '../chart/ChartBar';
 import ChartLine from '../chart/ChartLine';
@@ -31,6 +33,7 @@ type Props = {
     highlightedAreas: Set<string>;
     selectedMonth: string | null;
     selectByMonth: boolean;
+    crosshair: ChartCrosshairState | null;
     isMobile: boolean;
     isCapturing: boolean;
     forceDesktopLayout?: boolean;
@@ -39,6 +42,8 @@ type Props = {
     onDownloadChart: () => void;
     onSelectMonth: (month: string | null) => void;
     onToggleHighlight: (key: string) => void;
+    onCrosshairClick: (state: ChartClickState | null) => void;
+    onCrosshairUnlock: () => void;
 };
 
 type ChartRenderProps = Omit<Props, 'captureRef' | 'chartContainerRef'>;
@@ -67,7 +72,7 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
 }
 
 function ExportHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-    return <div className="mb-3 border-b border-imperial-gold/40 pb-3 text-center"><h1 className="imperial-title text-2xl font-bold uppercase tracking-widest text-imperial-gold">{title}</h1>{subtitle ? <p className="mt-1 text-sm font-bold uppercase tracking-wide text-imperial-cyan">{subtitle}</p> : null}</div>;
+    return <div className="mb-3 border-b border-imperial-gold/40 pb-3 text-center"><div className="mb-1 text-center text-[8px] font-bold uppercase tracking-widest text-imperial-cyan">monitorcillo.vercel.app</div><h1 className="imperial-title text-balance text-2xl font-bold uppercase leading-tight tracking-widest text-imperial-gold">{title}</h1>{subtitle ? <p className="mt-1 text-sm font-bold uppercase tracking-wide text-imperial-cyan">{subtitle}</p> : null}</div>;
 }
 
 function ExportFooter() {
@@ -110,6 +115,9 @@ function AxisLabel({ label, color, right = false }: { label: string; color?: str
 }
 
 function ResponsiveComposedChart(props: ChartRenderProps) {
+    const hoverVerticalRef = useRef<SVGLineElement | null>(null);
+    const hoverHorizontalRef = useRef<SVGLineElement | null>(null);
+    const rafRef = useRef<number | null>(null);
     const leftTicks = axisTicks(props, 'left', !Array.isArray(props.leftAxisDomain));
     const rightTicks = axisTicks(props, 'right', !Array.isArray(props.secondaryYAxis?.domain));
 
@@ -120,15 +128,101 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
     const leftMargin = props.isMobile ? 5 : yAxisWidth + -50;
     const rightMargin = props.isMobile ? 5 : (props.secondaryYAxis ? 15 : 10);
 
+    const hideHoverCrosshair = useCallback(() => {
+        if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+        hoverVerticalRef.current?.setAttribute('display', 'none');
+        hoverHorizontalRef.current?.setAttribute('display', 'none');
+    }, []);
+
+    const updateHoverCrosshair = useCallback((state: ChartClickState | null) => {
+        if (props.crosshair?.locked || props.isCapturing) {
+            hideHoverCrosshair();
+            return;
+        }
+
+        const x = state?.activeCoordinate?.x;
+        const y = state?.activeCoordinate?.y;
+        if (typeof x !== 'number' || typeof y !== 'number') {
+            hideHoverCrosshair();
+            return;
+        }
+
+        if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+        rafRef.current = requestAnimationFrame(() => {
+            const vertical = hoverVerticalRef.current;
+            const horizontal = hoverHorizontalRef.current;
+            if (!vertical || !horizontal) return;
+            vertical.setAttribute('x1', String(x));
+            vertical.setAttribute('x2', String(x));
+            vertical.setAttribute('display', 'block');
+            horizontal.setAttribute('y1', String(y));
+            horizontal.setAttribute('y2', String(y));
+            horizontal.setAttribute('display', 'block');
+        });
+    }, [hideHoverCrosshair, props.crosshair?.locked, props.isCapturing]);
+
     return (
-        <ComposedChart width={props.chartSize.width} height={props.chartSize.height} data={props.visibleData} margin={{ top: 5, right: rightMargin, bottom: 5, left: leftMargin }} barCategoryGap="0%" stackOffset="sign" style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }} onClick={(e: ChartClickState | null) => { if (!e?.activePayload?.length || !e.activeTooltipIndex) props.onSelectMonth(null); }}>
+        <ComposedChart
+            width={props.chartSize.width}
+            height={props.chartSize.height}
+            data={props.visibleData}
+            margin={{ top: 5, right: rightMargin, bottom: 5, left: leftMargin }}
+            barCategoryGap="0%"
+            stackOffset="sign"
+            style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }}
+            onMouseMove={(e: ChartClickState | null) => updateHoverCrosshair(e)}
+            onMouseLeave={hideHoverCrosshair}
+            onClick={(e: ChartClickState | null) => {
+                hideHoverCrosshair();
+                props.onCrosshairClick(e);
+                if (!e?.activePayload?.length || !e.activeTooltipIndex) props.onSelectMonth(null);
+            }}
+        >
             <CartesianGrid vertical={false} horizontal stroke="#ffffff66" strokeWidth={0.75} />
             <XAxis dataKey={props.xAxisKey} stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)} hide={props.isMobile} />
             <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
             {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
-            {!props.isCapturing && <Tooltip cursor={{ stroke: '#ffffff50', strokeWidth: 1 }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={props.areas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} />} />}
+            {!props.isCapturing && <Tooltip cursor={false} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={props.areas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} />} />}
             {props.areas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}
+            <HoverCrosshair verticalRef={hoverVerticalRef} horizontalRef={hoverHorizontalRef} width={props.chartSize.width} height={props.chartSize.height} />
+            <ChartCrosshair crosshair={props.crosshair} width={props.chartSize.width} height={props.chartSize.height} onUnlock={props.onCrosshairUnlock} />
         </ComposedChart>
+    );
+}
+
+function HoverCrosshair({ verticalRef, horizontalRef, width, height }: { verticalRef: RefObject<SVGLineElement | null>; horizontalRef: RefObject<SVGLineElement | null>; width: number; height: number }) {
+    return (
+        <g className="recharts-hover-crosshair-guide" pointerEvents="none">
+            <line ref={verticalRef} x1={0} x2={0} y1={0} y2={height} stroke="#FFFFFF99" strokeWidth={0.75} strokeDasharray="2 3" display="none" />
+            <line ref={horizontalRef} x1={0} x2={width} y1={0} y2={0} stroke="#FFFFFF99" strokeWidth={0.75} strokeDasharray="2 3" display="none" />
+        </g>
+    );
+}
+
+function ChartCrosshair({ crosshair, width, height, onUnlock }: { crosshair: ChartCrosshairState | null; width: number; height: number; onUnlock: () => void }) {
+    const [isHovered, setIsHovered] = useState(false);
+    if (!crosshair) return null;
+    const stroke = crosshair.locked ? (isHovered ? '#FFFFFF' : '#FFD700AA') : '#FFFFFF99';
+    const strokeWidth = crosshair.locked && isHovered ? 1.5 : 0.75;
+    const handleClick = (event: MouseEvent<SVGLineElement>) => {
+        event.stopPropagation();
+        onUnlock();
+    };
+    const interactionProps = crosshair.locked ? {
+        onMouseEnter: () => setIsHovered(true),
+        onMouseLeave: () => setIsHovered(false),
+        onClick: handleClick,
+        style: { cursor: 'pointer' },
+    } : {};
+
+    return (
+        <g className="recharts-crosshair-guide">
+            <line x1={crosshair.x} x2={crosshair.x} y1={0} y2={height} stroke={stroke} strokeWidth={strokeWidth} strokeDasharray="2 3" pointerEvents="none" />
+            <line x1={0} x2={width} y1={crosshair.y} y2={crosshair.y} stroke={stroke} strokeWidth={strokeWidth} strokeDasharray="2 3" pointerEvents="none" />
+            {crosshair.locked ? <line x1={crosshair.x} x2={crosshair.x} y1={0} y2={height} stroke="rgba(255,255,255,0.01)" strokeWidth={14} pointerEvents="stroke" {...interactionProps} /> : null}
+            {crosshair.locked ? <line x1={0} x2={width} y1={crosshair.y} y2={crosshair.y} stroke="rgba(255,255,255,0.01)" strokeWidth={14} pointerEvents="stroke" {...interactionProps} /> : null}
+        </g>
     );
 }
 
@@ -157,7 +251,8 @@ function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZer
         max = Math.max(0, max);
     }
 
-    const step = niceStep((max - min) / 8);
+    const targetDivisions = props.valueFormat === 'millions' ? 12 : 8;
+    const step = niceStep((max - min) / targetDivisions);
     const start = Math.floor(min / step) * step;
     const end = Math.ceil(max / step) * step;
     const ticks: number[] = [];
