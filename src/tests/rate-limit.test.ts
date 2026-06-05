@@ -6,7 +6,9 @@ beforeEach(() => {
 });
 
 describe('rate limit profiles', () => {
-    it('allows one strict request per window', async () => {
+    it('allows three strict requests per window', async () => {
+        await expect(checkRateLimit('ip:POST:/api/auth')).resolves.toBe(true);
+        await expect(checkRateLimit('ip:POST:/api/auth')).resolves.toBe(true);
         await expect(checkRateLimit('ip:POST:/api/auth')).resolves.toBe(true);
         await expect(checkRateLimit('ip:POST:/api/auth')).resolves.toBe(false);
     });

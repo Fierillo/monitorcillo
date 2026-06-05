@@ -11,7 +11,7 @@ type RateLimitOptions = {
     windowMs?: number;
 };
 
-export const STRICT_RATE_LIMIT: RateLimitOptions = { maxAttempts: 1, windowMs: WINDOW_MS };
+export const STRICT_RATE_LIMIT: RateLimitOptions = { maxAttempts: 3, windowMs: WINDOW_MS };
 export const READ_RATE_LIMIT: RateLimitOptions = { maxAttempts: 30, windowMs: WINDOW_MS };
 
 export function getClientIP(req: Request): string {

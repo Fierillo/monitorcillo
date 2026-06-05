@@ -18,7 +18,7 @@ export default function LoginForm() {
         });
 
         if (!res.ok) {
-            setError('Credenciales invalidas');
+            setError(res.status === 429 ? 'Demasiados intentos. Esperá 5 minutos.' : 'Credenciales invalidas');
             return;
         }
 

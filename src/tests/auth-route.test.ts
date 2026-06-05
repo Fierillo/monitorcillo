@@ -29,14 +29,15 @@ describe('auth route', () => {
         expect(response.status).toBe(503);
     });
 
-    it('rate limits login attempts to one request per five minutes', async () => {
+    it('rate limits login attempts to three requests per five minutes', async () => {
         process.env.ADMIN_PASSWORD = 'strong-admin-password';
 
-        const firstResponse = await POST(authRequest('wrong-password'));
-        const secondResponse = await POST(authRequest('strong-admin-password'));
+        await POST(authRequest('wrong-1'));
+        await POST(authRequest('wrong-2'));
+        await POST(authRequest('wrong-3'));
+        const blocked = await POST(authRequest('strong-admin-password'));
 
-        expect(firstResponse.status).toBe(401);
-        expect(secondResponse.status).toBe(429);
+        expect(blocked.status).toBe(429);
     });
 
     it('sets a signed auth cookie on successful login', async () => {
