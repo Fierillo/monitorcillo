@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { CartesianGrid, ComposedChart, Tooltip, XAxis, YAxis } from 'recharts';
-import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
+import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, MethodologyItem, TooltipPayload, ValueFormat, YAxisConfig } from '@/types/chart';
 import ChartArea from '../chart/ChartArea';
 import ChartBar from '../chart/ChartBar';
 import ChartLine from '../chart/ChartLine';
@@ -99,13 +99,14 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
     const captureChartStyle = props.forceDesktopLayout ? { outline: 'none', width: 1240, height: 780 } : { outline: 'none' };
 
     return (
-        <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? 'min-h-[780px]' : 'min-h-[300px] sm:min-h-[500px]'} overflow-hidden`} style={captureCanvasStyle}>
+        <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? 'min-h-[780px]' : 'min-h-[300px] sm:min-h-[500px]'} overflow-visible`} style={captureCanvasStyle}>
             {!props.isMobile && props.yAxisLabel && <AxisLabel label={props.yAxisLabel} />}
             <div ref={chartContainerRef} className={props.forceDesktopLayout ? 'relative overflow-hidden' : 'relative flex-1 overflow-hidden'} style={captureChartStyle} tabIndex={-1}>
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none"><span className="watermark text-imperial-gold/21 text-xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">@fierillo</span></div>
                 {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
             </div>
             {!props.isMobile && props.secondaryYAxis && <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right />}
+            {props.isCapturing && props.crosshair?.locked && props.crosshair.activePayload && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={props.areas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} /> : null}
         </div>
     );
 }
@@ -119,7 +120,7 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
     const hoverHorizontalRef = useRef<SVGLineElement | null>(null);
     const rafRef = useRef<number | null>(null);
     const leftTicks = axisTicks(props, 'left', !Array.isArray(props.leftAxisDomain));
-    const rightTicks = axisTicks(props, 'right', !Array.isArray(props.secondaryYAxis?.domain));
+    const rightTicks = axisTicks(props, 'right', props.secondaryYAxis?.includeZero ?? !Array.isArray(props.secondaryYAxis?.domain));
 
     const leftDomain = [leftTicks[0], leftTicks.at(-1) ?? 0];
     const rightDomain = [rightTicks[0], rightTicks.at(-1) ?? 0];
@@ -235,11 +236,12 @@ function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZer
 
     if (values.length === 0) return [0, 1];
 
+    const allNonNegative = values.every((value) => value >= 0);
     const dataMin = Math.min(...values);
     const dataMax = Math.max(...values);
     const range = dataMax - dataMin;
     const padding = range === 0 ? 1 : range * 0.05;
-    let min = dataMin - padding;
+    let min = allNonNegative ? Math.max(0, dataMin - padding) : dataMin - padding;
     let max = dataMax + padding;
 
     const domain = axisId === 'left' ? props.leftAxisDomain : props.secondaryYAxis?.domain;
@@ -253,7 +255,7 @@ function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZer
 
     const targetDivisions = props.valueFormat === 'millions' ? 12 : 8;
     const step = niceStep((max - min) / targetDivisions);
-    const start = Math.floor(min / step) * step;
+    const start = allNonNegative ? Math.max(0, Math.floor(min / step) * step) : Math.floor(min / step) * step;
     const end = Math.ceil(max / step) * step;
     const ticks: number[] = [];
 
@@ -273,6 +275,47 @@ function niceStep(rawStep: number): number {
     if (residual <= 2) return 2 * magnitude;
     if (residual <= 5) return 5 * magnitude;
     return 10 * magnitude;
+}
+
+function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidth, chartHeight }: { crosshair: ChartCrosshairState; areas: AreaConfig[]; valueFormat: ValueFormat; sortedData: ChartDataRow[]; chartWidth: number; chartHeight: number }) {
+    const label = crosshair.label;
+    const rowData = label ? sortedData.find(row => row.fecha === label || row.iso_fecha === label) : null;
+    if (!rowData) return null;
+
+    const visibleAreas = areas.filter(area => !area.hideInLegend && !area.borderColor);
+    const valueRows = visibleAreas
+        .map(area => {
+            const value = rowData[area.key];
+            if (value === null || value === undefined) return null;
+            return { key: area.key, name: area.name, color: area.color, formatted: formatValueByType(Number(value), area.valueFormat ?? valueFormat, 1) };
+        })
+        .filter((row): row is NonNullable<typeof row> => row !== null);
+    if (valueRows.length === 0) return null;
+
+    const TOOLTIP_WIDTH = 180;
+    const TOOLTIP_HEIGHT估算 = 40 + valueRows.length * 20;
+    const flipX = crosshair.x + 16 + TOOLTIP_WIDTH > chartWidth;
+    const flipY = crosshair.y - TOOLTIP_HEIGHT估算 < 0;
+
+    return (
+        <div
+            className="absolute z-10 bg-imperial-blue/90 border border-imperial-gold/40 px-3 py-2 text-xs pointer-events-none backdrop-blur-sm"
+            style={{
+                left: flipX ? crosshair.x - TOOLTIP_WIDTH - 8 : crosshair.x + 16,
+                top: flipY ? crosshair.y + 8 : undefined,
+                bottom: flipY ? undefined : chartHeight - crosshair.y + 8,
+                minWidth: TOOLTIP_WIDTH,
+            }}
+        >
+            <div className="mb-1 font-bold text-imperial-gold">{rowData.fecha}</div>
+            {valueRows.map(row => (
+                <div key={row.key} className="flex justify-between gap-4" style={{ color: row.color }}>
+                    <span className="font-bold">{row.name}</span>
+                    <span>{row.formatted}</span>
+                </div>
+            ))}
+        </div>
+    );
 }
 
 function ChartSeries({ areaConfig, props }: { areaConfig: AreaConfig; props: ChartRenderProps }) {

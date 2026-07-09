@@ -34,7 +34,7 @@ export type EmisionNormalizedRow = {
     BCRA: number;
     BCRA_POS: number | null;
     BCRA_NEG: number | null;
-    TC: number;
+    TC: number | null;
     CompraDolares: number;
     Vencimientos: number;
     Licitado: number;

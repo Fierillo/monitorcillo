@@ -91,9 +91,17 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
 
 async function emisionConfig(indicator: Indicator): Promise<DetailConfig> {
     const cached = await safeGetIndicatorData('emision');
-    const data = cached ? [...cached].sort((a, b) => String(a.iso_fecha ?? '').localeCompare(String(b.iso_fecha ?? ''))) : [];
+    const data = cached
+        ? [...cached]
+            .sort((a, b) => String(a.iso_fecha ?? '').localeCompare(String(b.iso_fecha ?? '')))
+            .map((row) => {
+                const hasNoActivity = row.BCRA === 0 && row.CompraDolares === 0 && row.Licitaciones === 0 && row['Resultado fiscal'] === 0 && row.TOTAL === 0;
+                return { ...row, TC: row.TC === 0 || hasNoActivity ? null : row.TC };
+            })
+        : [];
     const areas: AreaConfig[] = [
         { key: 'ACUMULADO', name: 'TOTAL', color: '#ff0000', type: 'line' },
+        { key: 'TC', name: 'TC oficial', color: '#22c55e', type: 'line', yAxisId: 'right', strokeWidth: 2 },
         { key: 'BCRA_POS', name: 'BCRA', color: '#ffcc33', type: 'bar', stackId: 'stack', legendKey: 'bcra' },
         { key: 'Licitaciones_POS', name: 'Licitaciones', color: '#0055aa', type: 'bar', stackId: 'stack', legendKey: 'licitaciones' },
         { key: 'ResultadoFiscal_POS', name: 'Resultado fiscal', color: '#7952b3', type: 'bar', stackId: 'stack', legendKey: 'resultado_fiscal' },
@@ -106,8 +114,18 @@ async function emisionConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Licitaciones', description: 'Impacto neto de Vencimientos vs. montos Licitados/Adjudicados del Tesoro. Valores efectivos.' },
         { title: 'Resultado Fiscal', description: 'Impacto monetario por superávit o déficit primario del Tesoro Nacional.' },
         { title: 'Acumulado', description: 'Stock acumulado de pesos emitidos o absorbidos durante el período visualizado.' },
+        { title: 'TC oficial', description: 'Línea verde en eje derecho con el Tipo de Cambio de Referencia del BCRA (Var. 4).' },
     ];
-    return { subtitle: indicator.fuente, chartTitle: 'Emisión / Absorción de Pesos', data, areas, methodology, valueFormat: 'millions', yAxisLabel: 'millones de pesos' };
+    return {
+        subtitle: indicator.fuente,
+        chartTitle: 'Emisión / Absorción de Pesos',
+        data,
+        areas: areas.map((area) => area.key === 'TC' ? { ...area, valueFormat: undefined } : area),
+        methodology,
+        valueFormat: 'millions',
+        yAxisLabel: 'millones de pesos',
+        secondaryYAxis: { label: 'TC oficial', color: '#22c55e', includeZero: false },
+    };
 }
 
 async function recaudacionConfig(indicator: Indicator): Promise<DetailConfig> {

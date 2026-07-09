@@ -1,6 +1,6 @@
 import type { BcraVariableRow, EmisionNormalizedRow, EmisionRawRow } from '@/types';
 import { isoToFecha } from './dates';
-import { toNumber } from './numbers';
+import { toNullableNumber, toNumber } from './numbers';
 
 export function normalizeEmision(rawData: EmisionRawRow[], tcData: BcraVariableRow[] = []): EmisionNormalizedRow[] {
     const tcByFecha = new Map(tcData.map((row) => [row.fecha, row.valor]));
@@ -9,9 +9,9 @@ export function normalizeEmision(rawData: EmisionRawRow[], tcData: BcraVariableR
     let runningTotal = 0;
 
     return merged.map((row) => {
-        const tc = toNumber(row.tc ?? tcByFecha.get(row.fecha));
+        const tc = toNullableNumber(row.tc ?? tcByFecha.get(row.fecha) ?? null);
         const compraDolares = toNumber(row.compra_dolares ?? row.valor);
-        const bcra = toNumber(row.bcra, compraDolares * tc);
+        const bcra = toNullableNumber(row.bcra ?? null) ?? (tc == null ? 0 : compraDolares * tc);
         const vencimientos = toNumber(row.vencimientos);
         const licitado = toNumber(row.licitado);
         const licitaciones = vencimientos - licitado;

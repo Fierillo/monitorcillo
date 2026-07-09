@@ -24,7 +24,7 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
             BCRA: bcra,
             BCRA_POS: bcra > 0 ? bcra : null,
             BCRA_NEG: bcra < 0 ? bcra : null,
-            TC: toNumber(row.tc),
+            TC: toNullableNumber(row.tc),
             CompraDolares: toNumber(row.compra_dolares),
             Vencimientos: toNumber(row.vencimientos),
             Licitado: toNumber(row.licitado),

@@ -16,7 +16,7 @@ function normalizeEmisionRawRow(row: EmisionRawRow): EmisionRawRow {
     return {
         fecha: typeof row.fecha === 'string' && row.fecha.includes('-') ? row.fecha : fechaToISO(row.fecha),
         compra_dolares: Number(row.compra_dolares ?? 0),
-        tc: Number(row.tc ?? 0),
+        tc: row.tc === null || row.tc === undefined || row.tc === '' ? undefined : Number(row.tc),
         bcra: Number(row.bcra ?? 0),
         vencimientos: Number(row.vencimientos ?? 0),
         licitado: Number(row.licitado ?? 0),
@@ -29,11 +29,11 @@ export async function syncEmision(): Promise<SyncResult> {
     const existingData = ((await getRawData(type)) ?? []).map(normalizeEmisionRawRow);
     const existingFechas = new Set(existingData.map((row) => row.fecha));
     const { compraData, tcData } = await fetchEmisionRaw('2026-01-01', new Date().toISOString().split('T')[0]);
-    const tcByIso = new Map(tcData.map((row) => [row.fecha, Number(row.valor ?? 0)]));
+    const tcByIso = new Map(tcData.map((row) => [row.fecha, row.valor === null || row.valor === undefined || row.valor === '' ? undefined : Number(row.valor)]));
     const apiRows: EmisionRawRow[] = compraData.map((row) => {
         const compra = Number(row.valor ?? 0);
-        const tc = tcByIso.get(row.fecha) ?? 0;
-        return { fecha: row.fecha, compra_dolares: compra, tc, bcra: compra * tc };
+        const tc = tcByIso.get(row.fecha);
+        return { fecha: row.fecha, compra_dolares: compra, tc, bcra: tc == null ? 0 : compra * tc };
     });
     const existingByFecha = new Map(existingData.map((row) => [row.fecha, row]));
     const rowsToUpsert = apiRows.map((row): Partial<EmisionRawRow> | null => {

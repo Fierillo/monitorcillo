@@ -4,6 +4,7 @@ export interface AreaConfig {
     key: string;
     name: string;
     color: string;
+    valueFormat?: ValueFormat;
     stackId?: string;
     type?: 'monotone' | 'step' | 'line' | 'bar';
     yAxisId?: 'left' | 'right';
@@ -30,6 +31,7 @@ export interface YAxisConfig {
     color?: string;
     format?: 'billions' | 'index' | 'millions' | 'percent';
     domain?: [number, number] | 'auto';
+    includeZero?: boolean;
 }
 
 export type ValueFormat = 'billions' | 'index' | 'millions' | 'percent';
@@ -88,6 +90,8 @@ export type ChartCrosshairState = {
     x: number;
     y: number;
     locked: boolean;
+    activePayload?: readonly TooltipPayload[];
+    label?: string;
 };
 
 export type ChartBarClickEvent = {

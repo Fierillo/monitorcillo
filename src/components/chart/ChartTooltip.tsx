@@ -68,7 +68,7 @@ function renderValueRow(rowData: ChartDataRow, area: ChartTooltipProps['areaConf
 
     return (
         <div key={area.key} style={{ color: area.color, fontWeight: 'bold' }}>
-            {area.name}: {formatValueByType(Number(value), valueFormat, 1)}
+            {area.name}: {formatValueByType(Number(value), area.valueFormat ?? valueFormat, 1)}
         </div>
     );
 }
