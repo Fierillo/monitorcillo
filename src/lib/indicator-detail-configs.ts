@@ -101,7 +101,7 @@ async function emisionConfig(indicator: Indicator): Promise<DetailConfig> {
         : [];
     const areas: AreaConfig[] = [
         { key: 'ACUMULADO', name: 'TOTAL', color: '#ff0000', type: 'line' },
-        { key: 'TC', name: 'TC oficial', color: '#22c55e', type: 'line', yAxisId: 'right', strokeWidth: 2 },
+        { key: 'TC', name: 'TC oficial', color: '#22c55e', type: 'line', yAxisId: 'right', strokeWidth: 2, valueFormat: 'index' },
         { key: 'BCRA_POS', name: 'BCRA', color: '#ffcc33', type: 'bar', stackId: 'stack', legendKey: 'bcra' },
         { key: 'Licitaciones_POS', name: 'Licitaciones', color: '#0055aa', type: 'bar', stackId: 'stack', legendKey: 'licitaciones' },
         { key: 'ResultadoFiscal_POS', name: 'Resultado fiscal', color: '#7952b3', type: 'bar', stackId: 'stack', legendKey: 'resultado_fiscal' },
@@ -120,7 +120,7 @@ async function emisionConfig(indicator: Indicator): Promise<DetailConfig> {
         subtitle: indicator.fuente,
         chartTitle: 'Emisión / Absorción de Pesos',
         data,
-        areas: areas.map((area) => area.key === 'TC' ? { ...area, valueFormat: undefined } : area),
+        areas,
         methodology,
         valueFormat: 'millions',
         yAxisLabel: 'millones de pesos',
