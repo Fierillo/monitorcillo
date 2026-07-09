@@ -270,8 +270,11 @@ export default function IndicatorCompositeView({
     const crosshairFromChartState = useCallback((state: ChartClickState | null, locked: boolean): ChartCrosshairState | null => {
         const x = state?.activeCoordinate?.x;
         const y = state?.activeCoordinate?.y;
-        return typeof x === 'number' && typeof y === 'number' ? { x, y, locked } : null;
-    }, []);
+        if (typeof x !== 'number' || typeof y !== 'number') return null;
+        const idx = state?.activeTooltipIndex;
+        const label = typeof idx === 'number' ? String(visibleData[idx]?.fecha ?? '') : undefined;
+        return { x, y, locked, activePayload: state?.activePayload, label };
+    }, [visibleData]);
 
     const handleCrosshairClick = useCallback((state: ChartClickState | null) => {
         setCrosshair(crosshairFromChartState(state, true));
