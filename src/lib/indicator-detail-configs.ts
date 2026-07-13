@@ -96,8 +96,9 @@ async function emisionConfig(indicator: Indicator): Promise<DetailConfig> {
             .sort((a, b) => String(a.iso_fecha ?? '').localeCompare(String(b.iso_fecha ?? '')))
             .map((row) => {
                 const hasNoActivity = row.BCRA === 0 && row.CompraDolares === 0 && row.Licitaciones === 0 && row['Resultado fiscal'] === 0 && row.TOTAL === 0;
-                return { ...row, TC: row.TC === 0 || hasNoActivity ? null : row.TC };
+                return { ...row, TC: row.TC === 0 || hasNoActivity ? null : row.TC, hasNoActivity };
             })
+            .filter((row) => !row.hasNoActivity)
         : [];
     const areas: AreaConfig[] = [
         { key: 'ACUMULADO', name: 'TOTAL', color: '#ff0000', type: 'line' },
