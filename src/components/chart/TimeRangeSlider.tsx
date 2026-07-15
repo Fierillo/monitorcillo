@@ -9,7 +9,8 @@ export type TimeRangeSliderProps = {
     endIndex: number;
     xAxisKey: 'iso_fecha' | 'fecha';
     labelByXAxisValue: Map<string, string>;
-    onChange: (startIndex: number, endIndex: number) => void;
+    onPreviewChange: (startIndex: number, endIndex: number) => void;
+    onCommitChange: (startIndex: number, endIndex: number) => void;
 };
 
 function getLabel(row: ChartDataRow | undefined, xAxisKey: string, labelMap: Map<string, string>): string {
@@ -24,12 +25,20 @@ export default function TimeRangeSlider({
     endIndex,
     xAxisKey,
     labelByXAxisValue,
-    onChange,
+    onPreviewChange,
+    onCommitChange,
 }: TimeRangeSliderProps) {
     const maxIndex = Math.max(0, data.length - 1);
+    const [draftRange, setDraftRange] = useState<[number, number]>([startIndex, endIndex]);
+    const isInteractingRef = useRef(false);
 
-    const safeStart = Math.min(startIndex, maxIndex);
-    const safeEnd = Math.min(endIndex, maxIndex);
+    useEffect(() => {
+        if (isInteractingRef.current) return;
+        setDraftRange([startIndex, endIndex]);
+    }, [startIndex, endIndex]);
+
+    const safeStart = Math.min(draftRange[0], maxIndex);
+    const safeEnd = Math.min(draftRange[1], maxIndex);
 
     const startPct = maxIndex === 0 ? 0 : (safeStart / maxIndex) * 100;
     const endPct = maxIndex === 0 ? 100 : (safeEnd / maxIndex) * 100;
@@ -43,21 +52,37 @@ export default function TimeRangeSlider({
         [data, safeEnd, xAxisKey, labelByXAxisValue]
     );
 
+    const setPreviewRange = (nextStart: number, nextEnd: number) => {
+        const normalizedStart = Math.max(0, Math.min(nextStart, nextEnd, maxIndex));
+        const normalizedEnd = Math.max(normalizedStart, Math.min(nextEnd, maxIndex));
+        setDraftRange([normalizedStart, normalizedEnd]);
+        onPreviewChange(normalizedStart, normalizedEnd);
+    };
+
+    const beginInteraction = () => {
+        isInteractingRef.current = true;
+    };
+
+    const commitRange = (nextStart = safeStart, nextEnd = safeEnd) => {
+        isInteractingRef.current = false;
+        onCommitChange(nextStart, nextEnd);
+    };
+
     const handleStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = Number(e.target.value);
         if (value > safeEnd) {
-            onChange(safeEnd, safeEnd);
+            setPreviewRange(safeEnd, safeEnd);
         } else {
-            onChange(value, safeEnd);
+            setPreviewRange(value, safeEnd);
         }
     };
 
     const handleEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = Number(e.target.value);
         if (value < safeStart) {
-            onChange(safeStart, safeStart);
+            setPreviewRange(safeStart, safeStart);
         } else {
-            onChange(safeStart, value);
+            setPreviewRange(safeStart, value);
         }
     };
 
@@ -86,6 +111,7 @@ export default function TimeRangeSlider({
 
         e.preventDefault();
         containerRef.current.setPointerCapture(e.pointerId);
+        beginInteraction();
         dragStartXRef.current = e.clientX;
         dragStartIndicesRef.current = { start: safeStart, end: safeEnd };
         isDraggingRef.current = true;
@@ -105,13 +131,14 @@ export default function TimeRangeSlider({
             const newEnd = Math.max(0, Math.min(dragStartIndicesRef.current.end + indexDelta, maxIndex));
 
             if (newStart !== safeStart || newEnd !== safeEnd) {
-                onChange(newStart, newEnd);
+                setPreviewRange(newStart, newEnd);
             }
         };
 
         const handlePointerUp = () => {
             isDraggingRef.current = false;
             setIsDragging(false);
+            commitRange();
         };
 
         window.addEventListener('pointermove', handlePointerMove);
@@ -120,7 +147,9 @@ export default function TimeRangeSlider({
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('pointerup', handlePointerUp);
         };
-    }, [isDragging, maxIndex, onChange, safeStart, safeEnd]);
+    }, [isDragging, maxIndex, safeStart, safeEnd]);
+
+    const showPreviewGuides = safeStart !== startIndex || safeEnd !== endIndex;
 
     return (
         <div className="w-full px-1 py-3 select-none">
@@ -136,6 +165,19 @@ export default function TimeRangeSlider({
                     style={{ background: trackGradient }}
                 />
 
+                {showPreviewGuides ? (
+                    <>
+                        <div
+                            className="pointer-events-none absolute top-0 bottom-0 z-10 w-px -translate-x-1/2 bg-imperial-cyan shadow-[0_0_8px_rgba(0,191,255,0.95)]"
+                            style={{ left: `${startPct}%` }}
+                        />
+                        <div
+                            className="pointer-events-none absolute top-0 bottom-0 z-10 w-px -translate-x-1/2 bg-imperial-cyan shadow-[0_0_8px_rgba(0,191,255,0.95)]"
+                            style={{ left: `${endPct}%` }}
+                        />
+                    </>
+                ) : null}
+
                 {/* Start range input */}
                 <input
                     type="range"
@@ -143,6 +185,11 @@ export default function TimeRangeSlider({
                     max={maxIndex}
                     value={safeStart}
                     onChange={handleStartChange}
+                    onPointerDown={beginInteraction}
+                    onPointerUp={() => commitRange()}
+                    onTouchStart={beginInteraction}
+                    onTouchEnd={() => commitRange()}
+                    onBlur={() => commitRange()}
                     className="slider-thumb"
                     style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0, zIndex: 2, pointerEvents: 'none' }}
                 />
@@ -154,6 +201,11 @@ export default function TimeRangeSlider({
                     max={maxIndex}
                     value={safeEnd}
                     onChange={handleEndChange}
+                    onPointerDown={beginInteraction}
+                    onPointerUp={() => commitRange()}
+                    onTouchStart={beginInteraction}
+                    onTouchEnd={() => commitRange()}
+                    onBlur={() => commitRange()}
                     className="slider-thumb"
                     style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0, zIndex: 3, pointerEvents: 'none' }}
                 />

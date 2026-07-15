@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
-import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import { startTransition, useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import type { ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, IndicatorCompositeViewProps } from '@/types/chart';
 import CompositeChartCard from './indicators/CompositeChartCard';
 import TimeRangeSlider from './chart/TimeRangeSlider';
@@ -95,10 +95,13 @@ export default function IndicatorCompositeView({
     const mobileChartContainerRef = useRef<HTMLDivElement>(null);
     const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
     const [crosshair, setCrosshair] = useState<ChartCrosshairState | null>(null);
+    const [hoverTooltip, setHoverTooltip] = useState<ChartCrosshairState | null>(null);
+    const [captureTooltip, setCaptureTooltip] = useState<ChartCrosshairState | null>(null);
     const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
     const [isCapturing, setIsCapturing] = useState(false);
     const [startIndex, setStartIndex] = useState(0);
     const [endIndex, setEndIndex] = useState(Math.max(0, sortedData.length - 1));
+    const [previewRange, setPreviewRange] = useState<[number, number] | null>(null);
     const prevViewIdRef = useRef<string | null>(null);
 
     const visibleData = useMemo(() => sortedData.slice(startIndex, endIndex + 1), [sortedData, startIndex, endIndex]);
@@ -137,6 +140,7 @@ export default function IndicatorCompositeView({
 
     useEffect(() => {
         if (!isConfigLoaded) return;
+        if (previewRange) return;
         const highlightedAreasPayload = Object.fromEntries(Object.entries(highlightedAreasByView).map(([viewId, keys]) => [viewId, [...keys]]));
         let rangeByViewPayload: Record<string, [number, number]> = {};
         try {
@@ -148,7 +152,7 @@ export default function IndicatorCompositeView({
         } catch { /* ignore */ }
         rangeByViewPayload[activeViewId] = [startIndex, endIndex];
         window.localStorage.setItem(storageKey, JSON.stringify({ selectedViewId, highlightedAreasByView: highlightedAreasPayload, rangeByView: rangeByViewPayload }));
-    }, [storageKey, selectedViewId, highlightedAreasByView, startIndex, endIndex, activeViewId, isConfigLoaded]);
+    }, [storageKey, selectedViewId, highlightedAreasByView, startIndex, endIndex, activeViewId, isConfigLoaded, previewRange]);
 
     useEffect(() => {
         if (selectedMonth && selectByMonth) {
@@ -284,6 +288,10 @@ export default function IndicatorCompositeView({
         setCrosshair(null);
     }, []);
 
+    const handlePrepareDownload = useCallback(() => {
+        setCaptureTooltip(crosshair?.locked ? null : hoverTooltip);
+    }, [crosshair?.locked, hoverTooltip]);
+
     const handleDownloadChart = useCallback(async () => {
         try {
             setIsCapturing(true);
@@ -309,6 +317,7 @@ export default function IndicatorCompositeView({
             console.error('Error al descargar el gráfico:', err);
         } finally {
             setIsCapturing(false);
+            setCaptureTooltip(null);
         }
     }, [isMobile, title]);
 
@@ -335,8 +344,9 @@ export default function IndicatorCompositeView({
                 yAxisDecimals={activeYAxisDecimals} yAxisLabel={activeYAxisLabel} secondaryYAxis={activeSecondaryYAxis}
                 leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}
                 highlightedAreas={highlightedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
-                crosshair={crosshair} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock}
-                isMobile={isMobile} isCapturing={isCapturing && !isMobile} onDownloadChart={handleDownloadChart}
+                rangePreview={previewRange} committedRange={[startIndex, endIndex]}
+                crosshair={crosshair} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={setHoverTooltip}
+                isMobile={isMobile} isCapturing={isCapturing && !isMobile} onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
                 onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} viewSelector={viewSelector}
                 timeRangeSlider={!isCapturing && sortedData.length > 1 ? (
                     <TimeRangeSlider
@@ -345,7 +355,14 @@ export default function IndicatorCompositeView({
                         endIndex={endIndex}
                         xAxisKey={xAxisKey}
                         labelByXAxisValue={labelByXAxisValue}
-                        onChange={(start, end) => { setStartIndex(start); setEndIndex(end); }}
+                        onPreviewChange={(start, end) => setPreviewRange([start, end])}
+                        onCommitChange={(start, end) => {
+                            setPreviewRange(null);
+                            startTransition(() => {
+                                setStartIndex(start);
+                                setEndIndex(end);
+                            });
+                        }}
                     />
                 ) : null}
             />
@@ -358,8 +375,9 @@ export default function IndicatorCompositeView({
                         yAxisDecimals={activeYAxisDecimals} yAxisLabel={activeYAxisLabel} secondaryYAxis={activeSecondaryYAxis}
                         leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}
                         highlightedAreas={highlightedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
-                        crosshair={crosshair?.locked ? crosshair : null} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock}
-                        isMobile={false} isCapturing forceDesktopLayout onDownloadChart={handleDownloadChart}
+                        rangePreview={null} committedRange={[startIndex, endIndex]}
+                        crosshair={crosshair?.locked ? crosshair : null} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={setHoverTooltip}
+                        isMobile={false} isCapturing forceDesktopLayout onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
                         onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight}
                         timeRangeSlider={null}
                     />

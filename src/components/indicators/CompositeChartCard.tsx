@@ -2,7 +2,7 @@ import { ImageDown } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import { CartesianGrid, ComposedChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, ComposedChart, Customized, Tooltip, XAxis, YAxis } from 'recharts';
 import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, MethodologyItem, TooltipPayload, ValueFormat, YAxisConfig } from '@/types/chart';
 import ChartArea from '../chart/ChartArea';
 import ChartBar from '../chart/ChartBar';
@@ -33,17 +33,22 @@ type Props = {
     highlightedAreas: Set<string>;
     selectedMonth: string | null;
     selectByMonth: boolean;
+    rangePreview: [number, number] | null;
+    committedRange: [number, number];
     crosshair: ChartCrosshairState | null;
+    captureTooltip: ChartCrosshairState | null;
     isMobile: boolean;
     isCapturing: boolean;
     forceDesktopLayout?: boolean;
     viewSelector?: ReactNode;
     timeRangeSlider?: ReactNode;
+    onPrepareDownload: () => void;
     onDownloadChart: () => void;
     onSelectMonth: (month: string | null) => void;
     onToggleHighlight: (key: string) => void;
     onCrosshairClick: (state: ChartClickState | null) => void;
     onCrosshairUnlock: () => void;
+    onHoverTooltipChange: (tooltip: ChartCrosshairState | null) => void;
 };
 
 type ChartRenderProps = Omit<Props, 'captureRef' | 'chartContainerRef'>;
@@ -59,7 +64,7 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
             <div className={`${chartProps.forceDesktopLayout ? 'w-[1400px] min-h-[850px] p-4' : 'w-full min-h-[600px] sm:min-h-[850px] p-2 sm:p-4'} bg-imperial-blue border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 flex flex-col overflow-hidden`} style={{ outline: 'none' }} tabIndex={-1}>
                 <div ref={captureRef} className="flex-1 flex flex-col bg-imperial-blue overflow-hidden" style={captureStyle} tabIndex={-1}>
                     {renderProps.isCapturing ? <ExportHeader title={renderProps.title} subtitle={renderProps.subtitle} /> : null}
-                    <ChartHeader onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} viewSelector={renderProps.viewSelector} />
+                    <ChartHeader onPrepareDownload={renderProps.onPrepareDownload} onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} viewSelector={renderProps.viewSelector} />
                     <ChartCanvas {...renderProps} chartContainerRef={chartContainerRef} />
                     <CustomLegend areas={renderProps.areas} highlightedAreas={renderProps.highlightedAreas} onToggleHighlight={renderProps.onToggleHighlight} compact={renderProps.isCapturing} />
                     {renderProps.timeRangeSlider ? <div className="no-capture my-2">{renderProps.timeRangeSlider}</div> : null}
@@ -79,14 +84,14 @@ function ExportFooter() {
     return <div className="mt-0.5 border-t border-imperial-gold/40 pt-1 text-center text-[3px] font-bold uppercase tracking-wider text-imperial-cyan"><span className="text-imperial-gold">Monitorcillo</span> fue hecho con amor por <span className="text-imperial-gold">Fierillo</span></div>;
 }
 
-function ChartHeader({ onDownloadChart, isCapturing, viewSelector }: { onDownloadChart: () => void; isCapturing: boolean; viewSelector?: ReactNode }) {
+function ChartHeader({ onPrepareDownload, onDownloadChart, isCapturing, viewSelector }: { onPrepareDownload: () => void; onDownloadChart: () => void; isCapturing: boolean; viewSelector?: ReactNode }) {
     if (isCapturing) return null;
 
     return (
         <div className="mb-2 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" style={{ outline: 'none' }}>
             <div>{viewSelector}</div>
             <div className="flex justify-end gap-2 w-full sm:w-auto">
-                <button onClick={onDownloadChart} className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center" title="Descargar gráfico">
+                <button onMouseDown={onPrepareDownload} onTouchStart={onPrepareDownload} onClick={onDownloadChart} className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center" title="Descargar gráfico">
                     <ImageDown size={16} /> Guardar
                 </button>
             </div>
@@ -107,6 +112,7 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
             </div>
             {!props.isMobile && props.secondaryYAxis && <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right />}
             {props.isCapturing && props.crosshair?.locked && props.crosshair.activePayload && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={props.areas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} /> : null}
+            {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.activePayload && props.captureTooltip.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={props.areas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} /> : null}
         </div>
     );
 }
@@ -146,8 +152,13 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
         const y = state?.activeCoordinate?.y;
         if (typeof x !== 'number' || typeof y !== 'number') {
             hideHoverCrosshair();
+            props.onHoverTooltipChange(null);
             return;
         }
+
+        const idx = state?.activeTooltipIndex;
+        const label = typeof idx === 'number' ? String(props.visibleData[idx]?.fecha ?? '') : undefined;
+        props.onHoverTooltipChange(state?.activePayload?.length && label ? { x, y, locked: false, activePayload: state.activePayload, label } : null);
 
         if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
         rafRef.current = requestAnimationFrame(() => {
@@ -161,7 +172,7 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
             horizontal.setAttribute('y2', String(y));
             horizontal.setAttribute('display', 'block');
         });
-    }, [hideHoverCrosshair, props.crosshair?.locked, props.isCapturing]);
+    }, [hideHoverCrosshair, props.crosshair?.locked, props.isCapturing, props.onHoverTooltipChange, props.visibleData]);
 
     return (
         <ComposedChart
@@ -173,7 +184,10 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
             stackOffset="sign"
             style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }}
             onMouseMove={(e: ChartClickState | null) => updateHoverCrosshair(e)}
-            onMouseLeave={hideHoverCrosshair}
+            onMouseLeave={() => {
+                hideHoverCrosshair();
+                props.onHoverTooltipChange(null);
+            }}
             onClick={(e: ChartClickState | null) => {
                 hideHoverCrosshair();
                 props.onCrosshairClick(e);
@@ -186,9 +200,56 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
             {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
             {!props.isCapturing && <Tooltip cursor={false} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={props.areas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} />} />}
             {props.areas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}
+            <Customized component={(chartState: unknown) => <RangePreviewGuides previewRange={props.rangePreview} committedRange={props.committedRange} sortedData={props.sortedData} xAxisKey={props.xAxisKey} chartState={chartState} />} />
             <HoverCrosshair verticalRef={hoverVerticalRef} horizontalRef={hoverHorizontalRef} width={props.chartSize.width} height={props.chartSize.height} />
             <ChartCrosshair crosshair={props.crosshair} width={props.chartSize.width} height={props.chartSize.height} onUnlock={props.onCrosshairUnlock} />
         </ComposedChart>
+    );
+}
+
+function RangePreviewGuides({ previewRange, committedRange, sortedData, xAxisKey, chartState }: { previewRange: [number, number] | null; committedRange: [number, number]; sortedData: ChartDataRow[]; xAxisKey: 'iso_fecha' | 'fecha'; chartState: unknown }) {
+    if (!previewRange) return null;
+
+    const [committedStart, committedEnd] = committedRange;
+    const [previewStart, previewEnd] = previewRange;
+    const targets = [
+        previewStart !== committedStart ? previewStart : null,
+        previewEnd !== committedEnd ? previewEnd : null,
+    ].filter((index): index is number => index !== null)
+        .filter((index, position, array) => array.indexOf(index) === position)
+        .filter((index) => index >= committedStart && index <= committedEnd);
+
+    if (targets.length === 0) return null;
+
+    const offset = typeof chartState === 'object' && chartState !== null && 'offset' in chartState
+        ? (chartState as { offset?: { left?: number; top?: number; height?: number } }).offset
+        : undefined;
+    const xAxisMap = typeof chartState === 'object' && chartState !== null && 'xAxisMap' in chartState
+        ? (chartState as { xAxisMap?: Record<string, { scale?: ((value: string | number) => number) }> }).xAxisMap
+        : undefined;
+    const xAxis = xAxisMap ? Object.values(xAxisMap)[0] : undefined;
+
+    if (!xAxis?.scale) return null;
+
+    const top = offset?.top ?? 0;
+    const height = offset?.height ?? 0;
+    const lines = targets
+        .map((index) => sortedData[index]?.[xAxisKey])
+        .filter((value): value is NonNullable<typeof value> => value !== null && value !== undefined)
+        .map((value) => {
+            const x = xAxis.scale?.(value);
+            return typeof x === 'number' && Number.isFinite(x) ? x + (offset?.left ?? 0) : null;
+        })
+        .filter((x): x is number => x !== null);
+
+    if (lines.length === 0) return null;
+
+    return (
+        <g className="recharts-range-preview-guide" pointerEvents="none">
+            {lines.map((x, index) => (
+                <line key={`${index}-${x}`} x1={x} x2={x} y1={top} y2={top + height} stroke="#00BFFF" strokeWidth={1.5} strokeDasharray="4 4" />
+            ))}
+        </g>
     );
 }
 
@@ -320,7 +381,7 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
 
 function ChartSeries({ areaConfig, props }: { areaConfig: AreaConfig; props: ChartRenderProps }) {
     const isDimmed = props.highlightedAreas.size > 0 && !props.highlightedAreas.has(areaConfig.legendKey || areaConfig.key);
-    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={isDimmed} data={props.visibleData} />;
+    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={isDimmed} data={props.visibleData} isCapturing={props.isCapturing} />;
     if (areaConfig.type === 'bar') return <ChartBar areaConfig={areaConfig} isDimmed={isDimmed} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} />;
     return <ChartArea areaConfig={areaConfig} isDimmed={isDimmed} />;
 }
