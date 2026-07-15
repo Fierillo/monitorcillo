@@ -165,9 +165,12 @@ function completeIndecIndexRows(byFecha: Map<string, InflacionRawRow>, variation
 
 function extractIpcFromText(text: string): number | null {
     const patterns = [
+        /inflaci[oó]n\s+nacional(?:\s+de\s+[a-z]+)?\s*(?:fue(?:\s+del?)?|alcanz[oó]|subi[oó]|aument[oó]|vari[oó]|trep[oó])\s*([\d.,]+)\s*%/i,
         /inflaci[oó]n\s+nacional\s*(?:fue(?:\s+del?)?|alcanz[oó]|subi[oó]|aument[oó]|vari[oó]|trep[oó])\s*([\d.,]+)\s*%/i,
+        /IPC\s+Nivel\s+General\s+como\s+el\s+IPC\s+N[uú]cleo\s+subieron\s*([\d.,]+)\s*%/i,
         /IPC\s*Nivel\s+General\s*(?:de|subi[oó]|aument[oó]|vari[oó]|trep[oó]|fue)\s*([\d.,]+)\s*%/i,
         /IPC\s*Nacional\s*(?:fue(?:\s+del?)?|alcanz[oó]|subi[oó]|aument[oó]|vari[oó]|trep[oó])\s*([\d.,]+)\s*%/i,
+        /alza\s+de\s*([\d.,]+)\s*%\s+del\s+IPC\s+Nacional/i,
         /IPC\s*Nacional\s*([\d.,]+)\s*%/i,
         /inflaci[oó]n\s+nacional\s*([\d.,]+)\s*%/i,
         /suba\s+de\s*([\d.,]+)\s*%\s*para\s+el\s+mes/i,

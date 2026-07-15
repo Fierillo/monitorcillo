@@ -60,6 +60,45 @@ describe('parseEquilibraRssItem', () => {
         expect(result?.ipc_equilibra).toBe(3.3);
     });
 
+    it('extracts IPC when general and core move together', () => {
+        const xml = `
+            <item>
+                <title>IPC mensual junio 2025</title>
+                <content:encoded><![CDATA[<p>En jun-25 tanto el IPC Nivel General como el IPC Núcleo subieron 2,0%.</p>]]></content:encoded>
+            </item>
+        `;
+        const result = parseEquilibraRssItem(xml);
+        expect(result).not.toBeNull();
+        expect(result?.fecha).toBe('2025-06-01');
+        expect(result?.ipc_equilibra).toBe(2.0);
+    });
+
+    it('extracts IPC from alza del IPC Nacional phrasing', () => {
+        const xml = `
+            <item>
+                <title>IPC mensual noviembre 2024</title>
+                <content:encoded><![CDATA[<p>Para noviembre 2024, nuestras estimaciones de precios arrojan un alza de 2,7% del IPC Nacional tanto para el Nivel General como el componente Núcleo.</p>]]></content:encoded>
+            </item>
+        `;
+        const result = parseEquilibraRssItem(xml);
+        expect(result).not.toBeNull();
+        expect(result?.fecha).toBe('2024-11-01');
+        expect(result?.ipc_equilibra).toBe(2.7);
+    });
+
+    it('extracts IPC when month name appears between inflacion nacional and value', () => {
+        const xml = `
+            <item>
+                <title>IPC mensual junio 2026</title>
+                <content:encoded><![CDATA[<p>Según nuestros relevamientos de precios, la inflación nacional de junio fue 1,9%, descendiendo 0,2 p.p. vs mayo.</p>]]></content:encoded>
+            </item>
+        `;
+        const result = parseEquilibraRssItem(xml);
+        expect(result).not.toBeNull();
+        expect(result?.fecha).toBe('2026-06-01');
+        expect(result?.ipc_equilibra).toBe(1.9);
+    });
+
     it('skips non-mensual posts', () => {
         const xml = `
             <item>
