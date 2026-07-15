@@ -5,6 +5,9 @@ export interface AreaConfig {
     name: string;
     color: string;
     valueFormat?: ValueFormat;
+    showValueLabels?: boolean;
+    labelOffsetY?: number;
+    labelLeader?: boolean;
     stackId?: string;
     type?: 'monotone' | 'step' | 'line' | 'bar';
     yAxisId?: 'left' | 'right';
@@ -147,6 +150,7 @@ export type ChartLineProps = {
     areaConfig: AreaConfig;
     isDimmed: boolean;
     data?: ChartDataRow[];
+    isCapturing?: boolean;
 };
 
 export type CustomLegendProps = {
