@@ -37,7 +37,7 @@ Monitorcillo consolida indicadores económicos argentinos en una interfaz compac
 | Poder adquisitivo | INDEC, RIPTE y ANSES | Índices reales base enero 2017 |
 | EMAE | INDEC | Agregado, desestacionalizado, tendencia y sectores MM12 |
 | Deuda pública | MECON, BCRA e INDEC | Perfil de compromisos y deuda/PBI |
-| Pobreza | INDEC y UTDT | Serie oficial semestral y nowcast reciente |
+| Pobreza | INDEC y UTDT | Serie oficial semestral y nowcast mensual (archivo PDF UTDT) |
 
 ## Stack
 
@@ -46,7 +46,7 @@ Monitorcillo consolida indicadores económicos argentinos en una interfaz compac
 | App | Next.js 16, React 19, TypeScript |
 | UI | Tailwind CSS 4, Recharts, html-to-image |
 | Datos | Neon Serverless Postgres |
-| Sync | GitHub Actions, scripts Node con `tsx`, `tesseract.js` (OCR) |
+| Sync | GitHub Actions, scripts Node con `tsx`, `pdf-parse` (UTDT), `tesseract.js` (OCR fallback) |
 | Calidad | ESLint, Vitest, typecheck estricto |
 | Deploy | Vercel |
 
