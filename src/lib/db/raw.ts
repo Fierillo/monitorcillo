@@ -49,6 +49,10 @@ export async function saveRawData<T extends IndicatorType>(type: T, data: Array<
 }
 
 export async function replaceRawData<T extends IndicatorType>(type: T, data: Array<Partial<RawDataByType[T]>>): Promise<void> {
+    if (data.length === 0) {
+        console.warn(`[db] replaceRawData(${type}) refused empty payload to preserve existing history`);
+        return;
+    }
     const table = getTableName(type, false);
     await sql.query(`DELETE FROM ${table}`, []);
     await saveRawData(type, data);

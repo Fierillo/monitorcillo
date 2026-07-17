@@ -109,6 +109,10 @@ async function ensureDeudaAcumuladoColumn(table: string): Promise<void> {
 }
 
 export async function replaceNormalizedData(type: IndicatorType, data: NormalizedDataRow[]): Promise<void> {
+    if (data.length === 0) {
+        console.warn(`[db] replaceNormalizedData(${type}) refused empty payload to preserve existing history`);
+        return;
+    }
     const table = getTableName(type, true);
     await sql.query(`DELETE FROM ${table}`, []);
     await saveNormalizedData(type, data);
