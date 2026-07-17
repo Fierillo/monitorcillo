@@ -22,6 +22,8 @@ export interface AreaConfig {
     strokeWidth?: number;
     legendFilled?: boolean;
     connectNulls?: boolean;
+    /** When false, the series renders as a pure line without vertex markers. Default: true. */
+    showDots?: boolean;
 }
 
 export interface MethodologyItem {

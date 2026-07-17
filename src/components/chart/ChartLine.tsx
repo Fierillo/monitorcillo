@@ -30,11 +30,12 @@ function isValueChange(data: ChartDataRow[] | undefined, index: number, key: str
 
 export default function ChartLine({ areaConfig, isDimmed, data, isCapturing = false }: ChartLineProps) {
     const color = areaConfig.color;
-    const showAllDots = areaConfig.connectNulls;
+    const showDots = areaConfig.showDots !== false;
+    const showAllDots = Boolean(areaConfig.connectNulls) && showDots;
     const strokeWidth = areaConfig.strokeWidth ?? 3;
     const showValueLabels = areaConfig.showValueLabels && !isDimmed && (data?.length ?? 0) <= 36;
 
-    const dot = isDimmed ? false : (dotProps: { index?: number; cx?: number; cy?: number }) => {
+    const dot = isDimmed || !showDots ? false : (dotProps: { index?: number; cx?: number; cy?: number }) => {
         const index = dotProps.index ?? 0;
         const isDataPoint = hasValue(data, index, areaConfig.key);
         if (!isDataPoint) return null;

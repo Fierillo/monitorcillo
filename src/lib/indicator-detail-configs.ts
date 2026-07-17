@@ -169,12 +169,12 @@ const areas: AreaConfig[] = [
 
 async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {
     const areas: AreaConfig[] = [
-        { key: 'pobreza_indec', name: 'Pobreza INDEC', color: '#FFD700', type: 'line', strokeWidth: 2, connectNulls: true },
-        { key: 'pobreza_utdt', name: 'Nowcast UTDT', color: '#FF4D4D', type: 'line', dash: [4, 4], strokeWidth: 2, connectNulls: true },
+        { key: 'pobreza_indec', name: 'Pobreza INDEC', color: '#FFD700', type: 'line', strokeWidth: 2.5, connectNulls: true },
+        { key: 'pobreza_utdt', name: 'Nowcast UTDT', color: '#FF4D4D', type: 'line', dash: [6, 4], strokeWidth: 2, connectNulls: true, showDots: false },
     ];
     const methodology = [
-        { title: 'INDEC', description: 'Serie oficial semestral de población con ingresos debajo de la línea de pobreza, total EPH continua. La línea amarilla conecta los datos oficiales; los puntos marcan el mes exacto de publicación.' },
-        { title: 'UTDT', description: 'Proyección mensual (nowcast) de pobreza de Martín González-Rozada, Universidad Torcuato Di Tella. Se reconstruye el historial a partir del archivo de reportes PDF publicados en la página oficial; el valor más reciente se completa con el texto del informe y, si hace falta, OCR del gráfico.' },
+        { title: 'INDEC', description: 'Serie oficial semestral de población con ingresos debajo de la línea de pobreza, total EPH continua. Línea amarilla sólida; los puntos marcan el mes exacto de publicación.' },
+        { title: 'UTDT', description: 'Proyección mensual (nowcast) de pobreza de Martín González-Rozada, Universidad Torcuato Di Tella. Línea roja discontinua reconstruida desde el archivo de reportes PDF de la página oficial; el valor más reciente se completa con el texto del informe y, si hace falta, OCR del gráfico.' },
         { title: 'Frecuencia', description: 'INDEC publica datos semestrales; UTDT publica proyecciones mensuales actualizadas cada mes.' },
     ];
     return { subtitle: indicator.fuente, chartTitle: 'Incidencia de la pobreza', data: await safeGetIndicatorData('pobreza'), areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% de población', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
