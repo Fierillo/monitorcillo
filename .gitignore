@@ -45,5 +45,5 @@ next-env.d.ts
 ,*
  *.js
 /public/*.png
-# Video production (no commit)
-video-promo/
+check-debt.ts
+*.traineddata
