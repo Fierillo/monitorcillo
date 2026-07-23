@@ -238,8 +238,8 @@ export default function IndicatorCompositeView({
         const range = max - min;
         
         if (activeLeftYAxisDomain === 'auto-pad') {
-            const pad = range * 0.1;
-            return [min < 0 ? min - pad : 0, max + pad];
+            const pad = range === 0 ? Math.max(Math.abs(min) * 0.1, 1) : range * 0.1;
+            return [min - pad, max + pad];
         }
         
         if (activeLeftYAxisDomain === 'auto' || !activeLeftYAxisDomain) {
