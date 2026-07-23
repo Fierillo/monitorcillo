@@ -62,7 +62,8 @@ export type ChartViewConfig = {
     id: string;
     label: string;
     chartTitle: string;
-    data: ChartDataRow[];
+    /** When omitted, the parent chart data is reused. */
+    data?: ChartDataRow[];
     areas: AreaConfig[];
     methodology: MethodologyItem[];
     valueFormat?: ValueFormat;

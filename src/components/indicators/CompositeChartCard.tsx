@@ -10,7 +10,7 @@ import ChartLine from '../chart/ChartLine';
 import ChartTooltip from '../chart/ChartTooltip';
 import CustomLegend from '../chart/CustomLegend';
 import MethodologySection from '../chart/MethodologySection';
-import { formatAxisValueByType, formatValueByType } from '../chart/utils';
+import { collectAxisExtentValues, formatAxisValueByType, formatValueByType } from '../chart/utils';
 
 type Props = {
     title: string;
@@ -289,11 +289,10 @@ function ChartCrosshair({ crosshair, width, height, onUnlock }: { crosshair: Cha
 }
 
 function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZero: boolean): number[] {
-    const values = props.visibleData.flatMap(row => props.areas
-        .filter(area => (area.yAxisId ?? 'left') === axisId)
-        .filter(area => props.highlightedAreas.size === 0 || props.highlightedAreas.has(area.legendKey || area.key))
-        .map(area => row[area.key])
-        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value)));
+    const values = collectAxisExtentValues(props.visibleData, props.areas, {
+        yAxisId: axisId,
+        highlightedAreas: props.highlightedAreas,
+    });
 
     if (values.length === 0) return [0, 1];
 
@@ -348,13 +347,23 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
         .map(area => {
             const value = rowData[area.key];
             if (value === null || value === undefined) return null;
-            return { key: area.key, name: area.name, color: area.color, formatted: formatValueByType(Number(value), area.valueFormat ?? valueFormat, 1) };
+            const numericValue = Number(value);
+            if (!Number.isFinite(numericValue)) return null;
+            return {
+                key: area.key,
+                name: area.name,
+                color: area.color,
+                value: numericValue,
+                format: area.valueFormat ?? valueFormat,
+                formatted: formatValueByType(numericValue, area.valueFormat ?? valueFormat, 1),
+            };
         })
         .filter((row): row is NonNullable<typeof row> => row !== null);
     if (valueRows.length === 0) return null;
 
+    const total = valueRows.reduce((sum, row) => sum + row.value, 0);
     const TOOLTIP_WIDTH = 180;
-    const TOOLTIP_HEIGHT估算 = 40 + valueRows.length * 20;
+    const TOOLTIP_HEIGHT估算 = 40 + valueRows.length * 20 + (valueRows.length > 1 ? 24 : 0);
     const flipX = crosshair.x + 16 + TOOLTIP_WIDTH > chartWidth;
     const flipY = crosshair.y - TOOLTIP_HEIGHT估算 < 0;
 
@@ -375,6 +384,12 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
                     <span>{row.formatted}</span>
                 </div>
             ))}
+            {valueRows.length > 1 ? (
+                <div className="mt-1.5 flex justify-between gap-4 border-t border-white/20 pt-1.5 font-bold text-imperial-gold">
+                    <span>Total</span>
+                    <span>{formatValueByType(total, valueRows[0].format, 1)}</span>
+                </div>
+            ) : null}
         </div>
     );
 }

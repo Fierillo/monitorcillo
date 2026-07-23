@@ -1,5 +1,6 @@
 import type { AreaConfig, ChartDataRow, Indicator, IndicatorCompositeViewProps, MethodologyItem } from '@/types';
 import { EMAE_SECTORS } from './emae/schema';
+import { RECAUDACION_BREAKDOWN_TYPES } from './recaudacion/schema';
 import { safeGetIndicatorData } from './storage';
 
 type DetailConfig = Omit<IndicatorCompositeViewProps, 'title' | 'subtitle'> & { subtitle?: string };
@@ -83,7 +84,7 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         yAxisLabel: 'Base 100 = Ene-17',
         leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'],
         views: [
-            { id: 'agregado', label: 'Agregado', chartTitle: 'Evolución del EMAE', data, areas, methodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] },
+            { id: 'agregado', label: 'Agregado', chartTitle: 'Evolución del EMAE', areas, methodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] },
             { id: 'sectores', label: 'Por sectores', chartTitle: 'EMAE por sector (MM12)', data: sectorData, areas: sectorAreas, methodology: sectorMethodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] },
         ],
     };
@@ -143,7 +144,35 @@ async function recaudacionConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Serie MM12', description: 'La línea celeste aplica una media móvil simple de 12 meses al numerador real antes de dividir por el PBI real mensual.' },
         { title: 'Estimación PBI mensual', description: 'El PBI trimestral desestacionalizado se ancla en el mes de publicación y los meses intermedios se estiman con EMAE desestacionalizado.' },
     ];
-    return { subtitle: indicator.fuente, chartTitle: 'Recaudación Mensual (% PBI real)', data, areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% PBI real', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
+    const typeAreas: AreaConfig[] = RECAUDACION_BREAKDOWN_TYPES.map(tax => ({
+        key: tax.pctKey,
+        name: tax.label,
+        color: tax.color,
+        type: 'bar',
+        stackId: 'recaudacion-tipo',
+        yAxisId: 'left',
+    }));
+    const typeMethodology = [
+        { title: 'Desagregación', description: 'IVA, Ganancias, aportes personales y contribuciones patronales según la serie de recursos tributarios por tributo de Hacienda (datos.gob.ar). Barras apiladas con el aporte mensual de cada componente al PBI real.' },
+        { title: 'Otros', description: 'Residual del total tributario menos IVA, Ganancias, aportes personales y contribuciones patronales (combustibles, derechos de exportación, débitos y créditos, bienes personales, etc.). La suma de las series del desagregado cierra con el total del agregado.' },
+        { title: 'Normalización a % PBI real', description: 'Cada componente se expresa a precios de enero de 2017 con IPC núcleo y se divide por el PBI real mensual estimado, igual que la serie agregada.' },
+    ];
+    return {
+        subtitle: indicator.fuente,
+        chartTitle: 'Recaudación Mensual (% PBI real)',
+        data,
+        areas,
+        methodology,
+        valueFormat: 'percent',
+        yAxisDecimals: 1,
+        yAxisLabel: '% PBI real',
+        leftYAxisDomain: 'auto-pad',
+        indicatorId: indicator.id,
+        views: [
+            { id: 'agregado', label: 'Agregado', chartTitle: 'Recaudación Mensual (% PBI real)', areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% PBI real', leftYAxisDomain: 'auto-pad' },
+            { id: 'por-tipo', label: 'Por tipo', chartTitle: 'Recaudación por tributo (% PBI real)', areas: typeAreas, methodology: typeMethodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% PBI real', leftYAxisDomain: 'auto' },
+        ],
+    };
 }
 
 async function deudaConfig(indicator: Indicator): Promise<DetailConfig> {

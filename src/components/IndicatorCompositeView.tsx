@@ -5,6 +5,7 @@ import { toPng } from 'html-to-image';
 import { startTransition, useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import type { ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, IndicatorCompositeViewProps } from '@/types/chart';
 import CompositeChartCard from './indicators/CompositeChartCard';
+import { collectAxisExtentValues } from './chart/utils';
 import TimeRangeSlider from './chart/TimeRangeSlider';
 
 type PersistedChartConfig = {
@@ -219,16 +220,9 @@ export default function IndicatorCompositeView({
     const leftAxisDomain: ChartAxisDomain = useMemo(() => {
         if (Array.isArray(activeLeftYAxisDomain)) return activeLeftYAxisDomain;
 
-        const leftAreas = activeAreas.filter(area => (area.yAxisId ?? 'left') === 'left');
-        const allValues: number[] = [];
-        visibleData.forEach((row) => {
-            leftAreas.forEach(area => {
-                if (highlightedAreas.size > 0 && !highlightedAreas.has(area.legendKey || area.key)) return;
-                const val = row[area.key];
-                if (typeof val === 'number' && !Number.isNaN(val)) {
-                    allValues.push(val);
-                }
-            });
+        const allValues = collectAxisExtentValues(visibleData, activeAreas, {
+            yAxisId: 'left',
+            highlightedAreas,
         });
 
         if (allValues.length === 0) return [0, 10];
