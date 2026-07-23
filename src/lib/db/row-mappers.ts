@@ -1,6 +1,7 @@
 import type { DbRow, IndicatorTrend, IndicatorType, NormalizedDataByType } from '@/types';
 import { EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
 import { isoToFecha, isoToMonthLabel } from '../normalize';
+import { RECAUDACION_BREAKDOWN_TYPES } from '../recaudacion/schema';
 import { formatDbDate, toNullableNumber, toNumber } from './tables';
 
 export function toCatalogTrend(value: unknown): IndicatorTrend {
@@ -61,12 +62,20 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
     }
 
     if (type === 'reca') {
+        const taxValues = Object.fromEntries(
+            RECAUDACION_BREAKDOWN_TYPES.flatMap(tax => [
+                [tax.pctKey, toNullableNumber(row[`${tax.rawKey}_pct_pbi`])],
+                [tax.mm12Key, toNullableNumber(row[`${tax.rawKey}_pct_pbi_mm12`])],
+            ]),
+        );
+
         return {
             ...common,
             mes: String(row.mes ?? ''),
             year: toNumber(row.year),
             pctPbi: toNullableNumber(row.pct_pbi),
             pctPbiMm12: toNullableNumber(row.pct_pbi_mm12),
+            ...taxValues,
         } as NormalizedDataByType[T];
     }
 

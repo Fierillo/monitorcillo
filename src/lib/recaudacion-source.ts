@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { RecaudacionOfficialReport, RecaudacionRawRow } from '@/types';
+import { conceptToTaxField, RECAUDACION_TAX_RAW_KEYS } from './recaudacion/schema';
 
 const ARGENTINA_GOB_BASE_URL = 'https://www.argentina.gob.ar';
 
@@ -90,12 +91,12 @@ function parsePeriodDate(value: unknown): string | null {
     return `${match[2]}-${month}-01`;
 }
 
-function buildRecaudacionRow(periodDate: string, recaudacionTotal: number): RecaudacionRawRow {
+function buildRecaudacionRow(periodDate: string, values: Partial<RecaudacionRawRow>): RecaudacionRawRow {
     return {
         fecha: periodDate,
         mes: periodDate.slice(5, 7),
         year: Number(periodDate.slice(0, 4)),
-        recaudacion_total: recaudacionTotal,
+        ...values,
     };
 }
 
@@ -118,8 +119,21 @@ export function mergeRecaudacionOfficialReport(
 
     const rowsByDate = new Map(rows.map(row => [row.fecha, { ...row }]));
     const existing = rowsByDate.get(report.row.fecha);
-    rowsByDate.set(report.row.fecha, { ...existing, ...report.row });
+    const merged: RecaudacionRawRow = {
+        ...existing,
+        ...report.row,
+        fecha: report.row.fecha,
+    };
 
+    // Prefer datos.gob tax breakdown when already present; official workbook labels are brittle.
+    for (const key of RECAUDACION_TAX_RAW_KEYS) {
+        const existingValue = existing?.[key];
+        if (existingValue != null && existingValue !== '') {
+            merged[key] = existingValue;
+        }
+    }
+
+    rowsByDate.set(report.row.fecha, merged);
     return Array.from(rowsByDate.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
@@ -131,7 +145,7 @@ export function parseRecaudacionWorkbook(buffer: Buffer): RecaudacionOfficialRep
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null }) as unknown[][];
     let publishedAt: string | null = null;
     let periodDate: string | null = null;
-    let recaudacionTotal: number | null = null;
+    const values: Partial<RecaudacionRawRow> = {};
 
     for (const row of rows) {
         for (const cell of row) {
@@ -139,15 +153,18 @@ export function parseRecaudacionWorkbook(buffer: Buffer): RecaudacionOfficialRep
             periodDate ??= parsePeriodDate(cell);
         }
 
-        if (normalizeText(row[0]) === 'total recursos tributarios') {
-            recaudacionTotal = parseNumber(row[1]);
-        }
+        const field = conceptToTaxField(String(row[0] ?? ''));
+        if (!field) continue;
+
+        const amount = parseNumber(row[1]);
+        if (amount == null) continue;
+        values[field] = amount;
     }
 
-    if (!periodDate || recaudacionTotal === null) return null;
+    if (!periodDate || values.recaudacion_total == null) return null;
 
     return {
         publishedAt,
-        row: buildRecaudacionRow(periodDate, recaudacionTotal),
+        row: buildRecaudacionRow(periodDate, values),
     };
 }

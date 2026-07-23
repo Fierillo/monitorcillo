@@ -113,6 +113,10 @@ export type RecaudacionRawRow = {
     mes?: string | null;
     year?: number | null;
     recaudacion_total?: NumericValue;
+    iva?: NumericValue;
+    ganancias?: NumericValue;
+    aportes_personales?: NumericValue;
+    contribuciones_patronales?: NumericValue;
     pbi_trimestral?: NumericValue;
     emae_desestacionalizado?: NumericValue;
     ipc_nucleo?: NumericValue;
@@ -130,6 +134,16 @@ export type RecaudacionNormalizedRow = {
     year: number;
     pctPbi: number | null;
     pctPbiMm12?: number | null;
+    ivaPctPbi?: number | null;
+    ivaPctPbiMm12?: number | null;
+    gananciasPctPbi?: number | null;
+    gananciasPctPbiMm12?: number | null;
+    aportesPctPbi?: number | null;
+    aportesPctPbiMm12?: number | null;
+    contribucionesPctPbi?: number | null;
+    contribucionesPctPbiMm12?: number | null;
+    otrosPctPbi?: number | null;
+    otrosPctPbiMm12?: number | null;
 };
 
 export type PoderAdquisitivoRawRow = {

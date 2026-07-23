@@ -7,7 +7,7 @@ import { fetchEmisionRaw } from './bcra';
 import { fetchBmaRaw } from './bma';
 import { ensureEmaeSectorTables, fetchEmaeRaw } from './emae';
 import { fetchPoderAdquisitivoRawReport } from './poder-adquisitivo';
-import { fetchRecaudacionRawReport } from './recaudacion';
+import { ensureRecaudacionTables, fetchRecaudacionRawReport } from './recaudacion';
 import { ensureDeudaTables, fetchDeudaRaw } from './deuda';
 import { ensurePobrezaTables, fetchPobrezaRawReport } from './pobreza';
 import { ensureInflacionTables, fetchInflacionRawReport } from './inflacion';
@@ -112,6 +112,7 @@ export async function syncIndicatorsCatalog(): Promise<SyncResult> {
 
 export async function syncRecaudacion(): Promise<SyncResult> {
     const type: IndicatorType = 'reca';
+    await ensureRecaudacionTables();
     const existingData = (await getRawData(type)) ?? [];
     const { rows: rawData, publishedAt } = await fetchRecaudacionRawReport();
     const result = await persistMergedRawAndNormalize(type, existingData, rawData, normalizeRecaudacion);

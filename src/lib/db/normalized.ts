@@ -1,6 +1,11 @@
 import type { DbRow, DbValue, IndicatorType, NormalizedDataByType, NormalizedDataRow } from '@/types';
 import { EMAE_NORMALIZED_DB_COLUMNS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
 import { fechaToISO } from '../normalize';
+import {
+    RECAUDACION_BREAKDOWN_TYPES,
+    RECAUDACION_TAX_MM12_DB_COLUMNS,
+    RECAUDACION_TAX_PCT_DB_COLUMNS,
+} from '../recaudacion/schema';
 import { sql } from './client';
 import { toNormalizedRow } from './row-mappers';
 import { getTableName, isMissingTableError, isSafeColumn, toNullableNumber, toNumber } from './tables';
@@ -9,7 +14,7 @@ const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     emision: ['fecha', 'bcra', 'tc', 'compra_dolares', 'vencimientos', 'licitado', 'licitaciones', 'resultado_fiscal', 'total', 'acumulado'],
     emae: [...EMAE_NORMALIZED_DB_COLUMNS],
     bma: ['fecha', 'base_monetaria', 'pasivos_remunerados', 'depositos_tesoro', 'bma_amplia'],
-    reca: ['fecha', 'mes', 'year', 'pct_pbi', 'pct_pbi_mm12'],
+    reca: ['fecha', 'mes', 'year', 'pct_pbi', 'pct_pbi_mm12', ...RECAUDACION_TAX_PCT_DB_COLUMNS, ...RECAUDACION_TAX_MM12_DB_COLUMNS],
     poder: ['fecha', 'blanco', 'negro', 'privado', 'publico', 'ripte', 'jubilacion'],
     deuda: ['fecha', 'toma_deuda', 'vencimientos', 'vencimientos_proyectados', 'pagos', 'deuda_pbi', 'deuda_proyectada', 'acumulado', 'total'],
     pobreza: ['fecha', 'pobreza_indec', 'pobreza_utdt'],
@@ -64,7 +69,17 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
     if (type === 'emision') return [fecha, toNumber(row.BCRA), toNullableNumber(row.TC), toNumber(row.CompraDolares), toNumber(row.Vencimientos), toNumber(row.Licitado), toNumber(row.Licitaciones), toNumber(row['Resultado fiscal']), toNumber(row.TOTAL), toNumber(row.ACUMULADO)];
     if (type === 'emae') return [fecha, toNumber(row.emae), toNullableNumber(row.emae_desestacionalizado), toNullableNumber(row.emae_tendencia), ...EMAE_SECTOR_MM12_KEYS.map(key => toNullableNumber(row[key]))];
     if (type === 'bma') return [fecha, toNullableNumber(row.BaseMonetaria), toNullableNumber(row.PasivosRemunerados), toNullableNumber(row.DepositosTesoro), toNullableNumber(row.BMAmplia)];
-    if (type === 'reca') return [fecha, row.mes, toNullableNumber(row.year), toNullableNumber(row.pctPbi), toNullableNumber(row.pctPbiMm12)];
+    if (type === 'reca') {
+        return [
+            fecha,
+            row.mes,
+            toNullableNumber(row.year),
+            toNullableNumber(row.pctPbi),
+            toNullableNumber(row.pctPbiMm12),
+            ...RECAUDACION_BREAKDOWN_TYPES.map(tax => toNullableNumber(row[tax.pctKey])),
+            ...RECAUDACION_BREAKDOWN_TYPES.map(tax => toNullableNumber(row[tax.mm12Key])),
+        ];
+    }
     if (type === 'deuda') return [fecha, toNullableNumber(row.toma_deuda), toNullableNumber(row.vencimientos), toNullableNumber(row.vencimientos_proyectados), toNullableNumber(row.pagos), toNullableNumber(row.deuda_pbi), toNullableNumber(row.deuda_proyectada), toNullableNumber(row.acumulado), toNullableNumber(row.total)];
     if (type === 'pobreza') return [fecha, toNullableNumber(row.pobreza_indec), toNullableNumber(row.pobreza_utdt)];
     if (type === 'inflacion') return [fecha, toNullableNumber(row.ipc_indec), toNullableNumber(row.ipc_nucleo_indec), toNullableNumber(row.ipc_equilibra), toNullableNumber(row.ipc_online), toNullableNumber(row.ipc)];
@@ -75,7 +90,7 @@ export async function saveNormalizedData(type: IndicatorType, data: NormalizedDa
     const table = getTableName(type, true);
     if (data.length === 0) return;
     if (type === 'emae') await ensureEmaeSectorColumns(table);
-    if (type === 'reca') await ensureRecaudacionMm12Column(table);
+    if (type === 'reca') await ensureRecaudacionTaxColumns(table);
     if (type === 'deuda') await ensureDeudaAcumuladoColumn(table);
 
     const BATCH_SIZE = 50;
@@ -96,8 +111,11 @@ export async function saveNormalizedData(type: IndicatorType, data: NormalizedDa
     }
 }
 
-async function ensureRecaudacionMm12Column(table: string): Promise<void> {
+async function ensureRecaudacionTaxColumns(table: string): Promise<void> {
     await sql.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS pct_pbi_mm12 NUMERIC`, []);
+    for (const column of [...RECAUDACION_TAX_PCT_DB_COLUMNS, ...RECAUDACION_TAX_MM12_DB_COLUMNS]) {
+        await sql.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} NUMERIC`, []);
+    }
 }
 
 async function ensureEmaeSectorColumns(table: string): Promise<void> {

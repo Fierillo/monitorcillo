@@ -139,6 +139,10 @@ CREATE TABLE IF NOT EXISTS recaudacion_raw (
     mes VARCHAR(2),
     year INTEGER,
     recaudacion_total DECIMAL,
+    iva DECIMAL,
+    ganancias DECIMAL,
+    aportes_personales DECIMAL,
+    contribuciones_patronales DECIMAL,
     pbi_trimestral DECIMAL,
     emae_desestacionalizado DECIMAL,
     ipc_nucleo DECIMAL,
@@ -151,6 +155,17 @@ CREATE TABLE IF NOT EXISTS recaudacion_normalized (
     mes VARCHAR(2),
     year INTEGER,
     pct_pbi DECIMAL,
+    pct_pbi_mm12 DECIMAL,
+    iva_pct_pbi DECIMAL,
+    iva_pct_pbi_mm12 DECIMAL,
+    ganancias_pct_pbi DECIMAL,
+    ganancias_pct_pbi_mm12 DECIMAL,
+    aportes_personales_pct_pbi DECIMAL,
+    aportes_personales_pct_pbi_mm12 DECIMAL,
+    contribuciones_patronales_pct_pbi DECIMAL,
+    contribuciones_patronales_pct_pbi_mm12 DECIMAL,
+    otros_pct_pbi DECIMAL,
+    otros_pct_pbi_mm12 DECIMAL,
     last_update TIMESTAMP DEFAULT NOW()
 );
 
