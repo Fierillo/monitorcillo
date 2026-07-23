@@ -17,7 +17,8 @@ export default function ChartTooltip({
     if (!rowData) return null;
 
     const month = rowData.mes;
-    if (rowData.pctPbi && month) {
+    const showsAggregatePctPbi = areaConfigs.some(area => area.key === 'pctPbi');
+    if (showsAggregatePctPbi && rowData.pctPbi && month) {
         const monthlyComparison = chartData
             .filter((row) => row.mes === month && row.pctPbi)
             .sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
@@ -54,10 +55,18 @@ export default function ChartTooltip({
 
     if (valueRows.length === 0) return null;
 
+    const total = valueRows.reduce((sum, row) => sum + row.value, 0);
+    const totalFormat = valueRows[0]?.format ?? valueFormat;
+
     return (
         <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.85)', border: '1px solid #FFD700', padding: '10px', color: '#FFF', backdropFilter: 'blur(4px)' }}>
             <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{rowData.fecha}</div>
-            {valueRows}
+            {valueRows.map(row => row.node)}
+            {valueRows.length > 1 ? (
+                <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px solid #666', color: '#FFD700', fontWeight: 'bold' }}>
+                    Total: {formatValueByType(total, totalFormat, 1)}
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -65,10 +74,17 @@ export default function ChartTooltip({
 function renderValueRow(rowData: ChartDataRow, area: ChartTooltipProps['areaConfigs'][number], valueFormat: ChartTooltipProps['valueFormat']) {
     const value = rowData[area.key];
     if (value === null || value === undefined) return null;
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return null;
+    const format = area.valueFormat ?? valueFormat;
 
-    return (
-        <div key={area.key} style={{ color: area.color, fontWeight: 'bold' }}>
-            {area.name}: {formatValueByType(Number(value), area.valueFormat ?? valueFormat, 1)}
-        </div>
-    );
+    return {
+        value: numericValue,
+        format,
+        node: (
+            <div key={area.key} style={{ color: area.color, fontWeight: 'bold' }}>
+                {area.name}: {formatValueByType(numericValue, format, 1)}
+            </div>
+        ),
+    };
 }
