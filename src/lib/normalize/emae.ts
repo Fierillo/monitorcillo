@@ -1,5 +1,10 @@
 import type { EmaeNormalizedRow, EmaeRawRow } from '@/types';
-import { EMAE_SECTOR_KEYS, EMAE_SECTOR_MM12_KEYS, type EmaeSectorKey } from '../emae/schema';
+import {
+    EMAE_SECTOR_KEYS,
+    EMAE_SECTOR_MM12_KEYS,
+    sectorLevelAportes,
+    type EmaeSectorKey,
+} from '../emae/schema';
 import { fechaToTimestamp, MONTHS_ES } from './dates';
 import { notNull, toNullableNumber } from './numbers';
 
@@ -17,6 +22,11 @@ function sectorMm12(rawData: EmaeRawRow[], key: EmaeSectorKey, rowIndex: number)
     return average(values);
 }
 
+function rebase(value: number | null, base: number | null): number | null {
+    if (value == null || base == null || base === 0) return null;
+    return (value / base) * 100;
+}
+
 export function normalizeEmae(rawData: EmaeRawRow[]): EmaeNormalizedRow[] {
     if (!Array.isArray(rawData) || rawData.length === 0) return [];
 
@@ -28,7 +38,12 @@ export function normalizeEmae(rawData: EmaeRawRow[]): EmaeNormalizedRow[] {
     const baseTendencia = toNullableNumber(baseRow.emae_tendencia);
     const sortedRawData = [...rawData].sort((a, b) => a.fecha.localeCompare(b.fecha));
     const baseRowIndex = sortedRawData.findIndex(row => row.fecha === '2017-01-01');
-    const baseSectors: Partial<Record<EmaeSectorKey, number | null>> = Object.fromEntries(EMAE_SECTOR_KEYS.map(key => [key, sectorMm12(sortedRawData, key, baseRowIndex)]));
+    const baseSectorsMm12: Partial<Record<EmaeSectorKey, number | null>> = Object.fromEntries(
+        EMAE_SECTOR_KEYS.map(key => [key, sectorMm12(sortedRawData, key, baseRowIndex)]),
+    );
+    const baseSectorsMonthly: Partial<Record<EmaeSectorKey, number | null>> = Object.fromEntries(
+        EMAE_SECTOR_KEYS.map(key => [key, toNullableNumber(baseRow[key] ?? null)]),
+    );
 
     return sortedRawData
         .map((row, rowIndex) => {
@@ -38,19 +53,30 @@ export function normalizeEmae(rawData: EmaeRawRow[]): EmaeNormalizedRow[] {
             const emae = toNullableNumber(row.emae);
             const emaeDesestacionalizado = toNullableNumber(row.emae_desestacionalizado);
             const emaeTendencia = toNullableNumber(row.emae_tendencia);
+            const emaeBase100 = rebase(emae, baseOriginal);
+            const emaeDesestBase100 = rebase(emaeDesestacionalizado, baseDesest);
+
+            const sectorMonthlyBase100: Partial<Record<EmaeSectorKey, number | null>> = Object.fromEntries(
+                EMAE_SECTOR_KEYS.map(key => [
+                    key,
+                    rebase(toNullableNumber(row[key] ?? null), baseSectorsMonthly[key] ?? null),
+                ]),
+            );
+            const aportes = sectorLevelAportes(sectorMonthlyBase100, emaeDesestBase100);
 
             const normalizedRow: EmaeNormalizedRow = {
                 fecha: `${MONTHS_ES[dateObj.getUTCMonth()]} ${String(dateObj.getUTCFullYear()).slice(-2)}`,
                 iso_fecha: row.fecha,
-                emae: baseOriginal && emae != null ? (emae / baseOriginal) * 100 : null,
-                emae_desestacionalizado: baseDesest && emaeDesestacionalizado != null ? (emaeDesestacionalizado / baseDesest) * 100 : null,
-                emae_tendencia: baseTendencia && emaeTendencia != null ? (emaeTendencia / baseTendencia) * 100 : null,
+                emae: emaeBase100,
+                emae_desestacionalizado: emaeDesestBase100,
+                emae_tendencia: rebase(emaeTendencia, baseTendencia),
+                ...aportes,
             };
 
             for (let index = 0; index < EMAE_SECTOR_KEYS.length; index++) {
                 const key = EMAE_SECTOR_KEYS[index];
                 const value = sectorMm12(sortedRawData, key, rowIndex);
-                const baseValue = baseSectors[key];
+                const baseValue = baseSectorsMm12[key];
                 normalizedRow[EMAE_SECTOR_MM12_KEYS[index]] = baseValue && value != null ? (value / baseValue) * 100 : null;
             }
 

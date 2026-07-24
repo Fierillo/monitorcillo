@@ -1,8 +1,8 @@
-import type { EmaeSectorKey, EmaeSectorMm12Key } from '@/lib/emae/schema';
+import type { EmaeSectorAporteKey, EmaeSectorKey, EmaeSectorMm12Key } from '@/lib/emae/schema';
 import type { NumericValue } from './common';
 import type { IndicatorType } from './indicators';
 
-export type { EmaeSectorKey, EmaeSectorMm12Key };
+export type { EmaeSectorAporteKey, EmaeSectorKey, EmaeSectorMm12Key };
 
 export type BcraVariableRow = {
     fecha: string;
@@ -66,7 +66,7 @@ export type EmaeNormalizedRow = {
     emae: number | null;
     emae_desestacionalizado: number | null;
     emae_tendencia: number | null;
-} & Partial<Record<EmaeSectorKey | EmaeSectorMm12Key, number | null>>;
+} & Partial<Record<EmaeSectorKey | EmaeSectorMm12Key | EmaeSectorAporteKey, number | null>>;
 
 export type BmaRawRow = {
     fecha: string;

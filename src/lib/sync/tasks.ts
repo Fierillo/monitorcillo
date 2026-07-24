@@ -91,6 +91,8 @@ export async function syncEmae(): Promise<SyncResult> {
     const existingData = (await getRawData(type)) ?? [];
     const { rows: rawRows, publishedAt } = await fetchEmaeRaw();
     const result = await persistMergedRawAndNormalize(type, existingData, rawRows, normalizeEmae);
+    const persistedRaw = (await getRawData(type)) ?? [];
+    if (persistedRaw.length > 0) await replaceNormalizedData(type, normalizeEmae(persistedRaw));
     if (publishedAt && rawRows.length > 0) {
         await saveIndicatorPublication('emae', publishedAt, rawRows.at(-1)?.fecha ?? null);
     }

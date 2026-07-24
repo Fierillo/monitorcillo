@@ -167,4 +167,35 @@ describe('normalizeEmae', () => {
         expect(normalized.find(row => row.iso_fecha === '2017-01-01')?.industria_mm12).toBe(100);
         expect(normalized.find(row => row.iso_fecha === '2017-02-01')?.industria_mm12).toBeCloseTo(107.5 / 106.5 * 100, 6);
     });
+
+    it('computes sector contributions that sum to seasonally adjusted EMAE', () => {
+        const rawData = Array.from({ length: 2 }, (_, index) => {
+            const month = index + 1;
+            return {
+                fecha: `2017-0${month}-01`,
+                emae: 100 + index * 10,
+                emae_desestacionalizado: 100 + index * 8,
+                emae_tendencia: 100,
+                agro: 100 + index * 20,
+                industria: 100 + index * 5,
+                comercio: 100,
+            };
+        });
+
+        const normalized = normalizeEmae(rawData);
+        const row = normalized.find(item => item.iso_fecha === '2017-02-01');
+        expect(row?.emae).toBeCloseTo(110, 6);
+        expect(row?.emae_desestacionalizado).toBeCloseTo(108, 6);
+
+        const aportes = [
+            row?.agro_aporte,
+            row?.industria_aporte,
+            row?.comercio_aporte,
+        ].filter((value): value is number => typeof value === 'number');
+
+        expect(aportes.length).toBe(3);
+        expect(aportes.reduce((sum, value) => sum + value, 0)).toBeCloseTo(108, 6);
+        expect(row?.agro_aporte).toBeGreaterThan(0);
+        expect(row?.industria_aporte).toBeGreaterThan(0);
+    });
 });

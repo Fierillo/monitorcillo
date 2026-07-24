@@ -1,5 +1,5 @@
 import type { DbRow, IndicatorTrend, IndicatorType, NormalizedDataByType } from '@/types';
-import { EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
+import { EMAE_SECTOR_APORTE_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
 import { isoToFecha, isoToMonthLabel } from '../normalize';
 import { RECAUDACION_BREAKDOWN_TYPES } from '../recaudacion/schema';
 import { formatDbDate, toNullableNumber, toNumber } from './tables';
@@ -48,6 +48,7 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
             emae_tendencia: toNullableNumber(row.emae_tendencia),
         } as Record<string, unknown>;
         for (const key of EMAE_SECTOR_MM12_KEYS) normalized[key] = toNullableNumber(row[key]);
+        for (const key of EMAE_SECTOR_APORTE_KEYS) normalized[key] = toNullableNumber(row[key]);
         return normalized as NormalizedDataByType[T];
     }
 

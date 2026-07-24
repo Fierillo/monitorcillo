@@ -1,5 +1,5 @@
 import type { DbRow, DbValue, IndicatorType, NormalizedDataByType, NormalizedDataRow } from '@/types';
-import { EMAE_NORMALIZED_DB_COLUMNS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
+import { EMAE_NORMALIZED_DB_COLUMNS, EMAE_SECTOR_APORTE_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
 import { fechaToISO } from '../normalize';
 import {
     RECAUDACION_BREAKDOWN_TYPES,
@@ -67,7 +67,16 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
     if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(String(fecha))) return null;
 
     if (type === 'emision') return [fecha, toNumber(row.BCRA), toNullableNumber(row.TC), toNumber(row.CompraDolares), toNumber(row.Vencimientos), toNumber(row.Licitado), toNumber(row.Licitaciones), toNumber(row['Resultado fiscal']), toNumber(row.TOTAL), toNumber(row.ACUMULADO)];
-    if (type === 'emae') return [fecha, toNumber(row.emae), toNullableNumber(row.emae_desestacionalizado), toNullableNumber(row.emae_tendencia), ...EMAE_SECTOR_MM12_KEYS.map(key => toNullableNumber(row[key]))];
+    if (type === 'emae') {
+        return [
+            fecha,
+            toNumber(row.emae),
+            toNullableNumber(row.emae_desestacionalizado),
+            toNullableNumber(row.emae_tendencia),
+            ...EMAE_SECTOR_MM12_KEYS.map(key => toNullableNumber(row[key])),
+            ...EMAE_SECTOR_APORTE_KEYS.map(key => toNullableNumber(row[key])),
+        ];
+    }
     if (type === 'bma') return [fecha, toNullableNumber(row.BaseMonetaria), toNullableNumber(row.PasivosRemunerados), toNullableNumber(row.DepositosTesoro), toNullableNumber(row.BMAmplia)];
     if (type === 'reca') {
         return [
@@ -119,7 +128,9 @@ async function ensureRecaudacionTaxColumns(table: string): Promise<void> {
 }
 
 async function ensureEmaeSectorColumns(table: string): Promise<void> {
-    for (const column of EMAE_SECTOR_MM12_KEYS) await sql.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} NUMERIC`, []);
+    for (const column of [...EMAE_SECTOR_MM12_KEYS, ...EMAE_SECTOR_APORTE_KEYS]) {
+        await sql.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} NUMERIC`, []);
+    }
 }
 
 async function ensureDeudaAcumuladoColumn(table: string): Promise<void> {

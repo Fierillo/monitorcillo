@@ -57,6 +57,7 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
 async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
     const data = await safeGetIndicatorData('emae');
     const sectorData = data.filter(row => typeof row.iso_fecha === 'string' && row.iso_fecha >= '2017-01-01');
+    const aporteData: ChartDataRow[] = sectorData;
     const areas: AreaConfig[] = [
         { key: 'emae', name: 'EMAE Original', color: '#FFD700', type: 'line' },
         { key: 'emae_desestacionalizado', name: 'EMAE Desestacionalizado', color: '#00BFFF', type: 'line' },
@@ -74,6 +75,20 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Normalización', description: 'Cada sector se expresa como índice Base Enero 2017 = 100.' },
         { title: 'Suavizado MM12', description: 'Se aplica media móvil simple trailing de 12 meses sobre cada índice sectorial original y luego se normaliza cada serie a Base Enero 2017 = 100. No es una serie desestacionalizada oficial de INDEC.' },
     ];
+    const aporteAreas: AreaConfig[] = EMAE_SECTORS.map(sector => ({
+        key: `${sector.key}_aporte`,
+        name: sector.label,
+        color: sector.color,
+        type: 'bar',
+        stackId: 'emae-aporte',
+        yAxisId: 'left',
+    }));
+    const aporteMethodology = [
+        { title: 'Aporte al nivel', description: 'Cada segmento es el aporte del sector al nivel del EMAE desestacionalizado: peso de estructura por índice sectorial Base enero 2017 = 100, reescalado para que la suma coincida con el agregado mensual.' },
+        { title: 'Pesos de estructura', description: 'Se usan pesos fijos como aproximación a la estructura del EMAE. El peso no cambia mes a mes; varía el índice de cada sector.' },
+        { title: 'Lectura', description: 'La altura total de cada barra coincide con el EMAE desestacionalizado del mes. No es una descomposición de la variación interanual ni una participación en el PBI.' },
+        { title: 'Nota de datos', description: 'Los índices sectoriales son series originales de INDEC; el reescalado alinea la composición con la serie desestacionalizada del agregado.' },
+    ];
     return {
         subtitle: indicator.fuente,
         chartTitle: 'Evolución del EMAE',
@@ -86,6 +101,7 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         views: [
             { id: 'agregado', label: 'Agregado', chartTitle: 'Evolución del EMAE', areas, methodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] },
             { id: 'sectores', label: 'Por sectores', chartTitle: 'EMAE por sector (MM12)', data: sectorData, areas: sectorAreas, methodology: sectorMethodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] },
+            { id: 'aporte', label: 'Por aporte', chartTitle: 'Composición sectorial del EMAE desestacionalizado', data: aporteData, areas: aporteAreas, methodology: aporteMethodology, valueFormat: 'index', yAxisDecimals: 1, yAxisLabel: 'Nivel EMAE (Base 100 = Ene-17)', leftYAxisDomain: 'auto' },
         ],
     };
 }
