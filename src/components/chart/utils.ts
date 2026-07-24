@@ -16,11 +16,10 @@ export function collectAxisExtentValues(
     } = {},
 ): number[] {
     const yAxisId = options.yAxisId ?? 'left';
-    const highlighted = options.highlightedAreas;
+    const highlightedAreas = options.highlightedAreas;
     const visibleAreas = areas.filter(area => {
         if ((area.yAxisId ?? 'left') !== yAxisId) return false;
-        if (highlighted && highlighted.size > 0 && !highlighted.has(area.legendKey || area.key)) return false;
-        return true;
+        return !highlightedAreas?.size || highlightedAreas.has(area.legendKey || area.key);
     });
 
     const stacked = new Map<string, AreaConfig[]>();

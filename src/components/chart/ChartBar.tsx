@@ -17,6 +17,7 @@ export default function ChartBar({
             fill={areaConfig.color}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
+            isAnimationActive={false}
             onClick={(data: unknown, _index: number, event: ChartBarClickEvent) => {
                 if (event && event.stopPropagation) {
                     event.stopPropagation();

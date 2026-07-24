@@ -134,6 +134,7 @@ export type ChartTooltipProps = {
     areaConfigs: AreaConfig[];
     valueFormat: ValueFormat;
     tooltipProps: TooltipProps;
+    compact?: boolean;
 };
 
 export type ChartBarProps = {

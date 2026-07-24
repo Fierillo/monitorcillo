@@ -7,7 +7,8 @@ export default function ChartTooltip({
     chartData,
     areaConfigs,
     valueFormat,
-    tooltipProps
+    tooltipProps,
+    compact = false,
 }: ChartTooltipProps) {
     if (!tooltipProps.active || !tooltipProps.label) return null;
 
@@ -29,12 +30,12 @@ export default function ChartTooltip({
                 <div
                     key={row.year}
                     style={{
-                        fontSize: isCurrent ? '14px' : '12px',
+                        fontSize: compact ? (isCurrent ? '11px' : '9px') : (isCurrent ? '14px' : '12px'),
                         fontWeight: isCurrent ? 'bold' : 'normal',
                         color: isCurrent ? '#FFD700' : '#9B59B6',
-                        marginBottom: '2px',
+                        marginBottom: compact ? '1px' : '2px',
                         borderBottom: isCurrent ? '1px solid #666' : 'none',
-                        paddingBottom: isCurrent ? '4px' : '0'
+                        paddingBottom: isCurrent ? (compact ? '2px' : '4px') : '0'
                     }}
                 >
                     {SPANISH_MONTHS[month]} {String(row.year).slice(-2)}: {Number(row.pctPbi ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% PIB
@@ -43,7 +44,7 @@ export default function ChartTooltip({
         });
 
         return (
-            <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.85)', border: '1px solid #FFD700', padding: '10px', color: '#FFF', minWidth: '180px', backdropFilter: 'blur(4px)' }}>
+            <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.92)', border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', minWidth: compact ? '140px' : '180px', maxHeight: compact ? '45vh' : undefined, overflowY: compact ? 'auto' : undefined, backdropFilter: 'blur(4px)' }}>
                 {rows}
             </div>
         );
@@ -55,15 +56,21 @@ export default function ChartTooltip({
 
     if (valueRows.length === 0) return null;
 
-    const total = valueRows.reduce((sum, row) => sum + row.value, 0);
+    const showStackTotal = areaConfigs.some(area => area.stackId) && valueRows.length > 1;
+    const total = showStackTotal ? valueRows.reduce((sum, row) => sum + row.value, 0) : null;
     const totalFormat = valueRows[0]?.format ?? valueFormat;
 
     return (
-        <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.85)', border: '1px solid #FFD700', padding: '10px', color: '#FFF', backdropFilter: 'blur(4px)' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{rowData.fecha}</div>
-            {valueRows.map(row => row.node)}
-            {valueRows.length > 1 ? (
-                <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px solid #666', color: '#FFD700', fontWeight: 'bold' }}>
+        <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.92)', border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', maxWidth: compact ? '220px' : undefined, maxHeight: compact ? '55vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '10px' : undefined, lineHeight: compact ? 1.15 : undefined, backdropFilter: 'blur(4px)' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: compact ? '2px' : '4px' }}>{rowData.fecha}</div>
+            {valueRows.map(row => compact ? (
+                <div key={row.key} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', color: row.color, fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
+                    <span>{row.formatted}</span>
+                </div>
+            ) : row.node)}
+            {showStackTotal && total != null ? (
+                <div style={{ marginTop: compact ? '3px' : '6px', paddingTop: compact ? '3px' : '6px', borderTop: '1px solid #666', color: '#FFD700', fontWeight: 'bold' }}>
                     Total: {formatValueByType(total, totalFormat, 1)}
                 </div>
             ) : null}
@@ -79,8 +86,12 @@ function renderValueRow(rowData: ChartDataRow, area: ChartTooltipProps['areaConf
     const format = area.valueFormat ?? valueFormat;
 
     return {
+        key: area.key,
+        name: area.name,
+        color: area.color,
         value: numericValue,
         format,
+        formatted: formatValueByType(numericValue, format, 1),
         node: (
             <div key={area.key} style={{ color: area.color, fontWeight: 'bold' }}>
                 {area.name}: {formatValueByType(numericValue, format, 1)}
