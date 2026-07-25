@@ -204,7 +204,7 @@ async function recaudacionConfig(indicator: Indicator): Promise<DetailConfig> {
         indicatorId: indicator.id,
         views: [
             { id: 'agregado', label: 'Agregado', chartTitle: 'Recaudación Mensual (% PBI real)', areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% PBI real', leftYAxisDomain: 'auto-pad' },
-            { id: 'por-tipo', label: 'Por tipo', chartTitle: 'Recaudación por tributo (% PBI real)', areas: typeAreas, methodology: typeMethodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% PBI real', leftYAxisDomain: 'auto' },
+            { id: 'por-tipo', label: 'Por tipo', chartTitle: 'Recaudación por tributo (% PBI real)', areas: typeAreas, methodology: typeMethodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% PBI real', leftYAxisDomain: 'auto', showTooltipTotal: true },
         ],
     };
 }

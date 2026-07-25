@@ -33,6 +33,7 @@ type Props = {
     highlightedAreas: Set<string>;
     selectedMonth: string | null;
     selectByMonth: boolean;
+    showTooltipTotal: boolean;
     rangePreview: [number, number] | null;
     committedRange: [number, number];
     crosshair: ChartCrosshairState | null;
@@ -118,8 +119,8 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
                 </div>
             </div>
             {!props.isMobile && props.secondaryYAxis && <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right />}
-            {props.isCapturing && props.crosshair?.locked && props.crosshair.activePayload && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} /> : null}
-            {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.activePayload && props.captureTooltip.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} /> : null}
+            {props.isCapturing && props.crosshair?.locked && props.crosshair.activePayload && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} /> : null}
+            {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.activePayload && props.captureTooltip.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} /> : null}
         </div>
     );
 }
@@ -206,7 +207,7 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
             <XAxis dataKey={props.xAxisKey} stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)} hide={props.isMobile} />
             <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
             {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
-            {!props.isCapturing && <Tooltip cursor={false} wrapperStyle={{ pointerEvents: 'none' }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={renderedAreas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} compact={props.isMobile} />} />}
+            {!props.isCapturing && <Tooltip cursor={false} wrapperStyle={{ pointerEvents: 'none' }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={renderedAreas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} compact={props.isMobile} showTotal={props.showTooltipTotal} />} />}
             {renderedAreas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}
             <Customized component={(chartState: unknown) => <RangePreviewGuides previewRange={props.rangePreview} committedRange={props.committedRange} sortedData={props.sortedData} xAxisKey={props.xAxisKey} chartState={chartState} />} />
             <HoverCrosshair verticalRef={hoverVerticalRef} horizontalRef={hoverHorizontalRef} width={props.chartSize.width} height={props.chartSize.height} />
@@ -345,7 +346,7 @@ function niceStep(rawStep: number): number {
     return 10 * magnitude;
 }
 
-function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidth, chartHeight }: { crosshair: ChartCrosshairState; areas: AreaConfig[]; valueFormat: ValueFormat; sortedData: ChartDataRow[]; chartWidth: number; chartHeight: number }) {
+function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidth, chartHeight, showTotal }: { crosshair: ChartCrosshairState; areas: AreaConfig[]; valueFormat: ValueFormat; sortedData: ChartDataRow[]; chartWidth: number; chartHeight: number; showTotal: boolean }) {
     const label = crosshair.label;
     const rowData = label ? sortedData.find(row => row.fecha === label || row.iso_fecha === label) : null;
     if (!rowData) return null;
@@ -369,7 +370,7 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
         .filter((row): row is NonNullable<typeof row> => row !== null);
     if (valueRows.length === 0) return null;
 
-    const showStackTotal = areas.some(area => area.stackId) && valueRows.length > 1;
+    const showStackTotal = showTotal && valueRows.length > 1;
     const total = showStackTotal ? valueRows.reduce((sum, row) => sum + row.value, 0) : null;
     const TOOLTIP_WIDTH = 180;
     const TOOLTIP_HEIGHT估算 = 40 + valueRows.length * 20 + (showStackTotal ? 24 : 0);

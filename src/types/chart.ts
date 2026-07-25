@@ -71,6 +71,7 @@ export type ChartViewConfig = {
     yAxisLabel?: string;
     secondaryYAxis?: YAxisConfig;
     leftYAxisDomain?: ChartAxisDomain;
+    showTooltipTotal?: boolean;
 };
 
 export type TooltipPayload = {
@@ -125,6 +126,7 @@ export interface IndicatorCompositeViewProps {
     yAxisLabel?: string;
     secondaryYAxis?: YAxisConfig;
     leftYAxisDomain?: ChartAxisDomain;
+    showTooltipTotal?: boolean;
     indicatorId?: string;
     views?: ChartViewConfig[];
 }
@@ -135,6 +137,7 @@ export type ChartTooltipProps = {
     valueFormat: ValueFormat;
     tooltipProps: TooltipProps;
     compact?: boolean;
+    showTotal?: boolean;
 };
 
 export type ChartBarProps = {

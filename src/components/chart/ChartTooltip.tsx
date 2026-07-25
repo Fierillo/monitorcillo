@@ -9,6 +9,7 @@ export default function ChartTooltip({
     valueFormat,
     tooltipProps,
     compact = false,
+    showTotal = false,
 }: ChartTooltipProps) {
     if (!tooltipProps.active || !tooltipProps.label) return null;
 
@@ -56,7 +57,7 @@ export default function ChartTooltip({
 
     if (valueRows.length === 0) return null;
 
-    const showStackTotal = areaConfigs.some(area => area.stackId) && valueRows.length > 1;
+    const showStackTotal = showTotal && valueRows.length > 1;
     const total = showStackTotal ? valueRows.reduce((sum, row) => sum + row.value, 0) : null;
     const totalFormat = valueRows[0]?.format ?? valueFormat;
 

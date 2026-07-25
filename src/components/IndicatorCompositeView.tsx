@@ -48,6 +48,7 @@ export default function IndicatorCompositeView({
     yAxisLabel,
     secondaryYAxis,
     leftYAxisDomain,
+    showTooltipTotal = false,
     indicatorId,
     views,
 }: IndicatorCompositeViewProps) {
@@ -66,6 +67,7 @@ export default function IndicatorCompositeView({
     const activeYAxisLabel = selectedView?.yAxisLabel ?? yAxisLabel;
     const activeSecondaryYAxis = selectedView?.secondaryYAxis ?? secondaryYAxis;
     const activeLeftYAxisDomain = selectedView?.leftYAxisDomain ?? leftYAxisDomain;
+    const activeShowTooltipTotal = selectedView?.showTooltipTotal ?? showTooltipTotal;
     const sortedData = useMemo(() => {
         const getSortKey = (row: ChartDataRow) => {
             if (typeof row?.iso_fecha === 'string' && row.iso_fecha) return row.iso_fecha;
@@ -344,6 +346,7 @@ export default function IndicatorCompositeView({
                 yAxisDecimals={activeYAxisDecimals} yAxisLabel={activeYAxisLabel} secondaryYAxis={activeSecondaryYAxis}
                 leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}
                 highlightedAreas={highlightedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
+                showTooltipTotal={activeShowTooltipTotal}
                 rangePreview={previewRange} committedRange={[startIndex, endIndex]}
                 crosshair={crosshair} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={handleHoverTooltipChange}
                 isMobile={isMobile} isCapturing={isCapturing && !isMobile} onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
@@ -375,6 +378,7 @@ export default function IndicatorCompositeView({
                         yAxisDecimals={activeYAxisDecimals} yAxisLabel={activeYAxisLabel} secondaryYAxis={activeSecondaryYAxis}
                         leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}
                         highlightedAreas={highlightedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
+                        showTooltipTotal={activeShowTooltipTotal}
                         rangePreview={null} committedRange={[startIndex, endIndex]}
                         crosshair={crosshair?.locked ? crosshair : null} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={handleHoverTooltipChange}
                         isMobile={false} isCapturing forceDesktopLayout onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
