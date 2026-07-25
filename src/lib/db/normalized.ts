@@ -1,3 +1,4 @@
+import type { NeonQueryPromise } from '@neondatabase/serverless';
 import type { DbRow, DbValue, IndicatorType, NormalizedDataByType, NormalizedDataRow } from '@/types';
 import { EMAE_NORMALIZED_DB_COLUMNS, EMAE_SECTOR_APORTE_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
 import { fechaToISO } from '../normalize';
@@ -96,14 +97,10 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
     return [fecha, toNullableNumber(row.blanco), toNullableNumber(row.negro), toNullableNumber(row.privado), toNullableNumber(row.publico), toNullableNumber(row.ripte), toNullableNumber(row.jubilacion)];
 }
 
-export async function saveNormalizedData(type: IndicatorType, data: NormalizedDataRow[]): Promise<void> {
+function normalizedInsertQueries(type: IndicatorType, data: NormalizedDataRow[]): Array<NeonQueryPromise<false, false>> {
     const table = getTableName(type, true);
-    if (data.length === 0) return;
-    if (type === 'emae') await ensureEmaeSectorColumns(table);
-    if (type === 'reca') await ensureRecaudacionTaxColumns(table);
-    if (type === 'deuda') await ensureDeudaAcumuladoColumn(table);
-
     const BATCH_SIZE = 50;
+    const queries: Array<NeonQueryPromise<false, false>> = [];
     for (let i = 0; i < data.length; i += BATCH_SIZE) {
         const batch = data.slice(i, i + BATCH_SIZE);
         const keys = NORMALIZED_KEYS[type];
@@ -117,8 +114,23 @@ export async function saveNormalizedData(type: IndicatorType, data: NormalizedDa
             return `(${rowPlaceholders})`;
         }).filter((placeholder): placeholder is string => placeholder !== null).join(', ');
 
-        if (placeholders) await sql.query(`INSERT INTO ${table} (${keys.join(', ')}) VALUES ${placeholders} ON CONFLICT (fecha) DO UPDATE SET ${setClause}, last_update = NOW()`, values);
+        if (placeholders) queries.push(sql.query(`INSERT INTO ${table} (${keys.join(', ')}) VALUES ${placeholders} ON CONFLICT (fecha) DO UPDATE SET ${setClause}, last_update = NOW()`, values));
     }
+
+    return queries;
+}
+
+async function ensureNormalizedColumns(type: IndicatorType, table: string): Promise<void> {
+    if (type === 'emae') await ensureEmaeSectorColumns(table);
+    if (type === 'reca') await ensureRecaudacionTaxColumns(table);
+    if (type === 'deuda') await ensureDeudaAcumuladoColumn(table);
+}
+
+export async function saveNormalizedData(type: IndicatorType, data: NormalizedDataRow[]): Promise<void> {
+    if (data.length === 0) return;
+    const table = getTableName(type, true);
+    await ensureNormalizedColumns(type, table);
+    for (const query of normalizedInsertQueries(type, data)) await query;
 }
 
 async function ensureRecaudacionTaxColumns(table: string): Promise<void> {
@@ -144,8 +156,12 @@ export async function replaceNormalizedData(type: IndicatorType, data: Normalize
         return;
     }
     const table = getTableName(type, true);
-    await sql.query(`DELETE FROM ${table}`, []);
-    await saveNormalizedData(type, data);
+    await ensureNormalizedColumns(type, table);
+    await sql.transaction([
+        sql.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`normalized:${table}`]),
+        sql.query(`DELETE FROM ${table}`, []),
+        ...normalizedInsertQueries(type, data),
+    ]);
 }
 
 export async function getLastUpdate(type: IndicatorType): Promise<string | null> {
