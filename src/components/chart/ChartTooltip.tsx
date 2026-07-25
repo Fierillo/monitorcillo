@@ -65,9 +65,9 @@ export default function ChartTooltip({
         <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.92)', border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', maxWidth: compact ? '220px' : undefined, maxHeight: compact ? '55vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '10px' : undefined, lineHeight: compact ? 1.15 : undefined, backdropFilter: 'blur(4px)' }}>
             <div style={{ fontWeight: 'bold', marginBottom: compact ? '2px' : '4px' }}>{rowData.fecha}</div>
             {valueRows.map(row => compact ? (
-                <div key={row.key} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', color: row.color, fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
-                    <span>{row.formatted}</span>
+                <div key={row.key} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    <span style={{ color: row.color, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
+                    <span style={{ color: row.secondaryColor ?? row.color }}>{row.formatted}</span>
                 </div>
             ) : row.node)}
             {showStackTotal && total != null ? (
@@ -90,12 +90,14 @@ function renderValueRow(rowData: ChartDataRow, area: ChartTooltipProps['areaConf
         key: area.key,
         name: area.name,
         color: area.color,
+        secondaryColor: area.secondaryColor,
         value: numericValue,
         format,
         formatted: formatValueByType(numericValue, format, 1),
         node: (
-            <div key={area.key} style={{ color: area.color, fontWeight: 'bold' }}>
-                {area.name}: {formatValueByType(numericValue, format, 1)}
+            <div key={area.key} style={{ fontWeight: 'bold' }}>
+                <span style={{ color: area.color }}>{area.name}: </span>
+                <span style={{ color: area.secondaryColor ?? area.color }}>{formatValueByType(numericValue, format, 1)}</span>
             </div>
         ),
     };

@@ -4,6 +4,13 @@ import { Line } from 'recharts';
 import type { ChartDataRow, ChartLineProps } from '@/types/chart';
 import { formatValueByType } from './utils';
 
+type LineLabelProps = {
+    index?: number;
+    value?: unknown;
+    x?: number | string;
+    y?: number | string;
+};
+
 function hasValue(data: ChartDataRow[] | undefined, index: number, key: string): boolean {
     if (!data || index < 0 || index >= data.length) return false;
     const current = data[index][key];
@@ -56,7 +63,7 @@ export default function ChartLine({ areaConfig, isDimmed, data, isCapturing = fa
         );
     };
 
-    const label = !showValueLabels ? undefined : (labelProps: any) => {
+    const label = !showValueLabels ? undefined : (labelProps: LineLabelProps) => {
         const index = labelProps.index ?? 0;
         if (!hasValue(data, index, areaConfig.key)) return null;
         if (typeof labelProps.x !== 'number' || typeof labelProps.y !== 'number') return null;
@@ -110,5 +117,20 @@ export default function ChartLine({ areaConfig, isDimmed, data, isCapturing = fa
             yAxisId={areaConfig.yAxisId || 'left'}
             style={{ opacity: isDimmed ? 0.2 : 1 }}
         />
+        {areaConfig.secondaryColor ? <Line
+            type="monotone"
+            dataKey={areaConfig.key}
+            stroke={areaConfig.secondaryColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray="5 15"
+            dot={false}
+            activeDot={false}
+            connectNulls={areaConfig.connectNulls}
+            isAnimationActive={!isDimmed && !isCapturing}
+            name={areaConfig.name}
+            yAxisId={areaConfig.yAxisId || 'left'}
+            tooltipType="none"
+            style={{ opacity: isDimmed ? 0.2 : 1 }}
+        /> : null}
     </>;
 }

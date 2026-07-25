@@ -54,17 +54,19 @@ export default function IndicatorCompositeView({
 }: IndicatorCompositeViewProps) {
     const selectByMonth = indicatorId === 'recaudacion';
     const [selectedViewId, setSelectedViewId] = useState(views?.[0]?.id ?? 'default');
+    const [selectedModeByView, setSelectedModeByView] = useState<Record<string, string>>({});
     const [highlightedAreasByView, setHighlightedAreasByView] = useState<Record<string, Set<string>>>({});
     const [isConfigLoaded, setIsConfigLoaded] = useState(false);
     const selectedView = views?.find(view => view.id === selectedViewId) ?? views?.[0];
     const activeViewId = selectedView?.id ?? selectedViewId;
-    const activeChartTitle = selectedView?.chartTitle ?? chartTitle;
-    const activeData = selectedView?.data ?? data;
+    const selectedMode = selectedView?.modes?.find(mode => mode.id === selectedModeByView[activeViewId]) ?? selectedView?.modes?.[0];
+    const activeChartTitle = selectedMode?.chartTitle ?? selectedView?.chartTitle ?? chartTitle;
+    const activeData = selectedMode?.data ?? selectedView?.data ?? data;
     const activeAreas = selectedView?.areas ?? areas;
     const activeMethodology = selectedView?.methodology ?? methodology;
     const activeValueFormat = selectedView?.valueFormat ?? valueFormat;
     const activeYAxisDecimals = selectedView?.yAxisDecimals ?? yAxisDecimals;
-    const activeYAxisLabel = selectedView?.yAxisLabel ?? yAxisLabel;
+    const activeYAxisLabel = selectedMode?.yAxisLabel ?? selectedView?.yAxisLabel ?? yAxisLabel;
     const activeSecondaryYAxis = selectedView?.secondaryYAxis ?? secondaryYAxis;
     const activeLeftYAxisDomain = selectedView?.leftYAxisDomain ?? leftYAxisDomain;
     const activeShowTooltipTotal = selectedView?.showTooltipTotal ?? showTooltipTotal;
@@ -257,6 +259,22 @@ export default function IndicatorCompositeView({
         </div>
     ) : null;
 
+    const axisModeSelector = selectedView?.modes && selectedView.modes.length > 1 && selectedMode ? (
+        <div role="group" aria-label="Modo del EMAE" className="no-capture flex tracking-normal">
+            {selectedView.modes.map(mode => (
+                <button
+                    key={mode.id}
+                    type="button"
+                    aria-pressed={mode.id === selectedMode.id}
+                    onClick={() => startTransition(() => setSelectedModeByView(previous => ({ ...previous, [activeViewId]: mode.id })))}
+                    className={`border border-imperial-gold px-2 py-0.5 text-[9px] font-bold uppercase transition-colors ${mode.id === selectedMode.id ? 'bg-imperial-gold text-imperial-blue' : 'text-imperial-gold hover:bg-imperial-gold hover:text-imperial-blue'}`}
+                >
+                    {mode.label}
+                </button>
+            ))}
+        </div>
+    ) : null;
+
     const handleToggleHighlight = useCallback((key: string) => {
         setHighlightedAreasByView(prev => {
             const next = new Set(prev[activeViewId] ?? []);
@@ -350,7 +368,7 @@ export default function IndicatorCompositeView({
                 rangePreview={previewRange} committedRange={[startIndex, endIndex]}
                 crosshair={crosshair} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={handleHoverTooltipChange}
                 isMobile={isMobile} isCapturing={isCapturing && !isMobile} onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
-                onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} viewSelector={viewSelector}
+                onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} viewSelector={viewSelector} axisModeSelector={axisModeSelector}
                 timeRangeSlider={!isCapturing && sortedData.length > 1 ? (
                     <TimeRangeSlider
                         data={sortedData}

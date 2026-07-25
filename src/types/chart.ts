@@ -4,6 +4,7 @@ export interface AreaConfig {
     key: string;
     name: string;
     color: string;
+    secondaryColor?: string;
     valueFormat?: ValueFormat;
     showValueLabels?: boolean;
     labelOffsetY?: number;
@@ -58,6 +59,14 @@ export type ChartAxisDomainValue = number | string;
 
 export type ChartAxisDomain = [ChartAxisDomainValue, ChartAxisDomainValue] | 'auto-pad' | 'auto';
 
+export type ChartModeConfig = {
+    id: string;
+    label: string;
+    chartTitle: string;
+    data: ChartDataRow[];
+    yAxisLabel: string;
+};
+
 export type ChartViewConfig = {
     id: string;
     label: string;
@@ -72,6 +81,7 @@ export type ChartViewConfig = {
     secondaryYAxis?: YAxisConfig;
     leftYAxisDomain?: ChartAxisDomain;
     showTooltipTotal?: boolean;
+    modes?: ChartModeConfig[];
 };
 
 export type TooltipPayload = {

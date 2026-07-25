@@ -1,6 +1,7 @@
 'use client';
 
 import type { CustomLegendProps } from '@/types/chart';
+import SeriesColorMarker from './SeriesColorMarker';
 
 export default function CustomLegend({ areas, highlightedAreas, onToggleHighlight, compact = false }: CustomLegendProps) {
     const legendAreas = areas.filter((area, index) => {
@@ -17,6 +18,8 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                 const toggleKey = area.legendKey || area.key;
                 const isHighlighted = highlightedAreas.has(toggleKey);
                 const isDimmed = hasHighlights && !isHighlighted;
+                const markerColor = isDimmed ? '#666' : area.color;
+                const secondaryMarkerColor = isDimmed ? '#666' : area.secondaryColor;
                 return (
                     <span
                         key={toggleKey}
@@ -33,9 +36,9 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                         }}
                         title="Click para destacar u ocultar el destacado"
                     >
-                        <svg width="10" height="10">
-                            <circle cx="5" cy="5" r="5" fill={area.legendFilled === false ? 'transparent' : (isDimmed ? '#666' : area.color)} stroke={isDimmed ? '#666' : area.color} strokeWidth={area.legendFilled === false ? 1.5 : 0} />
-                        </svg>
+                        {secondaryMarkerColor
+                            ? <SeriesColorMarker color={markerColor} secondaryColor={secondaryMarkerColor} />
+                            : <svg width="10" height="10"><circle cx="5" cy="5" r="5" fill={area.legendFilled === false ? 'transparent' : markerColor} stroke={markerColor} strokeWidth={area.legendFilled === false ? 1.5 : 0} /></svg>}
                         {area.name}
                     </span>
                 );

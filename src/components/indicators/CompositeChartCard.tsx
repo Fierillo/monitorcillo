@@ -42,6 +42,7 @@ type Props = {
     isCapturing: boolean;
     forceDesktopLayout?: boolean;
     viewSelector?: ReactNode;
+    axisModeSelector?: ReactNode;
     timeRangeSlider?: ReactNode;
     onPrepareDownload: () => void;
     onDownloadChart: () => void;
@@ -110,8 +111,9 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
         : { outline: 'none', width: '100%', minWidth: minimumTouchWidth || undefined };
 
     return (
-        <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? 'min-h-[780px]' : 'min-h-[300px] sm:min-h-[500px]'} overflow-visible`} style={captureCanvasStyle}>
-            {!props.isMobile && props.yAxisLabel && <AxisLabel label={props.yAxisLabel} />}
+        <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? 'min-h-[780px]' : 'min-h-[300px] sm:min-h-[500px]'} ${props.isMobile && props.axisModeSelector ? 'pt-12' : ''} overflow-visible`} style={captureCanvasStyle}>
+            {props.isMobile && props.axisModeSelector && !props.isCapturing ? <div className="no-capture absolute left-1/2 top-0 z-10 flex -translate-x-1/2 flex-col items-center gap-1 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-imperial-gold"><span>{props.yAxisLabel}</span>{props.axisModeSelector}</div> : null}
+            {!props.isMobile && props.yAxisLabel && <AxisLabel label={props.yAxisLabel} control={!props.isCapturing ? props.axisModeSelector : null} />}
             <div className={`relative min-w-0 flex-1 ${minimumTouchWidth ? 'overflow-x-auto overflow-y-hidden' : 'overflow-hidden'}`} style={{ touchAction: minimumTouchWidth ? 'pan-x pan-y' : undefined }}>
                 <div ref={chartContainerRef} className="relative h-full overflow-hidden" style={captureChartStyle} tabIndex={-1}>
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none"><span className="watermark text-imperial-gold/21 text-xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">@fierillo</span></div>
@@ -125,8 +127,8 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
     );
 }
 
-function AxisLabel({ label, color, right = false }: { label: string; color?: string; right?: boolean }) {
-    return <div className="flex w-5 shrink-0 items-center justify-center"><div className={`${right ? 'rotate-90' : '-rotate-90'} whitespace-nowrap ${color ? '' : 'text-imperial-gold'} font-bold text-xs uppercase tracking-widest`} style={{ color }}>{label}</div></div>;
+function AxisLabel({ label, color, right = false, control }: { label: string; color?: string; right?: boolean; control?: ReactNode }) {
+    return <div className={`flex ${control ? 'w-14' : 'w-5'} shrink-0 items-center justify-center`}><div className={`${right ? 'rotate-90' : '-rotate-90'} flex flex-col items-center gap-1 whitespace-nowrap ${color ? '' : 'text-imperial-gold'} font-bold text-xs uppercase tracking-widest`} style={{ color }}><span>{label}</span>{control}</div></div>;
 }
 
 function ResponsiveComposedChart(props: ChartRenderProps) {
@@ -362,6 +364,7 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
                 key: area.key,
                 name: area.name,
                 color: area.color,
+                secondaryColor: area.secondaryColor,
                 value: numericValue,
                 format: area.valueFormat ?? valueFormat,
                 formatted: formatValueByType(numericValue, area.valueFormat ?? valueFormat, 1),
@@ -389,9 +392,9 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
         >
             <div className="mb-1 font-bold text-imperial-gold">{rowData.fecha}</div>
             {valueRows.map(row => (
-                <div key={row.key} className="flex justify-between gap-4" style={{ color: row.color }}>
-                    <span className="font-bold">{row.name}</span>
-                    <span>{row.formatted}</span>
+                <div key={row.key} className="flex justify-between gap-4 font-bold">
+                    <span style={{ color: row.color }}>{row.name}</span>
+                    <span style={{ color: row.secondaryColor ?? row.color }}>{row.formatted}</span>
                 </div>
             ))}
             {showStackTotal && total != null ? (
