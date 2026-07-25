@@ -149,7 +149,7 @@ describe('normalizeBma', () => {
 });
 
 describe('normalizeEmae', () => {
-    it('normalizes sector series and calculates trailing MM12', () => {
+    it('normalizes sector series and calculates trailing logarithmic MM12', () => {
         const rawData = Array.from({ length: 24 }, (_, index) => {
             const date = new Date(Date.UTC(2016, index, 1)).toISOString().split('T')[0];
             return {
@@ -165,7 +165,25 @@ describe('normalizeEmae', () => {
 
         expect(normalized.find(row => row.iso_fecha === '2016-11-01')?.industria_mm12).toBeNull();
         expect(normalized.find(row => row.iso_fecha === '2017-01-01')?.industria_mm12).toBe(100);
-        expect(normalized.find(row => row.iso_fecha === '2017-02-01')?.industria_mm12).toBeCloseTo(107.5 / 106.5 * 100, 6);
+        const base = Array.from({ length: 12 }, (_, index) => 101 + index);
+        const following = Array.from({ length: 12 }, (_, index) => 102 + index);
+        const geometricMean = (values: number[]) => Math.exp(values.reduce((sum, value) => sum + Math.log(value), 0) / values.length);
+        expect(normalized.find(row => row.iso_fecha === '2017-02-01')?.industria_mm12).toBeCloseTo(geometricMean(following) / geometricMean(base) * 100, 6);
+    });
+
+    it('uses a trailing logarithmic MM12 for fishing', () => {
+        const rawData = Array.from({ length: 24 }, (_, index) => ({
+            fecha: new Date(Date.UTC(2016, index, 1)).toISOString().split('T')[0],
+            emae: 100,
+            emae_desestacionalizado: 100,
+            emae_tendencia: 100,
+            pesca: index === 12 || index === 13 ? 4 : 1,
+        }));
+
+        const normalized = normalizeEmae(rawData);
+
+        expect(normalized.find(row => row.iso_fecha === '2017-01-01')?.pesca_mm12).toBe(100);
+        expect(normalized.find(row => row.iso_fecha === '2017-02-01')?.pesca_mm12).toBeCloseTo(4 ** (1 / 12) * 100, 6);
     });
 
     it('computes sector contributions that sum to seasonally adjusted EMAE', () => {

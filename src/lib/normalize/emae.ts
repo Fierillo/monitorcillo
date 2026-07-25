@@ -10,16 +10,20 @@ import { notNull, toNullableNumber } from './numbers';
 
 const MM12_PERIODS = 12;
 
-function average(values: number[]): number | null {
-    return values.length === MM12_PERIODS ? values.reduce((sum, value) => sum + value, 0) / MM12_PERIODS : null;
+function geometricAverage(values: number[]): number | null {
+    if (values.length !== MM12_PERIODS || values.some(value => value <= 0)) return null;
+    return Math.exp(values.reduce((sum, value) => sum + Math.log(value), 0) / MM12_PERIODS);
 }
 
-function sectorMm12(rawData: EmaeRawRow[], key: EmaeSectorKey, rowIndex: number): number | null {
-    const values = rawData
+function sectorWindowValues(rawData: EmaeRawRow[], key: EmaeSectorKey, rowIndex: number): number[] {
+    return rawData
         .slice(Math.max(0, rowIndex - MM12_PERIODS + 1), rowIndex + 1)
         .map(row => toNullableNumber(row[key] ?? null))
         .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
-    return average(values);
+}
+
+function sectorMm12(rawData: EmaeRawRow[], key: EmaeSectorKey, rowIndex: number): number | null {
+    return geometricAverage(sectorWindowValues(rawData, key, rowIndex));
 }
 
 function rebase(value: number | null, base: number | null): number | null {
