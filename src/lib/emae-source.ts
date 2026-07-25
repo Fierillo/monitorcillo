@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import type { EmaeRawRow, NumericValue } from '@/types';
+import type { DatosGobSeriesRow, EmaeRawRow, NumericValue } from '@/types';
 import { EMAE_SECTORS } from './emae/schema';
 
 const MONTHS_ES: Record<string, string> = {
@@ -71,6 +71,28 @@ export function parseEmaeWorkbook(buffer: Buffer): EmaeRawRow[] {
     }
 
     return parsedRows.sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+export function prependHistoricalEmae(currentRows: EmaeRawRow[], historicalRows: DatosGobSeriesRow[]): EmaeRawRow[] {
+    const sortedCurrentRows = [...currentRows].sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const firstCurrentRow = sortedCurrentRows.find(row => typeof row.emae_desestacionalizado === 'number');
+    if (!firstCurrentRow) return sortedCurrentRows;
+
+    const historicalByDate = new Map(
+        historicalRows
+            .map(row => [String(row[0]), Number(row[1])] as const)
+            .filter((row): row is readonly [string, number] => /^\d{4}-\d{2}-\d{2}$/.test(row[0]) && Number.isFinite(row[1])),
+    );
+    const overlapValue = historicalByDate.get(firstCurrentRow.fecha);
+    const currentValue = firstCurrentRow.emae_desestacionalizado;
+    if (!overlapValue || typeof currentValue !== 'number' || currentValue === 0) return sortedCurrentRows;
+
+    const linkFactor = currentValue / overlapValue;
+    const earlierRows: EmaeRawRow[] = Array.from(historicalByDate)
+        .filter(([date]) => date < firstCurrentRow.fecha)
+        .map(([fecha, value]) => ({ fecha, emae_desestacionalizado: value * linkFactor }));
+
+    return [...earlierRows, ...sortedCurrentRows];
 }
 
 export function parseEmaeSectorWorkbook(buffer: Buffer): EmaeRawRow[] {

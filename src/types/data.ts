@@ -53,6 +53,7 @@ export type EmaeRawRow = {
     emae?: NumericValue;
     emae_desestacionalizado?: NumericValue;
     emae_tendencia?: NumericValue;
+    poblacion?: NumericValue;
 } & Partial<Record<EmaeSectorKey, NumericValue>>;
 
 export type PbiAnchorRow = {
@@ -66,6 +67,7 @@ export type EmaeNormalizedRow = {
     emae: number | null;
     emae_desestacionalizado: number | null;
     emae_tendencia: number | null;
+    emae_per_capita: number | null;
 } & Partial<Record<EmaeSectorKey | EmaeSectorMm12Key | EmaeSectorAporteKey, number | null>>;
 
 export type BmaRawRow = {

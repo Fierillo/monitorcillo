@@ -57,7 +57,6 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
 async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
     const data = await safeGetIndicatorData('emae');
     const sectorData = data.filter(row => typeof row.iso_fecha === 'string' && row.iso_fecha >= '2017-01-01');
-    const aporteData: ChartDataRow[] = sectorData;
     const areas: AreaConfig[] = [
         { key: 'emae', name: 'EMAE Original', color: '#FFD700', type: 'line' },
         { key: 'emae_desestacionalizado', name: 'EMAE Desestacionalizado', color: '#00BFFF', type: 'line' },
@@ -75,19 +74,38 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Normalización', description: 'Cada sector se expresa como índice Base Enero 2017 = 100.' },
         { title: 'Suavizado MM12', description: 'Se aplica media móvil simple trailing de 12 meses sobre cada índice sectorial original y luego se normaliza cada serie a Base Enero 2017 = 100. No es una serie desestacionalizada oficial de INDEC.' },
     ];
-    const aporteAreas: AreaConfig[] = EMAE_SECTORS.map(sector => ({
-        key: `${sector.key}_aporte`,
-        name: sector.label,
-        color: sector.color,
-        type: 'bar',
-        stackId: 'emae-aporte',
-        yAxisId: 'left',
+    const mandates = [
+        { key: 'menem_2', name: 'Carlos Menem II', start: '1995-07-01', end: '1999-12-01', color: '#F97316' },
+        { key: 'de_la_rua', name: 'Fernando de la Rúa', start: '1999-12-01', end: '2002-01-01', color: '#94A3B8' },
+        { key: 'kirchner', name: 'Néstor Kirchner', start: '2003-05-01', end: '2007-12-01', color: '#14B8A6' },
+        { key: 'cristina_1', name: 'Cristina Fernández I', start: '2007-12-01', end: '2011-12-01', color: '#A855F7' },
+        { key: 'cristina_2', name: 'Cristina Fernández II', start: '2011-12-01', end: '2015-12-01', color: '#EC4899' },
+        { key: 'macri', name: 'Mauricio Macri', start: '2015-12-01', end: '2019-12-01', color: '#FACC15' },
+        { key: 'alberto', name: 'Alberto Fernández', start: '2019-12-01', end: '2023-12-01', color: '#38BDF8' },
+        { key: 'milei', name: 'Javier Milei', start: '2023-12-01', end: null, color: '#84CC16' },
+    ];
+    const mandateSeries = mandates.map(mandate => ({
+        ...mandate,
+        rows: data.filter(row => typeof row.iso_fecha === 'string'
+            && row.iso_fecha >= mandate.start
+            && (!mandate.end || row.iso_fecha < mandate.end)
+            && typeof row.emae_per_capita === 'number'),
     }));
-    const aporteMethodology = [
-        { title: 'Aporte al nivel', description: 'Cada segmento es el aporte del sector al nivel del EMAE desestacionalizado: peso de estructura por índice sectorial Base enero 2017 = 100, reescalado para que la suma coincida con el agregado mensual.' },
-        { title: 'Pesos de estructura', description: 'Se usan pesos fijos como aproximación a la estructura del EMAE. El peso no cambia mes a mes; varía el índice de cada sector.' },
-        { title: 'Lectura', description: 'La altura total de cada barra coincide con el EMAE desestacionalizado del mes. No es una descomposición de la variación interanual ni una participación en el PBI.' },
-        { title: 'Nota de datos', description: 'Los índices sectoriales son series originales de INDEC; el reescalado alinea la composición con la serie desestacionalizada del agregado.' },
+    const mandateData: ChartDataRow[] = Array.from({ length: Math.max(...mandateSeries.map(mandate => mandate.rows.length)) }, (_, index) => ({
+        fecha: `Mes ${index + 1}`,
+        ...Object.fromEntries(mandateSeries.map(mandate => {
+            const value = mandate.rows[index]?.emae_per_capita;
+            const base = mandate.rows[0]?.emae_per_capita;
+            return [mandate.key, typeof value === 'number' && typeof base === 'number' && base !== 0 ? (value / base) * 100 : null];
+        })),
+    }));
+    const mandateAreas: AreaConfig[] = mandates.map(mandate => ({ key: mandate.key, name: mandate.name, color: mandate.color, type: 'line', strokeWidth: 3, showDots: false }));
+    const mandateMethodology = [
+        { title: 'EMAE per cápita', description: 'EMAE desestacionalizado de INDEC dividido por la población argentina. La población anual se interpola linealmente a frecuencia mensual.' },
+        { title: 'Comparación', description: 'Cada mandato se expresa como índice Base 100 en el mes de asunción y se alinea por mes transcurrido desde ese punto.' },
+        { title: 'Empalme EMAE', description: 'La serie Base 1993 se enlaza con la Base 2004 en enero de 2004, primer mes común, para preservar la continuidad del índice.' },
+        { title: 'Población', description: 'Serie anual SP.POP.TOTL del Banco Mundial. Los meses posteriores al último dato se extrapolan con la última variación disponible.' },
+        { title: 'Cobertura', description: 'Sólo se muestran mandatos con cobertura mensual completa. El primer mandato de Carlos Menem se omite porque el EMAE disponible comienza en 1993.' },
     ];
     return {
         subtitle: indicator.fuente,
@@ -101,7 +119,7 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         views: [
             { id: 'agregado', label: 'Agregado', chartTitle: 'Evolución del EMAE', areas, methodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] },
             { id: 'sectores', label: 'Por sectores', chartTitle: 'EMAE por sector (MM12)', data: sectorData, areas: sectorAreas, methodology: sectorMethodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] },
-            { id: 'aporte', label: 'Por aporte', chartTitle: 'Composición sectorial del EMAE desestacionalizado', data: aporteData, areas: aporteAreas, methodology: aporteMethodology, valueFormat: 'index', yAxisDecimals: 1, yAxisLabel: 'Nivel EMAE (Base 100 = Ene-17)', leftYAxisDomain: 'auto' },
+            { id: 'mandatos', label: 'Mandatos per cápita', chartTitle: 'EMAE desestacionalizado per cápita por mandato', data: mandateData, areas: mandateAreas, methodology: mandateMethodology, valueFormat: 'index', yAxisDecimals: 1, yAxisLabel: 'EMAE per cápita · Base 100 al inicio', leftYAxisDomain: 'auto-pad' },
         ],
     };
 }

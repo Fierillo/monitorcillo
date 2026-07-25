@@ -36,6 +36,8 @@ export function normalizeEmae(rawData: EmaeRawRow[]): EmaeNormalizedRow[] {
     const baseOriginal = toNullableNumber(baseRow.emae);
     const baseDesest = toNullableNumber(baseRow.emae_desestacionalizado);
     const baseTendencia = toNullableNumber(baseRow.emae_tendencia);
+    const basePopulation = toNullableNumber(baseRow.poblacion ?? null);
+    const basePerCapita = baseDesest && basePopulation ? baseDesest / basePopulation : null;
     const sortedRawData = [...rawData].sort((a, b) => a.fecha.localeCompare(b.fecha));
     const baseRowIndex = sortedRawData.findIndex(row => row.fecha === '2017-01-01');
     const baseSectorsMm12: Partial<Record<EmaeSectorKey, number | null>> = Object.fromEntries(
@@ -53,6 +55,7 @@ export function normalizeEmae(rawData: EmaeRawRow[]): EmaeNormalizedRow[] {
             const emae = toNullableNumber(row.emae);
             const emaeDesestacionalizado = toNullableNumber(row.emae_desestacionalizado);
             const emaeTendencia = toNullableNumber(row.emae_tendencia);
+            const population = toNullableNumber(row.poblacion ?? null);
             const emaeBase100 = rebase(emae, baseOriginal);
             const emaeDesestBase100 = rebase(emaeDesestacionalizado, baseDesest);
 
@@ -70,6 +73,7 @@ export function normalizeEmae(rawData: EmaeRawRow[]): EmaeNormalizedRow[] {
                 emae: emaeBase100,
                 emae_desestacionalizado: emaeDesestBase100,
                 emae_tendencia: rebase(emaeTendencia, baseTendencia),
+                emae_per_capita: rebase(emaeDesestacionalizado && population ? emaeDesestacionalizado / population : null, basePerCapita),
                 ...aportes,
             };
 

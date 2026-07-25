@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
-import { parseEmaePublicationDate, parseEmaeSectorWorkbook, parseEmaeWorkbook } from '../lib/emae-source';
+import { parseEmaePublicationDate, parseEmaeSectorWorkbook, parseEmaeWorkbook, prependHistoricalEmae } from '../lib/emae-source';
 
 function workbookBuffer(rows: unknown[][], sheetName = 'EMAE'): Buffer {
     const workbook = XLSX.utils.book_new();
@@ -49,6 +49,20 @@ describe('EMAE official source parsing', () => {
         expect(rows).toEqual([
             { fecha: '2026-01-01', agro: 66, industria: 91.5, impuestos: 100.1 },
             { fecha: '2026-02-01', agro: 64.9, industria: 89.4, impuestos: 101.2 },
+        ]);
+    });
+
+    it('prepends historical EMAE linked at the first current observation', () => {
+        expect(prependHistoricalEmae([
+            { fecha: '2004-01-01', emae_desestacionalizado: 100 },
+            { fecha: '2004-02-01', emae_desestacionalizado: 102 },
+        ], [
+            ['2003-12-01', 50],
+            ['2004-01-01', 80],
+        ])).toEqual([
+            { fecha: '2003-12-01', emae_desestacionalizado: 62.5 },
+            { fecha: '2004-01-01', emae_desestacionalizado: 100 },
+            { fecha: '2004-02-01', emae_desestacionalizado: 102 },
         ]);
     });
 });

@@ -198,4 +198,14 @@ describe('normalizeEmae', () => {
         expect(row?.agro_aporte).toBeGreaterThan(0);
         expect(row?.industria_aporte).toBeGreaterThan(0);
     });
+
+    it('normalizes seasonally adjusted EMAE per capita', () => {
+        const normalized = normalizeEmae([
+            { fecha: '2017-01-01', emae: 100, emae_desestacionalizado: 100, emae_tendencia: 100, poblacion: 1_000 },
+            { fecha: '2017-02-01', emae: 110, emae_desestacionalizado: 110, emae_tendencia: 105, poblacion: 1_100 },
+        ]);
+
+        expect(normalized[0].emae_per_capita).toBe(100);
+        expect(normalized[1].emae_per_capita).toBeCloseTo(100, 8);
+    });
 });

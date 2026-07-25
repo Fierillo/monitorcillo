@@ -70,9 +70,10 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
     if (type === 'emae') {
         return [
             fecha,
-            toNumber(row.emae),
+            toNullableNumber(row.emae),
             toNullableNumber(row.emae_desestacionalizado),
             toNullableNumber(row.emae_tendencia),
+            toNullableNumber(row.emae_per_capita),
             ...EMAE_SECTOR_MM12_KEYS.map(key => toNullableNumber(row[key])),
             ...EMAE_SECTOR_APORTE_KEYS.map(key => toNullableNumber(row[key])),
         ];

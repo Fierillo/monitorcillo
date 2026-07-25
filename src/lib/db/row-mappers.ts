@@ -43,9 +43,10 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
     if (type === 'emae') {
         const normalized = {
             ...common,
-            emae: toNumber(row.emae),
+            emae: toNullableNumber(row.emae),
             emae_desestacionalizado: toNullableNumber(row.emae_desestacionalizado),
             emae_tendencia: toNullableNumber(row.emae_tendencia),
+            emae_per_capita: toNullableNumber(row.emae_per_capita),
         } as Record<string, unknown>;
         for (const key of EMAE_SECTOR_MM12_KEYS) normalized[key] = toNullableNumber(row[key]);
         for (const key of EMAE_SECTOR_APORTE_KEYS) normalized[key] = toNullableNumber(row[key]);

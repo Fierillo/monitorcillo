@@ -24,7 +24,7 @@ export type EmaeSectorAporteKey = `${EmaeSectorKey}_aporte`;
 export const EMAE_SECTOR_KEYS = EMAE_SECTORS.map(sector => sector.key) as EmaeSectorKey[];
 export const EMAE_SECTOR_MM12_KEYS = EMAE_SECTOR_KEYS.map(key => `${key}_mm12`) as EmaeSectorMm12Key[];
 export const EMAE_SECTOR_APORTE_KEYS = EMAE_SECTOR_KEYS.map(key => `${key}_aporte`) as EmaeSectorAporteKey[];
-export const EMAE_BASE_KEYS = ['emae', 'emae_desestacionalizado', 'emae_tendencia'] as const;
+export const EMAE_BASE_KEYS = ['emae', 'emae_desestacionalizado', 'emae_tendencia', 'emae_per_capita'] as const;
 export const EMAE_NORMALIZED_DB_COLUMNS = ['fecha', ...EMAE_BASE_KEYS, ...EMAE_SECTOR_MM12_KEYS, ...EMAE_SECTOR_APORTE_KEYS] as const;
 
 export function aporteKeyForSector(key: EmaeSectorKey): EmaeSectorAporteKey {
