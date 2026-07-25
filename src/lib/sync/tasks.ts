@@ -3,7 +3,7 @@ import { getRawData, replaceNormalizedData, saveIndicatorPublication, saveIndica
 import { buildCurrentIndicatorsCatalog } from '../catalog-service';
 import { fechaToISO, normalizeBma, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion } from '../normalize';
 import { runSyncTasks } from '../sync-runner';
-import { fetchEmisionRaw } from './bcra';
+import { buildEmissionRows, fetchEmisionRaw } from './bcra';
 import { fetchBmaRaw } from './bma';
 import { ensureEmaeSectorTables, fetchEmaeRaw } from './emae';
 import { fetchPoderAdquisitivoRawReport } from './poder-adquisitivo';
@@ -58,17 +58,7 @@ export async function syncEmision(): Promise<SyncResult> {
     const existingData = ((await getRawData(type)) ?? []).map(normalizeEmisionRawRow);
     const existingFechas = new Set(existingData.map((row) => row.fecha));
     const { compraData, tcData } = await fetchEmisionRaw('2026-01-01', new Date().toISOString().split('T')[0]);
-
-    if (compraData.length === 0) {
-        return { appended: 0, total: existingData.length };
-    }
-
-    const tcByIso = new Map(tcData.map((row) => [row.fecha, row.valor === null || row.valor === undefined || row.valor === '' ? undefined : Number(row.valor)]));
-    const apiRows: EmisionRawRow[] = compraData.map((row) => {
-        const compra = Number(row.valor ?? 0);
-        const tc = tcByIso.get(row.fecha);
-        return { fecha: row.fecha, compra_dolares: compra, tc, bcra: tc == null ? 0 : compra * tc };
-    });
+    const apiRows = buildEmissionRows(compraData, tcData);
     const existingByFecha = new Map(existingData.map((row) => [row.fecha, row]));
     const rowsToUpsert = apiRows.map((row): Partial<EmisionRawRow> | null => {
         const existing = existingByFecha.get(row.fecha);
