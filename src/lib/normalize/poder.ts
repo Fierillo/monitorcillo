@@ -13,17 +13,16 @@ export function normalizePoderAdquisitivo(rawData: PoderAdquisitivoRawRow[]): Po
     const ipcBase = toNumber(baseRow.ipc_nucleo);
     if (!ipcBase) return [];
 
-    const negroBaseRaw = sorted[baseIdx + 5]?.salario_no_registrado;
     const factors = {
         blanco: toNumber(baseRow.salario_registrado) / ipcBase,
-        negro: toNumber(negroBaseRaw) / ipcBase,
+        negro: toNumber(baseRow.salario_no_registrado) / ipcBase,
         privado: toNumber(baseRow.salario_privado) / ipcBase,
         publico: toNumber(baseRow.salario_publico) / ipcBase,
         ripte: toNumber(baseRow.ripte) / ipcBase,
         jubilacion: toNumber(baseRow.jubilacion_minima) / ipcBase,
     };
 
-    return sorted.map((row, index) => {
+    return sorted.map(row => {
         const ipc = toNumber(row.ipc_nucleo);
         if (!ipc) return null;
         const calc = (value: NumericValue, factor: number) => value == null || !factor ? null : (Number(value) / ipc / factor) * 100;
@@ -33,7 +32,7 @@ export function normalizePoderAdquisitivo(rawData: PoderAdquisitivoRawRow[]): Po
             fecha: `${MONTHS_ES[date.getUTCMonth()]} ${String(date.getUTCFullYear()).slice(-2)}`,
             iso_fecha: row.fecha,
             blanco: calc(row.salario_registrado, factors.blanco),
-            negro: calc(sorted[index + 5]?.salario_no_registrado, factors.negro),
+            negro: calc(row.salario_no_registrado, factors.negro),
             privado: calc(row.salario_privado, factors.privado),
             publico: calc(row.salario_publico, factors.publico),
             ripte: calc(row.ripte, factors.ripte),

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { isoToFecha, isoToMonthLabel, normalizeEmision, normalizeBma, normalizeEmae, normalizePoderAdquisitivo } from '../lib/normalize';
 
 describe('normalizePoderAdquisitivo', () => {
-    it('normalizes all series to 100 on 2017-01-01 and shifts informal salary', () => {
+    it('normalizes each series using the value from the same month', () => {
         const rawData = [
             { fecha: '2017-01-01', ipc_nucleo: 100, salario_registrado: 1000, salario_no_registrado: 500, salario_privado: 1000, salario_publico: 1000, ripte: 1000, jubilacion_minima: 1000 },
             { fecha: '2017-02-01', ipc_nucleo: 105 },
@@ -18,6 +18,8 @@ describe('normalizePoderAdquisitivo', () => {
         expect(jan17).toBeDefined();
         expect(jan17!.blanco).toBe(100);
         expect(jan17!.negro).toBe(100);
+        expect(normalized.find(r => r.iso_fecha === '2017-02-01')!.negro).toBeNull();
+        expect(normalized.find(r => r.iso_fecha === '2017-06-01')!.negro).toBeCloseTo(133.33, 2);
     });
 });
 

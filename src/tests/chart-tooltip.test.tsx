@@ -32,6 +32,23 @@ describe('ChartTooltip', () => {
         expect(markup).toContain('2,61');
     });
 
+    it('omits every series without a value for the active month', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip
+            chartData={[{ fecha: 'Mes reciente', informal: null, formal: 104.2 }]}
+            areaConfigs={[
+                { key: 'informal', name: 'Empleo informal', color: '#333', type: 'line' },
+                { key: 'formal', name: 'Empleo formal', color: '#fff', type: 'line' },
+                { key: 'ripte', name: 'RIPTE', color: '#0f0', type: 'line' },
+            ]}
+            valueFormat="index"
+            tooltipProps={{ active: true, label: 'Mes reciente' }}
+        />);
+
+        expect(markup).not.toContain('Empleo informal');
+        expect(markup).not.toContain('RIPTE');
+        expect(markup).toContain('Empleo formal');
+    });
+
     it('compares the same mandate month for ICG', () => {
         const markup = renderToStaticMarkup(<ChartTooltip
             chartData={[
