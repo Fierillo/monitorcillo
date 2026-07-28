@@ -85,8 +85,8 @@ export default function ChartTooltip({
             <div style={{ fontWeight: 'bold', marginBottom: compact ? '2px' : '4px' }}>{rowData.fecha}</div>
             {valueRows.map(row => compact ? (
                 <div key={row.key} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                    <span style={{ color: row.color, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
-                    <span style={{ color: row.secondaryColor ?? row.color }}>{row.formatted}</span>
+                    <span style={{ color: row.color, overflow: 'hidden', textOverflow: 'ellipsis', WebkitTextStroke: row.borderColor ? `0.25px ${row.borderColor}` : undefined }}>{row.name}</span>
+                    <span style={{ color: row.secondaryColor ?? row.color, WebkitTextStroke: row.borderColor ? `0.25px ${row.borderColor}` : undefined }}>{row.formatted}</span>
                 </div>
             ) : row.node)}
             {showStackTotal && total != null ? (
@@ -110,13 +110,14 @@ function renderValueRow(rowData: ChartDataRow, area: ChartTooltipProps['areaConf
         name: area.name,
         color: area.color,
         secondaryColor: area.secondaryColor,
+        borderColor: area.borderColor,
         value: numericValue,
         format,
         formatted: formatValueByType(numericValue, format, area.valueDecimals ?? 1),
         node: (
             <div key={area.key} style={{ fontWeight: 'bold' }}>
-                <span style={{ color: area.color }}>{area.name}: </span>
-                <span style={{ color: area.secondaryColor ?? area.color }}>{formatValueByType(numericValue, format, area.valueDecimals ?? 1)}</span>
+                <span style={{ color: area.color, WebkitTextStroke: area.borderColor ? `0.25px ${area.borderColor}` : undefined }}>{area.name}: </span>
+                <span style={{ color: area.secondaryColor ?? area.color, WebkitTextStroke: area.borderColor ? `0.25px ${area.borderColor}` : undefined }}>{formatValueByType(numericValue, format, area.valueDecimals ?? 1)}</span>
             </div>
         ),
     };

@@ -38,12 +38,12 @@ async function bmaConfig(indicator: Indicator): Promise<DetailConfig> {
 
 async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
     const areas: AreaConfig[] = [
-        { key: 'blanco', name: 'PA [IS blanco/IPCC]', color: '#FFFFFF', type: 'line' },
-        { key: 'negro', name: 'PA [IS negro/IPCC]', color: '#2E2D2C', type: 'line', borderColor: '#FFFFFF', borderWidth: 6 },
-        { key: 'privado', name: 'PA [IS privado/IPCC]', color: '#2E64FE', type: 'line' },
-        { key: 'publico', name: 'PA [IS publico/IPCC]', color: '#81BEF7', type: 'line' },
-        { key: 'ripte', name: 'PA [RIPTE/IPCC]', color: '#31B404', type: 'line' },
-        { key: 'jubilacion', name: 'PA [Jubilacion minima/IPCC]', color: '#FF0000', type: 'line' },
+        { key: 'blanco', name: 'PA [IS blanco/IPCC]', color: '#FFFFFF', type: 'line', transparentTooltip: true },
+        { key: 'negro', name: 'PA [IS negro/IPCC]', color: '#2E2D2C', type: 'line', borderColor: '#FFFFFF', borderWidth: 5, transparentTooltip: true },
+        { key: 'privado', name: 'PA [IS privado/IPCC]', color: '#2E64FE', type: 'line', transparentTooltip: true },
+        { key: 'publico', name: 'PA [IS publico/IPCC]', color: '#81BEF7', type: 'line', transparentTooltip: true },
+        { key: 'ripte', name: 'PA [RIPTE/IPCC]', color: '#31B404', type: 'line', transparentTooltip: true },
+        { key: 'jubilacion', name: 'PA [Jubilacion minima/IPCC]', color: '#FF0000', type: 'line', transparentTooltip: true },
     ];
     const methodology: MethodologyItem[] = [
         { title: 'IPC Núcleo', description: 'Índice de Precios al Consumidor (INDEC 148.3_INUCLEONAL_DICI_M_19).' },
