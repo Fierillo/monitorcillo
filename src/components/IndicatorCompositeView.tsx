@@ -292,12 +292,30 @@ export default function IndicatorCompositeView({
         const y = state?.activeCoordinate?.y;
         if (typeof x !== 'number' || typeof y !== 'number') return null;
         const idx = state?.activeTooltipIndex;
-        const label = typeof idx === 'number' ? String(visibleData[idx]?.fecha ?? '') : undefined;
+        const activeIndex = typeof idx === 'number' ? idx : typeof idx === 'string' && /^\d+$/.test(idx) ? Number(idx) : null;
+        const payloadRow = state?.activePayload?.[0]?.payload;
+        const labelValue = activeIndex !== null ? visibleData[activeIndex]?.fecha : payloadRow?.fecha ?? payloadRow?.iso_fecha;
+        const label = labelValue ? String(labelValue) : undefined;
         return { x, y, locked, activePayload: state?.activePayload, label };
     }, [visibleData]);
 
     const handleCrosshairClick = useCallback((state: ChartClickState | null) => {
-        setCrosshair(crosshairFromChartState(state, true));
+        const nextCrosshair = crosshairFromChartState(state, true);
+        const chart = chartContainerRef.current;
+        const tooltip = chart?.querySelector<HTMLElement>('.recharts-tooltip-wrapper');
+        if (!nextCrosshair || !chart || !tooltip) {
+            setCrosshair(nextCrosshair);
+            return;
+        }
+        const chartRect = chart.getBoundingClientRect();
+        const tooltipRect = tooltip.getBoundingClientRect();
+        setCrosshair({
+            ...nextCrosshair,
+            tooltipPosition: {
+                x: tooltipRect.left - chartRect.left,
+                y: tooltipRect.top - chartRect.top,
+            },
+        });
     }, [crosshairFromChartState]);
 
     const handleCrosshairUnlock = useCallback(() => {

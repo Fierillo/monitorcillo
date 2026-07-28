@@ -18,6 +18,24 @@ export default function ChartTooltip({
 
     if (!rowData) return null;
 
+    if (areaConfigs.some(area => area.comparisonMode === 'mandate-month') && typeof rowData.comparison_group === 'string') {
+        const comparisons = chartData.filter(row => row.comparison_group === rowData.comparison_group && typeof row.icg === 'number');
+        return (
+            <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.62)', border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', maxHeight: compact ? '55vh' : undefined, overflowY: compact ? 'auto' : undefined }}>
+                {comparisons.map(row => {
+                    const primaryColor = String(row.mandate_color ?? '#FFD700');
+                    const secondaryColor = typeof row.mandate_secondary_color === 'string' ? row.mandate_secondary_color : primaryColor;
+                    return (
+                        <div key={String(row.iso_fecha)} style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                            <span style={{ color: primaryColor }}>{row.mandate_name}: </span>
+                            <span style={{ color: secondaryColor }}>{Number(row.icg).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
+
     const month = rowData.mes;
     const showsAggregatePctPbi = areaConfigs.some(area => area.key === 'pctPbi');
     if (showsAggregatePctPbi && rowData.pctPbi && month) {
@@ -60,9 +78,10 @@ export default function ChartTooltip({
     const showStackTotal = showTotal && valueRows.length > 1;
     const total = showStackTotal ? valueRows.reduce((sum, row) => sum + row.value, 0) : null;
     const totalFormat = valueRows[0]?.format ?? valueFormat;
+    const transparentBackground = areaConfigs.some(area => area.transparentTooltip);
 
     return (
-        <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.92)', border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', maxWidth: compact ? '220px' : undefined, maxHeight: compact ? '55vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '10px' : undefined, lineHeight: compact ? 1.15 : undefined, backdropFilter: 'blur(4px)' }}>
+        <div key={tooltipLabel} style={{ backgroundColor: transparentBackground ? 'rgba(0, 20, 63, 0.62)' : 'rgba(0, 20, 63, 0.92)', border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', maxWidth: compact ? '220px' : undefined, maxHeight: compact ? '55vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '10px' : undefined, lineHeight: compact ? 1.15 : undefined, backdropFilter: transparentBackground ? undefined : 'blur(4px)' }}>
             <div style={{ fontWeight: 'bold', marginBottom: compact ? '2px' : '4px' }}>{rowData.fecha}</div>
             {valueRows.map(row => compact ? (
                 <div key={row.key} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
@@ -93,11 +112,11 @@ function renderValueRow(rowData: ChartDataRow, area: ChartTooltipProps['areaConf
         secondaryColor: area.secondaryColor,
         value: numericValue,
         format,
-        formatted: formatValueByType(numericValue, format, 1),
+        formatted: formatValueByType(numericValue, format, area.valueDecimals ?? 1),
         node: (
             <div key={area.key} style={{ fontWeight: 'bold' }}>
                 <span style={{ color: area.color }}>{area.name}: </span>
-                <span style={{ color: area.secondaryColor ?? area.color }}>{formatValueByType(numericValue, format, 1)}</span>
+                <span style={{ color: area.secondaryColor ?? area.color }}>{formatValueByType(numericValue, format, area.valueDecimals ?? 1)}</span>
             </div>
         ),
     };

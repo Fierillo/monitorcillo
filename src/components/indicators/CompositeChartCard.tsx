@@ -2,8 +2,8 @@ import { ImageDown } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import { CartesianGrid, ComposedChart, Customized, Tooltip, XAxis, YAxis } from 'recharts';
-import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, MethodologyItem, TooltipPayload, ValueFormat, YAxisConfig } from '@/types/chart';
+import { CartesianGrid, ComposedChart, Customized, ReferenceDot, Tooltip, XAxis, YAxis } from 'recharts';
+import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
 import ChartArea from '../chart/ChartArea';
 import ChartBar from '../chart/ChartBar';
 import ChartLine from '../chart/ChartLine';
@@ -118,11 +118,11 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
                 <div ref={chartContainerRef} className="relative h-full overflow-hidden" style={captureChartStyle} tabIndex={-1}>
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none"><span className="watermark text-imperial-gold/21 text-xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">@fierillo</span></div>
                     {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
+                    {props.crosshair?.locked && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} /> : null}
+                    {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} /> : null}
                 </div>
             </div>
             {!props.isMobile && props.secondaryYAxis && <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right />}
-            {props.isCapturing && props.crosshair?.locked && props.crosshair.activePayload && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} /> : null}
-            {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.activePayload && props.captureTooltip.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} /> : null}
         </div>
     );
 }
@@ -135,7 +135,23 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
     const hoverVerticalRef = useRef<SVGLineElement | null>(null);
     const hoverHorizontalRef = useRef<SVGLineElement | null>(null);
     const rafRef = useRef<number | null>(null);
+    const [activeComparisonGroup, setActiveComparisonGroup] = useState<string | null>(null);
     const renderedAreas = activeAreas(props.areas, props.highlightedAreas);
+    const comparesMandateMonths = renderedAreas.some(area => area.comparisonMode === 'mandate-month');
+    const lockedRow = props.crosshair?.locked && props.crosshair.label
+        ? props.sortedData.find(row => row.fecha === props.crosshair?.label || row.iso_fecha === props.crosshair?.label)
+        : null;
+    const comparisonGroup = typeof lockedRow?.comparison_group === 'string'
+        ? lockedRow.comparison_group
+        : activeComparisonGroup;
+    const comparisonRows = comparesMandateMonths && comparisonGroup !== null
+        ? props.sortedData.filter(row => row.comparison_group === comparisonGroup && typeof row.icg === 'number')
+        : [];
+    const lockedSeriesPoints = lockedRow && !comparesMandateMonths
+        ? renderedAreas
+            .filter(area => area.type === 'line' && typeof lockedRow[area.key] === 'number')
+            .map(area => ({ area, value: Number(lockedRow[area.key]) }))
+        : [];
     const leftTicks = axisTicks(props, 'left', !Array.isArray(props.leftAxisDomain));
     const rightTicks = axisTicks(props, 'right', props.secondaryYAxis?.includeZero ?? !Array.isArray(props.secondaryYAxis?.domain));
 
@@ -153,7 +169,7 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
         hoverHorizontalRef.current?.setAttribute('display', 'none');
     }, []);
 
-    const updateHoverCrosshair = useCallback((state: ChartClickState | null) => {
+    const updateHoverCrosshair = (state: ChartClickState | null) => {
         if (props.crosshair?.locked || props.isCapturing) {
             hideHoverCrosshair();
             return;
@@ -168,7 +184,11 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
         }
 
         const idx = state?.activeTooltipIndex;
-        const label = typeof idx === 'number' ? String(props.visibleData[idx]?.fecha ?? '') : undefined;
+        const activeIndex = typeof idx === 'number' ? idx : typeof idx === 'string' && /^\d+$/.test(idx) ? Number(idx) : null;
+        const activeRow = activeIndex !== null ? props.visibleData[activeIndex] : state?.activePayload?.[0]?.payload;
+        setActiveComparisonGroup(comparesMandateMonths && typeof activeRow?.comparison_group === 'string' ? activeRow.comparison_group : null);
+        const labelValue = activeRow?.fecha ?? activeRow?.iso_fecha;
+        const label = labelValue ? String(labelValue) : undefined;
         props.onHoverTooltipChange(state?.activePayload?.length && label ? { x, y, locked: false, activePayload: state.activePayload, label } : null);
 
         if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
@@ -183,7 +203,7 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
             horizontal.setAttribute('y2', String(y));
             horizontal.setAttribute('display', 'block');
         });
-    }, [hideHoverCrosshair, props.crosshair?.locked, props.isCapturing, props.onHoverTooltipChange, props.visibleData]);
+    };
 
     return (
         <ComposedChart
@@ -198,19 +218,22 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
             onMouseLeave={() => {
                 hideHoverCrosshair();
                 props.onHoverTooltipChange(null);
+                setActiveComparisonGroup(null);
             }}
             onClick={(e: ChartClickState | null) => {
                 hideHoverCrosshair();
                 props.onCrosshairClick(e);
-                if (!e?.activePayload?.length || !e.activeTooltipIndex) props.onSelectMonth(null);
+                if (!e?.activePayload?.length || e.activeTooltipIndex == null) props.onSelectMonth(null);
             }}
         >
             <CartesianGrid vertical={false} horizontal stroke="#ffffff66" strokeWidth={0.75} />
             <XAxis dataKey={props.xAxisKey} stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)} hide={props.isMobile} />
             <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
             {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
-            {!props.isCapturing && <Tooltip cursor={false} wrapperStyle={{ pointerEvents: 'none' }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={renderedAreas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} compact={props.isMobile} showTotal={props.showTooltipTotal} />} />}
+            {!props.isCapturing && !props.crosshair?.locked && <Tooltip cursor={false} wrapperStyle={{ pointerEvents: 'none' }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={renderedAreas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} compact={props.isMobile} showTotal={props.showTooltipTotal} />} />}
             {renderedAreas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}
+            {comparisonRows.map(row => <MandatePoint key={String(row.iso_fecha)} x={row[props.xAxisKey] as string | number} y={Number(row.icg)} yAxisId="left" primaryColor={String(row.mandate_color ?? '#FFD700')} secondaryColor={typeof row.mandate_secondary_color === 'string' ? row.mandate_secondary_color : undefined} />)}
+            {lockedSeriesPoints.map(({ area, value }) => <MandatePoint key={`locked-${area.key}`} x={lockedRow![props.xAxisKey] as string | number} y={value} yAxisId={area.yAxisId ?? 'left'} primaryColor={area.color} secondaryColor={area.secondaryColor} />)}
             <Customized component={(chartState: unknown) => <RangePreviewGuides previewRange={props.rangePreview} committedRange={props.committedRange} sortedData={props.sortedData} xAxisKey={props.xAxisKey} chartState={chartState} />} />
             <HoverCrosshair verticalRef={hoverVerticalRef} horizontalRef={hoverHorizontalRef} width={props.chartSize.width} height={props.chartSize.height} />
             <ChartCrosshair crosshair={props.crosshair} width={props.chartSize.width} height={props.chartSize.height} onUnlock={props.onCrosshairUnlock} />
@@ -352,57 +375,14 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
     const label = crosshair.label;
     const rowData = label ? sortedData.find(row => row.fecha === label || row.iso_fecha === label) : null;
     if (!rowData) return null;
-
-    const visibleAreas = areas.filter(area => !area.hideInLegend && !area.borderColor);
-    const valueRows = visibleAreas
-        .map(area => {
-            const value = rowData[area.key];
-            if (value === null || value === undefined) return null;
-            const numericValue = Number(value);
-            if (!Number.isFinite(numericValue)) return null;
-            return {
-                key: area.key,
-                name: area.name,
-                color: area.color,
-                secondaryColor: area.secondaryColor,
-                value: numericValue,
-                format: area.valueFormat ?? valueFormat,
-                formatted: formatValueByType(numericValue, area.valueFormat ?? valueFormat, 1),
-            };
-        })
-        .filter((row): row is NonNullable<typeof row> => row !== null);
-    if (valueRows.length === 0) return null;
-
-    const showStackTotal = showTotal && valueRows.length > 1;
-    const total = showStackTotal ? valueRows.reduce((sum, row) => sum + row.value, 0) : null;
-    const TOOLTIP_WIDTH = 180;
-    const TOOLTIP_HEIGHT估算 = 40 + valueRows.length * 20 + (showStackTotal ? 24 : 0);
-    const flipX = crosshair.x + 16 + TOOLTIP_WIDTH > chartWidth;
-    const flipY = crosshair.y - TOOLTIP_HEIGHT估算 < 0;
+    const tooltipWidth = areas.some(area => area.comparisonMode === 'mandate-month') ? 260 : 180;
+    const tooltipHeight = 40 + areas.length * 24;
+    const fallbackX = crosshair.x + 10 + tooltipWidth > chartWidth ? Math.max(0, crosshair.x - tooltipWidth - 10) : crosshair.x + 10;
+    const fallbackY = crosshair.y + 10 + tooltipHeight > chartHeight ? Math.max(0, crosshair.y - tooltipHeight - 10) : crosshair.y + 10;
 
     return (
-        <div
-            className="absolute z-10 bg-imperial-blue/90 border border-imperial-gold/40 px-3 py-2 text-xs pointer-events-none backdrop-blur-sm"
-            style={{
-                left: flipX ? crosshair.x - TOOLTIP_WIDTH - 8 : crosshair.x + 16,
-                top: flipY ? crosshair.y + 8 : undefined,
-                bottom: flipY ? undefined : chartHeight - crosshair.y + 8,
-                minWidth: TOOLTIP_WIDTH,
-            }}
-        >
-            <div className="mb-1 font-bold text-imperial-gold">{rowData.fecha}</div>
-            {valueRows.map(row => (
-                <div key={row.key} className="flex justify-between gap-4 font-bold">
-                    <span style={{ color: row.color }}>{row.name}</span>
-                    <span style={{ color: row.secondaryColor ?? row.color }}>{row.formatted}</span>
-                </div>
-            ))}
-            {showStackTotal && total != null ? (
-                <div className="mt-1.5 flex justify-between gap-4 border-t border-white/20 pt-1.5 font-bold text-imperial-gold">
-                    <span>Total</span>
-                    <span>{formatValueByType(total, valueRows[0].format, 1)}</span>
-                </div>
-            ) : null}
+        <div className="absolute z-10 pointer-events-none" style={{ left: crosshair.tooltipPosition?.x ?? fallbackX, top: crosshair.tooltipPosition?.y ?? fallbackY }}>
+            <ChartTooltip chartData={sortedData} areaConfigs={areas} valueFormat={valueFormat} tooltipProps={{ active: true, label }} showTotal={showTotal} />
         </div>
     );
 }
@@ -411,6 +391,15 @@ function ChartSeries({ areaConfig, props }: { areaConfig: AreaConfig; props: Cha
     if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={false} data={props.visibleData} isCapturing={props.isCapturing} />;
     if (areaConfig.type === 'bar') return <ChartBar areaConfig={areaConfig} isDimmed={false} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} />;
     return <ChartArea areaConfig={areaConfig} isDimmed={false} />;
+}
+
+function MandatePoint({ x, y, yAxisId, primaryColor, secondaryColor }: { x: string | number; y: number; yAxisId: 'left' | 'right'; primaryColor: string; secondaryColor?: string }) {
+    return (
+        <>
+            <ReferenceDot x={x} y={y} yAxisId={yAxisId} r={7} fill={secondaryColor ?? primaryColor} stroke="#000000" strokeWidth={1} />
+            <ReferenceDot x={x} y={y} yAxisId={yAxisId} r={4} fill={primaryColor} stroke="#000000" strokeWidth={1} />
+        </>
+    );
 }
 
 function activeAreas(areas: AreaConfig[], highlightedAreas: Set<string>): AreaConfig[] {

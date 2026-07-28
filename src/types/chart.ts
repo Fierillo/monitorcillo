@@ -6,6 +6,7 @@ export interface AreaConfig {
     color: string;
     secondaryColor?: string;
     valueFormat?: ValueFormat;
+    valueDecimals?: number;
     showValueLabels?: boolean;
     labelOffsetY?: number;
     labelLeader?: boolean;
@@ -25,6 +26,8 @@ export interface AreaConfig {
     connectNulls?: boolean;
     /** When false, the series renders as a pure line without vertex markers. Default: true. */
     showDots?: boolean;
+    comparisonMode?: 'mandate-month';
+    transparentTooltip?: boolean;
 }
 
 export interface MethodologyItem {
@@ -109,6 +112,7 @@ export type ChartCrosshairState = {
     locked: boolean;
     activePayload?: readonly TooltipPayload[];
     label?: string;
+    tooltipPosition?: { x: number; y: number };
 };
 
 export type ChartBarClickEvent = {

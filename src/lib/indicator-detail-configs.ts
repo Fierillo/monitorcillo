@@ -1,6 +1,7 @@
 import type { AreaConfig, ChartDataRow, Indicator, IndicatorCompositeViewProps, MethodologyItem } from '@/types';
 import { EMAE_SECTORS } from './emae/schema';
 import { RECAUDACION_BREAKDOWN_TYPES } from './recaudacion/schema';
+import { ICG_PRESIDENTIAL_MANDATES, PRESIDENTIAL_MANDATES } from './presidential-mandates';
 import { safeGetIndicatorData } from './storage';
 
 type DetailConfig = Omit<IndicatorCompositeViewProps, 'title' | 'subtitle'> & { subtitle?: string };
@@ -14,6 +15,7 @@ export async function getIndicatorDetailConfig(indicator: Indicator): Promise<De
     if (indicator.id === 'deuda') return deudaConfig(indicator);
     if (indicator.id === 'pobreza') return pobrezaConfig(indicator);
     if (indicator.id === 'inflacion') return inflacionConfig(indicator);
+    if (indicator.id === 'icg') return icgConfig(indicator);
     return null;
 }
 
@@ -107,16 +109,7 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Suavizado MM12 logarítmico', description: 'Se aplica una media móvil geométrica trailing de 12 meses sobre cada índice sectorial original y luego se normaliza cada serie a Base Enero 2017 = 100. Este cálculo reduce la influencia relativa de valores extremos. No son series desestacionalizadas oficiales de INDEC.' },
         { title: 'Per cápita', description: 'En el modo Per cápita, cada MM12 sectorial se ajusta por la población argentina mensual estimada a partir de los datos anuales del Banco Mundial.' },
     ];
-    const mandates = [
-        { key: 'menem_2', name: 'Carlos Menem II', start: '1995-07-01', end: '1999-12-01', color: '#38BDF8', secondaryColor: '#F8FAFC' },
-        { key: 'de_la_rua', name: 'Fernando de la Rúa', start: '1999-12-01', end: '2002-01-01', color: '#EF4444' },
-        { key: 'kirchner', name: 'Néstor Kirchner', start: '2003-05-01', end: '2007-12-01', color: '#38BDF8', secondaryColor: '#1D4ED8' },
-        { key: 'cristina_1', name: 'Cristina Fernández I', start: '2007-12-01', end: '2011-12-01', color: '#38BDF8', secondaryColor: '#EC4899' },
-        { key: 'cristina_2', name: 'Cristina Fernández II', start: '2011-12-01', end: '2015-12-01', color: '#38BDF8', secondaryColor: '#7C3AED' },
-        { key: 'macri', name: 'Mauricio Macri', start: '2015-12-01', end: '2019-12-01', color: '#FACC15' },
-        { key: 'alberto', name: 'Alberto Fernández', start: '2019-12-01', end: '2023-12-01', color: '#38BDF8', secondaryColor: '#14B8A6' },
-        { key: 'milei', name: 'Javier Milei', start: '2023-12-01', end: null, color: '#A855F7' },
-    ];
+    const mandates = PRESIDENTIAL_MANDATES;
     const mandateSeries = mandates.map(mandate => ({
         ...mandate,
         rows: data.filter(row => typeof row.iso_fecha === 'string'
@@ -136,7 +129,7 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
     );
     const mandatePerCapitaData = buildMandateData('emae_per_capita');
     const mandateNormalData = buildMandateData('emae_desestacionalizado');
-    const mandateAreas: AreaConfig[] = mandates.map(mandate => ({ key: mandate.key, name: mandate.name, color: mandate.color, secondaryColor: 'secondaryColor' in mandate ? mandate.secondaryColor : undefined, type: 'line', strokeWidth: 2, showDots: false }));
+    const mandateAreas: AreaConfig[] = mandates.map(mandate => ({ key: mandate.key, name: mandate.name, color: mandate.color, secondaryColor: mandate.secondaryColor, type: 'line', strokeWidth: 2, showDots: false }));
     const mandateMethodology = [
         { title: 'Datos desestacionalizados', description: 'Ambos modos utilizan el EMAE desestacionalizado oficial de INDEC. Normal muestra el índice agregado y Per cápita lo divide por la población argentina.' },
         { title: 'Comparación', description: 'Cada mandato se expresa como índice Base 100 en el mes de asunción y se alinea por mes transcurrido desde ese punto.' },
@@ -336,4 +329,82 @@ async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Serie principal', description: 'El dato destacado usa INDEC General como principal. Las consultoras se muestran superpuestas para comparabilidad.' },
     ];
     return { subtitle: indicator.fuente, chartTitle: 'Inflación mensual', data: await safeGetIndicatorData('inflacion'), areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% mensual', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
+}
+
+async function icgConfig(indicator: Indicator): Promise<DetailConfig> {
+    const mandates = ICG_PRESIDENTIAL_MANDATES;
+    const rawData = await safeGetIndicatorData('icg');
+    const data: ChartDataRow[] = rawData.map(row => {
+        if (typeof row.iso_fecha !== 'string') return row;
+        const mandate = mandates.find(item => row.iso_fecha! >= item.start && (!item.end || row.iso_fecha! < item.end));
+        if (!mandate) return row;
+        const [year, month] = row.iso_fecha.split('-').map(Number);
+        const [startYear, startMonth] = mandate.start.split('-').map(Number);
+        const comparisonMonth = ((year * 12 + month - (2001 * 12 + 12)) % 48 + 48) % 48 + 1;
+        return {
+            ...row,
+            mandate_key: mandate.key,
+            mandate_name: mandate.name,
+            mandate_color: mandate.color,
+            mandate_secondary_color: mandate.secondaryColor,
+            mandate_month: (year - startYear) * 12 + month - startMonth + 1,
+            comparison_month: comparisonMonth,
+            comparison_term: mandate.key === 'cristina_2' ? 2 : 1,
+            comparison_group: `${mandate.key === 'cristina_2' ? 2 : 1}:${comparisonMonth}`,
+        };
+    });
+    const areas: AreaConfig[] = [
+        { key: 'icg', name: 'ICG', color: '#FFD700', type: 'line', strokeWidth: 2.5, comparisonMode: 'mandate-month' },
+    ];
+    const methodology = [
+        { title: 'Índice', description: 'El Índice de Confianza en el Gobierno de la Universidad Torcuato Di Tella mide mensualmente la opinión pública sobre la labor del gobierno nacional.' },
+        { title: 'Dimensiones', description: 'Combina la evaluación general, la orientación al bien común, la eficiencia del gasto público, la honestidad y la capacidad para resolver problemas.' },
+        { title: 'Escala', description: 'El índice varía entre 0 y 5 puntos. Valores más altos indican mayor confianza.' },
+        { title: 'Comparación interactiva', description: 'Al señalar un dato se comparan y resaltan las observaciones del mismo mes calendario entre mandatos equivalentes. El segundo mandato consecutivo de Cristina Fernández se considera una continuidad y sólo se compara con otros eventuales segundos mandatos consecutivos.' },
+    ];
+    const mandateSeries = mandates.map(mandate => ({
+        ...mandate,
+        rows: data.filter(row => typeof row.iso_fecha === 'string'
+            && row.iso_fecha >= mandate.start
+            && (!mandate.end || row.iso_fecha < mandate.end)),
+    }));
+    const mandateData: ChartDataRow[] = Array.from(
+        { length: Math.max(...mandateSeries.flatMap(mandate => mandate.rows.map(row => typeof row.mandate_month === 'number' ? row.mandate_month : 0))) },
+        (_, index) => ({
+            fecha: `Mes ${index + 1}`,
+            ...Object.fromEntries(mandateSeries.map(mandate => [mandate.key, mandate.rows.find(row => row.mandate_month === index + 1)?.icg ?? null])),
+        }),
+    );
+    const mandateAreas: AreaConfig[] = mandates.map(mandate => ({
+        key: mandate.key,
+        name: mandate.name,
+        color: mandate.color,
+        secondaryColor: mandate.secondaryColor,
+        type: 'line',
+        strokeWidth: 2,
+        showDots: false,
+        valueDecimals: 2,
+        transparentTooltip: true,
+    }));
+    const mandateMethodology = [
+        ...methodology,
+        { title: 'Comparación por mandato', description: 'Cada presidencia conserva el valor original del ICG y se alinea por mes transcurrido desde la asunción. La cobertura comienza en noviembre de 2001, por lo que Fernando de la Rúa sólo cuenta con sus últimos dos meses.' },
+    ];
+
+    return {
+        subtitle: indicator.fuente,
+        chartTitle: 'Índice de Confianza en el Gobierno',
+        data,
+        areas,
+        methodology,
+        valueFormat: 'index',
+        yAxisDecimals: 2,
+        yAxisLabel: 'Puntos (0-5)',
+        leftYAxisDomain: 'auto-pad',
+        indicatorId: indicator.id,
+        views: [
+            { id: 'general', label: 'GENERAL', chartTitle: 'Índice de Confianza en el Gobierno', areas, methodology, valueFormat: 'index', yAxisDecimals: 2, yAxisLabel: 'Puntos (0-5)', leftYAxisDomain: 'auto-pad' },
+            { id: 'mandatos', label: 'POR MANDATO', chartTitle: 'Confianza en el Gobierno por mandato', data: mandateData, areas: mandateAreas, methodology: mandateMethodology, valueFormat: 'index', yAxisDecimals: 2, yAxisLabel: 'Puntos (0-5)', leftYAxisDomain: 'auto-pad' },
+        ],
+    };
 }
