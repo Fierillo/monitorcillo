@@ -9,4 +9,5 @@ export const DEFAULT_CATALOG: CatalogIndicatorRow[] = [
     { id: 'deuda', indicador: 'Perfil de deuda pública', referencia: 'Año anterior', dato: '-', fecha: '-', fuente: 'MECON, BCRA e INDEC', trend: 'neutral', category: 'fiscal', has_details: true, source_url: 'https://www.argentina.gob.ar/economia/finanzas/datos-trimestrales-de-la-deuda' },
     { id: 'pobreza', indicador: 'Pobreza', referencia: 'Mismo semestre año anterior', dato: '-', fecha: '-', fuente: 'INDEC y UTDT', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: 'https://www.utdt.edu/ver_contenido.php?id_contenido=22217&id_item_menu=36605' },
     { id: 'inflacion', indicador: 'Inflación (IPC)', referencia: 'Mes anterior', dato: '-', fecha: '-', fuente: 'INDEC, Equilibra e IPC Online', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: null },
+    { id: 'icg', indicador: 'Índice de Confianza en el Gobierno', referencia: 'Mes anterior', dato: '-', fecha: '-', fuente: 'UTDT', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: 'https://www.utdt.edu/icg' },
 ];

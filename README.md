@@ -38,6 +38,7 @@ Monitorcillo consolida indicadores económicos argentinos en una interfaz compac
 | EMAE | INDEC | Agregado, desestacionalizado, tendencia y sectores MM12 |
 | Deuda pública | MECON, BCRA e INDEC | Perfil de compromisos y deuda/PBI |
 | Pobreza | INDEC y UTDT | Serie oficial semestral y nowcast mensual (archivo PDF UTDT) |
+| Índice de Confianza en el Gobierno | UTDT | Serie mensual general y comparación por mandato |
 
 ## Stack
 

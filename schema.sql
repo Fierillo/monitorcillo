@@ -280,6 +280,23 @@ CREATE TABLE IF NOT EXISTS inflacion_normalized (
 );
 
 -- ============================================
+-- INDICE DE CONFIANZA EN EL GOBIERNO (mensual)
+-- ============================================
+CREATE TABLE IF NOT EXISTS icg_raw (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    icg DECIMAL,
+    fetched_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS icg_normalized (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    icg DECIMAL,
+    last_update TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
 -- INDEXES
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_indicators_catalog_id ON indicators_catalog(id);
@@ -291,6 +308,7 @@ CREATE INDEX IF NOT EXISTS idx_poder_fecha ON poder_adquisitivo_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_deuda_fecha ON deuda_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_pobreza_fecha ON pobreza_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_inflacion_fecha ON inflacion_raw(fecha);
+CREATE INDEX IF NOT EXISTS idx_icg_fecha ON icg_raw(fecha);
 
 -- ============================================
 -- MANUAL OVERRIDES (datos manuales que prevalecen sobre API)

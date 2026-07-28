@@ -7,6 +7,7 @@ export * from './normalize/poder';
 export * from './normalize/deuda';
 export * from './normalize/pobreza';
 export * from './normalize/inflacion';
+export * from './normalize/icg';
 
 import { fechaToISO, fechaToTimestamp, isoToFecha, isoToMonthLabel } from './normalize/dates';
 import { normalizeEmision } from './normalize/emision';
@@ -17,6 +18,7 @@ import { normalizePoderAdquisitivo } from './normalize/poder';
 import { normalizeDeuda } from './normalize/deuda';
 import { normalizePobreza } from './normalize/pobreza';
 import { normalizeInflacion } from './normalize/inflacion';
+import { normalizeIcg } from './normalize/icg';
 
 const normalize = {
     isoToFecha,
@@ -31,6 +33,7 @@ const normalize = {
     normalizeDeuda,
     normalizePobreza,
     normalizeInflacion,
+    normalizeIcg,
 };
 
 export default normalize;

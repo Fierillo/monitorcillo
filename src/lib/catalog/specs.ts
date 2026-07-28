@@ -223,4 +223,18 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
             ...futureMonthly(sourcePublicationDates?.['inflacion-ipc-online'] ?? latestDateWithValue(rawRows, ['ipc_online']), today, 'IPC Online', 6),
         ],
     },
+    icg: {
+        type: 'icg',
+        referenceLabel: 'Mes anterior',
+        betterWhen: 'higher',
+        getReferenceDate: date => addMonths(date, -1),
+        selectReferenceValue: row => row.icg,
+        datePrecision: 'month',
+        normalizedValueColumn: 'icg',
+        selectValue: row => row.icg,
+        rawDateFields: ['icg'],
+        formatValue: value => `${formatDecimal(value)} puntos`,
+        getNextExpectedDate: date => addMonthsFromDate(date, 1),
+        getNextExpectedEvents: ({ rawRows, rawDate, publicationDate, today }) => futureMonthly(publicationDate ?? latestDateWithValue(rawRows, ['icg']) ?? rawDate, today, 'UTDT'),
+    },
 };

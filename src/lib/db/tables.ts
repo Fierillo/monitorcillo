@@ -9,6 +9,7 @@ const TABLES: Record<IndicatorType, { raw: string; normalized: string }> = {
     deuda: { raw: 'deuda_raw', normalized: 'deuda_normalized' },
     pobreza: { raw: 'pobreza_raw', normalized: 'pobreza_normalized' },
     inflacion: { raw: 'inflacion_raw', normalized: 'inflacion_normalized' },
+    icg: { raw: 'icg_raw', normalized: 'icg_normalized' },
 };
 
 export function getTableName(type: IndicatorType, normalized: boolean): string {

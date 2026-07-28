@@ -114,6 +114,10 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
         } as NormalizedDataByType[T];
     }
 
+    if (type === 'icg') {
+        return { ...common, icg: toNullableNumber(row.icg) } as NormalizedDataByType[T];
+    }
+
     return {
         ...common,
         blanco: toNullableNumber(row.blanco),

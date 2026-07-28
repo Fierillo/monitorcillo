@@ -211,6 +211,17 @@ export type PobrezaNormalizedRow = {
     pobreza_utdt: number | null;
 };
 
+export type IcgRawRow = {
+    fecha: string;
+    icg?: NumericValue;
+};
+
+export type IcgNormalizedRow = {
+    fecha: string;
+    iso_fecha: string;
+    icg: number | null;
+};
+
 export type InflacionRawRow = {
     fecha: string;
     ipc_indec_general?: NumericValue;
@@ -238,6 +249,7 @@ export type RawDataByType = {
     deuda: DeudaRawRow;
     pobreza: PobrezaRawRow;
     inflacion: InflacionRawRow;
+    icg: IcgRawRow;
 };
 
 export type NormalizedDataByType = {
@@ -249,6 +261,7 @@ export type NormalizedDataByType = {
     deuda: DeudaNormalizedRow;
     pobreza: PobrezaNormalizedRow;
     inflacion: InflacionNormalizedRow;
+    icg: IcgNormalizedRow;
 };
 
 export type RawDataRow = RawDataByType[IndicatorType];
