@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
 import { startTransition, useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import type { ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, IndicatorCompositeViewProps } from '@/types/chart';
+import type { ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, ChartReferenceLine, IndicatorCompositeViewProps } from '@/types/chart';
 import CompositeChartCard from './indicators/CompositeChartCard';
 import { collectAxisExtentValues } from './chart/utils';
 import TimeRangeSlider from './chart/TimeRangeSlider';
@@ -13,6 +13,8 @@ type PersistedChartConfig = {
     highlightedAreasByView?: Record<string, string[]>;
     rangeByView?: Record<string, [number, number]>;
 };
+
+const EMPTY_REFERENCE_LINES: ChartReferenceLine[] = [];
 
 async function addImagePadding(dataUrl: string, horizontalPadding: number, verticalPadding: number, backgroundColor: string) {
     const image = new Image();
@@ -69,6 +71,7 @@ export default function IndicatorCompositeView({
     const activeYAxisLabel = selectedMode?.yAxisLabel ?? selectedView?.yAxisLabel ?? yAxisLabel;
     const activeSecondaryYAxis = selectedView?.secondaryYAxis ?? secondaryYAxis;
     const activeLeftYAxisDomain = selectedView?.leftYAxisDomain ?? leftYAxisDomain;
+    const activeReferenceLines = selectedView?.referenceLines ?? EMPTY_REFERENCE_LINES;
     const activeShowTooltipTotal = selectedView?.showTooltipTotal ?? showTooltipTotal;
     const sortedData = useMemo(() => {
         const getSortKey = (row: ChartDataRow) => {
@@ -230,6 +233,7 @@ export default function IndicatorCompositeView({
             yAxisId: 'left',
             highlightedAreas,
         });
+        allValues.push(...activeReferenceLines.map(reference => reference.value));
 
         if (allValues.length === 0) return [0, 10];
 
@@ -248,14 +252,16 @@ export default function IndicatorCompositeView({
         }
 
         return [min, max];
-    }, [visibleData, activeAreas, activeLeftYAxisDomain, highlightedAreas]);
+    }, [visibleData, activeAreas, activeLeftYAxisDomain, highlightedAreas, activeReferenceLines]);
 
     const viewSelector = views && views.length > 1 ? (
         <div className="no-capture flex w-full gap-1 sm:w-auto">
-            {views.map(view => {
-                const isActive = view.id === (selectedView?.id ?? selectedViewId);
-                return <button key={view.id} type="button" onClick={() => setSelectedViewId(view.id)} className={`border px-2 py-1 text-[10px] sm:text-xs font-bold uppercase transition-colors ${isActive ? 'border-imperial-gold bg-imperial-gold text-imperial-blue' : 'border-imperial-gold text-imperial-gold hover:bg-imperial-gold hover:text-imperial-blue'}`}>{view.label}</button>;
-            })}
+            <div className="flex gap-1">
+                {views.map(view => {
+                    const isActive = view.id === (selectedView?.id ?? selectedViewId);
+                    return <button key={view.id} type="button" onClick={() => setSelectedViewId(view.id)} className={`border px-2 py-1 text-[10px] sm:text-xs font-bold uppercase transition-colors ${isActive ? 'border-imperial-gold bg-imperial-gold text-imperial-blue' : 'border-imperial-gold text-imperial-gold hover:bg-imperial-gold hover:text-imperial-blue'}`}>{view.label}</button>;
+                })}
+            </div>
         </div>
     ) : null;
 
@@ -383,6 +389,7 @@ export default function IndicatorCompositeView({
                 leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}
                 highlightedAreas={highlightedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
                 showTooltipTotal={activeShowTooltipTotal}
+                referenceLines={activeReferenceLines}
                 rangePreview={previewRange} committedRange={[startIndex, endIndex]}
                 crosshair={crosshair} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={handleHoverTooltipChange}
                 isMobile={isMobile} isCapturing={isCapturing && !isMobile} onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
@@ -415,6 +422,7 @@ export default function IndicatorCompositeView({
                         leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}
                         highlightedAreas={highlightedAreas} selectedMonth={selectedMonth} selectByMonth={selectByMonth}
                         showTooltipTotal={activeShowTooltipTotal}
+                        referenceLines={activeReferenceLines}
                         rangePreview={null} committedRange={[startIndex, endIndex]}
                         crosshair={crosshair?.locked ? crosshair : null} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={handleHoverTooltipChange}
                         isMobile={false} isCapturing forceDesktopLayout onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}

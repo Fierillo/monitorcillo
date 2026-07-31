@@ -61,6 +61,7 @@ export function formatValueByType(value: number, format?: ValueFormat, decimals:
     const options = { minimumFractionDigits: decimals, maximumFractionDigits: decimals };
     
     if (format === 'index') return value.toLocaleString('es-AR', options);
+    if (format === 'currency') return `$${Math.round(value).toLocaleString('es-AR')}`;
     if (format === 'millions') return `$${Math.round(value).toLocaleString('es-AR')}M`;
     if (format === 'billions') {
         const billones = value / 1000000;

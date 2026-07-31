@@ -3,6 +3,8 @@ import { EMAE_SECTORS } from './emae/schema';
 import { RECAUDACION_BREAKDOWN_TYPES } from './recaudacion/schema';
 import { ICG_PRESIDENTIAL_MANDATES, PRESIDENTIAL_MANDATES } from './presidential-mandates';
 import { safeGetIndicatorData } from './storage';
+import { getRawData } from './db';
+import { CABA_RENT_SERIES, calculateRentSalaryBurden } from './purchasing-power-cost';
 
 type DetailConfig = Omit<IndicatorCompositeViewProps, 'title' | 'subtitle'> & { subtitle?: string };
 
@@ -37,6 +39,10 @@ async function bmaConfig(indicator: Indicator): Promise<DetailConfig> {
 }
 
 async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
+    const [data, rawData] = await Promise.all([
+        safeGetIndicatorData('poder-adquisitivo'),
+        getRawData('poder'),
+    ]);
     const areas: AreaConfig[] = [
         { key: 'blanco', name: 'PA [IS blanco/IPCC]', color: '#FFFFFF', type: 'line', transparentTooltip: true },
         { key: 'negro', name: 'PA [IS negro/IPCC]', color: '#2E2D2C', type: 'line', borderColor: '#FFFFFF', borderWidth: 5, transparentTooltip: true },
@@ -53,7 +59,45 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Jubilaciones', description: 'Haber mínimo mensual (ANSES 58.1_MP_0_M_24).' },
         { title: 'Cálculo', description: '(Valor Nominal / IPC Núcleo) normalizado a Base 100 = Enero 2017.' },
     ];
-    return { subtitle: indicator.fuente, chartTitle: 'Evolución del Poder Adquisitivo', data: await safeGetIndicatorData('poder-adquisitivo'), areas, methodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] };
+    const rentData = calculateRentSalaryBurden(rawData);
+    const currentRent = CABA_RENT_SERIES.at(-1)!;
+    const costAreas: AreaConfig[] = [
+        { key: 'alquiler_registrado', name: 'Ajustado por salario registrado', color: '#2E64FE', type: 'line', strokeWidth: 3, connectNulls: true, showValueLabels: true, labelOffsetY: 20, valueFormat: 'currency', transparentTooltip: true },
+        { key: 'alquiler_informal', name: 'Ajustado por salario informal', color: '#FF3B30', type: 'line', strokeWidth: 3, connectNulls: true, showValueLabels: true, labelOffsetY: -12, valueFormat: 'currency', transparentTooltip: true },
+    ];
+    const costMethodology: MethodologyItem[] = [
+        { title: 'Lectura', description: 'Cada punto indica cuánto debería valer hoy el alquiler para conservar la carga salarial que representaba en junio de ese año.' },
+        { title: 'Alquiler de referencia', description: 'Precio medio mensual de oferta de un departamento de 2 ambientes y 50 m² en CABA. Serie Zonaprop de junio de 2020 a junio de 2026. El valor actual de referencia es $860.106.' },
+        { title: 'Cálculo', description: 'Alquiler observado de cada junio × índice salarial actual / índice salarial del mismo mes. Se calcula por separado con los índices de salarios registrados e informales de INDEC.' },
+        { title: 'Período actual', description: 'El último índice común de salarios registrados e informales disponible es mayo de 2026. Para el alquiler de junio de 2026 se utiliza ese salario como referencia actual.' },
+        { title: 'Alcance', description: 'Zonaprop releva precios publicados para nuevos contratos, no alquileres efectivamente pactados. El informe 2026 explicita 50 m² cubiertos y balcón de 5 m².' },
+    ];
+    return {
+        subtitle: indicator.fuente,
+        chartTitle: 'Evolución del Poder Adquisitivo',
+        data,
+        areas,
+        methodology,
+        valueFormat: 'index',
+        yAxisLabel: 'Base 100 = Ene-17',
+        leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'],
+        indicatorId: indicator.id,
+        views: [
+            { id: 'salarios', label: 'SALARIOS', chartTitle: 'Evolución del Poder Adquisitivo', areas, methodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] },
+            {
+                id: 'costo-de-vida',
+                label: 'COSTO DE VIDA',
+                chartTitle: '¿Cuánto debería valer hoy el alquiler para mantener la misma carga salarial?',
+                data: rentData,
+                areas: costAreas,
+                methodology: costMethodology,
+                valueFormat: 'currency',
+                yAxisLabel: 'Pesos por mes a valores de hoy',
+                leftYAxisDomain: 'auto-pad',
+                referenceLines: [{ value: currentRent.value, label: 'Alquiler publicado JUN 26', color: '#FFD700', dash: [8, 6] }],
+            },
+        ],
+    };
 }
 
 async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {

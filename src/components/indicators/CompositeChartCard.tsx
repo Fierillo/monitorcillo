@@ -2,8 +2,8 @@ import { ImageDown } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import { CartesianGrid, ComposedChart, Customized, ReferenceDot, Tooltip, XAxis, YAxis } from 'recharts';
-import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
+import { CartesianGrid, ComposedChart, Customized, ReferenceDot, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts';
+import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, ChartReferenceLine, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
 import ChartArea from '../chart/ChartArea';
 import ChartBar from '../chart/ChartBar';
 import ChartLine from '../chart/ChartLine';
@@ -34,6 +34,7 @@ type Props = {
     selectedMonth: string | null;
     selectByMonth: boolean;
     showTooltipTotal: boolean;
+    referenceLines: ChartReferenceLine[];
     rangePreview: [number, number] | null;
     committedRange: [number, number];
     crosshair: ChartCrosshairState | null;
@@ -158,7 +159,7 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
     const leftDomain = [leftTicks[0], leftTicks.at(-1) ?? 0];
     const rightDomain = [rightTicks[0], rightTicks.at(-1) ?? 0];
 
-    const yAxisWidth = props.isMobile ? 0 : (props.valueFormat === 'millions' ? 76 : 52);
+    const yAxisWidth = props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 76 : 52);
     const leftMargin = props.isMobile ? 5 : yAxisWidth + -50;
     const rightMargin = props.isMobile ? 5 : (props.secondaryYAxis ? 15 : 10);
 
@@ -228,9 +229,10 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
         >
             <CartesianGrid vertical={false} horizontal stroke="#ffffff66" strokeWidth={0.75} />
             <XAxis dataKey={props.xAxisKey} stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)} hide={props.isMobile} />
-            <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
+            <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions' && props.valueFormat !== 'currency'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
             {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
             {!props.isCapturing && !props.crosshair?.locked && <Tooltip cursor={false} wrapperStyle={{ pointerEvents: 'none' }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={renderedAreas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} compact={props.isMobile} showTotal={props.showTooltipTotal} />} />}
+            {props.referenceLines.filter(reference => reference.value > 0).map(reference => <ReferenceLine key={reference.label} y={reference.value} yAxisId="left" stroke={reference.color ?? '#FFD700'} strokeWidth={1.25} strokeDasharray={reference.dash?.join(' ')} label={{ value: `${reference.label}: ${formatValueByType(reference.value, props.valueFormat)}`, position: 'insideTopRight', fill: reference.color ?? '#FFD700', fontSize: 10, fontWeight: 700 }} />)}
             {renderedAreas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}
             {comparisonRows.map(row => <MandatePoint key={String(row.iso_fecha)} x={row[props.xAxisKey] as string | number} y={Number(row.icg)} yAxisId="left" primaryColor={String(row.mandate_color ?? '#FFD700')} secondaryColor={typeof row.mandate_secondary_color === 'string' ? row.mandate_secondary_color : undefined} />)}
             {lockedSeriesPoints.map(({ area, value }) => <MandatePoint key={`locked-${area.key}`} x={lockedRow![props.xAxisKey] as string | number} y={value} yAxisId={area.yAxisId ?? 'left'} primaryColor={area.color} secondaryColor={area.secondaryColor} />)}
@@ -327,6 +329,7 @@ function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZer
         yAxisId: axisId,
         highlightedAreas: props.highlightedAreas,
     });
+    if (axisId === 'left') values.push(...props.referenceLines.map(reference => reference.value));
 
     if (values.length === 0) return [0, 1];
 

@@ -38,12 +38,12 @@ export interface MethodologyItem {
 export interface YAxisConfig {
     label?: string;
     color?: string;
-    format?: 'billions' | 'index' | 'millions' | 'percent';
+    format?: 'billions' | 'currency' | 'index' | 'millions' | 'percent';
     domain?: [number, number] | 'auto';
     includeZero?: boolean;
 }
 
-export type ValueFormat = 'billions' | 'index' | 'millions' | 'percent';
+export type ValueFormat = 'billions' | 'currency' | 'index' | 'millions' | 'percent';
 
 export type ChartValue = string | number | boolean | null | undefined;
 
@@ -61,6 +61,13 @@ export type ChartDataRow = {
 export type ChartAxisDomainValue = number | string;
 
 export type ChartAxisDomain = [ChartAxisDomainValue, ChartAxisDomainValue] | 'auto-pad' | 'auto';
+
+export type ChartReferenceLine = {
+    value: number;
+    label: string;
+    color?: string;
+    dash?: number[];
+};
 
 export type ChartModeConfig = {
     id: string;
@@ -84,6 +91,7 @@ export type ChartViewConfig = {
     secondaryYAxis?: YAxisConfig;
     leftYAxisDomain?: ChartAxisDomain;
     showTooltipTotal?: boolean;
+    referenceLines?: ChartReferenceLine[];
     modes?: ChartModeConfig[];
 };
 
