@@ -12,6 +12,9 @@ export default async function Home() {
         <h1 className="imperial-title text-2xl sm:text-4xl font-bold uppercase tracking-widest text-imperial-gold">
           Monitorcillo de la Economia Argentina
         </h1>
+        <p className="mt-2 text-sm italic text-imperial-cyan sm:text-base">
+          &ldquo;El precio de la libertad es la eterna vigilancia&rdquo; - Wendell Phillips
+        </p>
       </header>
       <main className="w-full sm:w-[96%] max-w-[1800px] flex flex-col gap-8">
         <IndicatorsTable data={data} />
