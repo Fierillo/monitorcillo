@@ -11,6 +11,7 @@ export interface AreaConfig {
     labelOffsetY?: number;
     labelLeader?: boolean;
     stackId?: string;
+    maxBarSize?: number;
     type?: 'monotone' | 'step' | 'line' | 'bar';
     yAxisId?: 'left' | 'right';
     legendKey?: string;

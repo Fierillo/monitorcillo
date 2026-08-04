@@ -14,6 +14,7 @@ export default function ChartBar({
         <Bar
             dataKey={areaConfig.key}
             stackId={areaConfig.stackId}
+            maxBarSize={areaConfig.maxBarSize}
             fill={areaConfig.color}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}

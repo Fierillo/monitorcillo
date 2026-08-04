@@ -5,6 +5,7 @@ import { ICG_PRESIDENTIAL_MANDATES, PRESIDENTIAL_MANDATES } from './presidential
 import { safeGetIndicatorData } from './storage';
 import { getRawData } from './db';
 import { CABA_RENT_SERIES, calculateRentSalaryBurden } from './purchasing-power-cost';
+import { RIGI_INVESTMENT_CHART_DATA, RIGI_INVESTMENTS } from './investments-source';
 
 type DetailConfig = Omit<IndicatorCompositeViewProps, 'title' | 'subtitle'> & { subtitle?: string };
 
@@ -14,11 +15,47 @@ export async function getIndicatorDetailConfig(indicator: Indicator): Promise<De
     if (indicator.id === 'emae') return emaeConfig(indicator);
     if (indicator.id === 'emision') return emisionConfig(indicator);
     if (indicator.id === 'recaudacion') return recaudacionConfig(indicator);
+    if (indicator.id === 'inversiones') return investmentsConfig(indicator);
     if (indicator.id === 'deuda') return deudaConfig(indicator);
     if (indicator.id === 'pobreza') return pobrezaConfig(indicator);
     if (indicator.id === 'inflacion') return inflacionConfig(indicator);
     if (indicator.id === 'icg') return icgConfig(indicator);
     return null;
+}
+
+function investmentsConfig(indicator: Indicator): DetailConfig {
+    const areas: AreaConfig[] = [
+        { key: 'aprobadas', name: 'Aprobadas acumuladas', color: '#FFD700', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
+        { key: 'en_evaluacion', name: 'En evaluación', color: '#00BFFF', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
+        { key: 'anunciadas', name: 'Otras anunciadas', color: '#A855F7', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
+        { key: 'confirmadas', name: 'Otras confirmadas', color: '#22C55E', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
+    ];
+    const methodology = [
+        { title: 'Lectura', description: 'Cada barra mensual apila la inversión aprobada acumulada y la inversión en evaluación. Si durante un mes no se publica ninguna novedad, se repite el valor del mes anterior.' },
+        { title: 'Aprobadas', description: `El tramo amarillo acumula los proyectos en el mes de sanción de cada resolución. Al 31 de julio de 2026 comprende ${RIGI_INVESTMENTS.approved.projects} proyectos por USD 46.708 millones.` },
+        { title: 'En evaluación', description: `El tramo celeste se actualiza cuando existe una nueva cifra publicada y se mantiene sin cambios hasta la siguiente. El último dato registra ${RIGI_INVESTMENTS.underEvaluation.projects} proyectos por USD 101.241 millones.` },
+        { title: 'Fechas sin resolución enlazada', description: 'PSJ Cobre Mendocino y Sal de Oro II se asignan a junio y julio de 2026, respectivamente, por ser su primera aparición comprobable en los totales oficiales.' },
+        { title: 'Variación', description: 'La diferencia entre barras muestra el cambio neto conocido: puede incluir nuevas presentaciones, aprobaciones, rechazos, retiros y revisiones de montos.' },
+        { title: 'Otras anunciadas', description: 'Proyectos fuera del RIGI con empresa, ubicación, monto y anuncio formal publicados. Se excluyen rumores, memorandos de entendimiento, planes generales y proyectos sin monto atribuible.' },
+        { title: 'Otras confirmadas', description: 'Proyectos fuera del RIGI que alcanzaron financiamiento cerrado, contrato vinculante, adjudicación formal o inicio documentado de construcción. Al confirmarse, el monto pasa desde anunciadas sin duplicarse.' },
+        { title: 'Cobertura no RIGI', description: 'Cobertura conservadora desde enero de 2017 de energía, minería, industria, agroindustria, logística e infraestructura. Los montos con la expresión “más de” se registran por su mínimo publicado.' },
+        { title: 'Comparabilidad', description: 'Las observaciones anteriores a junio de 2026 provienen de Bloomberg Línea e Infobae sobre datos oficiales e inventarios de proyectos. Los montos pueden incorporar revisiones de alcance mientras los expedientes estaban en evaluación.' },
+        { title: 'Proyectos compartidos', description: 'Los proyectos informados en más de una provincia se contabilizan una sola vez en el total aprobado.' },
+        { title: 'Cobertura', description: 'Montos publicados por el Ministerio de Economía para el Régimen de Incentivo para Grandes Inversiones (RIGI), actualizados al 31 de julio de 2026.' },
+    ];
+
+    return {
+        subtitle: `Fuente: ${indicator.fuente} | Inversión en millones de USD`,
+        chartTitle: 'Evolución mensual de inversiones RIGI por estado',
+        data: RIGI_INVESTMENT_CHART_DATA,
+        areas,
+        methodology,
+        valueFormat: 'millions',
+        yAxisLabel: 'millones de USD',
+        leftYAxisDomain: 'auto',
+        showTooltipTotal: true,
+        indicatorId: indicator.id,
+    };
 }
 
 async function bmaConfig(indicator: Indicator): Promise<DetailConfig> {
