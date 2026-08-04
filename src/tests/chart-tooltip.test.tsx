@@ -66,6 +66,7 @@ describe('ChartTooltip', () => {
         />);
 
         expect(markup).toContain('Mauricio Macri');
+        expect(markup).toContain('ENE 26');
         expect(markup).toContain('Eduardo Duhalde');
         expect(markup).toContain('#38BDF8');
         expect(markup).toContain('#64748B');

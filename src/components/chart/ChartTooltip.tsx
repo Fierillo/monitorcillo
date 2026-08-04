@@ -22,6 +22,7 @@ export default function ChartTooltip({
         const comparisons = chartData.filter(row => row.comparison_group === rowData.comparison_group && typeof row.icg === 'number');
         return (
             <div key={tooltipLabel} style={{ backgroundColor: 'rgba(0, 20, 63, 0.62)', border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', maxHeight: compact ? '55vh' : undefined, overflowY: compact ? 'auto' : undefined }}>
+                <div style={{ fontWeight: 'bold', marginBottom: compact ? '2px' : '4px' }}>{rowData.fecha}</div>
                 {comparisons.map(row => {
                     const primaryColor = String(row.mandate_color ?? '#FFD700');
                     const secondaryColor = typeof row.mandate_secondary_color === 'string' ? row.mandate_secondary_color : primaryColor;
