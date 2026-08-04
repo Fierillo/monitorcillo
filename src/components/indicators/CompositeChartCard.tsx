@@ -44,6 +44,7 @@ type Props = {
     forceDesktopLayout?: boolean;
     viewSelector?: ReactNode;
     axisModeSelector?: ReactNode;
+    axisModeLabel?: string;
     timeRangeSlider?: ReactNode;
     onPrepareDownload: () => void;
     onDownloadChart: () => void;
@@ -114,7 +115,7 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
     return (
         <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? 'min-h-[780px]' : 'min-h-[300px] sm:min-h-[500px]'} ${props.isMobile && props.axisModeSelector ? 'pt-12' : ''} overflow-visible`} style={captureCanvasStyle}>
             {props.isMobile && props.axisModeSelector && !props.isCapturing ? <div className="no-capture absolute left-1/2 top-0 z-10 flex -translate-x-1/2 flex-col items-center gap-1 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-imperial-gold"><span>{props.yAxisLabel}</span>{props.axisModeSelector}</div> : null}
-            {!props.isMobile && props.yAxisLabel && <AxisLabel label={props.yAxisLabel} control={!props.isCapturing ? props.axisModeSelector : null} />}
+            {!props.isMobile && props.yAxisLabel && <AxisLabel label={props.isCapturing && props.axisModeLabel ? `${props.yAxisLabel} · ${props.axisModeLabel}` : props.yAxisLabel} control={!props.isCapturing ? props.axisModeSelector : null} />}
             <div className={`relative min-w-0 flex-1 ${minimumTouchWidth ? 'overflow-x-auto overflow-y-hidden' : 'overflow-hidden'}`} style={{ touchAction: minimumTouchWidth ? 'pan-x pan-y' : undefined }}>
                 <div ref={chartContainerRef} className="relative h-full overflow-hidden" style={captureChartStyle} tabIndex={-1}>
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none"><span className="watermark text-imperial-gold/21 text-xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">@fierillo</span></div>

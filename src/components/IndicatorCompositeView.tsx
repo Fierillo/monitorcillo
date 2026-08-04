@@ -393,7 +393,7 @@ export default function IndicatorCompositeView({
                 rangePreview={previewRange} committedRange={[startIndex, endIndex]}
                 crosshair={crosshair} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={handleHoverTooltipChange}
                 isMobile={isMobile} isCapturing={isCapturing && !isMobile} onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
-                onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} viewSelector={viewSelector} axisModeSelector={axisModeSelector}
+                onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} viewSelector={viewSelector} axisModeSelector={axisModeSelector} axisModeLabel={selectedMode?.label}
                 timeRangeSlider={!isCapturing && sortedData.length > 1 ? (
                     <TimeRangeSlider
                         data={sortedData}
@@ -426,7 +426,7 @@ export default function IndicatorCompositeView({
                         rangePreview={null} committedRange={[startIndex, endIndex]}
                         crosshair={crosshair?.locked ? crosshair : null} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={handleHoverTooltipChange}
                         isMobile={false} isCapturing forceDesktopLayout onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
-                        onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight}
+                        onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} axisModeLabel={selectedMode?.label}
                         timeRangeSlider={null}
                     />
                 </div>
