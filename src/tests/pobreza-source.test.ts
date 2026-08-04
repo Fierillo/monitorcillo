@@ -6,6 +6,7 @@ import {
     parseUtdtChartImageUrl,
     parseUtdtNowcastRowsFromChartData,
     parseUtdtPeriodPdfLinks,
+    parseUtdtShinyRows,
 } from '../lib/pobreza-source';
 
 describe('pobreza UTDT source parsing', () => {
@@ -61,6 +62,37 @@ describe('pobreza UTDT source parsing', () => {
             { fecha: '2026-02-01', pobreza_utdt: 28.7 },
             { fecha: '2026-03-01', pobreza_utdt: 29 },
             { fecha: '2026-04-01', pobreza_utdt: 29.2 },
+        ]);
+    });
+
+    it('extracts the current series from the UTDT Shiny traces', () => {
+        expect(parseUtdtShinyRows([
+            {
+                name: 'oficial',
+                y: [28.2],
+                text: ['Tasa de pobreza: 28.2 <br>Semestre : Jul25Dic25'],
+            },
+            {
+                name: 'proy',
+                y: [28.9, 29.4, 30, 30.3, 30.6, 31.6],
+                text: [
+                    'Semestre : Ago25Ene26',
+                    'Semestre : Sep25Feb26',
+                    'Semestre : Oct25Mar26',
+                    'Semestre : Nov25Abr26',
+                    'Semestre : Dic25May26',
+                    'Semestre : Ene26Jun26',
+                ],
+            },
+            { name: 'confidence-band', y: [20], text: ['Semestre : Ene26Jun26'] },
+        ])).toEqual([
+            { fecha: '2025-12-01', pobreza_utdt: 28.2 },
+            { fecha: '2026-01-01', pobreza_utdt: 28.9 },
+            { fecha: '2026-02-01', pobreza_utdt: 29.4 },
+            { fecha: '2026-03-01', pobreza_utdt: 30 },
+            { fecha: '2026-04-01', pobreza_utdt: 30.3 },
+            { fecha: '2026-05-01', pobreza_utdt: 30.6 },
+            { fecha: '2026-06-01', pobreza_utdt: 31.6 },
         ]);
     });
 });

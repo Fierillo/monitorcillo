@@ -8,11 +8,19 @@ import { extractUtdtChartData, periodToFecha } from './pobreza-ocr';
 const INDEC_POBREZA_SERIES_ID = '64.2_POBLACION_NUA_0_0_34_74';
 const UTDT_POBREZA_URL = 'https://www.utdt.edu/ver_contenido.php?id_contenido=22217&id_item_menu=36605';
 const UTDT_ORIGIN = 'https://www.utdt.edu';
+const UTDT_SHINY_URL = 'https://mrozada.shinyapps.io/shinynowcast/';
 const PDF_FETCH_CONCURRENCY = 4;
+const SHINY_TIMEOUT_MS = 30_000;
 
 export type UtdtPeriodPdfLink = {
     period: string;
     url: string;
+};
+
+type UtdtShinyTrace = {
+    name?: string;
+    text?: unknown[];
+    y?: unknown[];
 };
 
 type PobrezaSourceReport = {
@@ -107,6 +115,92 @@ export function parseUtdtNowcastRowsFromChartData(chartData: Record<string, numb
         })
         .filter((row): row is PobrezaRawRow => row !== null)
         .sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+export function parseUtdtShinyRows(traces: UtdtShinyTrace[]): PobrezaRawRow[] {
+    const byFecha = new Map<string, PobrezaRawRow>();
+
+    for (const trace of traces) {
+        if (!['oficial', 'serie', 'proy'].includes(trace.name ?? '')) continue;
+        for (let index = 0; index < (trace.text?.length ?? 0); index++) {
+            const period = String(trace.text?.[index]).match(/Semestre\s*:\s*([A-Za-z]{3}\d{2}[A-Za-z]{3}\d{2})/i)?.[1];
+            const value = Number(trace.y?.[index]);
+            const fecha = period ? periodToFecha(period) : null;
+            if (fecha && Number.isFinite(value)) byFecha.set(fecha, { fecha, pobreza_utdt: value });
+        }
+    }
+
+    return Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+async function fetchUtdtRowsFromShiny(): Promise<PobrezaRawRow[]> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SHINY_TIMEOUT_MS);
+
+    try {
+        const html = await fetchTextFromUrl(UTDT_SHINY_URL);
+        const workerId = html.match(/<base href=["']_w_([a-f0-9]+)\/["']/i)?.[1];
+        if (!workerId) throw new Error('UTDT Shiny page did not provide a worker ID.');
+
+        const tokenResponse = await fetch(`${UTDT_SHINY_URL}_w_${workerId}/__token__/`, { signal: controller.signal });
+        if (!tokenResponse.ok) throw new Error(`UTDT Shiny token request failed with HTTP ${tokenResponse.status}.`);
+        const token = await tokenResponse.text();
+        const serverId = String(Math.floor(Math.random() * 1_000)).padStart(3, '0');
+        const sessionId = Math.random().toString(36).slice(2, 10).padEnd(8, '0');
+        const socketUrl = `wss://mrozada.shinyapps.io/shinynowcast/__sockjs__/n=monitorcillo/t=${token}/w=${workerId}/s=0/${serverId}/${sessionId}/websocket`;
+
+        return await new Promise<PobrezaRawRow[]>((resolve, reject) => {
+            const socket = new WebSocket(socketUrl);
+            let settled = false;
+
+            const finish = (rows: PobrezaRawRow[], error?: Error) => {
+                if (settled) return;
+                settled = true;
+                socket.close();
+                if (error) reject(error);
+                else resolve(rows);
+            };
+
+            controller.signal.addEventListener('abort', () => finish([], new Error('UTDT Shiny request timed out.')), { once: true });
+            socket.onerror = () => finish([], new Error('UTDT Shiny WebSocket connection failed.'));
+            socket.onclose = () => finish([], new Error('UTDT Shiny WebSocket closed before returning graph data.'));
+            socket.onmessage = (event) => {
+                const message = String(event.data);
+                if (message === 'o') {
+                    socket.send(JSON.stringify(['0#0|o|']));
+                    const data = {
+                        '.clientdata_output_graph_width': 1400,
+                        '.clientdata_output_graph_height': 560,
+                        '.clientdata_output_graph_hidden': false,
+                        '.clientdata_pixelratio': 1,
+                        '.clientdata_url_protocol': 'https:',
+                        '.clientdata_url_hostname': 'mrozada.shinyapps.io',
+                        '.clientdata_url_port': '',
+                        '.clientdata_url_pathname': '/shinynowcast/',
+                        '.clientdata_url_search': '',
+                        '.clientdata_url_hash_initial': '',
+                        '.clientdata_url_hash': '',
+                        '.clientdata_singletons': '',
+                    };
+                    socket.send(JSON.stringify([`1#0|m|${JSON.stringify({ method: 'init', data })}`]));
+                    return;
+                }
+
+                if (!message.startsWith('a[')) return;
+                for (const robustMessage of JSON.parse(message.slice(1)) as string[]) {
+                    const payloadText = robustMessage.match(/^\d+#\d+\|m\|([\s\S]+)$/)?.[1];
+                    if (!payloadText) continue;
+                    const payload = JSON.parse(payloadText);
+                    const traces = payload.values?.graph?.x?.data;
+                    if (!Array.isArray(traces)) continue;
+                    const rows = parseUtdtShinyRows(traces);
+                    if (rows.length > 0) finish(rows);
+                }
+            };
+        });
+    } finally {
+        clearTimeout(timeout);
+    }
 }
 
 export async function extractPovertyRateFromPdfBuffer(buffer: Buffer): Promise<number | null> {
@@ -209,8 +303,15 @@ async function fetchUtdtPobrezaReport(): Promise<PobrezaSourceReport> {
 
         const byFecha = new Map<string, PobrezaRawRow>();
 
-        // Primary source: monthly PDF archive linked on the UTDT page.
-        if (periodLinks.length > 0) {
+        for (const row of await fetchUtdtRowsFromShiny().catch((error) => {
+            console.error('Failed to extract UTDT nowcast from Shiny:', error);
+            return [];
+        })) {
+            byFecha.set(row.fecha, row);
+        }
+
+        // Fallback: monthly PDF archive linked on the UTDT page.
+        if (byFecha.size === 0 && periodLinks.length > 0) {
             for (const row of await fetchUtdtRowsFromPeriodPdfs(periodLinks)) {
                 byFecha.set(row.fecha, row);
             }
