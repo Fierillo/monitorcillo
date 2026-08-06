@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
+  "packageManager": "pnpm@11.20.0+sha512-mm8zCpW2ZEbqCI+vFSFAWooB8H/ecSTMmVjf7VLUu0NnN+ZbCPhfN7Rvy6N1CSVYrFEmK4FoRLIvY0Bu0Wa/7g==",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -43,10 +44,5 @@
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.1.5"
-  },
-  "pnpm": {
-    "overrides": {
-      "postcss": "8.5.10"
-    }
   }
 }
