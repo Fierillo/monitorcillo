@@ -32,6 +32,28 @@ describe('ChartTooltip', () => {
         expect(markup).toContain('2,61');
     });
 
+    it('blurs chart data behind transparent tooltips', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip
+            {...props}
+            areaConfigs={props.areaConfigs.map(area => ({ ...area, transparentTooltip: true }))}
+        />);
+
+        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.62)');
+        expect(markup).toContain('line-height:1.35');
+        expect(markup).toContain('white-space:nowrap');
+        expect(markup).toContain('backdrop-filter:blur(4px)');
+        expect(markup).toContain('-webkit-backdrop-filter:blur(4px)');
+    });
+
+    it('uses fixed rows when rendering an exported tooltip', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip {...props} isCapturing />);
+
+        expect(markup).toContain('height:22px');
+        expect(markup).toContain('line-height:22px');
+        expect(markup).toContain('align-items:center');
+        expect(markup).toContain('Primero</span><span style="color:#fff">: 2,0%');
+    });
+
     it('omits every series without a value for the active month', () => {
         const markup = renderToStaticMarkup(<ChartTooltip
             chartData={[{ fecha: 'Mes reciente', informal: null, formal: 104.2 }]}

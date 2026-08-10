@@ -120,8 +120,8 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
                 <div ref={chartContainerRef} className="relative h-full overflow-hidden" style={captureChartStyle} tabIndex={-1}>
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0 select-none"><span className="watermark text-imperial-gold/21 text-xl sm:text-4xl font-sans font-bold uppercase tracking-[0.5em]">@fierillo</span></div>
                     {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
-                    {props.crosshair?.locked && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} /> : null}
-                    {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} /> : null}
+                    {props.crosshair?.locked && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} isCapturing={props.isCapturing} /> : null}
+                    {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} isCapturing /> : null}
                 </div>
             </div>
             {!props.isMobile && props.secondaryYAxis && <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right />}
@@ -375,18 +375,18 @@ function niceStep(rawStep: number): number {
     return 10 * magnitude;
 }
 
-function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidth, chartHeight, showTotal }: { crosshair: ChartCrosshairState; areas: AreaConfig[]; valueFormat: ValueFormat; sortedData: ChartDataRow[]; chartWidth: number; chartHeight: number; showTotal: boolean }) {
+function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidth, chartHeight, showTotal, isCapturing }: { crosshair: ChartCrosshairState; areas: AreaConfig[]; valueFormat: ValueFormat; sortedData: ChartDataRow[]; chartWidth: number; chartHeight: number; showTotal: boolean; isCapturing: boolean }) {
     const label = crosshair.label;
     const rowData = label ? sortedData.find(row => row.fecha === label || row.iso_fecha === label) : null;
     if (!rowData) return null;
-    const tooltipWidth = areas.some(area => area.comparisonMode === 'mandate-month') ? 260 : 180;
+    const tooltipWidth = 260;
     const tooltipHeight = 40 + areas.length * 24;
     const fallbackX = crosshair.x + 10 + tooltipWidth > chartWidth ? Math.max(0, crosshair.x - tooltipWidth - 10) : crosshair.x + 10;
     const fallbackY = crosshair.y + 10 + tooltipHeight > chartHeight ? Math.max(0, crosshair.y - tooltipHeight - 10) : crosshair.y + 10;
 
     return (
         <div className="absolute z-10 pointer-events-none" style={{ left: crosshair.tooltipPosition?.x ?? fallbackX, top: crosshair.tooltipPosition?.y ?? fallbackY }}>
-            <ChartTooltip chartData={sortedData} areaConfigs={areas} valueFormat={valueFormat} tooltipProps={{ active: true, label }} showTotal={showTotal} />
+            <ChartTooltip chartData={sortedData} areaConfigs={areas} valueFormat={valueFormat} tooltipProps={{ active: true, label }} showTotal={showTotal} isCapturing={isCapturing} />
         </div>
     );
 }

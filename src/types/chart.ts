@@ -161,6 +161,7 @@ export type ChartTooltipProps = {
     tooltipProps: TooltipProps;
     compact?: boolean;
     showTotal?: boolean;
+    isCapturing?: boolean;
 };
 
 export type ChartBarProps = {
