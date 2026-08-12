@@ -1,6 +1,7 @@
 import type { InflacionRawRow } from '@/types';
 import * as XLSX from 'xlsx';
-import { fetchFromUrl, fetchTextFromUrl } from './sync/http-client';
+import { fetchTextFromUrl } from './sync/http-client';
+import { fetchTimeSeries } from './sync/time-series-client';
 
 const INDEC_GENERAL_SERIES_ID = '145.3_INGNACNAL_DICI_M_15';
 const INDEC_NUCLEO_SERIES_ID = '148.3_INUCLEONAL_DICI_M_19';
@@ -67,8 +68,7 @@ function latestDate(a: string | null, b: string | null): string | null {
 }
 
 export async function fetchIndecIpcRows(seriesId: string): Promise<{ fecha: string; valor: number }[]> {
-    const url = `https://apis.datos.gob.ar/series/api/series/?ids=${seriesId}&format=json&limit=5000`;
-    const response = await fetchFromUrl(url);
+    const response = await fetchTimeSeries({ ids: [seriesId] });
     return (response.data ?? [])
         .filter((row): row is [string, number] => typeof row[0] === 'string' && row[1] != null)
         .map(row => ({ fecha: row[0], valor: Number(row[1]) }))

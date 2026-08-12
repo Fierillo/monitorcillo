@@ -1,7 +1,8 @@
 import type { PoderAdquisitivoRawRow } from '@/types';
 import { parseSalaryPublicationDate } from '../salary-source';
 import { SALARY_PUBLICATION_PAGE_URL } from './constants';
-import { fetchCSV, fetchFromUrl, fetchTextFromUrl } from './http-client';
+import { fetchCSV, fetchTextFromUrl } from './http-client';
+import { fetchTimeSeries } from './time-series-client';
 import { seriesValueMap } from './series';
 
 const OFFICIAL_SALARY_CSV_URL = 'https://www.indec.gob.ar/ftp/cuadros/sociedad/indice_salarios.csv';
@@ -49,8 +50,8 @@ function buildSalaryRow(fecha: string, salaryRow: Partial<PoderAdquisitivoRawRow
 
 export async function fetchPoderAdquisitivoRawReport(): Promise<{ rows: PoderAdquisitivoRawRow[]; publishedAt: string | null }> {
     const [ipc, jubilaciones, salariosCsv, ripteCsv, publicationHtml] = await Promise.all([
-        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
-        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=58.1_MP_0_M_24&limit=5000'),
+        fetchTimeSeries({ ids: ['148.3_INUCLEONAL_DICI_M_19'] }),
+        fetchTimeSeries({ ids: ['58.1_MP_0_M_24'] }),
         fetchTextFromUrl(OFFICIAL_SALARY_CSV_URL),
         fetchCSV('https://infra.datos.gob.ar/catalog/sspm/dataset/158/distribution/158.1/download/remuneracion-imponible-promedio-trabajadores-estables-ripte-total-pais-pesos-serie-mensual.csv'),
         fetchTextFromUrl(SALARY_PUBLICATION_PAGE_URL),

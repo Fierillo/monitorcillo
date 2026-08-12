@@ -12,8 +12,9 @@ import {
 import { mergeRecaudacionOfficialReport, parseLatestRecaudacionWorkbookUrl, parseRecaudacionWorkbook } from '../recaudacion-source';
 import { fetchEmaeWorkbookRows, fetchPbiAnchorRows } from './cache';
 import { RECAUDACION_PAGE_URL } from './constants';
-import { fetchBufferFromUrl, fetchFromUrl, fetchTextFromUrl } from './http-client';
+import { fetchBufferFromUrl, fetchTextFromUrl } from './http-client';
 import { emaeDesestacionalizadoMap, seriesValueMap, valueAtOrBefore } from './series';
+import { fetchTimeSeries } from './time-series-client';
 
 async function fetchRecaudacionOfficialReport(): Promise<RecaudacionOfficialReport> {
     const html = await fetchTextFromUrl(RECAUDACION_PAGE_URL);
@@ -69,12 +70,12 @@ export async function ensureRecaudacionTables(): Promise<void> {
 }
 
 export async function fetchRecaudacionRawReport(): Promise<{ rows: RecaudacionRawRow[]; publishedAt: string | null }> {
-    const seriesIds = [RECAUDACION_TOTAL_SERIES_ID, ...RECAUDACION_COMPONENT_SERIES_IDS].join(',');
+    const seriesIds = [RECAUDACION_TOTAL_SERIES_ID, ...RECAUDACION_COMPONENT_SERIES_IDS];
     const [recaudacion, pbiAnchors, emae, ipc, officialReport] = await Promise.all([
-        fetchFromUrl(`https://apis.datos.gob.ar/series/api/series/?ids=${seriesIds}&limit=5000`),
+        fetchTimeSeries({ ids: seriesIds }),
         fetchPbiAnchorRows(),
         fetchEmaeWorkbookRows(),
-        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
+        fetchTimeSeries({ ids: ['148.3_INUCLEONAL_DICI_M_19'] }),
         fetchRecaudacionOfficialReport(),
     ]);
 

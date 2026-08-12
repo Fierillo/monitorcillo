@@ -3,8 +3,9 @@ import { buildMonthlyPbiSeries } from '../pbi-source';
 import { fetchBcraVariable } from './bcra';
 import { fetchEmaeWorkbookRows, fetchPbiAnchorRows } from './cache';
 import { WEEKLY_BALANCE_WORKBOOK_URL } from './constants';
-import { fetchBufferFromUrl, fetchFromUrl } from './http-client';
+import { fetchBufferFromUrl } from './http-client';
 import { emaeDesestacionalizadoMap, seriesValueMap, valueAtOrBefore } from './series';
+import { fetchTimeSeries } from './time-series-client';
 import { extractWeeklyGovernmentDepositsSeries } from './weekly-bcra';
 
 function mergeBcraSeries(byFecha: Map<string, BmaRawRow>, items: BcraVariableRow[], field: Exclude<keyof BmaRawRow, 'fecha'>) {
@@ -30,7 +31,7 @@ export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
         fetchBufferFromUrl(WEEKLY_BALANCE_WORKBOOK_URL),
         fetchPbiAnchorRows(),
         fetchEmaeWorkbookRows(),
-        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=148.3_INUCLEONAL_DICI_M_19&limit=5000'),
+        fetchTimeSeries({ ids: ['148.3_INUCLEONAL_DICI_M_19'] }),
     ]);
 
     const byFecha = new Map<string, BmaRawRow>();

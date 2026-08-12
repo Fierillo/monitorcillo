@@ -1,4 +1,4 @@
-import type { BcraVariableRow, DatosGobSeriesRow } from './data';
+import type { BcraVariableRow } from './data';
 import type { EmisionAdminRow } from './admin';
 import type { Indicator } from './indicators';
 import type { SyncResults } from './common';
@@ -19,10 +19,6 @@ export type BcraApiResponse = {
             limit?: number;
         };
     };
-};
-
-export type DatosGobApiResponse = {
-    data?: DatosGobSeriesRow[];
 };
 
 export type ApiErrorResponse = {

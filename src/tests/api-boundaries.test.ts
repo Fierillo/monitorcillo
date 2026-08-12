@@ -9,6 +9,8 @@ const forbiddenImports = [
     'https.get(',
     'fetchBcraVariable',
     'fetchFromUrl',
+    'fetchTimeSeries',
+    'time-series-client',
     'fetchCSV',
 ];
 

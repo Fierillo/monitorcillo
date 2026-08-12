@@ -5,7 +5,8 @@ import { buildMonthlyPopulationSeries, parseWorldBankPopulation } from '../popul
 import { sql } from '../db/client';
 import { EMAE_PUBLICATION_PAGE_URL } from './constants';
 import { fetchEmaeSectorWorkbookRows, fetchEmaeWorkbookRows } from './cache';
-import { fetchFromUrl, fetchTextFromUrl } from './http-client';
+import { fetchTextFromUrl } from './http-client';
+import { fetchTimeSeries } from './time-series-client';
 
 function mergeEmaeRows(rows: EmaeRawRow[], sectorRows: EmaeRawRow[]): EmaeRawRow[] {
     const byFecha = new Map<string, EmaeRawRow>();
@@ -19,7 +20,7 @@ export async function fetchEmaeRaw(): Promise<{ rows: EmaeRawRow[]; publishedAt:
         fetchEmaeWorkbookRows(),
         fetchEmaeSectorWorkbookRows(),
         fetchTextFromUrl(EMAE_PUBLICATION_PAGE_URL),
-        fetchFromUrl('https://apis.datos.gob.ar/series/api/series/?ids=10.3_ISD_1993_M_31&limit=5000'),
+        fetchTimeSeries({ ids: ['10.3_ISD_1993_M_31'] }),
         fetchTextFromUrl('https://api.worldbank.org/v2/country/ARG/indicator/SP.POP.TOTL?format=json&date=1992:2025&per_page=100'),
     ]);
 

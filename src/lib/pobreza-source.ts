@@ -2,7 +2,8 @@
 // `module.parent` is missing (common under Vitest / certain bundlers).
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 import type { PobrezaRawRow } from '@/types';
-import { fetchBufferFromUrl, fetchFromUrl, fetchTextFromUrl } from './sync/http-client';
+import { fetchBufferFromUrl, fetchTextFromUrl } from './sync/http-client';
+import { fetchTimeSeries } from './sync/time-series-client';
 import { extractUtdtChartData, periodToFecha } from './pobreza-ocr';
 
 const INDEC_POBREZA_SERIES_ID = '64.2_POBLACION_NUA_0_0_34_74';
@@ -257,8 +258,7 @@ export async function fetchUtdtRowsFromPeriodPdfs(links: UtdtPeriodPdfLink[]): P
 }
 
 export async function fetchIndecPobrezaRows(): Promise<PobrezaRawRow[]> {
-    const url = `https://apis.datos.gob.ar/series/api/series/?ids=${INDEC_POBREZA_SERIES_ID}&format=json`;
-    const response = await fetchFromUrl(url);
+    const response = await fetchTimeSeries({ ids: [INDEC_POBREZA_SERIES_ID] });
     return (response.data ?? [])
         .filter(row => typeof row[0] === 'string' && row[1] != null)
         .map(row => ({ fecha: row[0], pobreza_indec: Number(row[1]) * 100 }))
