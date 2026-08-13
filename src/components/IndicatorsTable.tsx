@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Indicator } from '@/types';
 
@@ -7,6 +7,58 @@ type ReferenceTooltip = { text: string; x: number; y: number } | null;
 
 const TOOLTIP_WIDTH = 150;
 const TOOLTIP_OFFSET = 6;
+const MINIMUM_FONT_SIZE = 6;
+
+export function fitTextToWidth(element: HTMLElement, minimumFontSize = MINIMUM_FONT_SIZE): void {
+    element.style.fontSize = '';
+    let fontSize = Number.parseFloat(window.getComputedStyle(element).fontSize);
+    if (!Number.isFinite(fontSize)) fontSize = 16;
+
+    while (element.scrollWidth > element.clientWidth && fontSize > minimumFontSize) {
+        fontSize = Math.max(minimumFontSize, fontSize - 1);
+        element.style.fontSize = `${fontSize}px`;
+    }
+}
+
+export function compactText(value: string): string {
+    return value
+        .replace('Poder adquisitivo (ajustado por IPC nucleo)', 'Poder adquisitivo')
+        .replace('EMAE (Estimador Mensual de Actividad Económica)', 'EMAE')
+        .replace('MECON y prensa especializada', 'MECON y prensa')
+        .replace('INDEC, Equilibra e IPC Online', 'INDEC y consultoras')
+        .replace(/^(USD [\d.]+ M) aprobados$/, '$1')
+        .replace('Mismo semestre año anterior', 'Mismo semestre año ant.')
+        .replace('Mismo mes año anterior', 'Mismo mes año ant.')
+        .replace('Mes anterior desest.', 'Mes anterior desestac.');
+}
+
+function FitText({ children, className = '' }: { children: string; className?: string }) {
+    const textRef = useRef<HTMLSpanElement>(null);
+
+    useLayoutEffect(() => {
+        const element = textRef.current;
+        if (!element) return;
+
+        const desktop = window.matchMedia('(min-width: 1024px)');
+        const fit = () => {
+            element.style.fontSize = '';
+            if (desktop.matches) fitTextToWidth(element);
+        };
+        fit();
+        desktop.addEventListener('change', fit);
+        if (typeof ResizeObserver === 'undefined') return () => desktop.removeEventListener('change', fit);
+
+        const observer = new ResizeObserver(fit);
+        observer.observe(element);
+        if (element.parentElement) observer.observe(element.parentElement);
+        return () => {
+            observer.disconnect();
+            desktop.removeEventListener('change', fit);
+        };
+    }, [children]);
+
+    return <span ref={textRef} className={`block w-max min-w-full whitespace-nowrap lg:w-full lg:min-w-0 lg:overflow-hidden ${className}`}>{children}</span>;
+}
 
 export default function IndicatorsTable({ data }: { data: Indicator[] }) {
     const [tooltip, setTooltip] = useState<ReferenceTooltip>(null);
@@ -24,65 +76,83 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
     return (
         <>
             <div className="overflow-x-auto border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 w-full">
-                <table className="min-w-[600px] w-full text-left border-collapse">
+                <table className="w-max min-w-full lg:w-full lg:min-w-[900px] lg:table-fixed text-left border-collapse">
+                    <colgroup>
+                        <col className="lg:w-[9%]" />
+                        <col className="lg:w-[13%]" />
+                        <col className="lg:w-[14%]" />
+                        <col className="lg:w-[23%]" />
+                        <col className="lg:w-[18%]" />
+                        <col className="lg:w-[23%]" />
+                    </colgroup>
                     <thead>
-                        <tr className="bg-imperial-gold text-imperial-blue text-xs sm:text-base uppercase tracking-wider imperial-title">
-                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20">Fecha</th>
-                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20">Próxima</th>
-                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20">Fuente</th>
-                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20">Indicador</th>
-                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20">Referencia</th>
-                            <th scope="col" className="p-3 font-bold">Ultimo Dato</th>
+                        <tr className="h-12 bg-imperial-gold text-imperial-blue text-xs sm:text-base uppercase tracking-wider imperial-title">
+                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20 whitespace-nowrap lg:overflow-hidden">Fecha</th>
+                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20 whitespace-nowrap lg:overflow-hidden"><FitText>Próxima</FitText></th>
+                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20 whitespace-nowrap lg:overflow-hidden">Fuente</th>
+                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20 whitespace-nowrap lg:overflow-hidden">Indicador</th>
+                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20 whitespace-nowrap lg:overflow-hidden">Referencia</th>
+                            <th scope="col" className="p-3 font-bold whitespace-nowrap lg:overflow-hidden"><FitText>Último dato</FitText></th>
                         </tr>
                     </thead>
-                    <tbody className="text-xs sm:text-base">
-                        {data.map((row, i) => (
-                            <tr
-                                key={row.id}
-                                className={`${i % 2 === 0 ? 'bg-imperial-blue' : 'bg-background'} border-t border-imperial-cyan/30 hover:bg-white/10 transition-colors ${row.hasDetails ? 'hover:border-imperial-gold hover:shadow-inner' : ''}`}
-                            >
-                                <td className="p-2 sm:p-3 text-imperial-gold font-bold whitespace-nowrap">{row.fecha}</td>
-                                <td className="p-2 sm:p-3 text-imperial-cyan font-semibold whitespace-nowrap">
-                                    <span
-                                        tabIndex={row.proximaFechaDescription ? 0 : undefined}
-                                        onBlur={() => setTooltip(null)}
-                                        onFocus={(event) => row.proximaFechaDescription && showReferenceTooltip(row.proximaFechaDescription, event.currentTarget)}
-                                        onMouseEnter={(event) => row.proximaFechaDescription && showReferenceTooltip(row.proximaFechaDescription, event.currentTarget)}
-                                        onMouseLeave={() => setTooltip(null)}
-                                        className="inline-flex focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold"
-                                    >
-                                        {row.proximaFecha ?? '-'}
-                                    </span>
-                                </td>
-                                <td className="p-2 sm:p-3 font-semibold whitespace-nowrap text-white">{row.fuente}</td>
-                                <td className="p-2 sm:p-3 font-bold text-white flex items-center gap-2">
-                                    {row.hasDetails ? (
-                                        <Link
-                                            href={`/indicador/${row.id}`}
-                                            className="inline-flex items-center gap-2 text-white hover:text-imperial-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold"
+                    <tbody>
+                        {data.map((row, i) => {
+                            const source = compactText(row.fuente);
+                            const indicator = compactText(row.indicador);
+                            const reference = compactText(row.referencia);
+                            const value = compactText(row.dato);
+                            return (
+                                <tr
+                                    key={row.id}
+                                    className={`h-14 ${i % 2 === 0 ? 'bg-imperial-blue' : 'bg-background'} border-t border-imperial-cyan/30 hover:bg-white/10 transition-colors ${row.hasDetails ? 'hover:border-imperial-gold hover:shadow-inner' : ''}`}
+                                >
+                                    <td className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base text-imperial-gold font-bold whitespace-nowrap align-middle lg:overflow-hidden">
+                                        <FitText>{row.fecha}</FitText>
+                                    </td>
+                                    <td className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base text-imperial-cyan font-semibold whitespace-nowrap align-middle lg:overflow-hidden">
+                                        <span
+                                            tabIndex={row.proximaFechaDescription ? 0 : undefined}
+                                            onBlur={() => setTooltip(null)}
+                                            onFocus={(event) => row.proximaFechaDescription && showReferenceTooltip(row.proximaFechaDescription, event.currentTarget)}
+                                            onMouseEnter={(event) => row.proximaFechaDescription && showReferenceTooltip(row.proximaFechaDescription, event.currentTarget)}
+                                            onMouseLeave={() => setTooltip(null)}
+                                            className="block w-max min-w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold lg:w-full lg:min-w-0 lg:overflow-hidden"
                                         >
-                                            {row.indicador}
-                                            <span aria-hidden="true" className="text-imperial-gold text-[10px] sm:text-xs border border-imperial-gold px-1 rounded">▼</span>
-                                        </Link>
-                                    ) : row.indicador}
-                                </td>
-                                <td className="p-2 sm:p-3 text-imperial-cyan font-semibold align-top">
-                                    <span
-                                        tabIndex={row.referenceDescription ? 0 : undefined}
-                                        onBlur={() => setTooltip(null)}
-                                        onFocus={(event) => row.referenceDescription && showReferenceTooltip(row.referenceDescription, event.currentTarget)}
-                                        onMouseEnter={(event) => row.referenceDescription && showReferenceTooltip(row.referenceDescription, event.currentTarget)}
-                                        onMouseLeave={() => setTooltip(null)}
-                                        className="inline-flex max-w-52 focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold"
-                                    >
-                                        {row.referencia}
-                                    </span>
-                                </td>
-                                <td className={`p-2 sm:p-3 font-bold ${row.trend === 'down' ? 'text-red-500' : 'text-imperial-gold'}`}>
-                                    {row.dato}
-                                </td>
-                            </tr>
-                        ))}
+                                            <FitText>{row.proximaFecha ?? '-'}</FitText>
+                                        </span>
+                                    </td>
+                                    <td title={row.fuente} className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base font-semibold whitespace-nowrap align-middle text-white lg:overflow-hidden">
+                                        <FitText>{source}</FitText>
+                                    </td>
+                                    <td title={row.indicador} className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base font-bold whitespace-nowrap align-middle text-white lg:overflow-hidden">
+                                        {row.hasDetails ? (
+                                            <Link
+                                                href={`/indicador/${row.id}`}
+                                                className="inline-flex w-max items-center gap-1.5 whitespace-nowrap text-white hover:text-imperial-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold lg:flex lg:w-full lg:min-w-0 lg:max-w-full lg:overflow-hidden"
+                                            >
+                                                <FitText className="lg:flex-1">{indicator}</FitText>
+                                                <span aria-hidden="true" className="shrink-0 text-imperial-gold text-[10px] sm:text-xs border border-imperial-gold px-1 rounded">▼</span>
+                                            </Link>
+                                        ) : <FitText>{indicator}</FitText>}
+                                    </td>
+                                    <td title={row.referencia} className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base text-imperial-cyan font-semibold whitespace-nowrap align-middle lg:overflow-hidden">
+                                        <span
+                                            tabIndex={row.referenceDescription ? 0 : undefined}
+                                            onBlur={() => setTooltip(null)}
+                                            onFocus={(event) => row.referenceDescription && showReferenceTooltip(row.referenceDescription, event.currentTarget)}
+                                            onMouseEnter={(event) => row.referenceDescription && showReferenceTooltip(row.referenceDescription, event.currentTarget)}
+                                            onMouseLeave={() => setTooltip(null)}
+                                            className="block w-max min-w-full whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold lg:w-full lg:min-w-0 lg:overflow-hidden"
+                                        >
+                                            <FitText>{reference}</FitText>
+                                        </span>
+                                    </td>
+                                    <td title={row.dato} className={`p-2 sm:p-3 text-xs sm:text-sm lg:text-base font-bold whitespace-nowrap align-middle lg:overflow-hidden ${row.trend === 'down' ? 'text-red-500' : 'text-imperial-gold'}`}>
+                                        <FitText>{value}</FitText>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
