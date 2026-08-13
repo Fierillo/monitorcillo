@@ -1,4 +1,4 @@
-import type { AreaConfig, ChartDataRow, Indicator, IndicatorCompositeViewProps, MethodologyItem } from '@/types';
+import type { AreaConfig, ChartDataRow, ChartModeConfig, Indicator, IndicatorCompositeViewProps, MethodologyItem } from '@/types';
 import { EMAE_SECTORS } from './emae/schema';
 import { RECAUDACION_BREAKDOWN_TYPES } from './recaudacion/schema';
 import { ICG_PRESIDENTIAL_MANDATES, PRESIDENTIAL_MANDATES } from './presidential-mandates';
@@ -11,6 +11,7 @@ type DetailConfig = Omit<IndicatorCompositeViewProps, 'title' | 'subtitle'> & { 
 
 export async function getIndicatorDetailConfig(indicator: Indicator): Promise<DetailConfig | null> {
     if (indicator.id === 'bma') return bmaConfig(indicator);
+    if (indicator.id === 'depositos-prestamos') return depositosPrestamosConfig(indicator);
     if (indicator.id === 'poder-adquisitivo') return poderConfig(indicator);
     if (indicator.id === 'emae') return emaeConfig(indicator);
     if (indicator.id === 'emision') return emisionConfig(indicator);
@@ -66,13 +67,128 @@ async function bmaConfig(indicator: Indicator): Promise<DetailConfig> {
         { key: 'DepositosTesoro', name: 'Depósitos del Gobierno Nac. y Otros', color: '#44aa66' },
     ];
     const methodology: MethodologyItem[] = [
-        { title: 'Base Monetaria', description: 'Promedio mensual de saldos diarios nominales del BCRA (Var. 15), expresado a precios de enero de 2017 con IPC núcleo.' },
-        { title: 'Pasivos Remunerados', description: 'Promedio mensual agregado nominal de Pases (152), LELIQ/NOTALQ (155), LEFI (196) y Otros (198), expresado a precios de enero de 2017 con IPC núcleo.' },
-        { title: 'Depósitos del Gobierno', description: 'Promedio de observaciones semanales nominales (BCRA Serieanual.xls), expresado a precios de enero de 2017 con IPC núcleo.' },
-        { title: 'Base Monetaria Amplia', description: 'Suma real de Base Monetaria + Pasivos Remunerados + Depósitos del Gobierno, todo a precios de enero de 2017.' },
-        { title: 'Normalización a % PBI real', description: 'Cada agregado monetario real se divide por el PBI real desestacionalizado de INDEC, convertido a pesos de enero de 2017 con el mismo factor IPC.' },
+        { title: 'Base Monetaria', description: 'Promedio mensual de los saldos diarios nominales informados por el BCRA (variable 15).' },
+        { title: 'Pasivos Remunerados', description: 'Promedio mensual de la suma de los saldos nominales de Pases (152), LELIQ/NOTALQ (155), LEFI (196) y Otros (198).' },
+        { title: 'Depósitos del Gobierno', description: 'Promedio de los saldos nominales de la variable 1264 del BCRA en cuatro cortes mensuales: 7, 15, 23 y fin de mes.' },
+        { title: 'Base Monetaria Amplia', description: 'Suma de Base Monetaria, Pasivos Remunerados y Depósitos del Gobierno.' },
+        { title: 'Millones de pesos nominales', description: 'Muestra los promedios mensuales en millones de pesos corrientes, sin ajuste por inflación.' },
+        { title: 'Porcentaje del PBI real', description: 'Deflacta cada agregado monetario con el IPC núcleo, lo expresa a precios de enero de 2017 y lo divide por el PBI real desestacionalizado de INDEC expresado en la misma base.' },
     ];
-    return { subtitle: `Fuente: BCRA e INDEC | Dato: ${indicator.dato}`, chartTitle: 'Descomposición de Base Monetaria', data: await safeGetIndicatorData('bma'), areas, methodology, valueFormat: 'percent', yAxisLabel: '% de PBI real', leftYAxisDomain: [0, 'auto'] };
+    const percentageData = await safeGetIndicatorData('bma');
+    const millionsData = percentageData.map(row => ({
+        ...row,
+        BaseMonetaria: row.BaseMonetariaMillones,
+        PasivosRemunerados: row.PasivosRemuneradosMillones,
+        DepositosTesoro: row.DepositosTesoroMillones,
+        BMAmplia: row.BMAmpliaMillones,
+    }));
+    const modes: ChartModeConfig[] = [
+        { id: 'pbi', label: '% PBI', chartTitle: 'Descomposición de Base Monetaria', data: percentageData, yAxisLabel: '% de PBI real', valueFormat: 'percent', leftYAxisDomain: [0, 'auto'] },
+        { id: 'millones', label: '$ millones', chartTitle: 'Descomposición de Base Monetaria', data: millionsData, yAxisLabel: '$ millones nominales', valueFormat: 'millions', leftYAxisDomain: [0, 'auto'] },
+    ];
+    return { subtitle: `Fuente: BCRA e INDEC | Dato: ${indicator.dato}`, chartTitle: 'Descomposición de Base Monetaria', data: percentageData, areas, methodology, valueFormat: 'percent', yAxisLabel: '% de PBI real', leftYAxisDomain: [0, 'auto'], views: [{ id: 'unidad', label: 'Unidad', chartTitle: 'Descomposición de Base Monetaria', areas, methodology, modes }] };
+}
+
+async function depositosPrestamosConfig(indicator: Indicator): Promise<DetailConfig> {
+    const data = await safeGetIndicatorData('depositos-prestamos');
+    const methodology: MethodologyItem[] = [
+        { title: 'Sector privado', description: 'Stocks informados diariamente por el BCRA: depósitos en pesos (100), depósitos en moneda extranjera (108), préstamos en pesos (117) y préstamos en moneda extranjera (125).' },
+        { title: 'Sector público', description: 'Stocks informados diariamente por el BCRA: depósitos en pesos (1455), depósitos en moneda extranjera (1493), préstamos en pesos (1313) y préstamos en moneda extranjera (1327).' },
+        { title: 'Cierre mensual', description: 'Para cada serie se toma la última observación disponible de cada mes desde enero de 2017.' },
+        { title: 'Moneda extranjera', description: 'Los stocks publicados en millones de USD se convierten a pesos con el tipo de cambio de referencia BCRA (variable 4) vigente al cierre mensual.' },
+        { title: 'Valores constantes', description: 'Los saldos en pesos se deflactan con el IPC núcleo de INDEC y se expresan en millones de pesos de enero de 2026.' },
+        { title: 'Porcentaje del PBI real', description: 'Los saldos constantes se dividen por el PBI real desestacionalizado mensual, estimado con los anclajes trimestrales de PBI y el EMAE de INDEC.' },
+    ];
+    const areas: AreaConfig[] = [
+        { key: 'depositosPrivadosPesos', name: 'Depósitos privados en pesos', color: '#438FC7', type: 'bar', stackId: 'depositos', preliminaryKey: 'preliminary', preliminaryColor: '#9CCBEA', preliminaryLabel: 'Preliminar: mes en curso' },
+        { key: 'depositosPublicosPesos', name: 'Depósitos públicos en pesos', color: '#A7C8E3', type: 'bar', stackId: 'depositos', preliminaryKey: 'preliminary', preliminaryColor: '#D6E7F3' },
+        { key: 'depositosPrivadosUsd', name: 'Depósitos privados en dólares', color: '#2F7D16', type: 'bar', stackId: 'depositos', preliminaryKey: 'preliminary', preliminaryColor: '#90BD80' },
+        { key: 'depositosPublicosUsd', name: 'Depósitos públicos en dólares', color: '#A3BE57', type: 'bar', stackId: 'depositos', preliminaryKey: 'preliminary', preliminaryColor: '#D2DFA9' },
+        { key: 'depositosTotales', name: 'Depósitos totales', color: '#C99F00', type: 'line', strokeWidth: 3, showDots: false, tooltipFallbackKey: 'depositosTotalesPreliminary' },
+        { key: 'depositosTotalesPreliminary', name: 'Depósitos totales', color: '#FFE66D', type: 'line', strokeWidth: 4, showDots: false, legendKey: 'depositosTotales', hideInLegend: true, hideInTooltip: true, revealStrokeAfterPercent: 50 },
+        { key: 'prestamosTotales', name: 'Préstamos totales', color: '#B91C1C', type: 'line', strokeWidth: 3, showDots: false, tooltipFallbackKey: 'prestamosTotalesPreliminary' },
+        { key: 'prestamosTotalesPreliminary', name: 'Préstamos totales', color: '#FF8A80', type: 'line', strokeWidth: 4, showDots: false, legendKey: 'prestamosTotales', hideInLegend: true, hideInTooltip: true, revealStrokeAfterPercent: 50 },
+        { key: 'prestamosUsd', name: 'Préstamos en dólares', color: '#4D7C0F', type: 'line', strokeWidth: 3, showDots: false, tooltipFallbackKey: 'prestamosUsdPreliminary' },
+        { key: 'prestamosUsdPreliminary', name: 'Préstamos en dólares', color: '#D9F99D', type: 'line', strokeWidth: 4, showDots: false, legendKey: 'prestamosUsd', hideInLegend: true, hideInTooltip: true, revealStrokeAfterPercent: 50 },
+    ];
+    const add = (privateValue: unknown, publicValue: unknown) => {
+        if (privateValue == null || publicValue == null) return null;
+        return Number(privateValue) + Number(publicValue);
+    };
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const withPreliminaryLines = (rows: ChartDataRow[]) => rows.map((row, index) => {
+        const isPreliminary = row.iso_fecha?.slice(0, 7) === currentMonth;
+        const precedesPreliminary = rows[index + 1]?.iso_fecha?.slice(0, 7) === currentMonth;
+        const twoMonthsBeforePreliminary = rows[index + 2]?.iso_fecha?.slice(0, 7) === currentMonth;
+        const preliminarySegment = isPreliminary || precedesPreliminary || twoMonthsBeforePreliminary;
+        return {
+            ...row,
+            preliminary: isPreliminary,
+            depositosTotalesPreliminary: preliminarySegment ? row.depositosTotales : null,
+            prestamosTotalesPreliminary: preliminarySegment ? row.prestamosTotales : null,
+            prestamosUsdPreliminary: preliminarySegment ? row.prestamosUsd : null,
+        };
+    });
+    const modes: ChartModeConfig[] = [
+        {
+            id: 'pbi',
+            label: '% PBI',
+            chartTitle: 'Stock de depósitos y préstamos del sector privado',
+            data: withPreliminaryLines(data.map(row => ({
+                ...row,
+                depositosPrivadosPesos: row.depositosPesosPbi,
+                depositosPrivadosUsd: row.depositosUsdPbi,
+                depositosPublicosPesos: row.depositosPublicosPesosPbi,
+                depositosPublicosUsd: row.depositosPublicosUsdPbi,
+                depositosTotales: add(row.depositosTotalPbi, add(row.depositosPublicosPesosPbi, row.depositosPublicosUsdPbi)),
+                prestamosTotales: add(
+                    add(row.prestamosPesosPbi, row.prestamosPublicosPesosPbi),
+                    add(row.prestamosUsdPbi, row.prestamosPublicosUsdPbi),
+                ),
+                prestamosUsd: add(row.prestamosUsdPbi, row.prestamosPublicosUsdPbi),
+            }))),
+            yAxisLabel: '% de PBI real',
+            valueFormat: 'percent',
+            leftYAxisDomain: [0, 'auto'],
+        },
+        {
+            id: 'constantes',
+            label: '$ constantes',
+            chartTitle: 'Stock de depósitos y préstamos del sector privado',
+            data: withPreliminaryLines(data.map(row => ({
+                ...row,
+                depositosPrivadosPesos: row.depositosPesosConstantes,
+                depositosPrivadosUsd: row.depositosUsdConstantes,
+                depositosPublicosPesos: row.depositosPublicosPesosConstantes,
+                depositosPublicosUsd: row.depositosPublicosUsdConstantes,
+                depositosTotales: add(
+                    add(row.depositosPesosConstantes, row.depositosUsdConstantes),
+                    add(row.depositosPublicosPesosConstantes, row.depositosPublicosUsdConstantes),
+                ),
+                prestamosTotales: add(
+                    add(row.prestamosPesosConstantes, row.prestamosPublicosPesosConstantes),
+                    add(row.prestamosUsdConstantes, row.prestamosPublicosUsdConstantes),
+                ),
+                prestamosUsd: add(row.prestamosUsdConstantes, row.prestamosPublicosUsdConstantes),
+            }))),
+            yAxisLabel: '$ millones de enero de 2026',
+            valueFormat: 'millions',
+            leftYAxisDomain: [0, 'auto'],
+        },
+    ];
+
+    return {
+        subtitle: `Fuente: BCRA e INDEC | Dato: ${indicator.dato}`,
+        chartTitle: 'Stock de depósitos y préstamos del sector privado',
+        data: modes[0].data,
+        areas,
+        methodology,
+        valueFormat: 'percent',
+        yAxisLabel: '% de PBI real',
+        leftYAxisDomain: [0, 'auto'],
+        indicatorId: indicator.id,
+        views: [{ id: 'unidad', label: 'Unidad', chartTitle: 'Stock de depósitos y préstamos del sector privado', areas, methodology, modes }],
+    };
 }
 
 async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
@@ -120,7 +236,7 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
         leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'],
         indicatorId: indicator.id,
         views: [
-            { id: 'salarios', label: 'SALARIOS', chartTitle: 'Evolución del Poder Adquisitivo', areas, methodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'] },
+            { id: 'salarios', label: 'SALARIOS', chartTitle: 'Evolución del Poder Adquisitivo', areas, methodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'], rebaseable: true, defaultBaseDate: '2017-01-01' },
             {
                 id: 'costo-de-vida',
                 label: 'COSTO DE VIDA',
@@ -237,6 +353,8 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
                 valueFormat: 'index',
                 yAxisLabel: 'EMAE agregado',
                 leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'],
+                rebaseable: true,
+                defaultBaseDate: '2017-01-01',
                 modes: [
                     { id: 'normal', label: 'Normal', chartTitle: 'Evolución del EMAE', data, yAxisLabel: 'EMAE agregado' },
                     { id: 'per-capita', label: 'Per cápita', chartTitle: 'Evolución del EMAE per cápita', data: aggregatePerCapitaData, yAxisLabel: 'EMAE agregado' },
@@ -252,6 +370,8 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
                 valueFormat: 'index',
                 yAxisLabel: 'EMAE por sector',
                 leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'],
+                rebaseable: true,
+                defaultBaseDate: '2017-01-01',
                 modes: [
                     { id: 'normal', label: 'Normal', chartTitle: 'EMAE por sector (MM12)', data: sectorData, yAxisLabel: 'EMAE por sector' },
                     { id: 'per-capita', label: 'Per cápita', chartTitle: 'EMAE por sector per cápita (MM12)', data: sectorPerCapitaData, yAxisLabel: 'EMAE por sector' },

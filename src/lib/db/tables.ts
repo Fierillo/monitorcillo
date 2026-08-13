@@ -4,6 +4,7 @@ const TABLES: Record<IndicatorType, { raw: string; normalized: string }> = {
     emision: { raw: 'emision_raw', normalized: 'emision_normalized' },
     emae: { raw: 'emae_raw', normalized: 'emae_normalized' },
     bma: { raw: 'bma_raw', normalized: 'bma_normalized' },
+    'depositos-prestamos': { raw: 'depositos_prestamos_raw', normalized: 'depositos_prestamos_normalized' },
     reca: { raw: 'recaudacion_raw', normalized: 'recaudacion_normalized' },
     poder: { raw: 'poder_adquisitivo_raw', normalized: 'poder_adquisitivo_normalized' },
     deuda: { raw: 'deuda_raw', normalized: 'deuda_normalized' },

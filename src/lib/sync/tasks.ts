@@ -1,10 +1,11 @@
 import type { EmisionRawRow, IndicatorType, NormalizedDataRow, RawDataByType, SyncResult, SyncResults } from '@/types';
 import { getRawData, replaceNormalizedData, replaceRawData, saveIndicatorPublication, saveIndicatorsCatalog, saveRawData } from '../db';
 import { buildCurrentIndicatorsCatalog } from '../catalog-service';
-import { fechaToISO, normalizeBma, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion } from '../normalize';
+import { fechaToISO, normalizeBma, normalizeDepositosPrestamos, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion } from '../normalize';
 import { runSyncTasks } from '../sync-runner';
 import { buildEmissionRows, fetchEmisionRaw } from './bcra';
 import { fetchBmaRaw } from './bma';
+import { ensureDepositosPrestamosTables, fetchDepositosPrestamosRaw } from './depositos-prestamos';
 import { ensureEmaeSectorTables, fetchEmaeRaw } from './emae';
 import { fetchPoderAdquisitivoRawReport } from './poder-adquisitivo';
 import { ensureRecaudacionTables, fetchRecaudacionRawReport } from './recaudacion';
@@ -105,6 +106,17 @@ export async function syncBma(): Promise<SyncResult> {
     };
 }
 
+export async function syncDepositosPrestamos(): Promise<SyncResult> {
+    const type: IndicatorType = 'depositos-prestamos';
+    await ensureDepositosPrestamosTables();
+    const existingData = (await getRawData(type)) ?? [];
+    const rawData = await fetchDepositosPrestamosRaw();
+    const result = await persistMergedRawAndNormalize(type, existingData, rawData, normalizeDepositosPrestamos);
+    const persistedRaw = (await getRawData(type)) ?? [];
+    if (persistedRaw.length > 0) await replaceNormalizedData(type, normalizeDepositosPrestamos(persistedRaw));
+    return result;
+}
+
 export async function syncIndicatorsCatalog(): Promise<SyncResult> {
     const catalog = await buildCurrentIndicatorsCatalog();
     await saveIndicatorsCatalog(catalog);
@@ -187,6 +199,7 @@ export async function runSync(): Promise<SyncResults> {
         { key: 'emision', run: syncEmision },
         { key: 'emae', run: syncEmae },
         { key: 'bma', run: syncBma },
+        { key: 'depositos_prestamos', run: syncDepositosPrestamos },
         { key: 'recaudacion', run: syncRecaudacion },
         { key: 'poder_adquisitivo', run: syncPoderAdquisitivo },
         { key: 'deuda', run: syncDeuda },

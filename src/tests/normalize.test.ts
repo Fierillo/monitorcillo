@@ -127,6 +127,10 @@ describe('normalizeBma', () => {
         expect(bmaRow!.PasivosRemunerados).toBeCloseTo(0.21333, 4);
         expect(bmaRow!.DepositosTesoro).toBeCloseTo(0.53333, 4);
         expect(bmaRow!.BMAmplia).toBeCloseTo(1.01333, 4);
+        expect(bmaRow!.BaseMonetariaMillones).toBe(150);
+        expect(bmaRow!.PasivosRemuneradosMillones).toBe(120);
+        expect(bmaRow!.DepositosTesoroMillones).toBe(300);
+        expect(bmaRow!.BMAmpliaMillones).toBe(570);
     });
 
     it('returns BMAmplia as null if DepositosTesoro is missing for the entire month', () => {

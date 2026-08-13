@@ -58,8 +58,8 @@ export function normalizeBma(rawData: BmaRawRow[]): BmaNormalizedRow[] {
     return Array.from(monthly.entries()).map(([monthKey, bucket]) => {
         const [yyyy, mm] = monthKey.split('-');
         if (!MONTHS_NAMES[mm]) return null;
-        const calcPct = (value: number | null) => {
-            const realValue = toBasePrices(value, bucket.ipc_nucleo, baseIpc);
+        const calcReal = (value: number | null) => toBasePrices(value, bucket.ipc_nucleo, baseIpc);
+        const calcPct = (realValue: number | null) => {
             return realValue == null || !bucket.pbi_trimestral ? null : (realValue / bucket.pbi_trimestral) * 100;
         };
         const bmRaw = average(bucket.bmTotal, bucket.bmCount);
@@ -71,14 +71,22 @@ export function normalizeBma(rawData: BmaRawRow[]): BmaNormalizedRow[] {
         const pasivosRaw = [pasesRaw, leliqRaw, lefiRaw, otrosRaw].filter((value) => value != null) as number[];
         const pasivosRemuneradosRaw = pasivosRaw.length ? pasivosRaw.reduce((total, value) => total + value, 0) : null;
         const bmAmpliaRaw = bmRaw != null && pasivosRemuneradosRaw != null && depositosTesoroRaw != null ? bmRaw + pasivosRemuneradosRaw + depositosTesoroRaw : null;
+        const baseMonetariaReal = calcReal(bmRaw);
+        const pasivosRemuneradosReal = calcReal(pasivosRemuneradosRaw);
+        const depositosTesoroReal = calcReal(depositosTesoroRaw);
+        const bmAmpliaReal = calcReal(bmAmpliaRaw);
 
         return {
             fecha: `${MONTHS_NAMES[mm]} ${yyyy.slice(-2)}`,
             iso_fecha: `${monthKey}-01`,
-            BaseMonetaria: calcPct(bmRaw),
-            PasivosRemunerados: calcPct(pasivosRemuneradosRaw),
-            DepositosTesoro: calcPct(depositosTesoroRaw),
-            BMAmplia: calcPct(bmAmpliaRaw),
+            BaseMonetaria: calcPct(baseMonetariaReal),
+            PasivosRemunerados: calcPct(pasivosRemuneradosReal),
+            DepositosTesoro: calcPct(depositosTesoroReal),
+            BMAmplia: calcPct(bmAmpliaReal),
+            BaseMonetariaMillones: bmRaw,
+            PasivosRemuneradosMillones: pasivosRemuneradosRaw,
+            DepositosTesoroMillones: depositosTesoroRaw,
+            BMAmpliaMillones: bmAmpliaRaw,
         };
     }).filter(notNull).sort((a, b) => fechaToTimestamp(a.fecha) - fechaToTimestamp(b.fecha));
 }

@@ -14,7 +14,8 @@ import { getTableName, isMissingTableError, isSafeColumn, toNullableNumber, toNu
 const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     emision: ['fecha', 'bcra', 'tc', 'compra_dolares', 'vencimientos', 'licitado', 'licitaciones', 'resultado_fiscal', 'total', 'acumulado'],
     emae: [...EMAE_NORMALIZED_DB_COLUMNS],
-    bma: ['fecha', 'base_monetaria', 'pasivos_remunerados', 'depositos_tesoro', 'bma_amplia'],
+    bma: ['fecha', 'base_monetaria', 'pasivos_remunerados', 'depositos_tesoro', 'bma_amplia', 'base_monetaria_millones', 'pasivos_remunerados_millones', 'depositos_tesoro_millones', 'bma_amplia_millones'],
+    'depositos-prestamos': ['fecha', 'depositos_pesos_pbi', 'depositos_usd_pbi', 'depositos_total_pbi', 'prestamos_pesos_pbi', 'prestamos_usd_pbi', 'prestamos_total_pbi', 'depositos_pesos_constantes', 'depositos_usd_constantes', 'prestamos_pesos_constantes', 'prestamos_usd_constantes', 'depositos_publicos_pesos_pbi', 'depositos_publicos_usd_pbi', 'prestamos_publicos_pesos_pbi', 'prestamos_publicos_usd_pbi', 'depositos_publicos_pesos_constantes', 'depositos_publicos_usd_constantes', 'prestamos_publicos_pesos_constantes', 'prestamos_publicos_usd_constantes'],
     reca: ['fecha', 'mes', 'year', 'pct_pbi', 'pct_pbi_mm12', ...RECAUDACION_TAX_PCT_DB_COLUMNS, ...RECAUDACION_TAX_MM12_DB_COLUMNS],
     poder: ['fecha', 'blanco', 'negro', 'privado', 'publico', 'ripte', 'jubilacion'],
     deuda: ['fecha', 'toma_deuda', 'vencimientos', 'vencimientos_proyectados', 'pagos', 'deuda_pbi', 'deuda_proyectada', 'acumulado', 'total'],
@@ -80,7 +81,8 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
             ...EMAE_SECTOR_APORTE_KEYS.map(key => toNullableNumber(row[key])),
         ];
     }
-    if (type === 'bma') return [fecha, toNullableNumber(row.BaseMonetaria), toNullableNumber(row.PasivosRemunerados), toNullableNumber(row.DepositosTesoro), toNullableNumber(row.BMAmplia)];
+    if (type === 'bma') return [fecha, toNullableNumber(row.BaseMonetaria), toNullableNumber(row.PasivosRemunerados), toNullableNumber(row.DepositosTesoro), toNullableNumber(row.BMAmplia), toNullableNumber(row.BaseMonetariaMillones), toNullableNumber(row.PasivosRemuneradosMillones), toNullableNumber(row.DepositosTesoroMillones), toNullableNumber(row.BMAmpliaMillones)];
+    if (type === 'depositos-prestamos') return [fecha, toNullableNumber(row.depositosPesosPbi), toNullableNumber(row.depositosUsdPbi), toNullableNumber(row.depositosTotalPbi), toNullableNumber(row.prestamosPesosPbi), toNullableNumber(row.prestamosUsdPbi), toNullableNumber(row.prestamosTotalPbi), toNullableNumber(row.depositosPesosConstantes), toNullableNumber(row.depositosUsdConstantes), toNullableNumber(row.prestamosPesosConstantes), toNullableNumber(row.prestamosUsdConstantes), toNullableNumber(row.depositosPublicosPesosPbi), toNullableNumber(row.depositosPublicosUsdPbi), toNullableNumber(row.prestamosPublicosPesosPbi), toNullableNumber(row.prestamosPublicosUsdPbi), toNullableNumber(row.depositosPublicosPesosConstantes), toNullableNumber(row.depositosPublicosUsdConstantes), toNullableNumber(row.prestamosPublicosPesosConstantes), toNullableNumber(row.prestamosPublicosUsdConstantes)];
     if (type === 'reca') {
         return [
             fecha,
@@ -124,8 +126,15 @@ function normalizedInsertQueries(type: IndicatorType, data: NormalizedDataRow[])
 
 async function ensureNormalizedColumns(type: IndicatorType, table: string): Promise<void> {
     if (type === 'emae') await ensureEmaeSectorColumns(table);
+    if (type === 'bma') await ensureBmaMillionsColumns(table);
     if (type === 'reca') await ensureRecaudacionTaxColumns(table);
     if (type === 'deuda') await ensureDeudaAcumuladoColumn(table);
+}
+
+async function ensureBmaMillionsColumns(table: string): Promise<void> {
+    for (const column of ['base_monetaria_millones', 'pasivos_remunerados_millones', 'depositos_tesoro_millones', 'bma_amplia_millones']) {
+        await sql.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} NUMERIC`, []);
+    }
 }
 
 export async function saveNormalizedData(type: IndicatorType, data: NormalizedDataRow[]): Promise<void> {

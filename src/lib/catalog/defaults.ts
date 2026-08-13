@@ -2,6 +2,7 @@ import type { CatalogIndicatorRow } from '@/types';
 
 export const DEFAULT_CATALOG: CatalogIndicatorRow[] = [
     { id: 'bma', indicador: 'Base Monetaria Amplia', referencia: 'Mes anterior', dato: '-', fecha: 'Feb-26', fuente: 'BCRA e INDEC', trend: 'neutral', category: 'monetario', has_details: true, source_url: null },
+    { id: 'depositos-prestamos', indicador: 'Depósitos y préstamos', referencia: 'Mes anterior', dato: '-', fecha: '-', fuente: 'BCRA e INDEC', trend: 'neutral', category: 'monetario', has_details: true, source_url: 'https://www.bcra.gob.ar/PublicacionesEstadisticas/Principales_variables_datos.asp' },
     { id: 'emision', indicador: 'Emisión / Absorción de Pesos', referencia: 'Día anterior', dato: '-', fecha: 'Feb-26', fuente: 'BCRA y MECON', trend: 'neutral', category: 'monetario', has_details: true, source_url: null },
     { id: 'recaudacion', indicador: 'Recaudación tributaria', referencia: 'Mismo mes año anterior', dato: '-', fecha: 'ENE 26', fuente: 'MECON', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: null },
     { id: 'inversiones', indicador: 'Inversiones', referencia: 'USD 101.241 M en evaluación', reference_description: 'Inversión de proyectos RIGI en evaluación', dato: 'USD 46.708 M aprobados', fecha: '31 JUL 26', fuente: 'MECON y prensa especializada', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: 'https://www.argentina.gob.ar/economia/rigi' },

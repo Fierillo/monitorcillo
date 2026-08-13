@@ -5,6 +5,7 @@ const MAPPING: Record<string, IndicatorType> = {
     emision: 'emision',
     emae: 'emae',
     bma: 'bma',
+    'depositos-prestamos': 'depositos-prestamos',
     reca: 'reca',
     recaudacion: 'reca',
     deuda: 'deuda',

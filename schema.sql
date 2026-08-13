@@ -127,6 +127,55 @@ CREATE TABLE IF NOT EXISTS bma_normalized (
     pasivos_remunerados DECIMAL,
     depositos_tesoro DECIMAL,
     bma_amplia DECIMAL,
+    base_monetaria_millones DECIMAL,
+    pasivos_remunerados_millones DECIMAL,
+    depositos_tesoro_millones DECIMAL,
+    bma_amplia_millones DECIMAL,
+    last_update TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
+-- DEPOSITOS Y PRESTAMOS (mensual)
+-- ============================================
+CREATE TABLE IF NOT EXISTS depositos_prestamos_raw (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    depositos_pesos DECIMAL,
+    depositos_usd DECIMAL,
+    prestamos_pesos DECIMAL,
+    prestamos_usd DECIMAL,
+    depositos_publicos_pesos DECIMAL,
+    depositos_publicos_usd DECIMAL,
+    prestamos_publicos_pesos DECIMAL,
+    prestamos_publicos_usd DECIMAL,
+    tc DECIMAL,
+    pbi_trimestral DECIMAL,
+    emae_desestacionalizado DECIMAL,
+    ipc_nucleo DECIMAL,
+    fetched_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS depositos_prestamos_normalized (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    depositos_pesos_pbi DECIMAL,
+    depositos_usd_pbi DECIMAL,
+    depositos_total_pbi DECIMAL,
+    prestamos_pesos_pbi DECIMAL,
+    prestamos_usd_pbi DECIMAL,
+    prestamos_total_pbi DECIMAL,
+    depositos_pesos_constantes DECIMAL,
+    depositos_usd_constantes DECIMAL,
+    prestamos_pesos_constantes DECIMAL,
+    prestamos_usd_constantes DECIMAL,
+    depositos_publicos_pesos_pbi DECIMAL,
+    depositos_publicos_usd_pbi DECIMAL,
+    prestamos_publicos_pesos_pbi DECIMAL,
+    prestamos_publicos_usd_pbi DECIMAL,
+    depositos_publicos_pesos_constantes DECIMAL,
+    depositos_publicos_usd_constantes DECIMAL,
+    prestamos_publicos_pesos_constantes DECIMAL,
+    prestamos_publicos_usd_constantes DECIMAL,
     last_update TIMESTAMP DEFAULT NOW()
 );
 
@@ -303,6 +352,7 @@ CREATE INDEX IF NOT EXISTS idx_indicators_catalog_id ON indicators_catalog(id);
 CREATE INDEX IF NOT EXISTS idx_emision_fecha ON emision_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_emae_fecha ON emae_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_bma_fecha ON bma_raw(fecha);
+CREATE INDEX IF NOT EXISTS idx_depositos_prestamos_fecha ON depositos_prestamos_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_recaudacion_fecha ON recaudacion_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_poder_fecha ON poder_adquisitivo_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_deuda_fecha ON deuda_raw(fecha);

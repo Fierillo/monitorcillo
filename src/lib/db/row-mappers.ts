@@ -60,6 +60,34 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
             PasivosRemunerados: toNullableNumber(row.pasivos_remunerados),
             DepositosTesoro: toNullableNumber(row.depositos_tesoro),
             BMAmplia: toNullableNumber(row.bma_amplia),
+            BaseMonetariaMillones: toNullableNumber(row.base_monetaria_millones),
+            PasivosRemuneradosMillones: toNullableNumber(row.pasivos_remunerados_millones),
+            DepositosTesoroMillones: toNullableNumber(row.depositos_tesoro_millones),
+            BMAmpliaMillones: toNullableNumber(row.bma_amplia_millones),
+        } as NormalizedDataByType[T];
+    }
+
+    if (type === 'depositos-prestamos') {
+        return {
+            ...common,
+            depositosPesosPbi: toNullableNumber(row.depositos_pesos_pbi),
+            depositosUsdPbi: toNullableNumber(row.depositos_usd_pbi),
+            depositosTotalPbi: toNullableNumber(row.depositos_total_pbi),
+            prestamosPesosPbi: toNullableNumber(row.prestamos_pesos_pbi),
+            prestamosUsdPbi: toNullableNumber(row.prestamos_usd_pbi),
+            prestamosTotalPbi: toNullableNumber(row.prestamos_total_pbi),
+            depositosPesosConstantes: toNullableNumber(row.depositos_pesos_constantes),
+            depositosUsdConstantes: toNullableNumber(row.depositos_usd_constantes),
+            prestamosPesosConstantes: toNullableNumber(row.prestamos_pesos_constantes),
+            prestamosUsdConstantes: toNullableNumber(row.prestamos_usd_constantes),
+            depositosPublicosPesosPbi: toNullableNumber(row.depositos_publicos_pesos_pbi),
+            depositosPublicosUsdPbi: toNullableNumber(row.depositos_publicos_usd_pbi),
+            prestamosPublicosPesosPbi: toNullableNumber(row.prestamos_publicos_pesos_pbi),
+            prestamosPublicosUsdPbi: toNullableNumber(row.prestamos_publicos_usd_pbi),
+            depositosPublicosPesosConstantes: toNullableNumber(row.depositos_publicos_pesos_constantes),
+            depositosPublicosUsdConstantes: toNullableNumber(row.depositos_publicos_usd_constantes),
+            prestamosPublicosPesosConstantes: toNullableNumber(row.prestamos_publicos_pesos_constantes),
+            prestamosPublicosUsdConstantes: toNullableNumber(row.prestamos_publicos_usd_constantes),
         } as NormalizedDataByType[T];
     }
 

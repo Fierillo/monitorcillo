@@ -108,6 +108,49 @@ export type BmaNormalizedRow = {
     PasivosRemunerados: number | null;
     DepositosTesoro: number | null;
     BMAmplia: number | null;
+    BaseMonetariaMillones: number | null;
+    PasivosRemuneradosMillones: number | null;
+    DepositosTesoroMillones: number | null;
+    BMAmpliaMillones: number | null;
+};
+
+export type DepositosPrestamosRawRow = {
+    fecha: string;
+    depositos_pesos?: NumericValue;
+    depositos_usd?: NumericValue;
+    prestamos_pesos?: NumericValue;
+    prestamos_usd?: NumericValue;
+    depositos_publicos_pesos?: NumericValue;
+    depositos_publicos_usd?: NumericValue;
+    prestamos_publicos_pesos?: NumericValue;
+    prestamos_publicos_usd?: NumericValue;
+    tc?: NumericValue;
+    pbi_trimestral?: NumericValue;
+    emae_desestacionalizado?: NumericValue;
+    ipc_nucleo?: NumericValue;
+};
+
+export type DepositosPrestamosNormalizedRow = {
+    fecha: string;
+    iso_fecha: string;
+    depositosPesosPbi: number | null;
+    depositosUsdPbi: number | null;
+    depositosTotalPbi: number | null;
+    prestamosPesosPbi: number | null;
+    prestamosUsdPbi: number | null;
+    prestamosTotalPbi: number | null;
+    depositosPesosConstantes: number | null;
+    depositosUsdConstantes: number | null;
+    prestamosPesosConstantes: number | null;
+    prestamosUsdConstantes: number | null;
+    depositosPublicosPesosPbi: number | null;
+    depositosPublicosUsdPbi: number | null;
+    prestamosPublicosPesosPbi: number | null;
+    prestamosPublicosUsdPbi: number | null;
+    depositosPublicosPesosConstantes: number | null;
+    depositosPublicosUsdConstantes: number | null;
+    prestamosPublicosPesosConstantes: number | null;
+    prestamosPublicosUsdConstantes: number | null;
 };
 
 export type RecaudacionRawRow = {
@@ -244,6 +287,7 @@ export type RawDataByType = {
     emision: EmisionRawRow;
     emae: EmaeRawRow;
     bma: BmaRawRow;
+    'depositos-prestamos': DepositosPrestamosRawRow;
     reca: RecaudacionRawRow;
     poder: PoderAdquisitivoRawRow;
     deuda: DeudaRawRow;
@@ -256,6 +300,7 @@ export type NormalizedDataByType = {
     emision: EmisionNormalizedRow;
     emae: EmaeNormalizedRow;
     bma: BmaNormalizedRow;
+    'depositos-prestamos': DepositosPrestamosNormalizedRow;
     reca: RecaudacionNormalizedRow;
     poder: PoderAdquisitivoNormalizedRow;
     deuda: DeudaNormalizedRow;
