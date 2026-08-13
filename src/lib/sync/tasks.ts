@@ -1,5 +1,5 @@
 import type { EmisionRawRow, IndicatorType, NormalizedDataRow, RawDataByType, SyncResult, SyncResults } from '@/types';
-import { getRawData, replaceNormalizedData, saveIndicatorPublication, saveIndicatorsCatalog, saveRawData } from '../db';
+import { getRawData, replaceNormalizedData, replaceRawData, saveIndicatorPublication, saveIndicatorsCatalog, saveRawData } from '../db';
 import { buildCurrentIndicatorsCatalog } from '../catalog-service';
 import { fechaToISO, normalizeBma, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion } from '../normalize';
 import { runSyncTasks } from '../sync-runner';
@@ -94,7 +94,15 @@ export async function syncBma(): Promise<SyncResult> {
     const type: IndicatorType = 'bma';
     const existingData = (await getRawData(type)) ?? [];
     const components = await fetchBmaRaw();
-    return persistMergedRawAndNormalize(type, existingData, components, normalizeBma);
+    if (components.length === 0) return { appended: 0, total: existingData.length };
+
+    const existingFechas = new Set(existingData.map(row => row.fecha));
+    await replaceRawData(type, components);
+    await replaceNormalizedData(type, normalizeBma(components));
+    return {
+        appended: components.filter(row => !existingFechas.has(row.fecha)).length,
+        total: components.length,
+    };
 }
 
 export async function syncIndicatorsCatalog(): Promise<SyncResult> {

@@ -1,12 +1,9 @@
 import type { BcraVariableRow, BmaRawRow } from '@/types';
 import { buildMonthlyPbiSeries } from '../pbi-source';
-import { fetchBcraVariable } from './bcra';
+import { fetchBcraVariable, sampleMonthlyBalanceDates } from './bcra';
 import { fetchEmaeWorkbookRows, fetchPbiAnchorRows } from './cache';
-import { WEEKLY_BALANCE_WORKBOOK_URL } from './constants';
-import { fetchBufferFromUrl } from './http-client';
 import { emaeDesestacionalizadoMap, seriesValueMap, valueAtOrBefore } from './series';
 import { fetchTimeSeries } from './time-series-client';
-import { extractWeeklyGovernmentDepositsSeries } from './weekly-bcra';
 
 function mergeBcraSeries(byFecha: Map<string, BmaRawRow>, items: BcraVariableRow[], field: Exclude<keyof BmaRawRow, 'fecha'>) {
     for (const item of items) {
@@ -22,13 +19,13 @@ export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
     const toDate = today.toISOString().split('T')[0];
     const fromDate = '2017-01-01';
 
-    const [baseMonetaria, pases, leliq, lefi, otros, weeklyWorkbook, pbiAnchors, emae, ipc] = await Promise.all([
+    const [baseMonetaria, pases, leliq, lefi, otros, depositosGobierno, pbiAnchors, emae, ipc] = await Promise.all([
         fetchBcraVariable(15, fromDate, toDate),
         fetchBcraVariable(152, fromDate, toDate),
         fetchBcraVariable(155, fromDate, toDate),
         fetchBcraVariable(196, fromDate, toDate),
         fetchBcraVariable(198, fromDate, toDate),
-        fetchBufferFromUrl(WEEKLY_BALANCE_WORKBOOK_URL),
+        fetchBcraVariable(1264, fromDate, toDate),
         fetchPbiAnchorRows(),
         fetchEmaeWorkbookRows(),
         fetchTimeSeries({ ids: ['148.3_INUCLEONAL_DICI_M_19'] }),
@@ -40,7 +37,7 @@ export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
     mergeBcraSeries(byFecha, leliq, 'leliq');
     mergeBcraSeries(byFecha, lefi, 'lefi');
     mergeBcraSeries(byFecha, otros, 'otros');
-    mergeBcraSeries(byFecha, extractWeeklyGovernmentDepositsSeries(weeklyWorkbook, fromDate), 'depositos_tesoro');
+    mergeBcraSeries(byFecha, sampleMonthlyBalanceDates(depositosGobierno), 'depositos_tesoro');
 
     const monthPrefixes = new Set(Array.from(byFecha.keys()).map(fecha => fecha.slice(0, 7)));
     const firstOfMonthDates = Array.from(monthPrefixes).map(monthPrefix => `${monthPrefix}-01`);

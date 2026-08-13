@@ -46,6 +46,34 @@ export async function fetchBcraVariable(idVariable: number, from: string, to: st
     return allRows;
 }
 
+export function sampleMonthlyBalanceDates(rows: BcraVariableRow[]): BcraVariableRow[] {
+    const rowsByMonth = new Map<string, BcraVariableRow[]>();
+    for (const row of rows) {
+        if (!row.fecha || !Number.isFinite(Number(row.valor))) continue;
+        const month = row.fecha.slice(0, 7);
+        const monthRows = rowsByMonth.get(month) ?? [];
+        monthRows.push(row);
+        rowsByMonth.set(month, monthRows);
+    }
+
+    return Array.from(rowsByMonth.entries()).flatMap(([month, monthRows]) => {
+        monthRows.sort((a, b) => a.fecha.localeCompare(b.fecha));
+        const [year, monthNumber] = month.split('-').map(Number);
+        const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+        const latestDate = monthRows.at(-1)!.fecha;
+        const selected = new Map<string, BcraVariableRow>();
+
+        for (const day of [7, 15, 23, lastDay]) {
+            const targetDate = `${month}-${String(day).padStart(2, '0')}`;
+            if (targetDate > latestDate) continue;
+            const row = monthRows.findLast(item => item.fecha <= targetDate);
+            if (row) selected.set(targetDate, { ...row, fecha: targetDate });
+        }
+
+        return Array.from(selected.values());
+    });
+}
+
 export async function fetchEmisionRaw(from: string, to: string): Promise<{ compraData: BcraVariableRow[]; tcData: BcraVariableRow[] }> {
     const [compraData, tcData] = await Promise.all([
         fetchBcraVariable(78, from, to),
