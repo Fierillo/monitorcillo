@@ -18,6 +18,7 @@ export interface AreaConfig {
     hideInLegend?: boolean;
     preliminaryKey?: string;
     preliminaryLabel?: string;
+    preliminaryColor?: string;
     dash?: number[];
     borderColor?: string;
     borderWidth?: number;
@@ -29,6 +30,9 @@ export interface AreaConfig {
     showDots?: boolean;
     comparisonMode?: 'mandate-month';
     transparentTooltip?: boolean;
+    hideInTooltip?: boolean;
+    tooltipFallbackKey?: string;
+    revealStrokeAfterPercent?: number;
 }
 
 export interface MethodologyItem {
@@ -65,7 +69,7 @@ export type ChartAxisDomain = [ChartAxisDomainValue, ChartAxisDomainValue] | 'au
 
 export type ChartReferenceLine = {
     value: number;
-    label: string;
+    label?: string;
     color?: string;
     dash?: number[];
 };
@@ -76,6 +80,9 @@ export type ChartModeConfig = {
     chartTitle: string;
     data: ChartDataRow[];
     yAxisLabel: string;
+    valueFormat?: ValueFormat;
+    yAxisDecimals?: number;
+    leftYAxisDomain?: ChartAxisDomain;
 };
 
 export type ChartViewConfig = {
@@ -94,6 +101,8 @@ export type ChartViewConfig = {
     showTooltipTotal?: boolean;
     referenceLines?: ChartReferenceLine[];
     modes?: ChartModeConfig[];
+    rebaseable?: boolean;
+    defaultBaseDate?: string;
 };
 
 export type TooltipPayload = {

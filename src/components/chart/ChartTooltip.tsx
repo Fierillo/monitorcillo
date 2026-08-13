@@ -72,6 +72,7 @@ export default function ChartTooltip({
     }
 
     const valueRows = areaConfigs
+        .filter(area => !area.hideInTooltip)
         .map(area => renderValueRow(rowData, area, valueFormat))
         .filter((row): row is NonNullable<ReturnType<typeof renderValueRow>> => row !== null);
 
@@ -101,7 +102,7 @@ export default function ChartTooltip({
 }
 
 function renderValueRow(rowData: ChartDataRow, area: ChartTooltipProps['areaConfigs'][number], valueFormat: ChartTooltipProps['valueFormat']) {
-    const value = rowData[area.key];
+    const value = rowData[area.key] ?? (area.tooltipFallbackKey ? rowData[area.tooltipFallbackKey] : null);
     if (value === null || value === undefined) return null;
     const numericValue = Number(value);
     if (!Number.isFinite(numericValue)) return null;

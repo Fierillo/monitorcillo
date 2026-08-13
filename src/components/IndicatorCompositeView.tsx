@@ -12,7 +12,14 @@ type PersistedChartConfig = {
     selectedViewId?: string;
     highlightedAreasByView?: Record<string, string[]>;
     rangeByView?: Record<string, [number, number]>;
+    baseDateByView?: Record<string, string>;
 };
+
+function formatBaseDate(date: string): string {
+    const [year, month] = date.split('-');
+    const labels = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+    return `${labels[Number(month) - 1]}-${year.slice(-2)}`;
+}
 
 const EMPTY_REFERENCE_LINES: ChartReferenceLine[] = [];
 
@@ -57,22 +64,48 @@ export default function IndicatorCompositeView({
     const selectByMonth = indicatorId === 'recaudacion';
     const [selectedViewId, setSelectedViewId] = useState(views?.[0]?.id ?? 'default');
     const [selectedModeByView, setSelectedModeByView] = useState<Record<string, string>>({});
+    const [baseDateByView, setBaseDateByView] = useState<Record<string, string>>({});
     const [highlightedAreasByView, setHighlightedAreasByView] = useState<Record<string, Set<string>>>({});
     const [isConfigLoaded, setIsConfigLoaded] = useState(false);
     const selectedView = views?.find(view => view.id === selectedViewId) ?? views?.[0];
     const activeViewId = selectedView?.id ?? selectedViewId;
     const selectedMode = selectedView?.modes?.find(mode => mode.id === selectedModeByView[activeViewId]) ?? selectedView?.modes?.[0];
     const activeChartTitle = selectedMode?.chartTitle ?? selectedView?.chartTitle ?? chartTitle;
-    const activeData = selectedMode?.data ?? selectedView?.data ?? data;
+    const sourceData = selectedMode?.data ?? selectedView?.data ?? data;
     const activeAreas = selectedView?.areas ?? areas;
     const activeMethodology = selectedView?.methodology ?? methodology;
-    const activeValueFormat = selectedView?.valueFormat ?? valueFormat;
-    const activeYAxisDecimals = selectedView?.yAxisDecimals ?? yAxisDecimals;
-    const activeYAxisLabel = selectedMode?.yAxisLabel ?? selectedView?.yAxisLabel ?? yAxisLabel;
+    const activeValueFormat = selectedMode?.valueFormat ?? selectedView?.valueFormat ?? valueFormat;
+    const activeYAxisDecimals = selectedMode?.yAxisDecimals ?? selectedView?.yAxisDecimals ?? yAxisDecimals;
+    const configuredYAxisLabel = selectedMode?.yAxisLabel ?? selectedView?.yAxisLabel ?? yAxisLabel;
     const activeSecondaryYAxis = selectedView?.secondaryYAxis ?? secondaryYAxis;
-    const activeLeftYAxisDomain = selectedView?.leftYAxisDomain ?? leftYAxisDomain;
-    const activeReferenceLines = selectedView?.referenceLines ?? EMPTY_REFERENCE_LINES;
+    const activeLeftYAxisDomain = selectedMode?.leftYAxisDomain ?? selectedView?.leftYAxisDomain ?? leftYAxisDomain;
+    const configuredReferenceLines = selectedView?.referenceLines ?? EMPTY_REFERENCE_LINES;
     const activeShowTooltipTotal = selectedView?.showTooltipTotal ?? showTooltipTotal;
+    const rebaseKey = `${activeViewId}:${selectedMode?.id ?? 'default'}`;
+    const validBaseRows = selectedView?.rebaseable
+        ? sourceData.filter(row => typeof row.iso_fecha === 'string' && activeAreas.every(area => {
+            const value = row[area.key];
+            return typeof value === 'number' && Number.isFinite(value) && value !== 0;
+        }))
+        : [];
+    const effectiveBaseRow = validBaseRows.find(row => row.iso_fecha === baseDateByView[rebaseKey])
+        ?? validBaseRows.find(row => row.iso_fecha === selectedView?.defaultBaseDate)
+        ?? validBaseRows[0];
+    const effectiveBaseDate = typeof effectiveBaseRow?.iso_fecha === 'string' ? effectiveBaseRow.iso_fecha : null;
+    const activeData = selectedView?.rebaseable && effectiveBaseRow
+        ? sourceData.map(row => ({
+            ...row,
+            ...Object.fromEntries(activeAreas.map(area => {
+                const value = row[area.key];
+                const baseValue = effectiveBaseRow[area.key];
+                return [area.key, typeof value === 'number' && typeof baseValue === 'number' && baseValue !== 0 ? value / baseValue * 100 : null];
+            })),
+        }))
+        : sourceData;
+    const activeYAxisLabel = selectedView?.rebaseable && effectiveBaseDate ? `Base 100 = ${formatBaseDate(effectiveBaseDate)}` : configuredYAxisLabel;
+    const activeReferenceLines = useMemo(() => selectedView?.rebaseable && effectiveBaseDate
+        ? [...configuredReferenceLines, { value: 100, color: '#FFD700', dash: [6, 4] }]
+        : configuredReferenceLines, [selectedView?.rebaseable, effectiveBaseDate, configuredReferenceLines]);
     const sortedData = useMemo(() => {
         const getSortKey = (row: ChartDataRow) => {
             if (typeof row?.iso_fecha === 'string' && row.iso_fecha) return row.iso_fecha;
@@ -128,6 +161,7 @@ export default function IndicatorCompositeView({
             const validViewIds = new Set((views?.map(view => view.id) ?? ['default']));
             if (parsed.selectedViewId && validViewIds.has(parsed.selectedViewId)) setSelectedViewId(parsed.selectedViewId);
             if (parsed.highlightedAreasByView) setHighlightedAreasByView(Object.fromEntries(Object.entries(parsed.highlightedAreasByView).map(([viewId, keys]) => [viewId, new Set(keys)])));
+            if (parsed.baseDateByView) setBaseDateByView(parsed.baseDateByView);
             if (parsed.rangeByView) {
                 const viewIdForRange = parsed.selectedViewId && validViewIds.has(parsed.selectedViewId) ? parsed.selectedViewId : (views?.[0]?.id ?? 'default');
                 const range = parsed.rangeByView[viewIdForRange];
@@ -145,7 +179,7 @@ export default function IndicatorCompositeView({
         } finally {
             setIsConfigLoaded(true);
         }
-    }, [storageKey, views]);
+    }, [storageKey, views, data]);
 
     useEffect(() => {
         if (!isConfigLoaded) return;
@@ -160,8 +194,8 @@ export default function IndicatorCompositeView({
             }
         } catch { /* ignore */ }
         rangeByViewPayload[activeViewId] = [startIndex, endIndex];
-        window.localStorage.setItem(storageKey, JSON.stringify({ selectedViewId, highlightedAreasByView: highlightedAreasPayload, rangeByView: rangeByViewPayload }));
-    }, [storageKey, selectedViewId, highlightedAreasByView, startIndex, endIndex, activeViewId, isConfigLoaded, previewRange]);
+        window.localStorage.setItem(storageKey, JSON.stringify({ selectedViewId, highlightedAreasByView: highlightedAreasPayload, rangeByView: rangeByViewPayload, baseDateByView }));
+    }, [storageKey, selectedViewId, highlightedAreasByView, startIndex, endIndex, activeViewId, isConfigLoaded, previewRange, baseDateByView]);
 
     useEffect(() => {
         if (selectedMonth && selectByMonth) {
@@ -254,19 +288,32 @@ export default function IndicatorCompositeView({
         return [min, max];
     }, [visibleData, activeAreas, activeLeftYAxisDomain, highlightedAreas, activeReferenceLines]);
 
-    const viewSelector = views && views.length > 1 ? (
-        <div className="no-capture flex w-full gap-1 sm:w-auto">
-            <div className="flex gap-1">
+    const viewSelector = (views && views.length > 1) || selectedView?.rebaseable ? (
+        <div className="no-capture flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            {views && views.length > 1 ? <div className="flex gap-1">
                 {views.map(view => {
                     const isActive = view.id === (selectedView?.id ?? selectedViewId);
                     return <button key={view.id} type="button" onClick={() => setSelectedViewId(view.id)} className={`border px-2 py-1 text-[10px] sm:text-xs font-bold uppercase transition-colors ${isActive ? 'border-imperial-gold bg-imperial-gold text-imperial-blue' : 'border-imperial-gold text-imperial-gold hover:bg-imperial-gold hover:text-imperial-blue'}`}>{view.label}</button>;
                 })}
-            </div>
+            </div> : null}
+            {selectedView?.rebaseable && effectiveBaseDate ? (
+                <label className="flex items-center gap-2 text-[10px] font-bold uppercase text-imperial-gold sm:text-xs">
+                    Base
+                    <select
+                        aria-label="Mes base del índice"
+                        value={effectiveBaseDate}
+                        onChange={event => startTransition(() => setBaseDateByView(previous => ({ ...previous, [rebaseKey]: event.target.value })))}
+                        className="border border-imperial-gold bg-imperial-blue px-2 py-1 text-imperial-gold outline-none"
+                    >
+                        {validBaseRows.map(row => <option key={String(row.iso_fecha)} value={String(row.iso_fecha)}>{row.fecha}</option>)}
+                    </select>
+                </label>
+            ) : null}
         </div>
     ) : null;
 
     const axisModeSelector = selectedView?.modes && selectedView.modes.length > 1 && selectedMode ? (
-        <div role="group" aria-label="Modo del EMAE" className="no-capture flex tracking-normal">
+        <div role="group" aria-label="Unidad del eje Y" className="no-capture flex tracking-normal">
             {selectedView.modes.map(mode => (
                 <button
                     key={mode.id}

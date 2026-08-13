@@ -39,6 +39,20 @@ export default function ChartBar({
                 const strokeColor = areaConfig.borderColor ?? (isSelected ? '#FFFFFF' : isPreliminary ? areaConfig.color : 'none');
                 const strokeWidth = areaConfig.borderWidth ?? (isSelected || isPreliminary ? 1 : 0);
                 const dash = areaConfig.dash;
+                if (isPreliminary) {
+                    return (
+                        <Rectangle
+                            x={x}
+                            y={y}
+                            width={width}
+                            height={height}
+                            fill={areaConfig.preliminaryColor ?? areaConfig.color}
+                            stroke={areaConfig.color}
+                            strokeWidth={1}
+                            style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
+                        />
+                    );
+                }
 
                 return (
                     <Rectangle

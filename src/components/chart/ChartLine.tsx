@@ -37,6 +37,8 @@ function isValueChange(data: ChartDataRow[] | undefined, index: number, key: str
 
 export default function ChartLine({ areaConfig, isDimmed, data, isCapturing = false }: ChartLineProps) {
     const color = areaConfig.color;
+    const gradientId = `line-reveal-${areaConfig.key}`;
+    const stroke = areaConfig.revealStrokeAfterPercent == null ? color : `url(#${gradientId})`;
     const showDots = areaConfig.showDots !== false;
     const showAllDots = Boolean(areaConfig.connectNulls) && showDots;
     const strokeWidth = areaConfig.strokeWidth ?? 3;
@@ -88,6 +90,15 @@ export default function ChartLine({ areaConfig, isDimmed, data, isCapturing = fa
     };
 
     return <>
+        {areaConfig.revealStrokeAfterPercent != null ? (
+            <defs>
+                <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset={`${areaConfig.revealStrokeAfterPercent}%`} stopColor={color} stopOpacity={0} />
+                    <stop offset={`${areaConfig.revealStrokeAfterPercent + 0.1}%`} stopColor={color} stopOpacity={1} />
+                    <stop offset="100%" stopColor={color} stopOpacity={1} />
+                </linearGradient>
+            </defs>
+        ) : null}
         {areaConfig.borderColor ? <Line
             type="monotone"
             dataKey={areaConfig.key}
@@ -106,7 +117,7 @@ export default function ChartLine({ areaConfig, isDimmed, data, isCapturing = fa
         <Line
             type="monotone"
             dataKey={areaConfig.key}
-            stroke={areaConfig.color}
+            stroke={stroke}
             strokeWidth={strokeWidth}
             strokeDasharray={areaConfig.dash ? areaConfig.dash.join(' ') : undefined}
             dot={dot}
