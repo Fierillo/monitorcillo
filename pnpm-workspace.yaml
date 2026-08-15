@@ -18,6 +18,3 @@ allowBuilds:
   sharp: false
   tesseract.js: true
   unrs-resolver: false
-
-overrides:
-  postcss: 8.5.10
