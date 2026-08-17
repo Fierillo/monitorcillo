@@ -42,15 +42,17 @@ export function collectAxisExtentValues(
         }
 
         for (const group of stacked.values()) {
-            let sum = 0;
+            let positive = 0;
+            let negative = 0;
             let hasValue = false;
             for (const area of group) {
                 const value = row[area.key];
                 if (typeof value !== 'number' || !Number.isFinite(value)) continue;
-                sum += value;
+                if (value >= 0) positive += value;
+                else negative += value;
                 hasValue = true;
             }
-            if (hasValue) values.push(sum);
+            if (hasValue) values.push(positive, negative);
         }
     }
 

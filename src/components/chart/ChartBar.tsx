@@ -31,6 +31,9 @@ export default function ChartBar({
             }}
             shape={(props: ChartBarShapeProps) => {
                 const { payload, x, y, width, height } = props;
+                const barHeight = height ?? 0;
+                const barY = barHeight < 0 ? (y ?? 0) + barHeight : y;
+                const barAbsHeight = Math.abs(barHeight);
                 const monthValue = selectByMonth ? payload?.iso_fecha?.slice(5, 7) : payload?.iso_fecha;
                 const isSelected = selectedMonth && monthValue === selectedMonth;
                 const isPreliminary = areaConfig.preliminaryKey ? payload?.[areaConfig.preliminaryKey] === true : false;
@@ -43,9 +46,9 @@ export default function ChartBar({
                     return (
                         <Rectangle
                             x={x}
-                            y={y}
+                            y={barY}
                             width={width}
-                            height={height}
+                            height={barAbsHeight}
                             fill={areaConfig.preliminaryColor ?? areaConfig.color}
                             stroke={areaConfig.color}
                             strokeWidth={1}
@@ -57,9 +60,9 @@ export default function ChartBar({
                 return (
                     <Rectangle
                         x={x}
-                        y={y}
+                        y={barY}
                         width={width}
-                        height={height}
+                        height={barAbsHeight}
                         fill={areaConfig.color}
                         fillOpacity={fillOpacity}
                         stroke={strokeColor}

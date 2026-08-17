@@ -83,6 +83,8 @@ export type ChartModeConfig = {
     valueFormat?: ValueFormat;
     yAxisDecimals?: number;
     leftYAxisDomain?: ChartAxisDomain;
+    areas?: AreaConfig[];
+    showTooltipTotal?: boolean;
 };
 
 export type ChartViewConfig = {

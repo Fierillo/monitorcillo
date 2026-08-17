@@ -72,7 +72,7 @@ export default function IndicatorCompositeView({
     const selectedMode = selectedView?.modes?.find(mode => mode.id === selectedModeByView[activeViewId]) ?? selectedView?.modes?.[0];
     const activeChartTitle = selectedMode?.chartTitle ?? selectedView?.chartTitle ?? chartTitle;
     const sourceData = selectedMode?.data ?? selectedView?.data ?? data;
-    const activeAreas = selectedView?.areas ?? areas;
+    const activeAreas = selectedMode?.areas ?? selectedView?.areas ?? areas;
     const activeMethodology = selectedView?.methodology ?? methodology;
     const activeValueFormat = selectedMode?.valueFormat ?? selectedView?.valueFormat ?? valueFormat;
     const activeYAxisDecimals = selectedMode?.yAxisDecimals ?? selectedView?.yAxisDecimals ?? yAxisDecimals;
@@ -80,7 +80,7 @@ export default function IndicatorCompositeView({
     const activeSecondaryYAxis = selectedView?.secondaryYAxis ?? secondaryYAxis;
     const activeLeftYAxisDomain = selectedMode?.leftYAxisDomain ?? selectedView?.leftYAxisDomain ?? leftYAxisDomain;
     const configuredReferenceLines = selectedView?.referenceLines ?? EMPTY_REFERENCE_LINES;
-    const activeShowTooltipTotal = selectedView?.showTooltipTotal ?? showTooltipTotal;
+    const activeShowTooltipTotal = selectedMode?.showTooltipTotal ?? selectedView?.showTooltipTotal ?? showTooltipTotal;
     const rebaseKey = `${activeViewId}:${selectedMode?.id ?? 'default'}`;
     const validBaseRows = selectedView?.rebaseable
         ? sourceData.filter(row => typeof row.iso_fecha === 'string' && activeAreas.every(area => {
@@ -147,7 +147,7 @@ export default function IndicatorCompositeView({
     const [isMobile, setIsMobile] = useState(false);
 
     const visibleData = useMemo(() => sortedData.slice(startIndex, endIndex + 1), [sortedData, startIndex, endIndex]);
-    const highlightedAreas = useMemo(() => highlightedAreasByView[activeViewId] ?? new Set<string>(), [highlightedAreasByView, activeViewId]);
+    const highlightedAreas = useMemo(() => highlightedAreasByView[rebaseKey] ?? new Set<string>(), [highlightedAreasByView, rebaseKey]);
     const storageKey = `monitorcillo:chart:${indicatorId ?? title}`;
 
     useEffect(() => {
@@ -330,15 +330,15 @@ export default function IndicatorCompositeView({
 
     const handleToggleHighlight = useCallback((key: string) => {
         setHighlightedAreasByView(prev => {
-            const next = new Set(prev[activeViewId] ?? []);
+            const next = new Set(prev[rebaseKey] ?? []);
             if (next.has(key)) {
                 next.delete(key);
             } else {
                 next.add(key);
             }
-            return { ...prev, [activeViewId]: next };
+            return { ...prev, [rebaseKey]: next };
         });
-    }, [activeViewId]);
+    }, [rebaseKey]);
 
     const crosshairFromChartState = useCallback((state: ChartClickState | null, locked: boolean): ChartCrosshairState | null => {
         const x = state?.activeCoordinate?.x;
