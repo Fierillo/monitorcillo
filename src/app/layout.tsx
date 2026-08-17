@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cinzel, Libre_Baskerville } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const cinzel = Cinzel({
@@ -47,6 +48,7 @@ export default function RootLayout({
             Fierillo
           </a>
         </footer>
+        <Analytics />
       </body>
     </html>
   );
