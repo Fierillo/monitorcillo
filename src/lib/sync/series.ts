@@ -10,7 +10,7 @@ export function seriesValueMap(rows: DatosGobSeriesRow[]): Map<string, number> {
 export function valueAtOrBefore(valuesByFecha: Map<string, number>, fecha: string): number | null {
     let value: number | null = null;
 
-    for (const [candidateFecha, candidateValue] of valuesByFecha) {
+    for (const [candidateFecha, candidateValue] of [...valuesByFecha.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
         if (candidateFecha > fecha) break;
         value = candidateValue;
     }
