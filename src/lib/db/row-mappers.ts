@@ -1,4 +1,5 @@
 import type { DbRow, IndicatorTrend, IndicatorType, NormalizedDataByType } from '@/types';
+import { BALANZA_IMPORT_KEYS, BALANZA_SERIES_KEYS, toNegativeImport } from '../balanza/schema';
 import { EMAE_SECTOR_APORTE_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
 import { isoToFecha, isoToMonthLabel } from '../normalize';
 import { RECAUDACION_BREAKDOWN_TYPES } from '../recaudacion/schema';
@@ -144,6 +145,22 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
 
     if (type === 'icg') {
         return { ...common, icg: toNullableNumber(row.icg) } as NormalizedDataByType[T];
+    }
+
+    if (type === 'balanza') {
+        return {
+            ...common,
+            ...Object.fromEntries(BALANZA_SERIES_KEYS.map(key => [
+                key,
+                BALANZA_IMPORT_KEYS.includes(key as typeof BALANZA_IMPORT_KEYS[number])
+                    ? toNegativeImport(row[key])
+                    : toNullableNumber(row[key]),
+            ])),
+            pbi: toNullableNumber(row.pbi),
+            tc: toNullableNumber(row.tc),
+            ipc_nucleo: toNullableNumber(row.ipc_nucleo),
+            pbi_usd: toNullableNumber(row.pbi_usd),
+        } as NormalizedDataByType[T];
     }
 
     return {

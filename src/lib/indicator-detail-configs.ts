@@ -1,4 +1,5 @@
 import type { AreaConfig, ChartDataRow, ChartModeConfig, Indicator, IndicatorCompositeViewProps, MethodologyItem } from '@/types';
+import { BALANZA_EXPORT_RUBROS, BALANZA_IMPORT_USOS, BALANZA_SERIES_KEYS, buildAperturaComercial, usdMillionsToPctPbi, withNegativeImports } from './balanza/schema';
 import { EMAE_SECTORS } from './emae/schema';
 import { RECAUDACION_BREAKDOWN_TYPES } from './recaudacion/schema';
 import { ICG_PRESIDENTIAL_MANDATES, PRESIDENTIAL_MANDATES } from './presidential-mandates';
@@ -21,6 +22,7 @@ export async function getIndicatorDetailConfig(indicator: Indicator): Promise<De
     if (indicator.id === 'pobreza') return pobrezaConfig(indicator);
     if (indicator.id === 'inflacion') return inflacionConfig(indicator);
     if (indicator.id === 'icg') return icgConfig(indicator);
+    if (indicator.id === 'balanza-comercial') return balanzaConfig(indicator);
     return null;
 }
 
@@ -606,6 +608,97 @@ async function icgConfig(indicator: Indicator): Promise<DetailConfig> {
         views: [
             { id: 'general', label: 'GENERAL', chartTitle: 'Índice de Confianza en el Gobierno', areas, methodology, valueFormat: 'index', yAxisDecimals: 2, yAxisLabel: 'Puntos (0-5)', leftYAxisDomain: 'auto-pad' },
             { id: 'mandatos', label: 'POR MANDATO', chartTitle: 'Confianza en el Gobierno por mandato', data: mandateData, areas: mandateAreas, methodology: mandateMethodology, valueFormat: 'index', yAxisDecimals: 2, yAxisLabel: 'Puntos (0-5)', leftYAxisDomain: 'auto-pad' },
+        ],
+    };
+}
+
+async function balanzaConfig(indicator: Indicator): Promise<DetailConfig> {
+    const data = (await safeGetIndicatorData('balanza-comercial')).map(row => withNegativeImports(row));
+    const pbiData = data.map(row => ({
+        ...row,
+        ...Object.fromEntries(BALANZA_SERIES_KEYS.map(key => [key, usdMillionsToPctPbi(row[key], row.pbi_usd)])),
+    }));
+    const areas: AreaConfig[] = [
+        { key: 'exportaciones', name: 'Exportaciones', color: '#22C55E', type: 'bar', stackId: 'balanza' },
+        { key: 'importaciones', name: 'Importaciones', color: '#EF4444', type: 'bar', stackId: 'balanza' },
+        { key: 'saldo', name: 'Saldo', color: '#FFD700', type: 'line', strokeWidth: 2 },
+    ];
+    const breakdownAreas: AreaConfig[] = [
+        ...BALANZA_EXPORT_RUBROS.map(item => ({ key: item.key, name: item.label, color: item.color, type: 'bar' as const, stackId: 'balanza' })),
+        ...BALANZA_IMPORT_USOS.map(item => ({ key: item.key, name: item.label, color: item.color, type: 'bar' as const, stackId: 'balanza' })),
+    ];
+    const methodology = [
+        { title: 'Fuente', description: 'Intercambio Comercial Argentino (ICA) de INDEC, series mensuales en millones de dólares de datos.gob.ar.' },
+        { title: 'Exportaciones', description: 'Valor FOB total de las exportaciones de bienes (serie 74.3_IET_0_M_16). Se grafican con signo positivo.' },
+        { title: 'Importaciones', description: 'Valor CIF total de las importaciones de bienes (serie 74.3_IIT_0_M_25). Se grafican con signo negativo para apilarlas en la misma columna que las exportaciones.' },
+        { title: 'Saldo', description: 'Balanza comercial mensual (serie 74.3_ISC_0_M_19). Si falta el dato oficial se calcula como exportaciones menos importaciones.' },
+        { title: 'Porcentaje del PBI', description: 'El dato mensual del ICA se divide por el PBI anual en dólares corrientes. Desde 2004 se usa INDEC (9.2_PDPC_2004_T_30); 1992-2003 se empalma con el PBI en dólares del Banco Mundial.' },
+    ];
+    const breakdownMethodology = [
+        { title: 'Signo', description: 'Los rubros de exportación van hacia arriba y los usos de importación hacia abajo, apilados en la misma columna. La suma de la pila coincide con el saldo comercial.' },
+        { title: 'Exportaciones por rubro', description: 'Grandes rubros de INDEC: productos primarios, manufacturas de origen agropecuario (MOA), manufacturas de origen industrial (MOI) y combustibles y energía.' },
+        { title: 'Importaciones por uso', description: 'Usos económicos de INDEC: bienes de capital, bienes intermedios, combustibles y lubricantes, piezas y accesorios, bienes de consumo, vehículos automotores de pasajeros y resto.' },
+        { title: 'Porcentaje del PBI', description: 'Misma conversión que el agregado: cada rubro mensual sobre el PBI anual en dólares.' },
+    ];
+    const usdMode = (chartTitle: string): ChartModeConfig => ({ id: 'usd', label: 'USD M', chartTitle, data, yAxisLabel: 'millones de USD', valueFormat: 'millions', leftYAxisDomain: 'auto-pad' });
+    const pbiMode = (chartTitle: string): ChartModeConfig => ({ id: 'pbi', label: '% PBI', chartTitle, data: pbiData, yAxisLabel: '% del PBI', valueFormat: 'percent', yAxisDecimals: 1, leftYAxisDomain: 'auto-pad' });
+    return {
+        subtitle: indicator.fuente,
+        chartTitle: 'Balanza comercial',
+        data,
+        areas,
+        methodology,
+        valueFormat: 'millions',
+        yAxisLabel: 'millones de USD',
+        leftYAxisDomain: 'auto-pad',
+        indicatorId: indicator.id,
+        views: [
+            {
+                id: 'agregado',
+                label: 'Agregado',
+                chartTitle: 'Balanza comercial',
+                areas,
+                methodology,
+                valueFormat: 'millions',
+                yAxisLabel: 'millones de USD',
+                leftYAxisDomain: 'auto-pad',
+                referenceLines: [{ value: 0, color: '#64748B', dash: [4, 4] }],
+                modes: [usdMode('Balanza comercial'), pbiMode('Balanza comercial')],
+            },
+            {
+                id: 'desagregado',
+                label: 'Desagregado',
+                chartTitle: 'Balanza comercial por rubro y uso',
+                data,
+                areas: breakdownAreas,
+                methodology: breakdownMethodology,
+                valueFormat: 'millions',
+                yAxisLabel: 'millones de USD',
+                leftYAxisDomain: 'auto-pad',
+                showTooltipTotal: true,
+                referenceLines: [{ value: 0, color: '#64748B', dash: [4, 4] }],
+                modes: [usdMode('Balanza comercial por rubro y uso'), { ...pbiMode('Balanza comercial por rubro y uso'), showTooltipTotal: true }],
+            },
+            {
+                id: 'apertura',
+                label: 'Apertura comercial',
+                chartTitle: 'Apertura comercial',
+                data: buildAperturaComercial(data),
+                areas: [
+                    { key: 'exportaciones', name: 'Exportaciones', color: '#22C55E', type: 'bar', stackId: 'apertura', preliminaryKey: 'preliminary', preliminaryColor: '#86EFAC', preliminaryLabel: 'Preliminar: año en curso anualizado' },
+                    { key: 'importaciones', name: 'Importaciones', color: '#EF4444', type: 'bar', stackId: 'apertura', preliminaryKey: 'preliminary', preliminaryColor: '#FCA5A5' },
+                    { key: 'apertura', name: 'Total', color: '#FFD700', type: 'line', strokeWidth: 2, hideInTooltip: true },
+                ],
+                showTooltipTotal: true,
+                methodology: [
+                    { title: 'Definición', description: 'Suma anual de exportaciones e importaciones de bienes del ICA, dividida por el PBI anual en dólares corrientes.' },
+                    { title: 'Frecuencia', description: 'Serie anual. El último año, si aún no tiene los 12 meses, se anualiza y se marca como preliminar.' },
+                ],
+                valueFormat: 'percent',
+                yAxisDecimals: 1,
+                yAxisLabel: '% del PBI',
+                leftYAxisDomain: 'auto-pad',
+            },
         ],
     };
 }

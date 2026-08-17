@@ -1,5 +1,6 @@
 import type { NeonQueryPromise } from '@neondatabase/serverless';
 import type { DbRow, DbValue, IndicatorType, NormalizedDataByType, NormalizedDataRow } from '@/types';
+import { BALANZA_NORMALIZED_COLUMNS, BALANZA_SERIES_KEYS } from '../balanza/schema';
 import { EMAE_NORMALIZED_DB_COLUMNS, EMAE_SECTOR_APORTE_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
 import { fechaToISO } from '../normalize';
 import {
@@ -22,6 +23,7 @@ const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     pobreza: ['fecha', 'pobreza_indec', 'pobreza_utdt'],
     inflacion: ['fecha', 'ipc_indec', 'ipc_nucleo_indec', 'ipc_equilibra', 'ipc_online', 'ipc'],
     icg: ['fecha', 'icg'],
+    balanza: [...BALANZA_NORMALIZED_COLUMNS],
 };
 
 export async function getNormalizedData<T extends IndicatorType>(type: T): Promise<Array<NormalizedDataByType[T]> | null> {
@@ -98,6 +100,7 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
     if (type === 'pobreza') return [fecha, toNullableNumber(row.pobreza_indec), toNullableNumber(row.pobreza_utdt)];
     if (type === 'inflacion') return [fecha, toNullableNumber(row.ipc_indec), toNullableNumber(row.ipc_nucleo_indec), toNullableNumber(row.ipc_equilibra), toNullableNumber(row.ipc_online), toNullableNumber(row.ipc)];
     if (type === 'icg') return [fecha, toNullableNumber(row.icg)];
+    if (type === 'balanza') return [fecha, ...BALANZA_SERIES_KEYS.map(key => toNullableNumber(row[key])), toNullableNumber(row.pbi), toNullableNumber(row.tc), toNullableNumber(row.ipc_nucleo), toNullableNumber(row.pbi_usd)];
     return [fecha, toNullableNumber(row.blanco), toNullableNumber(row.negro), toNullableNumber(row.privado), toNullableNumber(row.publico), toNullableNumber(row.ripte), toNullableNumber(row.jubilacion)];
 }
 

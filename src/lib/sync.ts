@@ -10,7 +10,7 @@ import { fetchBmaRaw } from './sync/bma';
 import { fetchEmaeRaw } from './sync/emae';
 import { fetchPoderAdquisitivoRaw } from './sync/poder-adquisitivo';
 import { fetchRecaudacionRaw } from './sync/recaudacion';
-import { runSync, syncBma, syncEmae, syncEmision, syncIndicatorsCatalog, syncPoderAdquisitivo, syncRecaudacion } from './sync/tasks';
+import { runSync, syncBalanza, syncBma, syncEmae, syncEmision, syncIndicatorsCatalog, syncPoderAdquisitivo, syncRecaudacion } from './sync/tasks';
 
 const sync = {
     fetchEmisionRaw,
@@ -24,6 +24,7 @@ const sync = {
     syncIndicatorsCatalog,
     syncRecaudacion,
     syncPoderAdquisitivo,
+    syncBalanza,
     runSync,
 };
 

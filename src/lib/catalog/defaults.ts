@@ -12,4 +12,5 @@ export const DEFAULT_CATALOG: CatalogIndicatorRow[] = [
     { id: 'pobreza', indicador: 'Pobreza', referencia: 'Mismo semestre año anterior', dato: '-', fecha: '-', fuente: 'INDEC y UTDT', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: 'https://www.utdt.edu/ver_contenido.php?id_contenido=22217&id_item_menu=36605' },
     { id: 'inflacion', indicador: 'Inflación (IPC)', referencia: 'Mes anterior', dato: '-', fecha: '-', fuente: 'INDEC, Equilibra e IPC Online', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: null },
     { id: 'icg', indicador: 'Índice de Confianza en el Gobierno', referencia: 'Mes anterior', dato: '-', fecha: '-', fuente: 'UTDT', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: 'https://www.utdt.edu/icg' },
+    { id: 'balanza-comercial', indicador: 'Balanza comercial', referencia: 'Mes anterior', dato: '-', fecha: '-', fuente: 'INDEC', trend: 'neutral', category: 'socioeconomico', has_details: true, source_url: 'https://www.indec.gob.ar/indec/web/Nivel4-Tema-3-2-40' },
 ];

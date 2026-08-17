@@ -14,6 +14,8 @@ const MAPPING: Record<string, IndicatorType> = {
     'poder-adquisitivo': 'poder',
     inflacion: 'inflacion',
     icg: 'icg',
+    balanza: 'balanza',
+    'balanza-comercial': 'balanza',
 };
 
 export async function getCachedIndicator(id: string): Promise<NormalizedDataRow[] | null> {

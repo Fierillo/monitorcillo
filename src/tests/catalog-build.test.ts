@@ -125,4 +125,21 @@ describe('buildIndicatorsCatalog', () => {
 
         expect(result[0]).toMatchObject({ fecha: '1 MAR 26', dato: '6,1%', referencia: '5,5%', trend: 'down', proxima_fecha: formatDay(futureDate('2026-03-01', date => addMonthsFromDate(date, 1))) });
     });
+
+    it('shows the latest trade balance in millions of USD', () => {
+        const result = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'balanza-comercial' }], {
+            balanza: [{ iso_fecha: '2026-05-01', saldo: 412 }, { iso_fecha: '2026-06-01', saldo: 680.4 }],
+        }, {
+            balanza: [{ fecha: '2026-05-01', exportaciones: 6500, importaciones: 6088, saldo: 412 }, { fecha: '2026-06-01', exportaciones: 7100, importaciones: 6420, saldo: 680.4 }],
+        });
+
+        expect(result[0]).toMatchObject({
+            fecha: 'JUN 26',
+            dato: 'USD 680 M',
+            referencia: 'USD 412 M',
+            reference_description: 'Mes anterior',
+            trend: 'up',
+            proxima_fecha: formatDay(futureDate('2026-06-01', date => addMonthsFromDate(date, 1))),
+        });
+    });
 });

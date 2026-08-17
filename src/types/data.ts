@@ -1,3 +1,4 @@
+import type { BalanzaSeriesKey } from '@/lib/balanza/schema';
 import type { EmaeSectorAporteKey, EmaeSectorKey, EmaeSectorMm12Key } from '@/lib/emae/schema';
 import type { NumericValue } from './common';
 import type { IndicatorType } from './indicators';
@@ -265,6 +266,23 @@ export type IcgNormalizedRow = {
     icg: number | null;
 };
 
+export type BalanzaRawRow = {
+    fecha: string;
+    pbi_trimestral?: NumericValue;
+    tc?: NumericValue;
+    ipc_nucleo?: NumericValue;
+    pbi_usd?: NumericValue;
+} & Partial<Record<BalanzaSeriesKey, NumericValue>>;
+
+export type BalanzaNormalizedRow = {
+    fecha: string;
+    iso_fecha: string;
+    pbi?: number | null;
+    tc?: number | null;
+    ipc_nucleo?: number | null;
+    pbi_usd?: number | null;
+} & Partial<Record<BalanzaSeriesKey, number | null>>;
+
 export type InflacionRawRow = {
     fecha: string;
     ipc_indec_general?: NumericValue;
@@ -294,6 +312,7 @@ export type RawDataByType = {
     pobreza: PobrezaRawRow;
     inflacion: InflacionRawRow;
     icg: IcgRawRow;
+    balanza: BalanzaRawRow;
 };
 
 export type NormalizedDataByType = {
@@ -307,6 +326,7 @@ export type NormalizedDataByType = {
     pobreza: PobrezaNormalizedRow;
     inflacion: InflacionNormalizedRow;
     icg: IcgNormalizedRow;
+    balanza: BalanzaNormalizedRow;
 };
 
 export type RawDataRow = RawDataByType[IndicatorType];

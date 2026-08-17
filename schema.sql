@@ -346,6 +346,57 @@ CREATE TABLE IF NOT EXISTS icg_normalized (
 );
 
 -- ============================================
+-- BALANZA COMERCIAL (mensual, INDEC ICA)
+-- ============================================
+CREATE TABLE IF NOT EXISTS balanza_raw (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    exportaciones DECIMAL,
+    importaciones DECIMAL,
+    saldo DECIMAL,
+    expo_pp DECIMAL,
+    expo_moa DECIMAL,
+    expo_moi DECIMAL,
+    expo_combustibles DECIMAL,
+    impo_bienes_capital DECIMAL,
+    impo_bienes_intermedios DECIMAL,
+    impo_combustibles DECIMAL,
+    impo_piezas DECIMAL,
+    impo_bienes_consumo DECIMAL,
+    impo_vehiculos DECIMAL,
+    impo_resto DECIMAL,
+    pbi_trimestral DECIMAL,
+    tc DECIMAL,
+    ipc_nucleo DECIMAL,
+    pbi_usd DECIMAL,
+    fetched_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS balanza_normalized (
+    id SERIAL PRIMARY KEY,
+    fecha DATE UNIQUE NOT NULL,
+    exportaciones DECIMAL,
+    importaciones DECIMAL,
+    saldo DECIMAL,
+    expo_pp DECIMAL,
+    expo_moa DECIMAL,
+    expo_moi DECIMAL,
+    expo_combustibles DECIMAL,
+    impo_bienes_capital DECIMAL,
+    impo_bienes_intermedios DECIMAL,
+    impo_combustibles DECIMAL,
+    impo_piezas DECIMAL,
+    impo_bienes_consumo DECIMAL,
+    impo_vehiculos DECIMAL,
+    impo_resto DECIMAL,
+    pbi DECIMAL,
+    tc DECIMAL,
+    ipc_nucleo DECIMAL,
+    pbi_usd DECIMAL,
+    last_update TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
 -- INDEXES
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_indicators_catalog_id ON indicators_catalog(id);
@@ -359,6 +410,7 @@ CREATE INDEX IF NOT EXISTS idx_deuda_fecha ON deuda_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_pobreza_fecha ON pobreza_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_inflacion_fecha ON inflacion_raw(fecha);
 CREATE INDEX IF NOT EXISTS idx_icg_fecha ON icg_raw(fecha);
+CREATE INDEX IF NOT EXISTS idx_balanza_fecha ON balanza_raw(fecha);
 
 -- ============================================
 -- MANUAL OVERRIDES (datos manuales que prevalecen sobre API)

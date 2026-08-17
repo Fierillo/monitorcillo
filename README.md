@@ -39,6 +39,7 @@ Monitorcillo consolida indicadores económicos argentinos en una interfaz compac
 | Deuda pública | MECON, BCRA e INDEC | Perfil de compromisos y deuda/PBI |
 | Pobreza | INDEC y UTDT | Serie oficial semestral y nowcast mensual (gráfico interactivo UTDT) |
 | Índice de Confianza en el Gobierno | UTDT | Serie mensual general y comparación por mandato |
+| Balanza comercial | INDEC | ICA agregado (expo, impo, saldo) y desagregado por rubro/uso |
 
 ## Stack
 

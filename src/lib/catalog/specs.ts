@@ -251,4 +251,18 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
         getNextExpectedEvents: ({ rawRows, rawDate, publicationDate, today }) => futureMonthly(publicationDate ?? latestDateWithValue(rawRows, ['icg']) ?? rawDate, today, 'UTDT'),
     },
+    'balanza-comercial': {
+        type: 'balanza',
+        referenceLabel: 'Mes anterior',
+        betterWhen: 'higher',
+        getReferenceDate: date => addMonths(date, -1),
+        selectReferenceValue: row => row.saldo,
+        datePrecision: 'month',
+        normalizedValueColumn: 'saldo',
+        selectValue: row => row.saldo,
+        rawDateFields: ['exportaciones', 'importaciones', 'saldo'],
+        formatValue: value => `USD ${integerFormatter.format(Math.round(value))} M`,
+        getNextExpectedDate: date => addMonthsFromDate(date, 1),
+        getNextExpectedEvents: ({ rawRows, rawDate, publicationDate, today }) => futureMonthly(publicationDate ?? latestDateWithValue(rawRows, ['exportaciones', 'importaciones', 'saldo']) ?? rawDate, today, 'INDEC'),
+    },
 };

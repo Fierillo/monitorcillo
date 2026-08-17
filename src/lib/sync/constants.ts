@@ -4,3 +4,4 @@ export const EMAE_PUBLICATION_PAGE_URL = 'https://www.indec.gob.ar/Nivel4/Tema/3
 export const PBI_PAGE_URL = 'https://www.indec.gob.ar/Nivel4/Tema/3/9/47';
 export const RECAUDACION_PAGE_URL = 'https://www.argentina.gob.ar/economia/ingresospublicos/dniaf/recaudacion';
 export const SALARY_PUBLICATION_PAGE_URL = 'https://www.indec.gob.ar/Nivel4/Tema/4/31/61';
+export const ICA_PUBLICATION_PAGE_URL = 'https://www.indec.gob.ar/Nivel4/Tema/3/2/40';
