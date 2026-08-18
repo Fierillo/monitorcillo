@@ -212,7 +212,7 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Salarios No Registrados', description: 'Estimación de salarios informales (INDEC 149.1_SOR_PRIADO_OCTU_0_28), desplazada cinco meses hacia atrás.' },
         { title: 'RIPTE', description: 'Remuneración imponible promedio de trabajadores estables (Secretaría de Trabajo 158.1_REPTE_0_0_5).' },
         { title: 'Jubilaciones', description: 'Haber mínimo mensual (ANSES 58.1_MP_0_M_24).' },
-        { title: 'Cálculo', description: '(Valor Nominal / IPC Núcleo) normalizado a Base 100 = Enero 2017.' },
+        { title: 'Cálculo', description: '(Valor nominal / IPC Núcleo), expresado como índice base 100 en el mes seleccionado por el usuario.' },
     ];
     const rentData = calculateRentSalaryBurden(rawData);
     const currentRent = CABA_RENT_SERIES.at(-1)!;
