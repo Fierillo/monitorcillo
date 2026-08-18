@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { isoToFecha, isoToMonthLabel, normalizeEmision, normalizeBma, normalizeEmae, normalizePoderAdquisitivo } from '../lib/normalize';
 
 describe('normalizePoderAdquisitivo', () => {
-    it('normalizes each series using the value from the same month', () => {
+    it('shifts informal salaries five months back before rebasing them', () => {
         const rawData = [
             { fecha: '2017-01-01', ipc_nucleo: 100, salario_registrado: 1000, salario_no_registrado: 500, salario_privado: 1000, salario_publico: 1000, ripte: 1000, jubilacion_minima: 1000 },
             { fecha: '2017-02-01', ipc_nucleo: 105 },
@@ -10,6 +10,11 @@ describe('normalizePoderAdquisitivo', () => {
             { fecha: '2017-04-01', ipc_nucleo: 115 },
             { fecha: '2017-05-01', ipc_nucleo: 118 },
             { fecha: '2017-06-01', ipc_nucleo: 120, salario_registrado: 1200, salario_no_registrado: 800, salario_privado: 1200, salario_publico: 1200, ripte: 1200, jubilacion_minima: 1200 },
+            { fecha: '2017-07-01', ipc_nucleo: 125 },
+            { fecha: '2017-08-01', ipc_nucleo: 130 },
+            { fecha: '2017-09-01', ipc_nucleo: 135 },
+            { fecha: '2017-10-01', ipc_nucleo: 140 },
+            { fecha: '2017-11-01', ipc_nucleo: 150, salario_no_registrado: 1000 },
         ];
 
         const normalized = normalizePoderAdquisitivo(rawData);
@@ -19,7 +24,9 @@ describe('normalizePoderAdquisitivo', () => {
         expect(jan17!.blanco).toBe(100);
         expect(jan17!.negro).toBe(100);
         expect(normalized.find(r => r.iso_fecha === '2017-02-01')!.negro).toBeNull();
-        expect(normalized.find(r => r.iso_fecha === '2017-06-01')!.negro).toBeCloseTo(133.33, 2);
+        expect(normalized.find(r => r.iso_fecha === '2017-06-01')!.negro).toBeCloseTo(104.17, 2);
+        expect(normalized.find(r => r.iso_fecha === '2017-11-01')!.negro).toBeNull();
+        expect(normalized.filter(r => r.negro !== null).at(-1)?.iso_fecha).toBe('2017-06-01');
     });
 });
 

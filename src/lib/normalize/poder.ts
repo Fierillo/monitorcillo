@@ -2,6 +2,13 @@ import type { NumericValue, PoderAdquisitivoNormalizedRow, PoderAdquisitivoRawRo
 import { MONTHS_ES } from './dates';
 import { notNull, toNumber } from './numbers';
 
+const INFORMAL_SALARY_LAG_MONTHS = 5;
+
+function addMonths(fecha: string, offset: number): string {
+    const [year, month] = fecha.split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1 + offset, 1)).toISOString().split('T')[0];
+}
+
 export function normalizePoderAdquisitivo(rawData: PoderAdquisitivoRawRow[]): PoderAdquisitivoNormalizedRow[] {
     if (!Array.isArray(rawData) || rawData.length === 0) return [];
 
@@ -13,9 +20,13 @@ export function normalizePoderAdquisitivo(rawData: PoderAdquisitivoRawRow[]): Po
     const ipcBase = toNumber(baseRow.ipc_nucleo);
     if (!ipcBase) return [];
 
+    const informalSalaryByFecha = new Map(
+        sorted.map(row => [addMonths(row.fecha, -INFORMAL_SALARY_LAG_MONTHS), row.salario_no_registrado]),
+    );
+
     const factors = {
         blanco: toNumber(baseRow.salario_registrado) / ipcBase,
-        negro: toNumber(baseRow.salario_no_registrado) / ipcBase,
+        negro: toNumber(informalSalaryByFecha.get(baseRow.fecha)) / ipcBase,
         privado: toNumber(baseRow.salario_privado) / ipcBase,
         publico: toNumber(baseRow.salario_publico) / ipcBase,
         ripte: toNumber(baseRow.ripte) / ipcBase,
@@ -32,7 +43,7 @@ export function normalizePoderAdquisitivo(rawData: PoderAdquisitivoRawRow[]): Po
             fecha: `${MONTHS_ES[date.getUTCMonth()]} ${String(date.getUTCFullYear()).slice(-2)}`,
             iso_fecha: row.fecha,
             blanco: calc(row.salario_registrado, factors.blanco),
-            negro: calc(row.salario_no_registrado, factors.negro),
+            negro: calc(informalSalaryByFecha.get(row.fecha), factors.negro),
             privado: calc(row.salario_privado, factors.privado),
             publico: calc(row.salario_publico, factors.publico),
             ripte: calc(row.ripte, factors.ripte),

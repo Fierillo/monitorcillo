@@ -141,6 +141,8 @@ export async function syncPoderAdquisitivo(): Promise<SyncResult> {
     const existingData = (await getRawData(type)) ?? [];
     const { rows: rawData, publishedAt } = await fetchPoderAdquisitivoRawReport();
     const result = await persistMergedRawAndNormalize(type, existingData, rawData, normalizePoderAdquisitivo);
+    const persistedRaw = (await getRawData(type)) ?? [];
+    if (persistedRaw.length > 0) await replaceNormalizedData(type, normalizePoderAdquisitivo(persistedRaw));
     if (publishedAt && rawData.length > 0) {
         await saveIndicatorPublication('poder-adquisitivo', publishedAt, rawData.at(-1)?.fecha ?? null);
     }
