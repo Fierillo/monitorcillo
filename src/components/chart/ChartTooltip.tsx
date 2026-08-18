@@ -85,7 +85,7 @@ export default function ChartTooltip({
 
     return (
         <div key={tooltipLabel} style={{ backgroundColor: transparentBackground ? 'rgba(0, 20, 63, 0.62)' : 'rgba(0, 20, 63, 0.92)', border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', maxWidth: compact ? '220px' : undefined, maxHeight: compact ? '55vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '10px' : undefined, lineHeight: compact ? 1.15 : 1.35, whiteSpace: 'nowrap', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}>
-            <div style={{ height: isCapturing ? '24px' : undefined, lineHeight: isCapturing ? '20px' : undefined, fontWeight: 'bold', marginBottom: compact ? '2px' : '4px' }}>{rowData.fecha}</div>
+            <div style={{ height: isCapturing ? '24px' : undefined, lineHeight: isCapturing ? '20px' : undefined, color: '#FFD700', fontWeight: 'bold', marginBottom: compact ? '2px' : '4px' }}>{rowData.fecha}</div>
             {valueRows.map(row => compact || isCapturing ? (
                 <div key={row.key} style={{ display: 'flex', alignItems: 'center', justifyContent: compact ? 'space-between' : 'flex-start', gap: compact ? '8px' : '4px', height: isCapturing ? '22px' : undefined, lineHeight: isCapturing ? '22px' : undefined, fontWeight: row.borderColor ? 900 : 'bold', whiteSpace: 'nowrap' }}>
                     <span style={{ color: row.color, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: row.borderColor ? 900 : undefined, WebkitTextStroke: row.borderColor ? `0.75px ${row.borderColor}` : undefined }}>{row.name}</span>

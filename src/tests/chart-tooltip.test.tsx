@@ -14,7 +14,10 @@ const props = {
 
 describe('ChartTooltip', () => {
     it('hides totals by default for stacked series', () => {
-        expect(renderToStaticMarkup(<ChartTooltip {...props} />)).not.toContain('Total:');
+        const markup = renderToStaticMarkup(<ChartTooltip {...props} />);
+
+        expect(markup).not.toContain('Total:');
+        expect(markup).toContain('color:#FFD700;font-weight:bold');
     });
 
     it('shows totals when explicitly enabled', () => {
