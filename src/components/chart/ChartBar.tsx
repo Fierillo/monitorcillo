@@ -51,7 +51,7 @@ export default function ChartBar({
                             width={width}
                             height={barAbsHeight}
                             fill={areaConfig.preliminaryColor ?? areaConfig.color}
-                            stroke={areaConfig.color}
+                            stroke={areaConfig.preliminaryBorderColor ?? areaConfig.color}
                             strokeWidth={1}
                             style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
                         />

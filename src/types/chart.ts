@@ -19,6 +19,7 @@ export interface AreaConfig {
     preliminaryKey?: string;
     preliminaryLabel?: string;
     preliminaryColor?: string;
+    preliminaryBorderColor?: string;
     dash?: number[];
     borderColor?: string;
     borderWidth?: number;

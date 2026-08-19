@@ -475,7 +475,7 @@ async function recaudacionConfig(indicator: Indicator): Promise<DetailConfig> {
     const emaeDates = new Set(emaeData.map(row => row.iso_fecha));
     const data: ChartDataRow[] = recaudacionData.map(row => ({ ...row, preliminary: typeof row.iso_fecha === 'string' && !emaeDates.has(row.iso_fecha) }));
     const areas: AreaConfig[] = [
-        { key: 'pctPbi', name: '% PBI mensual real', color: '#FFD700', type: 'bar', yAxisId: 'left', preliminaryKey: 'preliminary', preliminaryLabel: 'Preliminar: sin EMAE del mes' },
+        { key: 'pctPbi', name: '% PBI mensual real', color: '#FFD700', type: 'bar', yAxisId: 'left', preliminaryKey: 'preliminary', preliminaryColor: 'rgba(255, 215, 0, 0.45)', preliminaryBorderColor: 'rgba(255, 215, 0, 0.45)', preliminaryLabel: 'Preliminar: sin EMAE del mes' },
         { key: 'pctPbiMm12', name: '% PBI real MM12 log.', color: '#00BFFF', type: 'line', yAxisId: 'left' },
     ];
     const methodology = [
