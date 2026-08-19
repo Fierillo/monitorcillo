@@ -181,6 +181,7 @@ export type ChartBarProps = {
     selectedMonth: string | null;
     onSelectMonth: (month: string | null) => void;
     selectByMonth?: boolean;
+    isCapturing?: boolean;
 };
 
 export type ChartAreaProps = {

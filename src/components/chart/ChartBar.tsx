@@ -9,6 +9,7 @@ export default function ChartBar({
     selectedMonth,
     onSelectMonth,
     selectByMonth,
+    isCapturing = false,
 }: ChartBarProps) {
     return (
         <Bar
@@ -18,7 +19,7 @@ export default function ChartBar({
             fill={areaConfig.color}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
-            isAnimationActive
+            isAnimationActive={!isCapturing}
             onClick={(data: unknown, _index: number, event: ChartBarClickEvent) => {
                 if (event && event.stopPropagation) {
                     event.stopPropagation();
