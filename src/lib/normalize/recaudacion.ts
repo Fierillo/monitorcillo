@@ -8,11 +8,11 @@ function toPctPbi(realValue: number | null, pbiMensual: number | null): number |
     return (realValue / pbiMensual) * 100;
 }
 
-function movingAverage(values: Array<number | null>, windowSize: number): number | null {
+function logarithmicMovingAverage(values: Array<number | null>, windowSize: number): number | null {
     if (values.length < windowSize) return null;
     const window = values.slice(-windowSize);
-    if (window.some(value => value == null)) return null;
-    return window.reduce<number>((total, value) => total + (value as number), 0) / windowSize;
+    if (window.some(value => value == null || value <= 0)) return null;
+    return Math.exp(window.reduce<number>((total, value) => total + Math.log(value as number), 0) / windowSize);
 }
 
 function residualReal(totalReal: number | null, taxReals: Record<string, number | null>): number | null {
@@ -50,12 +50,12 @@ export function normalizeRecaudacion(rawData: RecaudacionRawRow[]): RecaudacionN
             if (!pbiMensual) return null;
 
             const movingWindow = rows.slice(Math.max(0, index - 11), index + 1);
-            const recaudacionRealMm12 = movingAverage(movingWindow.map(item => item.recaudacionReal), 12);
+            const recaudacionRealMm12 = logarithmicMovingAverage(movingWindow.map(item => item.recaudacionReal), 12);
             const taxPctEntries = RECAUDACION_TAX_TYPES.flatMap(tax => {
                 const realValues = movingWindow.map(item => item.taxReals[tax.key] ?? null);
                 return [
                     [tax.pctKey, toPctPbi(taxReals[tax.key] ?? null, pbiMensual)],
-                    [tax.mm12Key, toPctPbi(movingAverage(realValues, 12), pbiMensual)],
+                    [tax.mm12Key, toPctPbi(logarithmicMovingAverage(realValues, 12), pbiMensual)],
                 ] as const;
             });
             const otrosValues = movingWindow.map(item => item.otrosReal);
@@ -69,7 +69,7 @@ export function normalizeRecaudacion(rawData: RecaudacionRawRow[]): RecaudacionN
                 pctPbiMm12: toPctPbi(recaudacionRealMm12, pbiMensual),
                 ...Object.fromEntries(taxPctEntries),
                 [RECAUDACION_RESIDUAL.pctKey]: toPctPbi(otrosReal, pbiMensual),
-                [RECAUDACION_RESIDUAL.mm12Key]: toPctPbi(movingAverage(otrosValues, 12), pbiMensual),
+                [RECAUDACION_RESIDUAL.mm12Key]: toPctPbi(logarithmicMovingAverage(otrosValues, 12), pbiMensual),
             } satisfies RecaudacionNormalizedRow;
         })
         .filter(notNull)

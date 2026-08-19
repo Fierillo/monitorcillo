@@ -476,12 +476,12 @@ async function recaudacionConfig(indicator: Indicator): Promise<DetailConfig> {
     const data: ChartDataRow[] = recaudacionData.map(row => ({ ...row, preliminary: typeof row.iso_fecha === 'string' && !emaeDates.has(row.iso_fecha) }));
     const areas: AreaConfig[] = [
         { key: 'pctPbi', name: '% PBI mensual real', color: '#FFD700', type: 'bar', yAxisId: 'left', preliminaryKey: 'preliminary', preliminaryLabel: 'Preliminar: sin EMAE del mes' },
-        { key: 'pctPbiMm12', name: '% PBI real MM12', color: '#00BFFF', type: 'line', yAxisId: 'left' },
+        { key: 'pctPbiMm12', name: '% PBI real MM12 log.', color: '#00BFFF', type: 'line', yAxisId: 'left' },
     ];
     const methodology = [
         { title: 'Recaudación Total', description: 'Recursos tributarios mensuales consolidados. El último dato se toma del informe oficial de Hacienda.' },
         { title: 'Normalización a % PBI real', description: 'La recaudación se expresa a precios de enero de 2017 con IPC núcleo y se divide por el PBI real desestacionalizado de INDEC.' },
-        { title: 'Serie MM12', description: 'La línea celeste aplica una media móvil simple de 12 meses al numerador real antes de dividir por el PBI real mensual.' },
+        { title: 'Serie MM12 logarítmica', description: 'La línea celeste aplica una media móvil geométrica trailing de 12 meses al numerador real antes de dividir por el PBI real mensual.' },
         { title: 'Estimación PBI mensual', description: 'El PBI trimestral desestacionalizado se ancla en el mes de publicación y los meses intermedios se estiman con EMAE desestacionalizado.' },
     ];
     const typeAreas: AreaConfig[] = RECAUDACION_BREAKDOWN_TYPES.map(tax => ({

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { normalizeRecaudacion } from '../lib/normalize';
 
 describe('normalizeRecaudacion', () => {
-    it('keeps original PBI ratio and adds a 12-month moving-average series', () => {
+    it('keeps original PBI ratio and adds a logarithmic 12-month moving-average series', () => {
         const rawData = [
             { fecha: '2017-01-01', ipc_nucleo: 100 },
             ...Array.from({ length: 12 }, (_, index) => {
@@ -33,7 +33,8 @@ describe('normalizeRecaudacion', () => {
         });
         expect(normalized.at(-1)?.iso_fecha).toBe('2026-12-01');
         expect(normalized.at(-1)?.pctPbi).toBeCloseTo(9.25, 4);
-        expect(normalized.at(-1)?.pctPbiMm12).toBeCloseTo(8.7917, 4);
+        const geometricMean = Math.exp(Array.from({ length: 12 }, (_, index) => Math.log(100 + index)).reduce((sum, value) => sum + value, 0) / 12);
+        expect(normalized.at(-1)?.pctPbiMm12).toBeCloseTo(geometricMean / 1200 * 100, 8);
         expect(normalized.at(-1)?.ivaPctPbi).toBeCloseTo(3.3333, 4);
         expect(normalized.at(-1)?.gananciasPctPbi).toBeCloseTo(1.6667, 4);
         expect(normalized.at(-1)?.aportesPctPbi).toBeCloseTo(1.25, 4);
