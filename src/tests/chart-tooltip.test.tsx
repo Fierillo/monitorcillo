@@ -69,6 +69,22 @@ describe('ChartTooltip', () => {
         expect(markup).not.toContain('-webkit-text-stroke');
     });
 
+    it('applies an explicit tooltip background only to the configured series', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip
+            chartData={[{ fecha: 'ENE 26', informal: 95.4, formal: 102.1 }]}
+            areaConfigs={[
+                { key: 'informal', name: 'Salario informal', color: '#000000', tooltipBackgroundColor: 'rgba(255, 255, 255, 0.9)', type: 'line' },
+                { key: 'formal', name: 'Salario formal', color: '#FFFFFF', type: 'line' },
+            ]}
+            valueFormat="index"
+            tooltipProps={{ active: true, label: 'ENE 26' }}
+        />);
+
+        expect(markup).toContain('background-color:rgba(255, 255, 255, 0.9)');
+        expect(markup).not.toContain('-webkit-text-stroke');
+        expect(markup).toContain('<span style="color:#FFFFFF">Salario formal:');
+    });
+
     it('omits every series without a value for the active month', () => {
         const markup = renderToStaticMarkup(<ChartTooltip
             chartData={[{ fecha: 'Mes reciente', informal: null, formal: 104.2 }]}

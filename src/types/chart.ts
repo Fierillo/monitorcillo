@@ -34,6 +34,7 @@ export interface AreaConfig {
     transparentTooltip?: boolean;
     hideInTooltip?: boolean;
     tooltipFallbackKey?: string;
+    tooltipBackgroundColor?: string;
     revealStrokeAfterPercent?: number;
 }
 
