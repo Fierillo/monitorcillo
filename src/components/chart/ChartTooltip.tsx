@@ -87,9 +87,9 @@ export default function ChartTooltip({
         <div key={tooltipLabel} style={{ backgroundColor: transparentBackground ? 'rgba(0, 20, 63, 0.62)' : 'rgba(0, 20, 63, 0.92)', border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', maxWidth: compact ? '220px' : undefined, maxHeight: compact ? '55vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '10px' : undefined, lineHeight: compact ? 1.15 : 1.35, whiteSpace: 'nowrap', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}>
             <div style={{ height: isCapturing ? '24px' : undefined, lineHeight: isCapturing ? '20px' : undefined, color: '#FFD700', fontWeight: 'bold', marginBottom: compact ? '2px' : '4px' }}>{rowData.fecha}</div>
             {valueRows.map(row => compact || isCapturing ? (
-                <div key={row.key} style={{ display: 'flex', alignItems: 'center', justifyContent: compact ? 'space-between' : 'flex-start', gap: compact ? '8px' : '4px', height: isCapturing ? '22px' : undefined, lineHeight: isCapturing ? '22px' : undefined, fontWeight: row.borderColor ? 900 : 'bold', whiteSpace: 'nowrap' }}>
-                    <span style={{ color: row.color, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: row.borderColor ? 900 : undefined, WebkitTextStroke: row.borderColor ? `0.75px ${row.borderColor}` : undefined }}>{row.name}</span>
-                    <span style={{ color: row.secondaryColor ?? row.color, fontWeight: row.borderColor ? 900 : undefined, WebkitTextStroke: row.borderColor ? `0.75px ${row.borderColor}` : undefined }}>{compact ? row.formatted : `: ${row.formatted}`}</span>
+                <div key={row.key} style={{ display: 'flex', alignItems: 'center', justifyContent: compact ? 'space-between' : 'flex-start', gap: compact ? '8px' : '4px', height: isCapturing ? '22px' : undefined, lineHeight: isCapturing ? '22px' : undefined, fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    <span style={{ color: row.color, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
+                    <span style={{ color: row.secondaryColor ?? row.color }}>{compact ? row.formatted : `: ${row.formatted}`}</span>
                 </div>
             ) : row.node)}
             {showStackTotal && total != null ? (
@@ -113,14 +113,13 @@ function renderValueRow(rowData: ChartDataRow, area: ChartTooltipProps['areaConf
         name: area.name,
         color: area.color,
         secondaryColor: area.secondaryColor,
-        borderColor: area.borderColor,
         value: numericValue,
         format,
         formatted: formatValueByType(numericValue, format, area.valueDecimals ?? 1),
         node: (
-            <div key={area.key} style={{ fontWeight: area.borderColor ? 900 : 'bold' }}>
-                <span style={{ color: area.color, fontWeight: area.borderColor ? 900 : undefined, WebkitTextStroke: area.borderColor ? `0.75px ${area.borderColor}` : undefined }}>{area.name}: </span>
-                <span style={{ color: area.secondaryColor ?? area.color, fontWeight: area.borderColor ? 900 : undefined, WebkitTextStroke: area.borderColor ? `0.75px ${area.borderColor}` : undefined }}>{formatValueByType(numericValue, format, area.valueDecimals ?? 1)}</span>
+            <div key={area.key} style={{ fontWeight: 'bold' }}>
+                <span style={{ color: area.color }}>{area.name}: </span>
+                <span style={{ color: area.secondaryColor ?? area.color }}>{formatValueByType(numericValue, format, area.valueDecimals ?? 1)}</span>
             </div>
         ),
     };

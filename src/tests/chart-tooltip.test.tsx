@@ -57,7 +57,7 @@ describe('ChartTooltip', () => {
         expect(markup).toContain('Primero</span><span style="color:#fff">: 2,0%');
     });
 
-    it('emphasizes series with a contrasting text border', () => {
+    it('does not apply chart borders to tooltip text', () => {
         const markup = renderToStaticMarkup(<ChartTooltip
             chartData={[{ fecha: 'ENE 26', informal: 95.4 }]}
             areaConfigs={[{ key: 'informal', name: 'Salario informal', color: '#2E2D2C', borderColor: '#FFFFFF', type: 'line' }]}
@@ -65,8 +65,8 @@ describe('ChartTooltip', () => {
             tooltipProps={{ active: true, label: 'ENE 26' }}
         />);
 
-        expect(markup).toContain('color:#2E2D2C;font-weight:900');
-        expect(markup).toContain('-webkit-text-stroke:0.75px #FFFFFF');
+        expect(markup).toContain('color:#2E2D2C');
+        expect(markup).not.toContain('-webkit-text-stroke');
     });
 
     it('omits every series without a value for the active month', () => {
