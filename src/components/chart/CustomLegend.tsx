@@ -56,7 +56,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                     }}
                 >
                     <svg width="14" height="10">
-                        {area.fillPattern === 'diagonal-stripes' ? (
+                        {(area.preliminaryFillPattern ?? area.fillPattern) === 'diagonal-stripes' ? (
                             <defs>
                                 <pattern id={`legend-pattern-${area.key}`} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
                                     <rect width="4" height="4" fill={area.color} />
@@ -64,7 +64,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                                 </pattern>
                             </defs>
                         ) : null}
-                        <rect x="1" y="1" width="12" height="8" fill={area.fillPattern === 'diagonal-stripes' ? `url(#legend-pattern-${area.key})` : area.color} fillOpacity={area.fillPattern ? 1 : 0.45} stroke={area.borderColor ?? area.color} strokeDasharray={area.fillPattern ? undefined : '3 2'} />
+                        <rect x="1" y="1" width="12" height="8" fill={(area.preliminaryFillPattern ?? area.fillPattern) === 'diagonal-stripes' ? `url(#legend-pattern-${area.key})` : area.color} fillOpacity={area.preliminaryFillPattern || area.fillPattern ? 1 : 0.45} stroke={area.preliminaryBorderColor ?? area.borderColor ?? area.color} strokeDasharray={area.preliminaryFillPattern || area.fillPattern ? undefined : '3 2'} />
                     </svg>
                     {area.preliminaryLabel}
                 </span>

@@ -20,6 +20,7 @@ export interface AreaConfig {
     preliminaryLabel?: string;
     preliminaryColor?: string;
     preliminaryBorderColor?: string;
+    preliminaryFillPattern?: 'diagonal-stripes';
     dash?: number[];
     borderColor?: string;
     borderWidth?: number;

@@ -48,7 +48,7 @@ describe('public spending official source', () => {
         const data = addPublicSpendingEstimates([{ fecha: '2024', iso_fecha: '2024-01-01', total: 35.6 }]);
 
         expect(data[0]).toMatchObject({ fecha: '2024', totalEstimate: 35.6 });
-        expect(data[1]).toMatchObject({ fecha: '2025', nationEstimate: 15, provincesEstimate: 15, municipalitiesEstimate: 3, interestEstimate: 1, totalEstimate: 34 });
+        expect(data[1]).toMatchObject({ fecha: '2025', nationEstimate: 15, provincesEstimate: 15, municipalitiesEstimate: 3, interestEstimate: 1, totalEstimate: 34, estimate: true });
         expect(data).toHaveLength(2);
     });
 });

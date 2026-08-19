@@ -82,6 +82,7 @@ export function addPublicSpendingEstimates(data: ChartDataRow[]): ChartDataRow[]
             municipalitiesEstimate: 3,
             interestEstimate: 1,
             totalEstimate: 34,
+            estimate: true,
         },
     ];
 }

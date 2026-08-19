@@ -51,16 +51,26 @@ export default function ChartBar({
                 const patternId = `bar-pattern-${areaConfig.key}-${payload?.iso_fecha ?? 'row'}`.replace(/[^a-zA-Z0-9-_]/g, '-');
                 if (isPreliminary) {
                     return (
-                        <Rectangle
-                            x={rectX}
-                            y={rectY}
-                            width={rectWidth}
-                            height={rectHeight}
-                            fill={areaConfig.preliminaryColor ?? areaConfig.color}
-                            stroke={areaConfig.preliminaryBorderColor ?? areaConfig.color}
-                            strokeWidth={areaConfig.borderWidth ?? 1}
-                            style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
-                        />
+                        <g>
+                            {areaConfig.preliminaryFillPattern === 'diagonal-stripes' ? (
+                                <defs>
+                                    <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                                        <rect width="6" height="6" fill={areaConfig.preliminaryColor ?? areaConfig.color} />
+                                        <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
+                                    </pattern>
+                                </defs>
+                            ) : null}
+                            <Rectangle
+                                x={rectX}
+                                y={rectY}
+                                width={rectWidth}
+                                height={rectHeight}
+                                fill={areaConfig.preliminaryFillPattern === 'diagonal-stripes' ? `url(#${patternId})` : (areaConfig.preliminaryColor ?? areaConfig.color)}
+                                stroke={areaConfig.preliminaryBorderColor ?? areaConfig.color}
+                                strokeWidth={areaConfig.borderWidth ?? 1}
+                                style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
+                            />
+                        </g>
                     );
                 }
 
