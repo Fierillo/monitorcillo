@@ -24,6 +24,7 @@ export interface AreaConfig {
     borderColor?: string;
     borderWidth?: number;
     fill?: boolean;
+    fillPattern?: 'diagonal-stripes';
     strokeWidth?: number;
     legendFilled?: boolean;
     connectNulls?: boolean;

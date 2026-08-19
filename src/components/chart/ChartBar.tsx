@@ -42,39 +42,55 @@ export default function ChartBar({
                 const fillOpacity = isPreliminary ? 0.45 : (areaConfig.fill === false ? 0 : 1);
                 const strokeColor = areaConfig.borderColor ?? (isSelected ? '#FFFFFF' : isPreliminary ? areaConfig.color : 'none');
                 const strokeWidth = areaConfig.borderWidth ?? (isSelected || isPreliminary ? 1 : 0);
+                const borderInset = strokeWidth / 2;
+                const rectX = (x ?? 0) + borderInset;
+                const rectY = (barY ?? 0) + borderInset;
+                const rectWidth = Math.max(0, (width ?? 0) - strokeWidth);
+                const rectHeight = Math.max(0, barAbsHeight - strokeWidth);
                 const dash = areaConfig.dash;
+                const patternId = `bar-pattern-${areaConfig.key}-${payload?.iso_fecha ?? 'row'}`.replace(/[^a-zA-Z0-9-_]/g, '-');
                 if (isPreliminary) {
                     return (
                         <Rectangle
-                            x={x}
-                            y={barY}
-                            width={width}
-                            height={barAbsHeight}
+                            x={rectX}
+                            y={rectY}
+                            width={rectWidth}
+                            height={rectHeight}
                             fill={areaConfig.preliminaryColor ?? areaConfig.color}
                             stroke={areaConfig.preliminaryBorderColor ?? areaConfig.color}
-                            strokeWidth={1}
+                            strokeWidth={areaConfig.borderWidth ?? 1}
                             style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
                         />
                     );
                 }
 
                 return (
-                    <Rectangle
-                        x={x}
-                        y={barY}
-                        width={width}
-                        height={barAbsHeight}
-                        fill={areaConfig.color}
-                        fillOpacity={fillOpacity}
-                        stroke={strokeColor}
-                        strokeDasharray={dash ? dash.join(' ') : (isPreliminary && !isSelected ? '4 3' : undefined)}
-                        strokeWidth={strokeWidth}
-                        style={{ 
-                            opacity: isDimmed ? opacity * 0.2 : opacity, 
-                            cursor: 'pointer', 
-                            outline: 'none'
-                        }}
-                    />
+                    <g>
+                        {areaConfig.fillPattern === 'diagonal-stripes' ? (
+                            <defs>
+                                <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                                    <rect width="6" height="6" fill={areaConfig.color} />
+                                    <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
+                                </pattern>
+                            </defs>
+                        ) : null}
+                        <Rectangle
+                            x={rectX}
+                            y={rectY}
+                            width={rectWidth}
+                            height={rectHeight}
+                            fill={areaConfig.fillPattern === 'diagonal-stripes' ? `url(#${patternId})` : areaConfig.color}
+                            fillOpacity={fillOpacity}
+                            stroke={strokeColor}
+                            strokeDasharray={dash ? dash.join(' ') : (isPreliminary && !isSelected ? '4 3' : undefined)}
+                            strokeWidth={strokeWidth}
+                            style={{
+                                opacity: isDimmed ? opacity * 0.2 : opacity,
+                                cursor: 'pointer',
+                                outline: 'none'
+                            }}
+                        />
+                    </g>
                 );
             }}
         />

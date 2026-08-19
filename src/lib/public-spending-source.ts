@@ -1,67 +1,100 @@
+import * as XLSX from 'xlsx';
 import type { ChartDataRow } from '@/types';
 
-type SpendingPoint = {
-    year: number;
-    nation: number;
-    provinces: number;
-    municipalities: number;
-    interest: number;
+const PUBLIC_SPENDING_URLS = {
+    consolidated: 'https://www.argentina.gob.ar/sites/default/files/gasto%5Fpublico%5Fconsolidado%5Fdesde%5F1980%5F2.xls',
+    nation: 'https://www.argentina.gob.ar/sites/default/files/gasto%5Fpublico%5Fnacional%5Fdesde%5F1980%5F2.xls',
+    provinces: 'https://www.argentina.gob.ar/sites/default/files/gasto%5Fpublico%5Fprovincial%5Fdesde%5F1980%5F2.xls',
+    municipalities: 'https://www.argentina.gob.ar/sites/default/files/gasto%5Fpublico%5Fmunicipal%5Fdesde%5F1980%5F1.xls',
+} as const;
+
+type PublicSpendingYear = {
+    total: number;
+    debtService: number;
+    preliminary: boolean;
 };
 
-const SPENDING_ANCHORS: SpendingPoint[] = [
-    { year: 1981, nation: 17.5, provinces: 8, municipalities: 1.5, interest: 4 },
-    { year: 1984, nation: 14.5, provinces: 7, municipalities: 1.5, interest: 3 },
-    { year: 1987, nation: 20, provinces: 9, municipalities: 2, interest: 4 },
-    { year: 1990, nation: 17.5, provinces: 9, municipalities: 2.5, interest: 1.5 },
-    { year: 1995, nation: 15, provinces: 11, municipalities: 2.5, interest: 4 },
-    { year: 1998, nation: 13.5, provinces: 11.5, municipalities: 2, interest: 3.5 },
-    { year: 2001, nation: 14, provinces: 14, municipalities: 3, interest: 5 },
-    { year: 2002, nation: 13, provinces: 11, municipalities: 2, interest: 3 },
-    { year: 2004, nation: 12, provinces: 10, municipalities: 3, interest: 2 },
-    { year: 2007, nation: 13, provinces: 13, municipalities: 3, interest: 3 },
-    { year: 2009, nation: 19, provinces: 16, municipalities: 3, interest: 2 },
-    { year: 2010, nation: 20, provinces: 13, municipalities: 3, interest: 2 },
-    { year: 2013, nation: 22, provinces: 16, municipalities: 3, interest: 2 },
-    { year: 2016, nation: 24, provinces: 16, municipalities: 3, interest: 6 },
-    { year: 2018, nation: 21, provinces: 15, municipalities: 3, interest: 5 },
-    { year: 2019, nation: 20, provinces: 15, municipalities: 3, interest: 6 },
-    { year: 2020, nation: 25, provinces: 16, municipalities: 3, interest: 4 },
-    { year: 2021, nation: 22, provinces: 15, municipalities: 3, interest: 3 },
-    { year: 2023, nation: 20, provinces: 15, municipalities: 3, interest: 4 },
-    { year: 2024, nation: 15, provinces: 15, municipalities: 3, interest: 2 },
-    { year: 2025, nation: 15, provinces: 15, municipalities: 3, interest: 1 },
-];
+export type PublicSpendingSeries = Map<number, PublicSpendingYear>;
 
-function interpolate(start: SpendingPoint, end: SpendingPoint, year: number, key: keyof Omit<SpendingPoint, 'year'>): number {
-    const progress = (year - start.year) / (end.year - start.year);
-    return Number((start[key] + (end[key] - start[key]) * progress).toFixed(2));
+function numericValue(value: unknown): number | null {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
 }
 
-function spendingPointForYear(year: number): SpendingPoint {
-    const exact = SPENDING_ANCHORS.find(point => point.year === year);
-    if (exact) return exact;
+export function parsePublicSpendingWorkbook(buffer: ArrayBuffer | Uint8Array): PublicSpendingSeries {
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const sheet = workbook.Sheets['% del PIB'];
+    if (!sheet) throw new Error('Failed to parse public spending workbook. Missing "% del PIB" sheet.');
 
-    const endIndex = SPENDING_ANCHORS.findIndex(point => point.year > year);
-    const start = SPENDING_ANCHORS[endIndex - 1];
-    const end = SPENDING_ANCHORS[endIndex];
-    return {
-        year,
-        nation: interpolate(start, end, year, 'nation'),
-        provinces: interpolate(start, end, year, 'provinces'),
-        municipalities: interpolate(start, end, year, 'municipalities'),
-        interest: interpolate(start, end, year, 'interest'),
-    };
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: true });
+    const headers = rows[3] ?? [];
+    const totalRow = rows.find(row => row[0] === '1.0');
+    const debtServiceRow = rows.find(row => row[0] === '1.4');
+    if (!totalRow || !debtServiceRow) throw new Error('Failed to parse public spending workbook. Missing total or debt service row.');
+
+    const series: PublicSpendingSeries = new Map();
+    for (let column = 2; column < headers.length; column += 1) {
+        const header = String(headers[column]);
+        const match = header.match(/^(\d{4})(\*)?$/);
+        const total = numericValue(totalRow[column]);
+        const debtService = numericValue(debtServiceRow[column]);
+        if (!match || total == null || debtService == null) continue;
+        series.set(Number(match[1]), { total, debtService, preliminary: match[2] === '*' });
+    }
+
+    if (series.size === 0) throw new Error('Failed to parse public spending workbook. No annual observations found.');
+    return series;
 }
 
-export const PUBLIC_SPENDING_CHART_DATA: ChartDataRow[] = Array.from({ length: 45 }, (_, index) => {
-    const point = spendingPointForYear(1981 + index);
-    return {
-        fecha: String(point.year),
-        iso_fecha: `${point.year}-01-01`,
-        nation: point.nation,
-        provinces: point.provinces,
-        municipalities: point.municipalities,
-        interest: point.interest,
-        total: Number((point.nation + point.provinces + point.municipalities + point.interest).toFixed(2)),
-    };
-});
+export function buildPublicSpendingChartData(
+    consolidated: PublicSpendingSeries,
+    nation: PublicSpendingSeries,
+    provinces: PublicSpendingSeries,
+    municipalities: PublicSpendingSeries,
+): ChartDataRow[] {
+    return [...consolidated.entries()].flatMap(([year, consolidatedRow]) => {
+        const nationRow = nation.get(year);
+        const provincesRow = provinces.get(year);
+        const municipalitiesRow = municipalities.get(year);
+        if (!nationRow || !provincesRow || !municipalitiesRow) return [];
+
+        return [{
+            fecha: String(year),
+            iso_fecha: `${year}-01-01`,
+            nation: nationRow.total - nationRow.debtService,
+            provinces: provincesRow.total - provincesRow.debtService,
+            municipalities: municipalitiesRow.total - municipalitiesRow.debtService,
+            interest: consolidatedRow.debtService,
+            total: consolidatedRow.total,
+            preliminary: consolidatedRow.preliminary || nationRow.preliminary || provincesRow.preliminary || municipalitiesRow.preliminary,
+        }];
+    });
+}
+
+export function addPublicSpendingEstimates(data: ChartDataRow[]): ChartDataRow[] {
+    return [
+        ...data.map(row => row.fecha === '2024' ? { ...row, totalEstimate: row.total } : row),
+        {
+            fecha: '2025',
+            iso_fecha: '2025-01-01',
+            nationEstimate: 15,
+            provincesEstimate: 15,
+            municipalitiesEstimate: 3,
+            interestEstimate: 1,
+            totalEstimate: 34,
+        },
+    ];
+}
+
+async function fetchWorkbook(url: string): Promise<ArrayBuffer> {
+    const response = await fetch(url, { next: { revalidate: 86400 } });
+    if (!response.ok) throw new Error(`Failed to fetch public spending workbook ${url}. HTTP ${response.status}.`);
+    return response.arrayBuffer();
+}
+
+export async function fetchPublicSpendingChartData(): Promise<ChartDataRow[]> {
+    const [consolidated, nation, provinces, municipalities] = await Promise.all(
+        Object.values(PUBLIC_SPENDING_URLS).map(async url => parsePublicSpendingWorkbook(await fetchWorkbook(url))),
+    );
+    return addPublicSpendingEstimates(buildPublicSpendingChartData(consolidated, nation, provinces, municipalities));
+}

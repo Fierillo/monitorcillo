@@ -7,7 +7,7 @@ import { safeGetIndicatorData } from './storage';
 import { getRawData } from './db';
 import { CABA_RENT_SERIES, calculateRentSalaryBurden } from './purchasing-power-cost';
 import { RIGI_INVESTMENT_CHART_DATA, RIGI_INVESTMENTS } from './investments-source';
-import { PUBLIC_SPENDING_CHART_DATA } from './public-spending-source';
+import { fetchPublicSpendingChartData } from './public-spending-source';
 
 type DetailConfig = Omit<IndicatorCompositeViewProps, 'title' | 'subtitle'> & { subtitle?: string };
 
@@ -28,31 +28,40 @@ export async function getIndicatorDetailConfig(indicator: Indicator): Promise<De
     return null;
 }
 
-function publicSpendingConfig(indicator: Indicator): DetailConfig {
+async function publicSpendingConfig(indicator: Indicator): Promise<DetailConfig> {
+    const data = await fetchPublicSpendingChartData();
     const areas: AreaConfig[] = [
-        { key: 'nation', name: 'Nación', color: '#FFD700', type: 'bar', stackId: 'spending' },
-        { key: 'provinces', name: 'Provincias', color: '#00BFFF', type: 'bar', stackId: 'spending' },
-        { key: 'municipalities', name: 'Municipios', color: '#22C55E', type: 'bar', stackId: 'spending' },
-        { key: 'interest', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending' },
-        { key: 'total', name: 'Gasto total', color: '#FFFFFF', type: 'line', strokeWidth: 3, showDots: false },
+        { key: 'nation', name: 'Nación', color: '#8B5CF6', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'preliminary', preliminaryColor: 'rgba(139, 92, 246, 0.45)', preliminaryBorderColor: 'rgba(255, 215, 0, 0.45)', preliminaryLabel: 'Preliminar: cifras MECON' },
+        { key: 'provinces', name: 'Provincias', color: '#0284C7', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'preliminary', preliminaryColor: 'rgba(2, 132, 199, 0.45)', preliminaryBorderColor: 'rgba(255, 215, 0, 0.45)' },
+        { key: 'municipalities', name: 'Municipios', color: '#7DD3FC', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'preliminary', preliminaryColor: 'rgba(125, 211, 252, 0.45)', preliminaryBorderColor: 'rgba(255, 215, 0, 0.45)' },
+        { key: 'interest', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'preliminary', preliminaryColor: 'rgba(148, 163, 184, 0.45)', preliminaryBorderColor: 'rgba(255, 215, 0, 0.45)' },
+        { key: 'nationEstimate', name: 'Nación', color: '#8B5CF6', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, fillPattern: 'diagonal-stripes', legendKey: 'nation', hideInLegend: true, preliminaryLabel: 'Estimación 2025: Econviews' },
+        { key: 'provincesEstimate', name: 'Provincias', color: '#0284C7', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, fillPattern: 'diagonal-stripes', legendKey: 'provinces', hideInLegend: true },
+        { key: 'municipalitiesEstimate', name: 'Municipios', color: '#7DD3FC', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, fillPattern: 'diagonal-stripes', legendKey: 'municipalities', hideInLegend: true },
+        { key: 'interestEstimate', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, fillPattern: 'diagonal-stripes', legendKey: 'interest', hideInLegend: true },
+        { key: 'total', name: 'Gasto total', color: '#FFD700', type: 'line', strokeWidth: 3, showDots: false, hideInTooltip: true },
+        { key: 'totalEstimate', name: 'Gasto total estimado', color: 'rgba(255, 215, 0, 0.7)', type: 'line', strokeWidth: 3, showDots: false, dash: [6, 3], legendKey: 'total', hideInLegend: true, hideInTooltip: true },
     ];
     const methodology: MethodologyItem[] = [
-        { title: 'Alcance', description: 'Gasto primario consolidado de Nación, provincias y municipios más intereses de los tres niveles de gobierno, expresado como porcentaje del PBI.' },
-        { title: 'Consolidación', description: 'La apertura busca evitar la duplicación de transferencias entre niveles de gobierno. Los componentes representan el gasto atribuible a cada jurisdicción.' },
-        { title: 'Serie provisional', description: 'Reconstrucción visual inspirada en la serie publicada por Econviews sobre datos del Ministerio de Economía. Los años intermedios se interpolan entre hitos y no sustituyen la tabla estadística original.' },
-        { title: 'Lectura', description: 'Las barras muestran la composición por nivel de gobierno e intereses. La línea blanca representa la suma de los cuatro componentes.' },
+        { title: 'Alcance', description: 'Erogaciones corrientes y de capital devengadas por el Sector Público No Financiero de Nación, provincias, CABA y municipios, incluyendo obras sociales.' },
+        { title: 'Consolidación', description: 'MECON imputa el gasto en el nivel de gobierno ejecutor y elimina transferencias entre niveles para evitar duplicaciones.' },
+        { title: 'Gasto primario', description: 'Nación, provincias y municipios se muestran netos de servicios de la deuda pública. Los intereses de los tres niveles se presentan como un componente separado.' },
+        { title: 'Serie oficial', description: 'Base de Gasto Público Consolidado 1980-2024 del Ministerio de Economía, actualizada en marzo de 2026. MECON identifica 2021-2024 como cifras provisionales.' },
+        { title: 'Estimación 2025', description: 'Composición publicada por Econviews sobre datos de MECON y estimaciones propias: Nación 15%, provincias 15%, municipios 3% e intereses 1% del PBI.' },
+        { title: 'Lectura', description: 'Las barras muestran la composición por nivel de gobierno e intereses. La línea dorada representa la suma de los cuatro componentes.' },
     ];
 
     return {
-        subtitle: `Fuente: ${indicator.fuente} | Serie provisional`,
+        subtitle: `Fuente: ${indicator.fuente} | Devengado anual`,
         chartTitle: 'Gasto primario consolidado más intereses',
-        data: PUBLIC_SPENDING_CHART_DATA,
+        data,
         areas,
         methodology,
         valueFormat: 'percent',
         yAxisDecimals: 0,
         yAxisLabel: '% del PBI',
         leftYAxisDomain: [0, 55],
+        showTooltipTotal: true,
         indicatorId: indicator.id,
     };
 }
