@@ -7,6 +7,7 @@ import { safeGetIndicatorData } from './storage';
 import { getRawData } from './db';
 import { CABA_RENT_SERIES, calculateRentSalaryBurden } from './purchasing-power-cost';
 import { RIGI_INVESTMENT_CHART_DATA, RIGI_INVESTMENTS } from './investments-source';
+import { PUBLIC_SPENDING_CHART_DATA } from './public-spending-source';
 
 type DetailConfig = Omit<IndicatorCompositeViewProps, 'title' | 'subtitle'> & { subtitle?: string };
 
@@ -19,11 +20,41 @@ export async function getIndicatorDetailConfig(indicator: Indicator): Promise<De
     if (indicator.id === 'recaudacion') return recaudacionConfig(indicator);
     if (indicator.id === 'inversiones') return investmentsConfig(indicator);
     if (indicator.id === 'deuda') return deudaConfig(indicator);
+    if (indicator.id === 'gasto-publico') return publicSpendingConfig(indicator);
     if (indicator.id === 'pobreza') return pobrezaConfig(indicator);
     if (indicator.id === 'inflacion') return inflacionConfig(indicator);
     if (indicator.id === 'icg') return icgConfig(indicator);
     if (indicator.id === 'balanza-comercial') return balanzaConfig(indicator);
     return null;
+}
+
+function publicSpendingConfig(indicator: Indicator): DetailConfig {
+    const areas: AreaConfig[] = [
+        { key: 'nation', name: 'Nación', color: '#FFD700', type: 'bar', stackId: 'spending' },
+        { key: 'provinces', name: 'Provincias', color: '#00BFFF', type: 'bar', stackId: 'spending' },
+        { key: 'municipalities', name: 'Municipios', color: '#22C55E', type: 'bar', stackId: 'spending' },
+        { key: 'interest', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending' },
+        { key: 'total', name: 'Gasto total', color: '#FFFFFF', type: 'line', strokeWidth: 3, showDots: false },
+    ];
+    const methodology: MethodologyItem[] = [
+        { title: 'Alcance', description: 'Gasto primario consolidado de Nación, provincias y municipios más intereses de los tres niveles de gobierno, expresado como porcentaje del PBI.' },
+        { title: 'Consolidación', description: 'La apertura busca evitar la duplicación de transferencias entre niveles de gobierno. Los componentes representan el gasto atribuible a cada jurisdicción.' },
+        { title: 'Serie provisional', description: 'Reconstrucción visual inspirada en la serie publicada por Econviews sobre datos del Ministerio de Economía. Los años intermedios se interpolan entre hitos y no sustituyen la tabla estadística original.' },
+        { title: 'Lectura', description: 'Las barras muestran la composición por nivel de gobierno e intereses. La línea blanca representa la suma de los cuatro componentes.' },
+    ];
+
+    return {
+        subtitle: `Fuente: ${indicator.fuente} | Serie provisional`,
+        chartTitle: 'Gasto primario consolidado más intereses',
+        data: PUBLIC_SPENDING_CHART_DATA,
+        areas,
+        methodology,
+        valueFormat: 'percent',
+        yAxisDecimals: 0,
+        yAxisLabel: '% del PBI',
+        leftYAxisDomain: [0, 55],
+        indicatorId: indicator.id,
+    };
 }
 
 function investmentsConfig(indicator: Indicator): DetailConfig {
