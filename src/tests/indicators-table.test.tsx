@@ -56,6 +56,7 @@ describe('IndicatorsTable text fitting', () => {
         }]} />);
 
         expect(markup).toContain('w-max min-w-full');
+        expect(markup).toContain('border-spacing-x-1');
         expect(markup).toContain('lg:w-[13%]');
         expect(markup).toContain('lg:w-[23%]');
         expect(markup).toContain('Último dato');

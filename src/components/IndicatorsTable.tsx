@@ -76,7 +76,7 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
     return (
         <>
             <div className="overflow-x-auto border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 w-full">
-                <table className="w-max min-w-full lg:w-full lg:min-w-[900px] lg:table-fixed text-left border-collapse">
+                <table className="w-max min-w-full border-separate border-spacing-x-1 border-spacing-y-0 text-left lg:w-full lg:min-w-[900px] lg:table-fixed lg:border-collapse lg:border-spacing-0">
                     <colgroup>
                         <col className="lg:w-[9%]" />
                         <col className="lg:w-[13%]" />
