@@ -2,6 +2,7 @@
 
 import { Line } from 'recharts';
 import type { ChartDataRow, ChartLineProps } from '@/types/chart';
+import { handleSeriesCtrlClick } from './seriesInteraction';
 import { formatValueByType } from './utils';
 
 type LineLabelProps = {
@@ -35,7 +36,7 @@ function isValueChange(data: ChartDataRow[] | undefined, index: number, key: str
     return !hasNext || current !== next;
 }
 
-export default function ChartLine({ areaConfig, isDimmed, data, isCapturing = false }: ChartLineProps) {
+export default function ChartLine({ areaConfig, isDimmed, data, isCapturing = false, onCtrlClick }: ChartLineProps) {
     const color = areaConfig.color;
     const gradientId = `line-reveal-${areaConfig.key}`;
     const stroke = areaConfig.revealStrokeAfterPercent == null ? color : `url(#${gradientId})`;
@@ -142,6 +143,21 @@ export default function ChartLine({ areaConfig, isDimmed, data, isCapturing = fa
             yAxisId={areaConfig.yAxisId || 'left'}
             tooltipType="none"
             style={{ opacity: isDimmed ? 0.2 : 1 }}
+        /> : null}
+        {!isCapturing ? <Line
+            type="monotone"
+            dataKey={areaConfig.key}
+            stroke="transparent"
+            strokeWidth={Math.max(12, strokeWidth)}
+            dot={false}
+            activeDot={false}
+            connectNulls={areaConfig.connectNulls}
+            isAnimationActive={false}
+            name={areaConfig.name}
+            yAxisId={areaConfig.yAxisId || 'left'}
+            tooltipType="none"
+            pointerEvents="stroke"
+            onClick={(_data, event) => handleSeriesCtrlClick(event, onCtrlClick)}
         /> : null}
     </>;
 }

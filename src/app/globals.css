@@ -37,6 +37,11 @@ h1, h2, h3, h4, h5, h6, .imperial-title {
   font-family: var(--font-cinzel), serif;
 }
 
+.chainsaw-cursor,
+.chainsaw-cursor * {
+  cursor: none !important;
+}
+
 *:focus {
   outline: none !important;
 }

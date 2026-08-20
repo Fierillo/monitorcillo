@@ -139,7 +139,8 @@ export type ChartCrosshairState = {
     tooltipPosition?: { x: number; y: number };
 };
 
-export type ChartBarClickEvent = {
+export type ChartSeriesClickEvent = {
+    ctrlKey?: boolean;
     stopPropagation?: () => void;
 };
 
@@ -186,11 +187,13 @@ export type ChartBarProps = {
     onSelectMonth: (month: string | null) => void;
     selectByMonth?: boolean;
     isCapturing?: boolean;
+    onCtrlClick: () => void;
 };
 
 export type ChartAreaProps = {
     areaConfig: AreaConfig;
     isDimmed: boolean;
+    onCtrlClick: () => void;
 };
 
 export type ChartLineProps = {
@@ -198,6 +201,7 @@ export type ChartLineProps = {
     isDimmed: boolean;
     data?: ChartDataRow[];
     isCapturing?: boolean;
+    onCtrlClick: () => void;
 };
 
 export type CustomLegendProps = {

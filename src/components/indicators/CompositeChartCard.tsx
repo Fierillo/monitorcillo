@@ -1,5 +1,6 @@
 import { ImageDown } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { CartesianGrid, ComposedChart, Customized, ReferenceDot, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts';
@@ -104,6 +105,9 @@ function ChartHeader({ onPrepareDownload, onDownloadChart, isCapturing, viewSele
 }
 
 function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chartContainerRef: React.RefObject<HTMLDivElement | null> }) {
+    const chainsawCursorRef = useRef<HTMLImageElement | null>(null);
+    const pointerPositionRef = useRef<{ left: number; top: number } | null>(null);
+    const [isControlPressed, setIsControlPressed] = useState(false);
     const renderedAreas = activeAreas(props.areas, props.highlightedAreas);
     const hasBars = renderedAreas.some(area => area.type === 'bar');
     const minimumTouchWidth = props.isMobile && hasBars ? props.visibleData.length * 16 : 0;
@@ -112,16 +116,78 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
         ? { outline: 'none', width: 1240, height: 780 }
         : { outline: 'none', width: '100%', minWidth: minimumTouchWidth || undefined };
 
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Control') setIsControlPressed(true);
+        };
+        const handleKeyUp = (event: KeyboardEvent) => {
+            if (event.key === 'Control') setIsControlPressed(false);
+        };
+        const handleBlur = () => setIsControlPressed(false);
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        window.addEventListener('blur', handleBlur);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+            window.removeEventListener('blur', handleBlur);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!isControlPressed || !chainsawCursorRef.current || !pointerPositionRef.current) return;
+        chainsawCursorRef.current.style.left = `${pointerPositionRef.current.left}px`;
+        chainsawCursorRef.current.style.top = `${pointerPositionRef.current.top}px`;
+        chainsawCursorRef.current.style.visibility = 'visible';
+    }, [isControlPressed]);
+
     return (
         <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? 'min-h-[780px]' : 'min-h-[300px] sm:min-h-[500px]'} ${props.isMobile && props.axisModeSelector ? 'pt-12' : ''} overflow-visible`} style={captureCanvasStyle}>
             {props.isMobile && props.axisModeSelector && !props.isCapturing ? <div className="no-capture absolute left-1/2 top-0 z-10 flex -translate-x-1/2 flex-col items-center gap-1 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-imperial-gold"><span>{props.yAxisLabel}</span>{props.axisModeSelector}</div> : null}
             {!props.isMobile && props.yAxisLabel && <AxisLabel label={props.isCapturing && props.axisModeLabel ? `${props.yAxisLabel} · ${props.axisModeLabel}` : props.yAxisLabel} control={!props.isCapturing ? props.axisModeSelector : null} />}
             <div className={`relative min-w-0 flex-1 ${minimumTouchWidth ? 'overflow-x-auto overflow-y-hidden' : 'overflow-hidden'}`} style={{ touchAction: minimumTouchWidth ? 'pan-x pan-y' : undefined }}>
-                <div ref={chartContainerRef} className="relative h-full overflow-hidden" style={captureChartStyle} tabIndex={-1}>
+                <div
+                    ref={chartContainerRef}
+                    className={`relative h-full overflow-hidden ${isControlPressed && !props.isCapturing ? 'chainsaw-cursor' : ''}`}
+                    style={captureChartStyle}
+                    tabIndex={-1}
+                    onPointerMove={(event) => {
+                        const bounds = event.currentTarget.getBoundingClientRect();
+                        const position = {
+                            left: event.clientX - bounds.left - 1,
+                            top: event.clientY - bounds.top - 10,
+                        };
+                        pointerPositionRef.current = position;
+                        const cursor = chainsawCursorRef.current;
+                        if (!cursor) return;
+                        cursor.style.left = `${position.left}px`;
+                        cursor.style.top = `${position.top}px`;
+                        cursor.style.visibility = 'visible';
+                    }}
+                    onPointerLeave={() => {
+                        pointerPositionRef.current = null;
+                        if (chainsawCursorRef.current) chainsawCursorRef.current.style.visibility = 'hidden';
+                    }}
+                >
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center select-none"><span className="watermark text-imperial-gold/21 text-xl font-sans font-bold uppercase tracking-[0.5em] sm:text-4xl">@fierillo</span></div>
-                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
+                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} isControlPressed={isControlPressed} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
                     {props.crosshair?.locked && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} isCapturing={props.isCapturing} /> : null}
                     {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} isCapturing /> : null}
+                    {isControlPressed && !props.isCapturing ? (
+                        <Image
+                            ref={chainsawCursorRef}
+                            src="/chainsaw-cursor.svg"
+                            alt=""
+                            aria-hidden
+                            width={24}
+                            height={24}
+                            unoptimized
+                            draggable={false}
+                            className="pointer-events-none absolute z-30 select-none"
+                            style={{ left: 0, top: 0, visibility: 'hidden' }}
+                        />
+                    ) : null}
                 </div>
             </div>
             {!props.isMobile && props.secondaryYAxis && <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right />}
@@ -133,7 +199,8 @@ function AxisLabel({ label, color, right = false, control }: { label: string; co
     return <div className={`flex ${control ? 'w-14' : 'w-5'} shrink-0 items-center justify-center`}><div className={`${right ? 'rotate-90' : '-rotate-90'} flex flex-col items-center gap-1 whitespace-nowrap ${color ? '' : 'text-imperial-gold'} font-bold text-xs uppercase tracking-widest`} style={{ color }}><span>{label}</span>{control}</div></div>;
 }
 
-function ResponsiveComposedChart(props: ChartRenderProps) {
+function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: boolean }) {
+    const { isControlPressed, onHoverTooltipChange } = props;
     const hoverVerticalRef = useRef<SVGLineElement | null>(null);
     const hoverHorizontalRef = useRef<SVGLineElement | null>(null);
     const rafRef = useRef<number | null>(null);
@@ -171,8 +238,14 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
         hoverHorizontalRef.current?.setAttribute('display', 'none');
     }, []);
 
+    useEffect(() => {
+        if (!isControlPressed) return;
+        hideHoverCrosshair();
+        onHoverTooltipChange(null);
+    }, [hideHoverCrosshair, isControlPressed, onHoverTooltipChange]);
+
     const updateHoverCrosshair = (state: ChartClickState | null) => {
-        if (props.crosshair?.locked || props.isCapturing) {
+        if (props.crosshair?.locked || props.isCapturing || isControlPressed) {
             hideHoverCrosshair();
             return;
         }
@@ -223,6 +296,7 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
                 setActiveComparisonGroup(null);
             }}
             onClick={(e: ChartClickState | null) => {
+                if (props.isControlPressed) return;
                 hideHoverCrosshair();
                 props.onCrosshairClick(e);
                 if (!e?.activePayload?.length || e.activeTooltipIndex == null) props.onSelectMonth(null);
@@ -239,7 +313,7 @@ function ResponsiveComposedChart(props: ChartRenderProps) {
             {lockedSeriesPoints.map(({ area, value }) => <MandatePoint key={`locked-${area.key}`} x={lockedRow![props.xAxisKey] as string | number} y={value} yAxisId={area.yAxisId ?? 'left'} primaryColor={area.color} secondaryColor={area.secondaryColor} />)}
             <Customized component={(chartState: unknown) => <RangePreviewGuides previewRange={props.rangePreview} committedRange={props.committedRange} sortedData={props.sortedData} xAxisKey={props.xAxisKey} chartState={chartState} />} />
             <HoverCrosshair verticalRef={hoverVerticalRef} horizontalRef={hoverHorizontalRef} width={props.chartSize.width} height={props.chartSize.height} />
-            <ChartCrosshair crosshair={props.crosshair} width={props.chartSize.width} height={props.chartSize.height} onUnlock={props.onCrosshairUnlock} />
+            <ChartCrosshair crosshair={props.crosshair} width={props.chartSize.width} height={props.chartSize.height} onUnlock={props.onCrosshairUnlock} isControlPressed={props.isControlPressed} />
         </ComposedChart>
     );
 }
@@ -299,7 +373,7 @@ function HoverCrosshair({ verticalRef, horizontalRef, width, height }: { vertica
     );
 }
 
-function ChartCrosshair({ crosshair, width, height, onUnlock }: { crosshair: ChartCrosshairState | null; width: number; height: number; onUnlock: () => void }) {
+function ChartCrosshair({ crosshair, width, height, onUnlock, isControlPressed }: { crosshair: ChartCrosshairState | null; width: number; height: number; onUnlock: () => void; isControlPressed: boolean }) {
     const [isHovered, setIsHovered] = useState(false);
     if (!crosshair) return null;
     const stroke = crosshair.locked ? (isHovered ? '#FFFFFF' : '#FFD700AA') : '#FFFFFF99';
@@ -319,8 +393,8 @@ function ChartCrosshair({ crosshair, width, height, onUnlock }: { crosshair: Cha
         <g className="recharts-crosshair-guide">
             <line x1={crosshair.x} x2={crosshair.x} y1={0} y2={height} stroke={stroke} strokeWidth={strokeWidth} strokeDasharray="2 3" pointerEvents="none" />
             <line x1={0} x2={width} y1={crosshair.y} y2={crosshair.y} stroke={stroke} strokeWidth={strokeWidth} strokeDasharray="2 3" pointerEvents="none" />
-            {crosshair.locked ? <line x1={crosshair.x} x2={crosshair.x} y1={0} y2={height} stroke="rgba(255,255,255,0.01)" strokeWidth={14} pointerEvents="stroke" {...interactionProps} /> : null}
-            {crosshair.locked ? <line x1={0} x2={width} y1={crosshair.y} y2={crosshair.y} stroke="rgba(255,255,255,0.01)" strokeWidth={14} pointerEvents="stroke" {...interactionProps} /> : null}
+            {crosshair.locked && !isControlPressed ? <line x1={crosshair.x} x2={crosshair.x} y1={0} y2={height} stroke="rgba(255,255,255,0.01)" strokeWidth={14} pointerEvents="stroke" {...interactionProps} /> : null}
+            {crosshair.locked && !isControlPressed ? <line x1={0} x2={width} y1={crosshair.y} y2={crosshair.y} stroke="rgba(255,255,255,0.01)" strokeWidth={14} pointerEvents="stroke" {...interactionProps} /> : null}
         </g>
     );
 }
@@ -392,16 +466,17 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
 }
 
 function ChartSeries({ areaConfig, props }: { areaConfig: AreaConfig; props: ChartRenderProps }) {
-    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={false} data={props.visibleData} isCapturing={props.isCapturing} />;
-    if (areaConfig.type === 'bar') return <ChartBar areaConfig={areaConfig} isDimmed={false} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} isCapturing={props.isCapturing} />;
-    return <ChartArea areaConfig={areaConfig} isDimmed={false} />;
+    const onCtrlClick = () => props.onToggleHighlight(areaConfig.legendKey || areaConfig.key);
+    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={false} data={props.visibleData} isCapturing={props.isCapturing} onCtrlClick={onCtrlClick} />;
+    if (areaConfig.type === 'bar') return <ChartBar areaConfig={areaConfig} isDimmed={false} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} isCapturing={props.isCapturing} onCtrlClick={onCtrlClick} />;
+    return <ChartArea areaConfig={areaConfig} isDimmed={false} onCtrlClick={onCtrlClick} />;
 }
 
 function MandatePoint({ x, y, yAxisId, primaryColor, secondaryColor }: { x: string | number; y: number; yAxisId: 'left' | 'right'; primaryColor: string; secondaryColor?: string }) {
     return (
         <>
-            <ReferenceDot x={x} y={y} yAxisId={yAxisId} r={7} fill={secondaryColor ?? primaryColor} stroke="#000000" strokeWidth={1} />
-            <ReferenceDot x={x} y={y} yAxisId={yAxisId} r={4} fill={primaryColor} stroke="#000000" strokeWidth={1} />
+            <ReferenceDot x={x} y={y} yAxisId={yAxisId} r={7} fill={secondaryColor ?? primaryColor} stroke="#000000" strokeWidth={1} pointerEvents="none" />
+            <ReferenceDot x={x} y={y} yAxisId={yAxisId} r={4} fill={primaryColor} stroke="#000000" strokeWidth={1} pointerEvents="none" />
         </>
     );
 }

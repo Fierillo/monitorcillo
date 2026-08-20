@@ -1,7 +1,8 @@
 'use client';
 
 import { Bar, Rectangle } from 'recharts';
-import type { ChartBarClickEvent, ChartBarProps, ChartBarShapeProps } from '@/types/chart';
+import type { ChartBarProps, ChartBarShapeProps, ChartSeriesClickEvent } from '@/types/chart';
+import { handleSeriesCtrlClick } from './seriesInteraction';
 
 export default function ChartBar({
     areaConfig,
@@ -10,6 +11,7 @@ export default function ChartBar({
     onSelectMonth,
     selectByMonth,
     isCapturing = false,
+    onCtrlClick,
 }: ChartBarProps) {
     return (
         <Bar
@@ -20,7 +22,8 @@ export default function ChartBar({
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
             isAnimationActive={!isCapturing}
-            onClick={(data: unknown, _index: number, event: ChartBarClickEvent) => {
+            onClick={(data: unknown, _index: number, event: ChartSeriesClickEvent) => {
+                if (handleSeriesCtrlClick(event, onCtrlClick)) return;
                 if (event && event.stopPropagation) {
                     event.stopPropagation();
                 }

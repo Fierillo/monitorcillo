@@ -2,8 +2,9 @@
 
 import { Area } from 'recharts';
 import type { ChartAreaProps } from '@/types/chart';
+import { handleSeriesCtrlClick } from './seriesInteraction';
 
-export default function ChartArea({ areaConfig, isDimmed }: ChartAreaProps) {
+export default function ChartArea({ areaConfig, isDimmed, onCtrlClick }: ChartAreaProps) {
     const areaType = areaConfig.type === 'step' ? 'step' : areaConfig.type === 'monotone' ? 'monotone' : undefined;
     
     return (
@@ -18,6 +19,7 @@ export default function ChartArea({ areaConfig, isDimmed }: ChartAreaProps) {
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
             style={{ opacity: isDimmed ? 0.2 : 1 }}
+            onClick={(_data, event) => handleSeriesCtrlClick(event, onCtrlClick)}
         />
     );
 }
