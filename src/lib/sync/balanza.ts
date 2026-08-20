@@ -1,10 +1,10 @@
 import type { BalanzaRawRow } from '@/types';
-import { parseIcaPublicationDate } from '../balanza-source';
+import { mergeLatestIcaReport, parseIcaPublicationDate, parseIcaWorkbookUrls, parseLatestIcaReport } from '../balanza-source';
 import { BALANZA_ALL_SERIES, BALANZA_MACRO_KEYS, BALANZA_RAW_COLUMNS, BALANZA_SERIES_IDS } from '../balanza/schema';
 import { sql } from '../db/client';
 import { fetchAnnualPbiUsdMillions } from '../pbi-usd-source';
-import { ICA_PUBLICATION_PAGE_URL } from './constants';
-import { fetchTextFromUrl } from './http-client';
+import { ICA_AGGREGATE_WORKBOOK_URL, ICA_PUBLICATION_PAGE_URL } from './constants';
+import { fetchBufferFromUrl, fetchTextFromUrl } from './http-client';
 import { valueAtOrBefore } from './series';
 import { fetchTimeSeries } from './time-series-client';
 
@@ -36,9 +36,24 @@ export async function fetchBalanzaRawReport(): Promise<{ rows: BalanzaRawRow[]; 
         batches.push(BALANZA_SERIES_IDS.slice(index, index + SERIES_BATCH_SIZE));
     }
 
-    const [publicationHtml, pbiUsd, ...seriesResponses] = await Promise.all([
-        fetchTextFromUrl(ICA_PUBLICATION_PAGE_URL).catch(() => ''),
+    const publicationHtmlPromise = fetchTextFromUrl(ICA_PUBLICATION_PAGE_URL);
+    const officialReportPromise = publicationHtmlPromise.then(async html => {
+        const urls = parseIcaWorkbookUrls(html);
+        if (!urls.exports || !urls.imports) {
+            throw new Error('Failed to find ICA breakdown workbooks on the INDEC page. Verify whether INDEC changed the download links.');
+        }
+        const [aggregateBuffer, exportsBuffer, importsBuffer] = await Promise.all([
+            fetchBufferFromUrl(ICA_AGGREGATE_WORKBOOK_URL),
+            fetchBufferFromUrl(urls.exports),
+            fetchBufferFromUrl(urls.imports),
+        ]);
+        return parseLatestIcaReport(aggregateBuffer, exportsBuffer, importsBuffer);
+    });
+
+    const [publicationHtml, pbiUsd, officialRows, ...seriesResponses] = await Promise.all([
+        publicationHtmlPromise,
         fetchAnnualPbiUsdMillions(),
+        officialReportPromise,
         ...batches.map(ids => fetchTimeSeries({ ids })),
     ]);
 
@@ -58,11 +73,11 @@ export async function fetchBalanzaRawReport(): Promise<{ rows: BalanzaRawRow[]; 
         }
     }
 
-    const fechas = [...valuesByFecha.keys()].sort((a, b) => a.localeCompare(b));
+    const rows = mergeLatestIcaReport([...valuesByFecha.values()], officialRows);
     return {
-        rows: fechas.map(fecha => ({
-            ...valuesByFecha.get(fecha)!,
-            pbi_usd: valueAtOrBefore(pbiUsd, fecha),
+        rows: rows.map(row => ({
+            ...row,
+            pbi_usd: valueAtOrBefore(pbiUsd, row.fecha),
         })),
         publishedAt: parseIcaPublicationDate(publicationHtml),
     };
