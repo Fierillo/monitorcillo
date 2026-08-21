@@ -1,51 +1,83 @@
-import type { ChartDataRow, PoderAdquisitivoRawRow } from '@/types';
+import type { ChartDataRow, DatosGobSeriesRow, PoderAdquisitivoRawRow } from '@/types';
+import { fetchTimeSeries } from './sync/time-series-client';
 
-export const CABA_RENT_SERIES = [
-    { date: '2020-06-01', value: 22758 },
-    { date: '2021-06-01', value: 39211 },
-    { date: '2022-06-01', value: 64581 },
-    { date: '2023-06-01', value: 158328 },
-    { date: '2024-06-01', value: 449915 },
-    { date: '2025-06-01', value: 655294 },
-    { date: '2026-06-01', value: 860106 },
-] as const;
+export const COST_OF_LIVING_MODEL = {
+    referenceDate: '2026-05-01',
+    referenceSalary: 1_000_000,
+    currentCosts: {
+        alquiler: 600_000,
+        alimentos: 180_000,
+        transporte: 50_000,
+        servicios: 100_000,
+        salud: 70_000,
+    },
+    taxRate: 0.17,
+} as const;
 
-type RentObservation = { date: string; value: number };
+const COST_INDEX_IDS = [
+    '146.3_IALIMENNAL_DICI_M_45',
+    '146.3_ITRANSPNAL_DICI_M_23',
+    '146.3_IVIVIENNAL_DICI_M_52',
+    '146.3_ISALUDNAL_DICI_M_18',
+    '104.1_I2RE_2016_M_25',
+];
 
-export function calculateRentSalaryBurden(
+const ANNUAL_DATES = Array.from({ length: 10 }, (_, index) => `${2017 + index}-05-01`);
+
+export function calculateCostOfLivingBurden(
     salaryData: PoderAdquisitivoRawRow[],
-    rentData: readonly RentObservation[] = CABA_RENT_SERIES,
+    costIndexData: DatosGobSeriesRow[],
+    dates: readonly string[] = ANNUAL_DATES,
 ): ChartDataRow[] {
-    const salaries = [...salaryData].sort((first, second) => first.fecha.localeCompare(second.fecha));
-    const currentSalary = salaries.findLast(hasBothSalaries);
-    if (!currentSalary) return [];
+    const salaries = new Map(salaryData
+        .filter(row => positiveNumber(row.salario_privado) !== null)
+        .map(row => [row.fecha, Number(row.salario_privado)]));
+    const indices = new Map(costIndexData
+        .filter(row => row.length === COST_INDEX_IDS.length + 1 && row.slice(1).every(value => positiveNumber(value) !== null))
+        .map(row => [row[0], row.slice(1).map(Number)]));
+    const referenceSalaryIndex = salaries.get(COST_OF_LIVING_MODEL.referenceDate);
+    const referenceCostIndices = indices.get(COST_OF_LIVING_MODEL.referenceDate);
+    if (!referenceSalaryIndex || !referenceCostIndices) return [];
 
-    const currentRegistered = Number(currentSalary.salario_registrado);
-    const currentInformal = Number(currentSalary.salario_no_registrado);
+    return dates.flatMap(date => {
+        const salaryIndex = valueAtOrBefore(salaries, date);
+        const costIndices = valueAtOrBefore(indices, date);
+        if (!salaryIndex || !costIndices) return [];
 
-    return rentData.flatMap(observation => {
-        const matchingSalary = salaries.find(row => row.fecha === observation.date);
-        const salary = matchingSalary && hasBothSalaries(matchingSalary)
-            ? matchingSalary
-            : observation.date > currentSalary.fecha ? currentSalary : null;
-        if (!salary || !hasBothSalaries(salary)) return [];
+        const salary = COST_OF_LIVING_MODEL.referenceSalary * salaryIndex / referenceSalaryIndex;
+        const costs = {
+            alquiler: COST_OF_LIVING_MODEL.currentCosts.alquiler * costIndices[4] / referenceCostIndices[4],
+            alimentos: COST_OF_LIVING_MODEL.currentCosts.alimentos * costIndices[0] / referenceCostIndices[0],
+            transporte: COST_OF_LIVING_MODEL.currentCosts.transporte * costIndices[1] / referenceCostIndices[1],
+            servicios: COST_OF_LIVING_MODEL.currentCosts.servicios * costIndices[2] / referenceCostIndices[2],
+            salud: COST_OF_LIVING_MODEL.currentCosts.salud * costIndices[3] / referenceCostIndices[3],
+            impuestos: salary * COST_OF_LIVING_MODEL.taxRate,
+        };
 
         return [{
-            fecha: observation.date.slice(0, 4),
-            iso_fecha: observation.date,
-            alquiler_registrado: observation.value * currentRegistered / Number(salary.salario_registrado),
-            alquiler_informal: observation.value * currentInformal / Number(salary.salario_no_registrado),
-            alquiler_observado: observation.value,
-            salario_fecha: salary.fecha,
+            fecha: date.slice(0, 4),
+            iso_fecha: date,
+            salario_referencia: salary,
+            ...Object.fromEntries(Object.entries(costs).map(([key, value]) => [key, value / salary * 100])),
+            ...Object.fromEntries(Object.entries(costs).map(([key, value]) => [`${key}_pesos`, value])),
         }];
     });
 }
 
-function hasBothSalaries(row: PoderAdquisitivoRawRow): boolean {
-    return toPositiveNumber(row.salario_registrado) !== null && toPositiveNumber(row.salario_no_registrado) !== null;
+export async function fetchCostOfLivingIndices(): Promise<DatosGobSeriesRow[]> {
+    return (await fetchTimeSeries({ ids: COST_INDEX_IDS })).data ?? [];
 }
 
-function toPositiveNumber(value: unknown): number | null {
+function valueAtOrBefore<T>(values: Map<string, T>, date: string): T | null {
+    let result: T | null = null;
+    for (const [candidateDate, value] of [...values].sort(([first], [second]) => first.localeCompare(second))) {
+        if (candidateDate > date) break;
+        result = value;
+    }
+    return result;
+}
+
+function positiveNumber(value: unknown): number | null {
     const number = Number(value);
     return Number.isFinite(number) && number > 0 ? number : null;
 }

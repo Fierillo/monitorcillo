@@ -5,7 +5,7 @@ import { RECAUDACION_BREAKDOWN_TYPES } from './recaudacion/schema';
 import { ICG_PRESIDENTIAL_MANDATES, PRESIDENTIAL_MANDATES } from './presidential-mandates';
 import { safeGetIndicatorData } from './storage';
 import { getRawData } from './db';
-import { CABA_RENT_SERIES, calculateRentSalaryBurden } from './purchasing-power-cost';
+import { COST_OF_LIVING_MODEL, calculateCostOfLivingBurden, fetchCostOfLivingIndices } from './purchasing-power-cost';
 import { RIGI_INVESTMENT_CHART_DATA, RIGI_INVESTMENTS } from './investments-source';
 import { fetchPublicSpendingChartData } from './public-spending-source';
 
@@ -234,9 +234,10 @@ async function depositosPrestamosConfig(indicator: Indicator): Promise<DetailCon
 }
 
 async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
-    const [data, rawData] = await Promise.all([
+    const [data, rawData, costIndices] = await Promise.all([
         safeGetIndicatorData('poder-adquisitivo'),
         getRawData('poder'),
+        fetchCostOfLivingIndices(),
     ]);
     const areas: AreaConfig[] = [
         { key: 'blanco', name: 'PA [IS blanco/IPCC]', color: '#FFFFFF', type: 'line', transparentTooltip: true },
@@ -254,18 +255,22 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Jubilaciones', description: 'Haber mínimo mensual (ANSES 58.1_MP_0_M_24).' },
         { title: 'Cálculo', description: '(Valor nominal / IPC Núcleo), expresado como índice base 100 en el mes seleccionado por el usuario.' },
     ];
-    const rentData = calculateRentSalaryBurden(rawData);
-    const currentRent = CABA_RENT_SERIES.at(-1)!;
+    const costData = calculateCostOfLivingBurden(rawData, costIndices);
     const costAreas: AreaConfig[] = [
-        { key: 'alquiler_registrado', name: 'Ajustado por salario registrado', color: '#2E64FE', type: 'line', strokeWidth: 3, connectNulls: true, showValueLabels: true, labelOffsetY: 20, valueFormat: 'currency', transparentTooltip: true },
-        { key: 'alquiler_informal', name: 'Ajustado por salario informal', color: '#FF3B30', type: 'line', strokeWidth: 3, connectNulls: true, showValueLabels: true, labelOffsetY: -12, valueFormat: 'currency', transparentTooltip: true },
+        { key: 'alquiler', name: 'Alquiler', color: '#F97316', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
+        { key: 'alimentos', name: 'Alimentos', color: '#FACC15', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
+        { key: 'transporte', name: 'Transporte', color: '#38BDF8', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
+        { key: 'servicios', name: 'Servicios', color: '#A855F7', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
+        { key: 'salud', name: 'Salud y medicamentos', color: '#22C55E', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
+        { key: 'impuestos', name: 'Impuestos y aportes', color: '#EF4444', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
     ];
     const costMethodology: MethodologyItem[] = [
-        { title: 'Lectura', description: 'Cada punto indica cuánto debería valer hoy el alquiler para conservar la carga salarial que representaba en junio de ese año.' },
-        { title: 'Alquiler de referencia', description: 'Precio medio mensual de oferta de un departamento de 2 ambientes y 50 m² en CABA. Serie Zonaprop de junio de 2020 a junio de 2026. El valor actual de referencia es $860.106.' },
-        { title: 'Cálculo', description: 'Alquiler observado de cada junio × índice salarial actual / índice salarial del mismo mes. Se calcula por separado con los índices de salarios registrados e informales de INDEC.' },
-        { title: 'Período actual', description: 'El último índice común de salarios registrados e informales disponible es mayo de 2026. Para el alquiler de junio de 2026 se utiliza ese salario como referencia actual.' },
-        { title: 'Alcance', description: 'Zonaprop releva precios publicados para nuevos contratos, no alquileres efectivamente pactados. El informe 2026 explicita 50 m² cubiertos y balcón de 5 m².' },
+        { title: 'Lectura', description: 'Cada barra muestra qué porcentaje de un salario privado formal bruto ocupa la canasta modelo. La línea de 100% representa el salario completo; un total superior indica déficit.' },
+        { title: 'Salario de referencia', description: `Se fija en $${COST_OF_LIVING_MODEL.referenceSalary.toLocaleString('es-AR')} en mayo de 2026 y se reconstruye con el índice de salarios privados registrados de INDEC.` },
+        { title: 'Canasta de referencia', description: 'En mayo de 2026 se asignan $600.000 a alquiler, $180.000 a alimentos, $50.000 a transporte, $100.000 a servicios y $70.000 a salud y medicamentos.' },
+        { title: 'Evolución de los costos', description: 'Alimentos, transporte, servicios y salud se reconstruyen con sus divisiones del IPC nacional. El alquiler utiliza el índice específico de alquiler de vivienda de GBA de INDEC como aproximación urbana.' },
+        { title: 'Impuestos y aportes', description: 'Se supone una deducción directa equivalente al 17% del salario bruto. No se suman impuestos indirectos ya incluidos en los precios.' },
+        { title: 'Alcance', description: 'Es una canasta urbana de referencia construida a partir de valores iniciales, no una medición oficial del gasto ni del alquiler promedio nacional.' },
     ];
     return {
         subtitle: indicator.fuente,
@@ -282,14 +287,15 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
             {
                 id: 'costo-de-vida',
                 label: 'COSTO DE VIDA',
-                chartTitle: '¿Cuánto debería valer hoy el alquiler para mantener la misma carga salarial?',
-                data: rentData,
+                chartTitle: '¿Qué porcentaje del salario ocupa el costo de vida?',
+                data: costData,
                 areas: costAreas,
                 methodology: costMethodology,
-                valueFormat: 'currency',
-                yAxisLabel: 'Pesos por mes a valores de hoy',
-                leftYAxisDomain: 'auto-pad',
-                referenceLines: [{ value: currentRent.value, label: 'Alquiler publicado JUN 26', color: '#FFD700', dash: [8, 6] }],
+                valueFormat: 'percent',
+                yAxisLabel: '% del salario privado formal',
+                leftYAxisDomain: [0, 'dataMax + 10'],
+                showTooltipTotal: true,
+                referenceLines: [{ value: 100, color: '#FFD700', dash: [8, 6] }],
             },
         ],
     };

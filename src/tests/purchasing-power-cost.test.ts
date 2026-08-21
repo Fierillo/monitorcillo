@@ -1,33 +1,58 @@
 import { describe, expect, it } from 'vitest';
 import { formatValueByType } from '@/components/chart/utils';
-import { calculateRentSalaryBurden } from '@/lib/purchasing-power-cost';
+import { calculateCostOfLivingBurden } from '@/lib/purchasing-power-cost';
 
-describe('calculateRentSalaryBurden', () => {
-    it('adjusts observed rents with nominal registered and informal salaries', () => {
-        const result = calculateRentSalaryBurden([
-            { fecha: '2020-06-01', salario_registrado: '100', salario_no_registrado: '50' },
-            { fecha: '2021-06-01', salario_registrado: 200, salario_no_registrado: 150 },
-            { fecha: '2022-05-01', salario_registrado: 400, salario_no_registrado: 300 },
-            { fecha: '2022-06-01', salario_registrado: null, salario_no_registrado: null },
+describe('calculateCostOfLivingBurden', () => {
+    it('expresses annual living costs as percentages of the reference salary', () => {
+        const result = calculateCostOfLivingBurden([
+            { fecha: '2020-05-01', salario_privado: 100 },
+            { fecha: '2026-05-01', salario_privado: 200 },
         ], [
-            { date: '2020-06-01', value: 1000 },
-            { date: '2021-06-01', value: 2000 },
-            { date: '2022-06-01', value: 3000 },
-        ]);
+            ['2020-05-01', 50, 50, 50, 50, 50],
+            ['2026-05-01', 100, 100, 100, 100, 100],
+        ], ['2020-05-01']);
 
-        expect(result).toHaveLength(3);
-        expect(result[0]).toMatchObject({ iso_fecha: '2020-06-01', alquiler_registrado: 4000, alquiler_informal: 6000 });
-        expect(result[1]).toMatchObject({ iso_fecha: '2021-06-01', alquiler_registrado: 4000, alquiler_informal: 4000 });
-        expect(result[2]).toMatchObject({ iso_fecha: '2022-06-01', alquiler_registrado: 3000, alquiler_informal: 3000, salario_fecha: '2022-05-01' });
+        expect(result).toHaveLength(1);
+        expect(result[0]).toMatchObject({
+            fecha: '2020',
+            iso_fecha: '2020-05-01',
+            salario_referencia: 500_000,
+            alquiler: 60,
+            alimentos: 18,
+            transporte: 5,
+            servicios: 10,
+            impuestos: 17,
+            alquiler_pesos: 300_000,
+            alimentos_pesos: 90_000,
+        });
+        expect(result[0].salud).toBeCloseTo(7);
     });
 
-    it('omits rents without matching salary data', () => {
-        expect(calculateRentSalaryBurden([])).toEqual([]);
-        expect(calculateRentSalaryBurden([{ fecha: '2020-06-01', salario_registrado: 100, salario_no_registrado: null }])).toEqual([]);
-        expect(calculateRentSalaryBurden([
-            { fecha: '2020-05-01', salario_registrado: 100, salario_no_registrado: 100 },
-            { fecha: '2021-05-01', salario_registrado: 200, salario_no_registrado: 200 },
-        ], [{ date: '2020-06-01', value: 1000 }])).toEqual([]);
+    it('uses the latest available indices for a later rent observation', () => {
+        const result = calculateCostOfLivingBurden([
+            { fecha: '2026-05-01', salario_privado: 200 },
+        ], [
+            ['2026-05-01', 100, 100, 100, 100, 100],
+        ], ['2026-06-01']);
+
+        expect(result[0]).toMatchObject({ salario_referencia: 1_000_000, alquiler: 60, impuestos: 17 });
+    });
+
+    it('covers every May from 2017 through 2026 by default', () => {
+        const years = Array.from({ length: 10 }, (_, index) => 2017 + index);
+        const result = calculateCostOfLivingBurden(
+            years.map(year => ({ fecha: `${year}-05-01`, salario_privado: year })),
+            years.map(year => [`${year}-05-01`, year, year, year, year, year]),
+        );
+
+        expect(result).toHaveLength(10);
+        expect(result[0].iso_fecha).toBe('2017-05-01');
+        expect(result.at(-1)?.iso_fecha).toBe('2026-05-01');
+    });
+
+    it('returns no rows without the reference salary and cost indices', () => {
+        expect(calculateCostOfLivingBurden([], [])).toEqual([]);
+        expect(calculateCostOfLivingBurden([{ fecha: '2026-05-01', salario_privado: 100 }], [])).toEqual([]);
     });
 });
 
