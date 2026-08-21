@@ -57,8 +57,8 @@ describe('IndicatorsTable text fitting', () => {
 
         expect(markup).toContain('w-max min-w-full');
         expect(markup).toContain('border-spacing-x-1');
-        expect(markup).toContain('lg:w-[13%]');
-        expect(markup).toContain('lg:w-[23%]');
+        expect(markup).toContain('table-auto');
+        expect(markup).not.toContain('table-fixed');
         expect(markup).toContain('Último dato');
         expect(markup).not.toMatch(/class="[^"]*(?<!lg:)overflow-hidden/);
         expect(markup).toContain('block w-max min-w-full whitespace-nowrap lg:w-full lg:min-w-0 lg:overflow-hidden');

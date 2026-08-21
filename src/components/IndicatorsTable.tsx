@@ -76,15 +76,7 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
     return (
         <>
             <div className="overflow-x-auto border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 w-full">
-                <table className="w-max min-w-full border-separate border-spacing-x-1 border-spacing-y-0 text-left lg:w-full lg:min-w-[900px] lg:table-fixed lg:border-collapse lg:border-spacing-0">
-                    <colgroup>
-                        <col className="lg:w-[9%]" />
-                        <col className="lg:w-[13%]" />
-                        <col className="lg:w-[14%]" />
-                        <col className="lg:w-[23%]" />
-                        <col className="lg:w-[18%]" />
-                        <col className="lg:w-[23%]" />
-                    </colgroup>
+                <table className="w-max min-w-full table-auto border-separate border-spacing-x-1 border-spacing-y-0 text-left lg:w-full lg:min-w-[900px] lg:border-collapse lg:border-spacing-0">
                     <thead>
                         <tr className="h-12 bg-imperial-gold text-imperial-blue text-xs sm:text-base uppercase tracking-wider imperial-title">
                             <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20 whitespace-nowrap lg:overflow-hidden">Fecha</th>
