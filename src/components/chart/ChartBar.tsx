@@ -4,6 +4,9 @@ import { Bar, Rectangle } from 'recharts';
 import type { ChartBarProps, ChartBarShapeProps, ChartSeriesClickEvent } from '@/types/chart';
 import { handleSeriesCtrlClick } from './seriesInteraction';
 
+const DEFAULT_BAR_BORDER_COLOR = '#FFD700';
+const DEFAULT_BAR_BORDER_WIDTH = 0.5;
+
 export default function ChartBar({
     areaConfig,
     isDimmed,
@@ -43,8 +46,8 @@ export default function ChartBar({
                 const isPreliminary = areaConfig.preliminaryKey ? payload?.[areaConfig.preliminaryKey] === true : false;
                 const opacity = selectedMonth ? (isSelected ? 1 : 0.3) : 1;
                 const fillOpacity = isPreliminary ? 0.45 : (areaConfig.fill === false ? 0 : 1);
-                const strokeColor = areaConfig.borderColor ?? (isSelected ? '#FFFFFF' : isPreliminary ? areaConfig.color : 'none');
-                const strokeWidth = areaConfig.borderWidth ?? (isSelected || isPreliminary ? 1 : 0);
+                const strokeColor = areaConfig.borderColor ?? DEFAULT_BAR_BORDER_COLOR;
+                const strokeWidth = areaConfig.borderWidth ?? DEFAULT_BAR_BORDER_WIDTH;
                 const borderInset = strokeWidth / 2;
                 const rectX = (x ?? 0) + borderInset;
                 const rectY = (barY ?? 0) + borderInset;
@@ -69,8 +72,8 @@ export default function ChartBar({
                                 width={rectWidth}
                                 height={rectHeight}
                                 fill={areaConfig.preliminaryFillPattern === 'diagonal-stripes' ? `url(#${patternId})` : (areaConfig.preliminaryColor ?? areaConfig.color)}
-                                stroke={areaConfig.preliminaryBorderColor ?? areaConfig.color}
-                                strokeWidth={areaConfig.borderWidth ?? 1}
+                                stroke={areaConfig.preliminaryBorderColor ?? strokeColor}
+                                strokeWidth={strokeWidth}
                                 style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
                             />
                         </g>

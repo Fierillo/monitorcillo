@@ -257,12 +257,12 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
     ];
     const costData = calculateCostOfLivingBurden(rawData, costIndices);
     const costAreas: AreaConfig[] = [
-        { key: 'alquiler', name: 'Alquiler', color: '#F97316', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
-        { key: 'alimentos', name: 'Alimentos', color: '#FACC15', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
-        { key: 'transporte', name: 'Transporte', color: '#38BDF8', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
-        { key: 'servicios', name: 'Servicios', color: '#A855F7', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
-        { key: 'salud', name: 'Salud y medicamentos', color: '#22C55E', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
-        { key: 'impuestos', name: 'Impuestos y aportes', color: '#EF4444', type: 'bar', stackId: 'canasta', maxBarSize: 72, borderColor: '#FFD700', borderWidth: 0.75, transparentTooltip: true },
+        { key: 'alquiler', name: 'Alquiler', color: '#F97316', type: 'bar', stackId: 'canasta', maxBarSize: 72, transparentTooltip: true },
+        { key: 'alimentos', name: 'Alimentos', color: '#FACC15', type: 'bar', stackId: 'canasta', maxBarSize: 72, transparentTooltip: true },
+        { key: 'transporte', name: 'Transporte', color: '#38BDF8', type: 'bar', stackId: 'canasta', maxBarSize: 72, transparentTooltip: true },
+        { key: 'servicios', name: 'Servicios', color: '#A855F7', type: 'bar', stackId: 'canasta', maxBarSize: 72, transparentTooltip: true },
+        { key: 'salud', name: 'Salud y medicamentos', color: '#22C55E', type: 'bar', stackId: 'canasta', maxBarSize: 72, transparentTooltip: true },
+        { key: 'impuestos', name: 'Impuestos y aportes', color: '#EF4444', type: 'bar', stackId: 'canasta', maxBarSize: 72, transparentTooltip: true },
     ];
     const costMethodology: MethodologyItem[] = [
         { title: 'Lectura', description: 'Cada barra muestra qué porcentaje de un salario privado formal bruto ocupa la canasta modelo. La línea de 100% representa el salario completo; un total superior indica déficit.' },

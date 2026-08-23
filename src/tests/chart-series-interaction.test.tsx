@@ -1,4 +1,5 @@
 import { cleanup, render } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ChartArea from '../components/chart/ChartArea';
 import ChartBar from '../components/chart/ChartBar';
@@ -8,6 +9,7 @@ const rechartsProps = vi.hoisted(() => ({
     areas: [] as Record<string, unknown>[],
     bars: [] as Record<string, unknown>[],
     lines: [] as Record<string, unknown>[],
+    rectangles: [] as Record<string, unknown>[],
 }));
 
 vi.mock('recharts', () => ({
@@ -23,7 +25,10 @@ vi.mock('recharts', () => ({
         rechartsProps.lines.push(props);
         return null;
     },
-    Rectangle: () => null,
+    Rectangle: (props: Record<string, unknown>) => {
+        rechartsProps.rectangles.push(props);
+        return null;
+    },
 }));
 
 const area = { key: 'series', name: 'Serie', color: '#FFD700' };
@@ -33,6 +38,7 @@ describe('chart series interactions', () => {
         rechartsProps.areas.length = 0;
         rechartsProps.bars.length = 0;
         rechartsProps.lines.length = 0;
+        rechartsProps.rectangles.length = 0;
     });
 
     afterEach(cleanup);
@@ -92,5 +98,30 @@ describe('chart series interactions', () => {
         expect(stopPropagation).toHaveBeenCalledOnce();
         expect(onSelectMonth).toHaveBeenCalledWith('2026-08-01');
         expect(onCtrlClick).not.toHaveBeenCalled();
+    });
+
+    it('uses the consolidated spending border style for every bar', () => {
+        render(<ChartBar areaConfig={{ ...area, type: 'bar' }} isDimmed={false} selectedMonth={null} onSelectMonth={vi.fn()} onCtrlClick={vi.fn()} />);
+        const shape = rechartsProps.bars[0].shape as (props: Record<string, unknown>) => ReactElement;
+
+        render(shape({ payload: { iso_fecha: '2026-08-01' }, x: 10, y: 20, width: 30, height: 40 }));
+
+        expect(rechartsProps.rectangles[0]).toMatchObject({
+            stroke: '#FFD700',
+            strokeWidth: 0.5,
+            x: 10.25,
+            y: 20.25,
+            width: 29.5,
+            height: 39.5,
+        });
+    });
+
+    it('keeps the same gold border on preliminary bars', () => {
+        render(<ChartBar areaConfig={{ ...area, type: 'bar', preliminaryKey: 'preliminary' }} isDimmed={false} selectedMonth={null} onSelectMonth={vi.fn()} onCtrlClick={vi.fn()} />);
+        const shape = rechartsProps.bars[0].shape as (props: Record<string, unknown>) => ReactElement;
+
+        render(shape({ payload: { iso_fecha: '2026-08-01', preliminary: true }, x: 0, y: 0, width: 20, height: 20 }));
+
+        expect(rechartsProps.rectangles[0]).toMatchObject({ stroke: '#FFD700', strokeWidth: 0.5 });
     });
 });
