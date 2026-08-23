@@ -18,7 +18,7 @@ describe('ChartTooltip', () => {
 
         expect(markup).not.toContain('Total:');
         expect(markup).toContain('color:#FFD700;font-weight:bold');
-        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.62)');
+        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
     });
 
     it('shows totals when explicitly enabled', () => {
@@ -39,11 +39,11 @@ describe('ChartTooltip', () => {
     it('blurs chart data behind tooltips', () => {
         const markup = renderToStaticMarkup(<ChartTooltip {...props} />);
 
-        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.62)');
+        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
         expect(markup).toContain('line-height:1.35');
         expect(markup).toContain('white-space:nowrap');
-        expect(markup).toContain('backdrop-filter:blur(4px)');
-        expect(markup).toContain('-webkit-backdrop-filter:blur(4px)');
+        expect(markup).toContain('backdrop-filter:blur(2px)');
+        expect(markup).toContain('-webkit-backdrop-filter:blur(2px)');
     });
 
     it('uses fixed rows when rendering an exported tooltip', () => {
@@ -127,7 +127,7 @@ describe('ChartTooltip', () => {
         expect(markup).toContain('Alberto Fernández');
         expect(markup).toContain('Javier Milei');
         expect(markup).toContain('2,40');
-        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.62)');
-        expect(markup).toContain('backdrop-filter:blur(4px)');
+        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
+        expect(markup).toContain('backdrop-filter:blur(2px)');
     });
 });
