@@ -15,6 +15,18 @@ type PersistedChartConfig = {
     baseDateByView?: Record<string, string>;
 };
 
+export function restoreHighlightedAreasByView(config: Record<string, string[]>, views: IndicatorCompositeViewProps['views']): Record<string, Set<string>> {
+    if (!views?.length) {
+        const keys = config.default ?? config['default:default'];
+        return keys ? { default: new Set(keys) } : {};
+    }
+    return Object.fromEntries(views.flatMap(view => {
+        const defaultModeId = view.modes?.[0]?.id ?? 'default';
+        const keys = config[view.id] ?? config[`${view.id}:${defaultModeId}`];
+        return keys ? [[view.id, new Set(keys)] as const] : [];
+    }));
+}
+
 function formatBaseDate(date: string): string {
     const [year, month] = date.split('-');
     const labels = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
@@ -81,14 +93,14 @@ export default function IndicatorCompositeView({
     const activeLeftYAxisDomain = selectedMode?.leftYAxisDomain ?? selectedView?.leftYAxisDomain ?? leftYAxisDomain;
     const configuredReferenceLines = selectedView?.referenceLines ?? EMPTY_REFERENCE_LINES;
     const activeShowTooltipTotal = selectedMode?.showTooltipTotal ?? selectedView?.showTooltipTotal ?? showTooltipTotal;
-    const rebaseKey = `${activeViewId}:${selectedMode?.id ?? 'default'}`;
+    const memoryKey = activeViewId;
     const validBaseRows = selectedView?.rebaseable
         ? sourceData.filter(row => typeof row.iso_fecha === 'string' && activeAreas.every(area => {
             const value = row[area.key];
             return typeof value === 'number' && Number.isFinite(value) && value !== 0;
         }))
         : [];
-    const effectiveBaseRow = validBaseRows.find(row => row.iso_fecha === baseDateByView[rebaseKey])
+    const effectiveBaseRow = validBaseRows.find(row => row.iso_fecha === baseDateByView[memoryKey])
         ?? validBaseRows.find(row => row.iso_fecha === selectedView?.defaultBaseDate)
         ?? validBaseRows[0];
     const effectiveBaseDate = typeof effectiveBaseRow?.iso_fecha === 'string' ? effectiveBaseRow.iso_fecha : null;
@@ -147,7 +159,10 @@ export default function IndicatorCompositeView({
     const [isMobile, setIsMobile] = useState(false);
 
     const visibleData = useMemo(() => sortedData.slice(startIndex, endIndex + 1), [sortedData, startIndex, endIndex]);
-    const highlightedAreas = useMemo(() => highlightedAreasByView[rebaseKey] ?? new Set<string>(), [highlightedAreasByView, rebaseKey]);
+    const highlightedAreas = useMemo(() => {
+        const validKeys = new Set(activeAreas.map(area => area.legendKey || area.key));
+        return new Set([...(highlightedAreasByView[activeViewId] ?? [])].filter(key => validKeys.has(key)));
+    }, [activeAreas, activeViewId, highlightedAreasByView]);
     const storageKey = `monitorcillo:chart:${indicatorId ?? title}`;
 
     useEffect(() => {
@@ -160,13 +175,20 @@ export default function IndicatorCompositeView({
             const parsed = JSON.parse(stored) as PersistedChartConfig;
             const validViewIds = new Set((views?.map(view => view.id) ?? ['default']));
             if (parsed.selectedViewId && validViewIds.has(parsed.selectedViewId)) setSelectedViewId(parsed.selectedViewId);
-            if (parsed.highlightedAreasByView) setHighlightedAreasByView(Object.fromEntries(Object.entries(parsed.highlightedAreasByView).map(([viewId, keys]) => [viewId, new Set(keys)])));
-            if (parsed.baseDateByView) setBaseDateByView(parsed.baseDateByView);
+            if (parsed.highlightedAreasByView) setHighlightedAreasByView(restoreHighlightedAreasByView(parsed.highlightedAreasByView, views));
+            if (parsed.baseDateByView) {
+                setBaseDateByView(Object.fromEntries((views?.length ? views : [{ id: 'default', modes: [] }]).flatMap(view => {
+                    const defaultModeId = view.modes?.[0]?.id ?? 'default';
+                    const date = parsed.baseDateByView?.[view.id] ?? parsed.baseDateByView?.[`${view.id}:${defaultModeId}`];
+                    return date ? [[view.id, date]] : [];
+                })));
+            }
             if (parsed.rangeByView) {
                 const viewIdForRange = parsed.selectedViewId && validViewIds.has(parsed.selectedViewId) ? parsed.selectedViewId : (views?.[0]?.id ?? 'default');
-                const range = parsed.rangeByView[viewIdForRange];
                 const viewForRange = views?.find(v => v.id === viewIdForRange);
-                const dataForRange = viewForRange?.data ?? data;
+                const initialMode = viewForRange?.modes?.[0];
+                const range = parsed.rangeByView[viewIdForRange] ?? parsed.rangeByView[`${viewIdForRange}:${initialMode?.id ?? 'default'}`];
+                const dataForRange = initialMode?.data ?? viewForRange?.data ?? data;
                 const maxIndex = Math.max(0, dataForRange.length - 1);
                 if (range && Array.isArray(range) && range.length === 2) {
                     const [savedStart, savedEnd] = range;
@@ -193,9 +215,9 @@ export default function IndicatorCompositeView({
                 if (parsed.rangeByView) rangeByViewPayload = parsed.rangeByView;
             }
         } catch { /* ignore */ }
-        rangeByViewPayload[activeViewId] = [startIndex, endIndex];
+        rangeByViewPayload[memoryKey] = [startIndex, endIndex];
         window.localStorage.setItem(storageKey, JSON.stringify({ selectedViewId, highlightedAreasByView: highlightedAreasPayload, rangeByView: rangeByViewPayload, baseDateByView }));
-    }, [storageKey, selectedViewId, highlightedAreasByView, startIndex, endIndex, activeViewId, isConfigLoaded, previewRange, baseDateByView]);
+    }, [storageKey, selectedViewId, highlightedAreasByView, startIndex, endIndex, memoryKey, isConfigLoaded, previewRange, baseDateByView]);
 
     useEffect(() => {
         if (selectedMonth && selectByMonth) {
@@ -209,16 +231,16 @@ export default function IndicatorCompositeView({
     useEffect(() => {
         if (!isConfigLoaded) return;
         if (prevViewIdRef.current === null) {
-            prevViewIdRef.current = activeViewId;
+            prevViewIdRef.current = memoryKey;
             return;
         }
-        if (prevViewIdRef.current !== activeViewId) {
-            prevViewIdRef.current = activeViewId;
+        if (prevViewIdRef.current !== memoryKey) {
+            prevViewIdRef.current = memoryKey;
             const max = Math.max(0, sortedData.length - 1);
             setStartIndex(0);
             setEndIndex(max);
         }
-    }, [activeViewId, isConfigLoaded, sortedData.length]);
+    }, [memoryKey, isConfigLoaded, sortedData.length]);
 
     useEffect(() => {
         const max = Math.max(0, sortedData.length - 1);
@@ -302,7 +324,7 @@ export default function IndicatorCompositeView({
                     <select
                         aria-label="Mes base del índice"
                         value={effectiveBaseDate}
-                        onChange={event => startTransition(() => setBaseDateByView(previous => ({ ...previous, [rebaseKey]: event.target.value })))}
+                        onChange={event => startTransition(() => setBaseDateByView(previous => ({ ...previous, [memoryKey]: event.target.value })))}
                         className="border border-imperial-gold bg-imperial-blue px-2 py-1 text-imperial-gold outline-none"
                     >
                         {validBaseRows.map(row => <option key={String(row.iso_fecha)} value={String(row.iso_fecha)}>{row.fecha}</option>)}
@@ -330,15 +352,16 @@ export default function IndicatorCompositeView({
 
     const handleToggleHighlight = useCallback((key: string) => {
         setHighlightedAreasByView(prev => {
-            const next = new Set(prev[rebaseKey] ?? []);
+            const validKeys = new Set(activeAreas.map(area => area.legendKey || area.key));
+            const next = new Set([...(prev[activeViewId] ?? [])].filter(activeKey => validKeys.has(activeKey)));
             if (next.has(key)) {
                 next.delete(key);
             } else {
                 next.add(key);
             }
-            return { ...prev, [rebaseKey]: next };
+            return { ...prev, [activeViewId]: next };
         });
-    }, [rebaseKey]);
+    }, [activeAreas, activeViewId]);
 
     const crosshairFromChartState = useCallback((state: ChartClickState | null, locked: boolean): ChartCrosshairState | null => {
         const x = state?.activeCoordinate?.x;
