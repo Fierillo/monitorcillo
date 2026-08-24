@@ -25,7 +25,7 @@ export default function ChartTooltip({
     if (areaConfigs.some(area => area.comparisonMode === 'mandate-month') && typeof rowData.comparison_group === 'string') {
         const comparisons = chartData.filter(row => row.comparison_group === rowData.comparison_group && typeof row.icg === 'number');
         return (
-            <div key={tooltipLabel} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', maxHeight: compact ? '55vh' : undefined, overflowY: compact ? 'auto' : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
+            <div key={tooltipLabel} data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: compact ? '4px' : '10px', color: '#FFF', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '9px' : undefined, lineHeight: compact ? 1.05 : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
                 <div style={{ fontWeight: 'bold', marginBottom: compact ? '2px' : '4px' }}>{rowData.fecha}</div>
                 {comparisons.map(row => {
                     const primaryColor = String(row.mandate_color ?? '#FFD700');
@@ -68,7 +68,7 @@ export default function ChartTooltip({
         });
 
         return (
-            <div key={tooltipLabel} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', minWidth: compact ? '140px' : '180px', maxHeight: compact ? '45vh' : undefined, overflowY: compact ? 'auto' : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
+            <div key={tooltipLabel} data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: compact ? '4px' : '10px', color: '#FFF', minWidth: compact ? '112px' : '180px', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
                 {rows}
             </div>
         );
@@ -85,11 +85,11 @@ export default function ChartTooltip({
     const total = showStackTotal ? valueRows.reduce((sum, row) => sum + row.value, 0) : null;
     const totalFormat = valueRows[0]?.format ?? valueFormat;
     return (
-        <div key={tooltipLabel} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: compact ? '6px' : '10px', color: '#FFF', maxWidth: compact ? '220px' : undefined, maxHeight: compact ? '55vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '10px' : undefined, lineHeight: compact ? 1.15 : 1.35, whiteSpace: 'nowrap', backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
+        <div key={tooltipLabel} data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: compact ? '4px' : '10px', color: '#FFF', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '9px' : undefined, lineHeight: compact ? 1.05 : 1.35, whiteSpace: 'nowrap', backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
             <div style={{ height: isCapturing ? '24px' : undefined, lineHeight: isCapturing ? '20px' : undefined, color: '#FFD700', fontWeight: 'bold', marginBottom: compact ? '2px' : '4px' }}>{rowData.fecha}</div>
             {valueRows.map(row => compact || isCapturing ? (
-                <div key={row.key} style={{ display: 'flex', alignItems: 'center', justifyContent: compact ? 'space-between' : 'flex-start', gap: compact ? '8px' : '4px', height: isCapturing ? '22px' : undefined, lineHeight: isCapturing ? '22px' : undefined, padding: row.tooltipBackgroundColor ? '1px 4px' : undefined, backgroundColor: row.tooltipBackgroundColor, borderRadius: row.tooltipBackgroundColor ? '2px' : undefined, fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                    <span style={{ color: row.color, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
+                <div key={row.key} style={{ display: 'flex', alignItems: 'center', justifyContent: compact ? 'space-between' : 'flex-start', gap: compact ? '4px' : '4px', height: isCapturing ? '22px' : undefined, lineHeight: isCapturing ? '22px' : undefined, padding: row.tooltipBackgroundColor ? '1px 4px' : undefined, backgroundColor: row.tooltipBackgroundColor, borderRadius: row.tooltipBackgroundColor ? '2px' : undefined, fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    <span style={{ color: row.color, maxWidth: compact ? '108px' : undefined, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
                     <span style={{ color: row.secondaryColor ?? row.color }}>{compact ? row.formatted : `: ${row.formatted}`}</span>
                 </div>
             ) : row.node)}

@@ -172,8 +172,8 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
                 >
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center select-none"><span className="watermark text-imperial-gold/21 text-xl font-sans font-bold uppercase tracking-[0.5em] sm:text-4xl">@fierillo</span></div>
                     {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} isControlPressed={isControlPressed} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
-                    {props.crosshair?.locked && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} isCapturing={props.isCapturing} /> : null}
-                    {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} isCapturing /> : null}
+                    {props.crosshair?.locked && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} compact={props.isMobile} isCapturing={props.isCapturing} /> : null}
+                    {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} compact={false} isCapturing /> : null}
                     {isControlPressed && !props.isCapturing ? (
                         <Image
                             ref={chainsawCursorRef}
@@ -467,18 +467,18 @@ function niceStep(rawStep: number): number {
     return 10 * magnitude;
 }
 
-function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidth, chartHeight, showTotal, isCapturing }: { crosshair: ChartCrosshairState; areas: AreaConfig[]; valueFormat: ValueFormat; sortedData: ChartDataRow[]; chartWidth: number; chartHeight: number; showTotal: boolean; isCapturing: boolean }) {
+function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidth, chartHeight, showTotal, compact, isCapturing }: { crosshair: ChartCrosshairState; areas: AreaConfig[]; valueFormat: ValueFormat; sortedData: ChartDataRow[]; chartWidth: number; chartHeight: number; showTotal: boolean; compact: boolean; isCapturing: boolean }) {
     const label = crosshair.label;
     const rowData = label ? sortedData.find(row => row.fecha === label || row.iso_fecha === label) : null;
     if (!rowData) return null;
-    const tooltipWidth = 260;
-    const tooltipHeight = 40 + areas.length * 24;
+    const tooltipWidth = compact ? 176 : 260;
+    const tooltipHeight = compact ? 24 + areas.length * 15 : 40 + areas.length * 24;
     const fallbackX = crosshair.x + 10 + tooltipWidth > chartWidth ? Math.max(0, crosshair.x - tooltipWidth - 10) : crosshair.x + 10;
     const fallbackY = crosshair.y + 10 + tooltipHeight > chartHeight ? Math.max(0, crosshair.y - tooltipHeight - 10) : crosshair.y + 10;
 
     return (
         <div className="absolute z-10 pointer-events-none" style={{ left: crosshair.tooltipPosition?.x ?? fallbackX, top: crosshair.tooltipPosition?.y ?? fallbackY }}>
-            <ChartTooltip chartData={sortedData} areaConfigs={areas} valueFormat={valueFormat} tooltipProps={{ active: true, label }} showTotal={showTotal} isCapturing={isCapturing} />
+            <ChartTooltip chartData={sortedData} areaConfigs={areas} valueFormat={valueFormat} tooltipProps={{ active: true, label }} compact={compact} showTotal={showTotal} isCapturing={isCapturing} />
         </div>
     );
 }

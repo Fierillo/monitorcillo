@@ -25,6 +25,16 @@ describe('ChartTooltip', () => {
         expect(renderToStaticMarkup(<ChartTooltip {...props} showTotal />)).toContain('Total: 5,0%');
     });
 
+    it('uses the reduced mobile footprint in compact mode', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip {...props} compact />);
+
+        expect(markup).toContain('data-compact="true"');
+        expect(markup).toContain('max-width:176px');
+        expect(markup).toContain('max-height:38vh');
+        expect(markup).toContain('font-size:9px');
+        expect(markup).toContain('padding:4px');
+    });
+
     it('honors series tooltip decimals', () => {
         const markup = renderToStaticMarkup(<ChartTooltip
             chartData={[{ fecha: 'Mes 1', cristina_1: 2.61 }]}
