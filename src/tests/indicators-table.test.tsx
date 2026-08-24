@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import IndicatorsTable from '@/components/IndicatorsTable';
-import { compactText, fitTextToWidth } from '@/components/IndicatorsTable';
+import { compactText, fitTextToWidth, sortIndicatorsByDate } from '@/components/IndicatorsTable';
 
 function constrainedText(textWidth: number, availableWidth: number, initialFontSize = 16): HTMLElement {
     const element = document.createElement('span');
@@ -41,6 +41,19 @@ describe('IndicatorsTable text fitting', () => {
 
         expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth);
         expect(element.style.fontSize).toBe('');
+    });
+
+    it('sorts annual, monthly and daily dates from oldest to newest', () => {
+        const indicator = { fuente: 'Fuente', indicador: 'Indicador', referencia: 'Referencia', dato: 'Dato' };
+        const sorted = sortIndicatorsByDate([
+            { ...indicator, id: 'unknown', fecha: '-' },
+            { ...indicator, id: 'daily', fecha: '31 JUL 26' },
+            { ...indicator, id: 'annual', fecha: '2025' },
+            { ...indicator, id: 'fallback', fecha: 'Feb-26' },
+            { ...indicator, id: 'monthly', fecha: 'FEB 26' },
+        ]);
+
+        expect(sorted.map(row => row.id)).toEqual(['annual', 'fallback', 'monthly', 'daily', 'unknown']);
     });
 
     it('uses natural content width without truncation on mobile', () => {

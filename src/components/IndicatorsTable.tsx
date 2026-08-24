@@ -2,6 +2,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Indicator } from '@/types';
+import { fechaToTimestamp } from '@/lib/normalize/dates';
 
 type ReferenceTooltip = { text: string; x: number; y: number } | null;
 
@@ -30,6 +31,16 @@ export function compactText(value: string): string {
         .replace('Mismo semestre año anterior', 'Mismo semestre año ant.')
         .replace('Mismo mes año anterior', 'Mismo mes año ant.')
         .replace('Mes anterior desest.', 'Mes anterior desestac.');
+}
+
+export function sortIndicatorsByDate(data: Indicator[]): Indicator[] {
+    return [...data].sort((first, second) => {
+        const firstDate = fechaToTimestamp(first.fecha);
+        const secondDate = fechaToTimestamp(second.fecha);
+        if (!firstDate) return secondDate ? 1 : 0;
+        if (!secondDate) return -1;
+        return firstDate - secondDate;
+    });
 }
 
 function FitText({ children, className = '' }: { children: string; className?: string }) {
@@ -67,6 +78,7 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
         return <div className="text-center p-8 border-2 border-imperial-gold text-imperial-gold font-bold">Sin datos.</div>;
     }
 
+    const rows = sortIndicatorsByDate(data);
     const showReferenceTooltip = (text: string, element: HTMLElement) => {
         const rect = element.getBoundingClientRect();
         const maxX = window.innerWidth - TOOLTIP_WIDTH - TOOLTIP_OFFSET;
@@ -88,7 +100,7 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                         </tr>
                     </thead>
                     <tbody>
-                        {data.map((row, i) => {
+                        {rows.map((row, i) => {
                             const source = compactText(row.fuente);
                             const indicator = compactText(row.indicador);
                             const reference = compactText(row.referencia);

@@ -12,11 +12,20 @@ export function isoToMonthLabel(dateStr: string): string {
 }
 
 export function fechaToTimestamp(fecha: string): number {
-    const parts = fecha.split(' ');
-    if (parts.length < 3) return 0;
-    const parsedYear = parseInt(parts[2], 10);
-    const year = parts[2].length === 2 ? 2000 + parsedYear : parsedYear;
-    return new Date(year, MONTHS_IDX[parts[1]], parseInt(parts[0], 10)).getTime();
+    const parts = fecha.replace(/^([A-Za-z]+)-(\d{2,4})$/, '$1 $2').toUpperCase().split(' ');
+    if (parts.length === 1 && /^\d{4}$/.test(parts[0])) return Date.UTC(Number(parts[0]), 0, 1);
+    if (parts.length < 2) return 0;
+
+    const [dayValue, monthValue, yearValue] = parts.length === 2
+        ? ['1', parts[0], parts[1]]
+        : parts;
+    const month = MONTHS_IDX[monthValue];
+    const parsedYear = parseInt(yearValue, 10);
+    const year = yearValue.length === 2 ? 2000 + parsedYear : parsedYear;
+    const day = parseInt(dayValue, 10);
+    return Number.isFinite(year) && Number.isFinite(day) && month !== undefined
+        ? Date.UTC(year, month, day)
+        : 0;
 }
 
 export function fechaToISO(fecha: string): string {
