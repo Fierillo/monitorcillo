@@ -59,6 +59,7 @@ type Props = {
 type ChartRenderProps = Omit<Props, 'captureRef' | 'chartContainerRef'>;
 
 export default function CompositeChartCard({ captureRef, chartContainerRef, ...chartProps }: Props) {
+    const scrollViewportRef = useRef<HTMLDivElement | null>(null);
     const renderProps = chartProps.forceDesktopLayout
         ? { ...chartProps, isMobile: false, chartSize: { width: 1240, height: 780 } }
         : chartProps;
@@ -70,8 +71,9 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
                 <div ref={captureRef} className="flex-1 flex flex-col bg-imperial-blue overflow-hidden" style={captureStyle} tabIndex={-1}>
                     {renderProps.isCapturing ? <ExportHeader title={renderProps.title} subtitle={renderProps.subtitle} /> : null}
                     <ChartHeader onPrepareDownload={renderProps.onPrepareDownload} onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} viewSelector={renderProps.viewSelector} />
-                    <ChartCanvas {...renderProps} chartContainerRef={chartContainerRef} />
+                    <ChartCanvas {...renderProps} chartContainerRef={chartContainerRef} scrollViewportRef={scrollViewportRef} />
                     <CustomLegend areas={renderProps.areas} highlightedAreas={renderProps.highlightedAreas} onToggleHighlight={renderProps.onToggleHighlight} compact={renderProps.isCapturing} />
+                    {!renderProps.isCapturing ? <ChartPanSlider viewportRef={scrollViewportRef} contentKey={`${renderProps.visibleData.length}:${renderProps.chartSize.width}:${renderProps.areas.map(area => area.key).join(',')}`} /> : null}
                     {renderProps.timeRangeSlider ? <div className="no-capture my-2">{renderProps.timeRangeSlider}</div> : null}
                     <MethodologySection methodology={renderProps.methodology} forceOpen={renderProps.isCapturing} />
                     {renderProps.isCapturing ? <ExportFooter /> : null}
@@ -104,13 +106,13 @@ function ChartHeader({ onPrepareDownload, onDownloadChart, isCapturing, viewSele
     );
 }
 
-function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chartContainerRef: React.RefObject<HTMLDivElement | null> }) {
+function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRenderProps & { chartContainerRef: React.RefObject<HTMLDivElement | null>; scrollViewportRef: React.RefObject<HTMLDivElement | null> }) {
     const chainsawCursorRef = useRef<HTMLImageElement | null>(null);
     const pointerPositionRef = useRef<{ left: number; top: number } | null>(null);
     const [isControlPressed, setIsControlPressed] = useState(false);
     const renderedAreas = activeAreas(props.areas, props.highlightedAreas);
     const hasBars = renderedAreas.some(area => area.type === 'bar');
-    const minimumTouchWidth = props.isMobile && hasBars ? props.visibleData.length * 16 : 0;
+    const minimumTouchWidth = props.isMobile ? props.visibleData.length * (hasBars ? 8 : 10) : 0;
     const captureCanvasStyle = props.forceDesktopLayout ? { outline: 'none', height: 780 } : { outline: 'none' };
     const captureChartStyle = props.forceDesktopLayout
         ? { outline: 'none', width: 1240, height: 780 }
@@ -146,7 +148,11 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
         <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? 'min-h-[780px]' : 'min-h-[300px] sm:min-h-[500px]'} ${props.isMobile && props.axisModeSelector ? 'pt-12' : ''} overflow-visible`} style={captureCanvasStyle}>
             {props.isMobile && props.axisModeSelector && !props.isCapturing ? <div className="no-capture absolute left-1/2 top-0 z-10 flex -translate-x-1/2 flex-col items-center gap-1 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-imperial-gold"><span>{props.yAxisLabel}</span>{props.axisModeSelector}</div> : null}
             {!props.isMobile && props.yAxisLabel && <AxisLabel label={props.isCapturing && props.axisModeLabel ? `${props.yAxisLabel} · ${props.axisModeLabel}` : props.yAxisLabel} control={!props.isCapturing ? props.axisModeSelector : null} />}
-            <div className={`relative min-w-0 flex-1 ${minimumTouchWidth ? 'overflow-x-auto overflow-y-hidden' : 'overflow-hidden'}`} style={{ touchAction: minimumTouchWidth ? 'pan-x pan-y' : undefined }}>
+            <div
+                ref={scrollViewportRef}
+                data-testid="chart-scroll-viewport"
+                className="relative min-w-0 flex-1 overflow-hidden"
+            >
                 <div
                     ref={chartContainerRef}
                     className={`relative h-full overflow-hidden ${isControlPressed && !props.isCapturing ? 'chainsaw-cursor' : ''}`}
@@ -191,6 +197,59 @@ function ChartCanvas({ chartContainerRef, ...props }: ChartRenderProps & { chart
                 </div>
             </div>
             {!props.isMobile && props.secondaryYAxis && <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right />}
+        </div>
+    );
+}
+
+function ChartPanSlider({ viewportRef, contentKey }: { viewportRef: RefObject<HTMLDivElement | null>; contentKey: string }) {
+    const [position, setPosition] = useState(0);
+    const [maximum, setMaximum] = useState(0);
+
+    useEffect(() => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+
+        const update = () => {
+            const nextMaximum = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+            setMaximum(nextMaximum);
+            setPosition(Math.min(viewport.scrollLeft, nextMaximum));
+        };
+        const frame = requestAnimationFrame(update);
+        const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+        observer?.observe(viewport);
+        if (viewport.firstElementChild) observer?.observe(viewport.firstElementChild);
+        viewport.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        return () => {
+            cancelAnimationFrame(frame);
+            observer?.disconnect();
+            viewport.removeEventListener('scroll', update);
+            window.removeEventListener('resize', update);
+        };
+    }, [contentKey, viewportRef]);
+
+    if (maximum <= 0) return null;
+
+    return (
+        <div className="no-capture flex items-center gap-2 px-1 py-1.5 text-imperial-gold">
+            <span aria-hidden className="text-xs">◀</span>
+            <label className="sr-only" htmlFor="chart-pan-slider">Desplazar gráfico horizontalmente</label>
+            <input
+                id="chart-pan-slider"
+                data-testid="chart-pan-slider"
+                type="range"
+                min={0}
+                max={maximum}
+                value={position}
+                aria-valuetext={`${Math.round(position / maximum * 100)}%`}
+                onChange={(event) => {
+                    const nextPosition = Number(event.target.value);
+                    setPosition(nextPosition);
+                    if (viewportRef.current) viewportRef.current.scrollLeft = nextPosition;
+                }}
+                className="h-5 min-w-0 flex-1 cursor-grab accent-[#FFD700] active:cursor-grabbing"
+            />
+            <span aria-hidden className="text-xs">▶</span>
         </div>
     );
 }
