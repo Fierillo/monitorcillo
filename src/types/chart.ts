@@ -76,6 +76,8 @@ export type ChartReferenceLine = {
     label?: string;
     color?: string;
     dash?: number[];
+    foreground?: boolean;
+    outlineColor?: string;
 };
 
 export type ChartModeConfig = {

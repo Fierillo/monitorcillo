@@ -230,6 +230,18 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
     const yAxisWidth = props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 76 : 52);
     const leftMargin = props.isMobile ? 5 : yAxisWidth + -50;
     const rightMargin = props.isMobile ? 5 : (props.secondaryYAxis ? 15 : 10);
+    const visibleReferenceLines = props.referenceLines.filter(reference => reference.value >= 0);
+    const renderReferenceLine = (reference: ChartReferenceLine, key: string, outline = false) => <ReferenceLine
+        key={key}
+        y={reference.value}
+        yAxisId="left"
+        stroke={outline ? reference.outlineColor : reference.color ?? '#FFD700'}
+        strokeWidth={outline ? 4 : reference.foreground ? 1.5 : 1.25}
+        strokeDasharray={reference.dash?.join(' ')}
+        strokeLinecap="round"
+        zIndex={reference.foreground ? (outline ? 1000 : 1001) : undefined}
+        label={!outline && reference.label ? { value: `${reference.label}: ${formatValueByType(reference.value, props.valueFormat)}`, position: 'insideTopRight', fill: reference.color ?? '#FFD700', fontSize: 10, fontWeight: 700 } : undefined}
+    />;
 
     const hideHoverCrosshair = useCallback(() => {
         if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
@@ -307,11 +319,17 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
             <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions' && props.valueFormat !== 'currency'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
             {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
             {!props.isCapturing && !props.crosshair?.locked && <Tooltip cursor={false} wrapperStyle={{ pointerEvents: 'none' }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={renderedAreas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} compact={props.isMobile} showTotal={props.showTooltipTotal} />} />}
-            {props.referenceLines.filter(reference => reference.value >= 0).map((reference, index) => <ReferenceLine key={reference.label ?? `${reference.value}-${index}`} y={reference.value} yAxisId="left" stroke={reference.color ?? '#FFD700'} strokeWidth={1.25} strokeDasharray={reference.dash?.join(' ')} label={reference.label ? { value: `${reference.label}: ${formatValueByType(reference.value, props.valueFormat)}`, position: 'insideTopRight', fill: reference.color ?? '#FFD700', fontSize: 10, fontWeight: 700 } : undefined} />)}
+            {visibleReferenceLines.filter(reference => !reference.foreground).map((reference, index) => renderReferenceLine(reference, reference.label ?? `${reference.value}-${index}`))}
             {renderedAreas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}
             {comparisonRows.map(row => <MandatePoint key={String(row.iso_fecha)} x={row[props.xAxisKey] as string | number} y={Number(row.icg)} yAxisId="left" primaryColor={String(row.mandate_color ?? '#FFD700')} secondaryColor={typeof row.mandate_secondary_color === 'string' ? row.mandate_secondary_color : undefined} />)}
             {lockedSeriesPoints.map(({ area, value }) => <MandatePoint key={`locked-${area.key}`} x={lockedRow![props.xAxisKey] as string | number} y={value} yAxisId={area.yAxisId ?? 'left'} primaryColor={area.color} secondaryColor={area.secondaryColor} />)}
             <Customized component={(chartState: unknown) => <RangePreviewGuides previewRange={props.rangePreview} committedRange={props.committedRange} sortedData={props.sortedData} xAxisKey={props.xAxisKey} chartState={chartState} />} />
+            {visibleReferenceLines.filter(reference => reference.foreground).flatMap((reference, index) => {
+                const key = reference.label ?? `${reference.value}-${index}`;
+                return reference.outlineColor
+                    ? [renderReferenceLine(reference, `${key}-outline`, true), renderReferenceLine(reference, key)]
+                    : [renderReferenceLine(reference, key)];
+            })}
             <HoverCrosshair verticalRef={hoverVerticalRef} horizontalRef={hoverHorizontalRef} width={props.chartSize.width} height={props.chartSize.height} />
             <ChartCrosshair crosshair={props.crosshair} width={props.chartSize.width} height={props.chartSize.height} onUnlock={props.onCrosshairUnlock} isControlPressed={props.isControlPressed} />
         </ComposedChart>

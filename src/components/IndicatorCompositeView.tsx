@@ -116,7 +116,7 @@ export default function IndicatorCompositeView({
         : sourceData;
     const activeYAxisLabel = selectedView?.rebaseable && effectiveBaseDate ? `Base 100 = ${formatBaseDate(effectiveBaseDate)}` : configuredYAxisLabel;
     const activeReferenceLines = useMemo(() => selectedView?.rebaseable && effectiveBaseDate
-        ? [...configuredReferenceLines, { value: 100, color: '#FFD700', dash: [6, 4] }]
+        ? [...configuredReferenceLines, { value: 100, color: '#FFD700', dash: [6, 4], foreground: true, outlineColor: '#000000' }]
         : configuredReferenceLines, [selectedView?.rebaseable, effectiveBaseDate, configuredReferenceLines]);
     const sortedData = useMemo(() => {
         const getSortKey = (row: ChartDataRow) => {
