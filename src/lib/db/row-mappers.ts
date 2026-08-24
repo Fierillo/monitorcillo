@@ -1,6 +1,7 @@
 import type { DbRow, IndicatorTrend, IndicatorType, NormalizedDataByType } from '@/types';
 import { BALANZA_IMPORT_KEYS, BALANZA_SERIES_KEYS, toNegativeImport } from '../balanza/schema';
 import { EMAE_SECTOR_APORTE_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
+import { PNFC_SERIES } from '../morosidad/schema';
 import { isoToFecha, isoToMonthLabel } from '../normalize';
 import { RECAUDACION_BREAKDOWN_TYPES } from '../recaudacion/schema';
 import { formatDbDate, toNullableNumber, toNumber } from './tables';
@@ -69,6 +70,7 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
     }
 
     if (type === 'depositos-prestamos') {
+        const pnfcValues = Object.fromEntries(PNFC_SERIES.map(series => [series.normalizedKey, toNullableNumber(row[series.dbKey])]));
         return {
             ...common,
             depositosPesosPbi: toNullableNumber(row.depositos_pesos_pbi),
@@ -89,6 +91,12 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
             depositosPublicosUsdConstantes: toNullableNumber(row.depositos_publicos_usd_constantes),
             prestamosPublicosPesosConstantes: toNullableNumber(row.prestamos_publicos_pesos_constantes),
             prestamosPublicosUsdConstantes: toNullableNumber(row.prestamos_publicos_usd_constantes),
+            moraIrregularPct: toNullableNumber(row.mora_irregular_pct),
+            moraIncobrablePct: toNullableNumber(row.mora_incobrable_pct),
+            moraTotalIrregularPct: toNullableNumber(row.mora_total_irregular_pct),
+            moraFamiliasPct: toNullableNumber(row.mora_familias_pct),
+            moraEmpresasPct: toNullableNumber(row.mora_empresas_pct),
+            ...pnfcValues,
         } as NormalizedDataByType[T];
     }
 

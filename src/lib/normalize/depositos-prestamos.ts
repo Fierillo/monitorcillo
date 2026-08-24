@@ -1,4 +1,5 @@
 import type { DepositosPrestamosNormalizedRow, DepositosPrestamosRawRow } from '@/types';
+import { PNFC_SERIES } from '../morosidad/schema';
 import { isoToMonthLabel } from './dates';
 import { baseIpcValue, toBasePrices, toNullableNumber } from './numbers';
 
@@ -22,6 +23,10 @@ export function normalizeDepositosPrestamos(rawData: DepositosPrestamosRawRow[])
         const depositosPublicosUsdNominales = tc == null || depositosPublicosUsdRaw == null ? null : depositosPublicosUsdRaw * tc;
         const prestamosPublicosPesosNominales = toNullableNumber(row.prestamos_publicos_pesos);
         const prestamosPublicosUsdNominales = tc == null || prestamosPublicosUsdRaw == null ? null : prestamosPublicosUsdRaw * tc;
+        const pnfcRatios = Object.fromEntries(PNFC_SERIES.map(series => [
+            series.normalizedKey,
+            toNullableNumber(row[series.rawKey]),
+        ])) as Record<typeof PNFC_SERIES[number]['normalizedKey'], number | null>;
         const toPbiBase = (value: number | null) => toBasePrices(value, ipc, pbiBaseIpc);
         const toConstantValues = (value: number | null) => toBasePrices(value, ipc, constantValueBaseIpc);
         const depositosPesos = toPbiBase(depositosPesosNominales);
@@ -57,6 +62,12 @@ export function normalizeDepositosPrestamos(rawData: DepositosPrestamosRawRow[])
             depositosPublicosUsdConstantes: toConstantValues(depositosPublicosUsdNominales),
             prestamosPublicosPesosConstantes: toConstantValues(prestamosPublicosPesosNominales),
             prestamosPublicosUsdConstantes: toConstantValues(prestamosPublicosUsdNominales),
+            moraIrregularPct: toNullableNumber(row.mora_irregular_pct),
+            moraIncobrablePct: toNullableNumber(row.mora_incobrable_pct),
+            moraTotalIrregularPct: toNullableNumber(row.mora_irregular_total_pct),
+            moraFamiliasPct: toNullableNumber(row.mora_familias_pct),
+            moraEmpresasPct: toNullableNumber(row.mora_empresas_pct),
+            ...pnfcRatios,
         }];
     }).sort((a, b) => a.iso_fecha.localeCompare(b.iso_fecha));
 }

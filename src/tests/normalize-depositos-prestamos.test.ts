@@ -72,4 +72,33 @@ describe('normalizeDepositosPrestamos', () => {
             prestamosTotalPbi: null,
         });
     });
+
+    it('preserves historical, current and PNFC irregularity ratios', () => {
+        const result = normalizeDepositosPrestamos([
+            {
+                fecha: '2020-09-01',
+                mora_irregular_pct: 8,
+                mora_incobrable_pct: 2,
+            },
+            {
+                fecha: '2020-10-01',
+                mora_irregular_total_pct: 5,
+                mora_familias_pct: 8,
+                mora_empresas_pct: 2,
+                mora_pnfc_hasta_29_pct: 38.4,
+            },
+        ]);
+
+        expect(result[0]).toMatchObject({
+            moraIrregularPct: 8,
+            moraIncobrablePct: 2,
+            moraTotalIrregularPct: null,
+        });
+        expect(result[1]).toMatchObject({
+            moraTotalIrregularPct: 5,
+            moraFamiliasPct: 8,
+            moraEmpresasPct: 2,
+            moraPnfcHasta29Pct: 38.4,
+        });
+    });
 });

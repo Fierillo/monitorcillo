@@ -1,5 +1,6 @@
 import type { BalanzaSeriesKey } from '@/lib/balanza/schema';
 import type { EmaeSectorAporteKey, EmaeSectorKey, EmaeSectorMm12Key } from '@/lib/emae/schema';
+import type { PnfcNormalizedKey, PnfcRawKey } from '@/lib/morosidad/schema';
 import type { NumericValue } from './common';
 import type { IndicatorType } from './indicators';
 
@@ -129,7 +130,12 @@ export type DepositosPrestamosRawRow = {
     pbi_trimestral?: NumericValue;
     emae_desestacionalizado?: NumericValue;
     ipc_nucleo?: NumericValue;
-};
+    mora_irregular_pct?: NumericValue;
+    mora_incobrable_pct?: NumericValue;
+    mora_irregular_total_pct?: NumericValue;
+    mora_familias_pct?: NumericValue;
+    mora_empresas_pct?: NumericValue;
+} & Partial<Record<PnfcRawKey, NumericValue>>;
 
 export type DepositosPrestamosNormalizedRow = {
     fecha: string;
@@ -152,7 +158,12 @@ export type DepositosPrestamosNormalizedRow = {
     depositosPublicosUsdConstantes: number | null;
     prestamosPublicosPesosConstantes: number | null;
     prestamosPublicosUsdConstantes: number | null;
-};
+    moraIrregularPct: number | null;
+    moraIncobrablePct: number | null;
+    moraTotalIrregularPct: number | null;
+    moraFamiliasPct: number | null;
+    moraEmpresasPct: number | null;
+} & Record<PnfcNormalizedKey, number | null>;
 
 export type RecaudacionRawRow = {
     fecha: string;
