@@ -85,7 +85,7 @@ export default function IndicatorCompositeView({
     const activeChartTitle = selectedMode?.chartTitle ?? selectedView?.chartTitle ?? chartTitle;
     const sourceData = selectedMode?.data ?? selectedView?.data ?? data;
     const activeAreas = selectedMode?.areas ?? selectedView?.areas ?? areas;
-    const activeMethodology = selectedView?.methodology ?? methodology;
+    const activeMethodology = selectedMode?.methodology ?? selectedView?.methodology ?? methodology;
     const activeValueFormat = selectedMode?.valueFormat ?? selectedView?.valueFormat ?? valueFormat;
     const activeYAxisDecimals = selectedMode?.yAxisDecimals ?? selectedView?.yAxisDecimals ?? yAxisDecimals;
     const configuredYAxisLabel = selectedMode?.yAxisLabel ?? selectedView?.yAxisLabel ?? yAxisLabel;
@@ -310,7 +310,7 @@ export default function IndicatorCompositeView({
         return [min, max];
     }, [visibleData, activeAreas, activeLeftYAxisDomain, highlightedAreas, activeReferenceLines]);
 
-    const viewSelector = (views && views.length > 1) || selectedView?.rebaseable ? (
+    const viewSelector = (views && views.length > 1) || selectedView?.rebaseable || selectedView?.modeSelector === 'select' ? (
         <div className="no-capture flex w-full flex-wrap items-center gap-2 sm:w-auto">
             {views && views.length > 1 ? <div className="flex gap-1">
                 {views.map(view => {
@@ -331,10 +331,23 @@ export default function IndicatorCompositeView({
                     </select>
                 </label>
             ) : null}
+            {selectedView?.modeSelector === 'select' && selectedMode ? (
+                <label className="flex items-center gap-2 text-[10px] font-bold uppercase text-imperial-gold sm:text-xs">
+                    Desagregación
+                    <select
+                        aria-label="Desagregación de morosidad"
+                        value={selectedMode.id}
+                        onChange={event => startTransition(() => setSelectedModeByView(previous => ({ ...previous, [activeViewId]: event.target.value })))}
+                        className="max-w-[15rem] border border-imperial-gold bg-imperial-blue px-2 py-1 text-imperial-gold outline-none sm:max-w-none"
+                    >
+                        {selectedView.modes?.map(mode => <option key={mode.id} value={mode.id}>{mode.label}</option>)}
+                    </select>
+                </label>
+            ) : null}
         </div>
     ) : null;
 
-    const axisModeSelector = selectedView?.modes && selectedView.modes.length > 1 && selectedMode ? (
+    const axisModeSelector = selectedView?.modeSelector !== 'select' && selectedView?.modes && selectedView.modes.length > 1 && selectedMode ? (
         <div role="group" aria-label="Unidad del eje Y" className="no-capture flex tracking-normal">
             {selectedView.modes.map(mode => (
                 <button

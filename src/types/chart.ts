@@ -91,6 +91,7 @@ export type ChartModeConfig = {
     leftYAxisDomain?: ChartAxisDomain;
     areas?: AreaConfig[];
     showTooltipTotal?: boolean;
+    methodology?: MethodologyItem[];
 };
 
 export type ChartViewConfig = {
@@ -109,6 +110,7 @@ export type ChartViewConfig = {
     showTooltipTotal?: boolean;
     referenceLines?: ChartReferenceLine[];
     modes?: ChartModeConfig[];
+    modeSelector?: 'buttons' | 'select';
     rebaseable?: boolean;
     defaultBaseDate?: string;
 };

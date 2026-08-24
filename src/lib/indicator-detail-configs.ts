@@ -1,6 +1,8 @@
 import type { AreaConfig, ChartDataRow, ChartModeConfig, Indicator, IndicatorCompositeViewProps, MethodologyItem } from '@/types';
 import { BALANZA_EXPORT_RUBROS, BALANZA_IMPORT_USOS, BALANZA_SERIES_KEYS, buildAperturaComercial, usdMillionsToPctPbi, withNegativeImports } from './balanza/schema';
 import { EMAE_SECTORS } from './emae/schema';
+import { PNFC_BREAKDOWNS } from './morosidad/schema';
+import { normalizeDepositosPrestamos } from './normalize/depositos-prestamos';
 import { RECAUDACION_BREAKDOWN_TYPES } from './recaudacion/schema';
 import { ICG_PRESIDENTIAL_MANDATES, PRESIDENTIAL_MANDATES } from './presidential-mandates';
 import { safeGetIndicatorData } from './storage';
@@ -132,7 +134,10 @@ async function bmaConfig(indicator: Indicator): Promise<DetailConfig> {
 }
 
 async function depositosPrestamosConfig(indicator: Indicator): Promise<DetailConfig> {
-    const data = await safeGetIndicatorData('depositos-prestamos');
+    const normalizedData = await safeGetIndicatorData('depositos-prestamos');
+    const hasMorosidad = normalizedData.some(row => row.moraIrregularPct != null || row.moraTotalIrregularPct != null || row.moraFamiliasPct != null || row.moraPnfcHasta29Pct != null);
+    const data = (hasMorosidad ? normalizedData : normalizeDepositosPrestamos(await getRawData('depositos-prestamos'))) as ChartDataRow[];
+    const depositosData = data.filter(row => row.depositosTotalPbi != null || row.prestamosTotalPbi != null);
     const methodology: MethodologyItem[] = [
         { title: 'Sector privado', description: 'Stocks informados diariamente por el BCRA: depósitos en pesos (100), depósitos en moneda extranjera (108), préstamos en pesos (117) y préstamos en moneda extranjera (125).' },
         { title: 'Sector público', description: 'Stocks informados diariamente por el BCRA: depósitos en pesos (1455), depósitos en moneda extranjera (1493), préstamos en pesos (1313) y préstamos en moneda extranjera (1327).' },
@@ -176,7 +181,7 @@ async function depositosPrestamosConfig(indicator: Indicator): Promise<DetailCon
             id: 'pbi',
             label: '% PBI',
             chartTitle: 'Stock de depósitos y préstamos del sector privado',
-            data: withPreliminaryLines(data.map(row => ({
+            data: withPreliminaryLines(depositosData.map(row => ({
                 ...row,
                 depositosPrivadosPesos: row.depositosPesosPbi,
                 depositosPrivadosUsd: row.depositosUsdPbi,
@@ -197,7 +202,7 @@ async function depositosPrestamosConfig(indicator: Indicator): Promise<DetailCon
             id: 'constantes',
             label: '$ constantes',
             chartTitle: 'Stock de depósitos y préstamos del sector privado',
-            data: withPreliminaryLines(data.map(row => ({
+            data: withPreliminaryLines(depositosData.map(row => ({
                 ...row,
                 depositosPrivadosPesos: row.depositosPesosConstantes,
                 depositosPrivadosUsd: row.depositosUsdConstantes,
@@ -218,6 +223,99 @@ async function depositosPrestamosConfig(indicator: Indicator): Promise<DetailCon
             leftYAxisDomain: [0, 'auto'],
         },
     ];
+    const moraAreas: AreaConfig[] = [
+        { key: 'moraIrregular', name: 'Irregular (situaciones 2 a 4)', color: '#F59E0B', type: 'bar', stackId: 'situacion', maxBarSize: 72 },
+        { key: 'moraIncobrable', name: 'Incobrable (situaciones 5 y 6)', color: '#DC2626', type: 'bar', stackId: 'situacion', maxBarSize: 72 },
+        { key: 'moraTotalActual', name: 'Ratio de irregularidad desde oct-2020', color: '#FFFFFF', type: 'line', strokeWidth: 3, showDots: false },
+    ];
+    const moraData = data.filter(row => row.moraIrregularPct != null || row.moraTotalIrregularPct != null).map(row => ({
+        ...row,
+        moraIrregular: row.moraIrregularPct,
+        moraIncobrable: row.moraIncobrablePct,
+        moraTotalActual: row.moraTotalIrregularPct,
+    }));
+    const debtorSectorAreas: AreaConfig[] = [
+        { key: 'moraFamiliasPct', name: 'Familias', color: '#F59E0B', type: 'line', strokeWidth: 2.5, showDots: false },
+        { key: 'moraEmpresasPct', name: 'Empresas', color: '#38BDF8', type: 'line', strokeWidth: 2.5, showDots: false },
+    ];
+    const debtorSectorData = data.filter(row => row.moraFamiliasPct != null || row.moraEmpresasPct != null);
+    const situationMethodology: MethodologyItem[] = [
+        { title: 'Fuente', description: 'BCRA. El desglose histórico se obtiene de las series del estado de situación de deudores publicadas en datos.gob.ar. El tramo vigente proviene del anexo XLSX del Informe sobre Bancos.' },
+        { title: 'Período', description: 'Desglose por situación entre junio de 1994 y septiembre de 2020. Ratio agregado desde octubre de 2020; último dato disponible: junio de 2026.' },
+        { title: 'Desglose histórico', description: 'Entre junio de 1994 y septiembre de 2020 se usa el estado de situación de deudores del BCRA. La barra suma irregular (situaciones 2, 3 y 4) e incobrable (situaciones 5 y 6), cada una como porcentaje de las financiaciones totales. La cartera normal no se muestra.' },
+        { title: 'Serie vigente', description: 'La línea muestra la cartera irregular en situaciones 3, 4, 5 y 6 del sector privado no financiero, dividida por las financiaciones totales a ese sector.' },
+        { title: 'Cambio metodológico', description: 'La línea posterior a septiembre de 2020 no desagrega situaciones y no es una continuación homogénea de las barras. No se interpolan categorías ni meses faltantes.' },
+    ];
+    const debtorSectorMethodology: MethodologyItem[] = [
+        { title: 'Fuente', description: 'BCRA, anexo XLSX del Informe sobre Bancos, hoja “Calidad de Cartera (por líneas)”.' },
+        { title: 'Período', description: 'Serie mensual desde enero de 2010. Último dato disponible: junio de 2026.' },
+        { title: 'Familias', description: 'Financiaciones otorgadas a personas humanas, excepto las que tienen destino comercial.' },
+        { title: 'Empresas', description: 'Financiaciones otorgadas a personas jurídicas y crédito comercial otorgado a personas humanas. No incluye financiaciones a residentes en el exterior.' },
+        { title: 'Cálculo', description: 'Cada línea divide la cartera irregular del sector, clasificada en situaciones 3, 4, 5 y 6, por las financiaciones totales de ese mismo sector. Las líneas no representan su participación dentro de la mora total.' },
+    ];
+    const pnfcMethodology = (breakdownId: string): MethodologyItem[] => {
+        const common: MethodologyItem[] = [
+            { title: 'Fuente', description: 'BCRA, Anexo estadístico de Proveedores No Financieros de Crédito, informe de junio de 2026.' },
+            { title: 'Período', description: 'Serie mensual entre enero de 2018 y febrero de 2026.' },
+            { title: 'Universo', description: 'Financiaciones informadas por Proveedores No Financieros de Crédito. No corresponde a préstamos otorgados por bancos y otras entidades financieras.' },
+            { title: 'Cálculo', description: 'Cada línea divide el saldo irregular de la categoría por su propio saldo financiado. Las categorías son aperturas independientes y sus porcentajes no deben sumarse.' },
+        ];
+        if (breakdownId === 'edad') return [...common,
+            { title: 'Apertura', description: 'Personas de hasta 29 años, de 30 a 64 años y de 65 años o más, agrupadas por la edad informada para la persona deudora.' },
+        ];
+        if (breakdownId === 'proveedor') return [...common,
+            { title: 'Apertura', description: 'Clasificación por grupo del proveedor que otorgó el financiamiento: cooperativas y mutuales, fintech, leasing y factoring, cadenas comerciales, emisoras de tarjetas y resto.' },
+            { title: 'Electrodomésticos', description: 'Identifica al proveedor que vende electrodomésticos, no el artículo financiado. No permite distinguir televisores, teléfonos, muebles u otros productos.' },
+        ];
+        return [...common,
+            { title: 'Apertura', description: 'Clasificación por tipo de asistencia: tarjetas de crédito, préstamos personales y resto de asistencias.' },
+        ];
+    };
+    const moraModes: ChartModeConfig[] = [
+        {
+            id: 'situacion',
+            label: 'Situación crediticia',
+            chartTitle: 'Morosidad',
+            data: moraData,
+            areas: moraAreas,
+            yAxisLabel: '% del saldo financiado',
+            valueFormat: 'percent',
+            leftYAxisDomain: [0, 'auto'],
+            methodology: situationMethodology,
+        },
+        {
+            id: 'sector',
+            label: 'Sector deudor',
+            chartTitle: 'Morosidad por sector deudor',
+            data: debtorSectorData,
+            areas: debtorSectorAreas,
+            yAxisLabel: '% del saldo financiado',
+            valueFormat: 'percent',
+            leftYAxisDomain: [0, 'auto'],
+            methodology: debtorSectorMethodology,
+        },
+        ...PNFC_BREAKDOWNS.map((breakdown): ChartModeConfig => {
+            const areas: AreaConfig[] = breakdown.series.map(series => ({
+                key: series.normalizedKey,
+                name: series.name,
+                color: series.color,
+                type: 'line',
+                strokeWidth: 2,
+                showDots: false,
+            }));
+            return {
+                id: breakdown.id,
+                label: breakdown.label,
+                chartTitle: `Morosidad por ${breakdown.label.toLowerCase()}`,
+                data: data.filter(row => areas.some(area => row[area.key] != null)),
+                areas,
+                yAxisLabel: '% del saldo financiado',
+                valueFormat: 'percent',
+                leftYAxisDomain: [0, 'auto'],
+                methodology: pnfcMethodology(breakdown.id),
+            };
+        }),
+    ];
 
     return {
         subtitle: `Fuente: BCRA e INDEC | Dato: ${indicator.dato}`,
@@ -229,7 +327,10 @@ async function depositosPrestamosConfig(indicator: Indicator): Promise<DetailCon
         yAxisLabel: '% de PBI real',
         leftYAxisDomain: [0, 'auto'],
         indicatorId: indicator.id,
-        views: [{ id: 'unidad', label: 'Unidad', chartTitle: 'Stock de depósitos y préstamos del sector privado', areas, methodology, modes }],
+        views: [
+            { id: 'unidad', label: 'Depósitos y préstamos', chartTitle: 'Stock de depósitos y préstamos del sector privado', areas, methodology, modes },
+            { id: 'mora', label: 'MORA', chartTitle: 'Morosidad', data: moraData, areas: moraAreas, methodology: situationMethodology, valueFormat: 'percent', yAxisLabel: '% del saldo financiado', leftYAxisDomain: [0, 'auto'], modes: moraModes, modeSelector: 'select' },
+        ],
     };
 }
 
