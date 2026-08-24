@@ -279,11 +279,11 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
         areas,
         methodology,
         valueFormat: 'index',
-        yAxisLabel: 'Base 100 = Ene-17',
+        yAxisLabel: 'Mes base seleccionado = 100',
         leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'],
         indicatorId: indicator.id,
         views: [
-            { id: 'salarios', label: 'SALARIOS', chartTitle: 'Evolución del Poder Adquisitivo', areas, methodology, valueFormat: 'index', yAxisLabel: 'Base 100 = Ene-17', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'], rebaseable: true, defaultBaseDate: '2017-01-01' },
+            { id: 'salarios', label: 'SALARIOS', chartTitle: 'Evolución del Poder Adquisitivo', areas, methodology, valueFormat: 'index', yAxisLabel: 'Mes base seleccionado = 100', leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'], rebaseable: true, defaultBaseDate: '2017-01-01' },
             {
                 id: 'costo-de-vida',
                 label: 'COSTO DE VIDA',
@@ -333,7 +333,7 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'EMAE Original', description: 'Evolución de la actividad real sin ajustes (INDEC 143.3_NO_PR_2004_A_21).' },
         { title: 'EMAE Desestacionalizado', description: 'Serie corregida por estacionalidad y calendario (INDEC 143.3_NO_PR_2004_A_31).' },
         { title: 'EMAE Tendencia-Ciclo', description: 'Evolución de largo plazo suavizada (INDEC 143.3_NO_PR_2004_A_28).' },
-        { title: 'Normalización', description: 'Índice Base Enero 2017 = 100 para comparabilidad histórica.' },
+        { title: 'Normalización', description: 'Cada serie se expresa como índice base 100 en el mes seleccionado por el usuario para facilitar la comparabilidad histórica.' },
         { title: 'Per cápita', description: 'En el modo Per cápita, cada serie se divide por la población argentina mensual estimada a partir de los datos anuales del Banco Mundial.' },
     ];
     const sectorAreas: AreaConfig[] = EMAE_SECTORS.map(sector => ({ key: `${sector.key}_mm12`, name: sector.label, color: sector.color, type: 'line', strokeWidth: 2 }));
@@ -350,8 +350,8 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
     });
     const sectorMethodology = [
         { title: 'Series sectoriales', description: 'Índices originales por actividad publicados por INDEC en base 2004=100.' },
-        { title: 'Normalización', description: 'Cada sector se expresa como índice Base Enero 2017 = 100.' },
-        { title: 'Suavizado MM12 logarítmico', description: 'Se aplica una media móvil geométrica trailing de 12 meses sobre cada índice sectorial original y luego se normaliza cada serie a Base Enero 2017 = 100. Este cálculo reduce la influencia relativa de valores extremos. No son series desestacionalizadas oficiales de INDEC.' },
+        { title: 'Normalización', description: 'Cada sector se expresa como índice base 100 en el mes seleccionado por el usuario.' },
+        { title: 'Suavizado MM12 logarítmico', description: 'Se aplica una media móvil geométrica de 12 meses hacia atrás sobre cada índice sectorial original y luego cada serie se expresa como índice base 100 en el mes seleccionado por el usuario. Este cálculo reduce la influencia relativa de valores extremos. No son series desestacionalizadas oficiales de INDEC.' },
         { title: 'Per cápita', description: 'En el modo Per cápita, cada MM12 sectorial se ajusta por la población argentina mensual estimada a partir de los datos anuales del Banco Mundial.' },
     ];
     const mandates = PRESIDENTIAL_MANDATES;
@@ -389,7 +389,7 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         areas,
         methodology,
         valueFormat: 'index',
-        yAxisLabel: 'Base 100 = Ene-17',
+        yAxisLabel: 'Mes base seleccionado = 100',
         leftYAxisDomain: ['dataMin - 5', 'dataMax + 5'],
         views: [
             {

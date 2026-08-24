@@ -34,7 +34,7 @@ Monitorcillo consolida indicadores económicos argentinos en una interfaz compac
 | Base Monetaria Amplia | BCRA e INDEC | Serie mensual normalizada contra PBI real |
 | Emisión / Absorción de Pesos | BCRA y MECON | Flujo diario y acumulado |
 | Recaudación tributaria | MECON | % de PBI real mensual y MM12 |
-| Poder adquisitivo | INDEC, RIPTE y ANSES | Índices reales base enero 2017 |
+| Poder adquisitivo | INDEC, RIPTE y ANSES | Índices reales con mes base seleccionable |
 | EMAE | INDEC | Agregado, desestacionalizado, tendencia y sectores MM12 |
 | Deuda pública | MECON, BCRA e INDEC | Perfil de compromisos y deuda/PBI |
 | Pobreza | INDEC y UTDT | Serie oficial semestral y nowcast mensual (gráfico interactivo UTDT) |
