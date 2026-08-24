@@ -36,8 +36,8 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                         }}
                         title="Click para destacar u ocultar el destacado"
                     >
-                        {secondaryMarkerColor
-                            ? <SeriesColorMarker color={markerColor} secondaryColor={secondaryMarkerColor} />
+                        {area.type === 'line'
+                            ? <SeriesColorMarker color={markerColor} secondaryColor={secondaryMarkerColor} dash={area.dash} strokeWidth={area.strokeWidth} />
                             : <svg width="10" height="10"><circle cx="5" cy="5" r="5" fill={area.legendFilled === false ? 'transparent' : markerColor} stroke={markerColor} strokeWidth={area.legendFilled === false ? 1.5 : 0} /></svg>}
                         {area.name}
                     </span>

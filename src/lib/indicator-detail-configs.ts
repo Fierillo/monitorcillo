@@ -336,7 +336,16 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Normalización', description: 'Cada serie se expresa como índice base 100 en el mes seleccionado por el usuario para facilitar la comparabilidad histórica.' },
         { title: 'Per cápita', description: 'En el modo Per cápita, cada serie se divide por la población argentina mensual estimada a partir de los datos anuales del Banco Mundial.' },
     ];
-    const sectorAreas: AreaConfig[] = EMAE_SECTORS.map(sector => ({ key: `${sector.key}_mm12`, name: sector.label, color: sector.color, type: 'line', strokeWidth: 2 }));
+    const sectorAreas: AreaConfig[] = EMAE_SECTORS.map(sector => ({
+        key: `${sector.key}_mm12`,
+        name: sector.label,
+        color: sector.color,
+        secondaryColor: 'secondaryColor' in sector ? sector.secondaryColor : undefined,
+        type: 'line',
+        strokeWidth: sector.key === 'impuestos' ? 3 : 2,
+        dash: 'dash' in sector ? [...sector.dash] : undefined,
+        tooltipBackgroundColor: sector.key === 'impuestos' ? 'rgba(255, 255, 255, 0.9)' : undefined,
+    }));
     const sectorPerCapitaData: ChartDataRow[] = sectorData.map(row => {
         const populationAdjustment = populationAdjustmentFor(row);
         return {
