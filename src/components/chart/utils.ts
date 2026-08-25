@@ -6,6 +6,28 @@ export const SPANISH_MONTHS: Record<string, string> = {
     '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
 };
 
+export function calculateTooltipVerticalPosition(
+    normalizedValues: number[],
+    crosshairY: number,
+    chartHeight: number,
+    tooltipHeight: number,
+): number | undefined {
+    const values = normalizedValues.filter(value => Number.isFinite(value) && value >= 0 && value <= 1);
+    if (values.length === 0) return undefined;
+    const dataYPositions = values.map(value => (1 - value) * chartHeight);
+    if (values.every(value => value >= 0.65)) {
+        const belowCrosshair = crosshairY + 10;
+        const belowEverySeries = Math.max(...dataYPositions) + 10;
+        return Math.min(Math.max(belowCrosshair, belowEverySeries), Math.max(12, chartHeight - tooltipHeight - 12));
+    }
+    if (values.every(value => value <= 0.35)) {
+        const aboveCrosshair = crosshairY - tooltipHeight - 10;
+        const aboveEverySeries = Math.min(...dataYPositions) - tooltipHeight - 10;
+        return Math.max(12, Math.min(aboveCrosshair, aboveEverySeries));
+    }
+    return undefined;
+}
+
 /** Collect Y values for axis domain/ticks. Stacked series contribute their per-row sum. */
 export function collectAxisExtentValues(
     chartData: ChartDataRow[],
