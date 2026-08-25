@@ -7,6 +7,7 @@ import {
     parseUtdtNowcastRowsFromChartData,
     parseUtdtPeriodPdfLinks,
     parseUtdtShinyRows,
+    parseUtdtShinyWorkerId,
 } from '../lib/pobreza-source';
 
 describe('pobreza UTDT source parsing', () => {
@@ -94,6 +95,11 @@ describe('pobreza UTDT source parsing', () => {
             { fecha: '2026-05-01', pobreza_utdt: 30.6 },
             { fecha: '2026-06-01', pobreza_utdt: 31.6 },
         ]);
+    });
+
+    it('extracts the worker ID from the UTDT Shiny bootstrap response', () => {
+        expect(parseUtdtShinyWorkerId('{"config":{"workerId":"abc123"}}')).toBe('abc123');
+        expect(parseUtdtShinyWorkerId('invalid')).toBeNull();
     });
 });
 

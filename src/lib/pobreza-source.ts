@@ -134,18 +134,46 @@ export function parseUtdtShinyRows(traces: UtdtShinyTrace[]): PobrezaRawRow[] {
     return Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
+export function parseUtdtShinyWorkerId(message: string): string | null {
+    try {
+        const workerId = JSON.parse(message)?.config?.workerId;
+        return typeof workerId === 'string' && workerId.length > 0 ? workerId : null;
+    } catch {
+        return null;
+    }
+}
+
 async function fetchUtdtRowsFromShiny(): Promise<PobrezaRawRow[]> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), SHINY_TIMEOUT_MS);
 
     try {
-        const html = await fetchTextFromUrl(UTDT_SHINY_URL);
-        const workerId = html.match(/<base href=["']_w_([a-f0-9]+)\/["']/i)?.[1];
-        if (!workerId) throw new Error('UTDT Shiny page did not provide a worker ID.');
-
-        const tokenResponse = await fetch(`${UTDT_SHINY_URL}_w_${workerId}/__token__/`, { signal: controller.signal });
+        const tokenResponse = await fetch(`${UTDT_SHINY_URL}__token__/`, { signal: controller.signal });
         if (!tokenResponse.ok) throw new Error(`UTDT Shiny token request failed with HTTP ${tokenResponse.status}.`);
-        const token = await tokenResponse.text();
+        const token = (await tokenResponse.text()).trim();
+        const bootstrapServerId = String(Math.floor(Math.random() * 1_000)).padStart(3, '0');
+        const bootstrapSessionId = Math.random().toString(36).slice(2, 10).padEnd(8, '0');
+        const bootstrapUrl = `wss://mrozada.shinyapps.io/shinynowcast/__sockjs__/n=monitorcillo/t=${token}/s=0/${bootstrapServerId}/${bootstrapSessionId}/websocket`;
+        const workerId = await new Promise<string>((resolve, reject) => {
+            const socket = new WebSocket(bootstrapUrl);
+            let settled = false;
+
+            const finish = (value: string | null, error?: Error) => {
+                if (settled) return;
+                settled = true;
+                socket.close();
+                if (value) resolve(value);
+                else reject(error);
+            };
+
+            controller.signal.addEventListener('abort', () => finish(null, new Error('UTDT Shiny worker request timed out.')), { once: true });
+            socket.onerror = () => finish(null, new Error('UTDT Shiny worker WebSocket connection failed.'));
+            socket.onclose = () => finish(null, new Error('UTDT Shiny worker WebSocket closed before returning its ID.'));
+            socket.onmessage = event => {
+                const value = parseUtdtShinyWorkerId(String(event.data));
+                if (value) finish(value);
+            };
+        });
         const serverId = String(Math.floor(Math.random() * 1_000)).padStart(3, '0');
         const sessionId = Math.random().toString(36).slice(2, 10).padEnd(8, '0');
         const socketUrl = `wss://mrozada.shinyapps.io/shinynowcast/__sockjs__/n=monitorcillo/t=${token}/w=${workerId}/s=0/${serverId}/${sessionId}/websocket`;
