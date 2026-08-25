@@ -40,6 +40,7 @@ describe('time series client', () => {
 
         expect(first).toEqual(second);
         expect(mocks.fetchTextFromUrl).toHaveBeenCalledOnce();
+        expect(mocks.fetchTextFromUrl).toHaveBeenCalledWith(expect.any(String), { timeoutMs: 60_000 });
     });
 
     it('does not cache failed requests', async () => {

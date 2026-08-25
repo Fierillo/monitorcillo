@@ -16,13 +16,17 @@ const TRANSIENT_ERROR_CODES = new Set([
     'ETIMEDOUT',
 ]);
 
+type HttpRequestOptions = {
+    timeoutMs?: number;
+};
+
 class HttpStatusError extends Error {
     constructor(url: string, readonly statusCode: number | undefined) {
         super(`Failed to download ${url}. Status ${statusCode}`);
     }
 }
 
-function download(url: string): Promise<Buffer> {
+function download(url: string, timeoutMs: number): Promise<Buffer> {
     return new Promise((resolve, reject) => {
         const request = https.get(url, { headers: DEFAULT_HEADERS }, (response) => {
             if (!response.statusCode || response.statusCode < 200 || response.statusCode >= 300) {
@@ -37,8 +41,8 @@ function download(url: string): Promise<Buffer> {
             response.on('error', reject);
         });
 
-        request.setTimeout(REQUEST_TIMEOUT_MS, () => {
-            const error = new Error(`Failed to download ${url}. Request timed out after ${REQUEST_TIMEOUT_MS}ms.`) as NodeJS.ErrnoException;
+        request.setTimeout(timeoutMs, () => {
+            const error = new Error(`Failed to download ${url}. Request timed out after ${timeoutMs}ms.`) as NodeJS.ErrnoException;
             error.code = 'ETIMEDOUT';
             request.destroy(error);
         });
@@ -55,10 +59,10 @@ function shouldRetry(error: unknown): boolean {
         && TRANSIENT_ERROR_CODES.has((error as NodeJS.ErrnoException).code ?? '');
 }
 
-async function downloadWithRetry(url: string): Promise<Buffer> {
+async function downloadWithRetry(url: string, { timeoutMs = REQUEST_TIMEOUT_MS }: HttpRequestOptions = {}): Promise<Buffer> {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
         try {
-            return await download(url);
+            return await download(url, timeoutMs);
         } catch (error) {
             if (!shouldRetry(error) || attempt === MAX_ATTEMPTS) throw error;
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * 2 ** (attempt - 1)));
@@ -68,12 +72,12 @@ async function downloadWithRetry(url: string): Promise<Buffer> {
     throw new Error(`Failed to download ${url} after ${MAX_ATTEMPTS} attempts.`);
 }
 
-export function fetchBufferFromUrl(url: string): Promise<Buffer> {
-    return downloadWithRetry(url);
+export function fetchBufferFromUrl(url: string, options?: HttpRequestOptions): Promise<Buffer> {
+    return downloadWithRetry(url, options);
 }
 
-export async function fetchTextFromUrl(url: string): Promise<string> {
-    return (await downloadWithRetry(url)).toString();
+export async function fetchTextFromUrl(url: string, options?: HttpRequestOptions): Promise<string> {
+    return (await downloadWithRetry(url, options)).toString();
 }
 
 export async function fetchCSV(url: string): Promise<string[][]> {

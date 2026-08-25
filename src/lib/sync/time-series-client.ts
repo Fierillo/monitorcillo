@@ -3,6 +3,7 @@ import { fetchTextFromUrl } from './http-client';
 
 const API_URL = 'https://apis.datos.gob.ar/series/api/series/';
 const DEFAULT_LIMIT = 5000;
+const REQUEST_TIMEOUT_MS = 60_000;
 const responseCache = new Map<string, Promise<DatosGobSeriesResponse>>();
 
 type FetchTimeSeriesOptions = {
@@ -44,7 +45,7 @@ export function fetchTimeSeries(options: FetchTimeSeriesOptions): Promise<DatosG
     const cached = responseCache.get(url);
     if (cached) return cached;
 
-    const request = fetchTextFromUrl(url)
+    const request = fetchTextFromUrl(url, { timeoutMs: REQUEST_TIMEOUT_MS })
         .then(text => {
             try {
                 return parseTimeSeriesResponse(JSON.parse(text), options.ids);

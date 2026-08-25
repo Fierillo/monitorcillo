@@ -67,4 +67,14 @@ describe('sync HTTP client', () => {
         await expect(fetchTextFromUrl('https://www.indec.gob.ar/missing')).rejects.toThrow('Status 404');
         expect(mocks.get).toHaveBeenCalledOnce();
     });
+
+    it('uses a custom request timeout', async () => {
+        mockRequests({ statusCode: 200, body: 'ok' });
+        const { fetchTextFromUrl } = await import('@/lib/sync/http-client');
+
+        await expect(fetchTextFromUrl('https://apis.datos.gob.ar/data', { timeoutMs: 60_000 })).resolves.toBe('ok');
+
+        const request = mocks.get.mock.results[0].value;
+        expect(request.setTimeout).toHaveBeenCalledWith(60_000, expect.any(Function));
+    });
 });
