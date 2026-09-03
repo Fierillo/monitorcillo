@@ -175,10 +175,16 @@ describe('buildCurrentIndicatorsCatalog', () => {
             getRawRows: async () => [{ fecha: '2026-04-01', ipc_indec_general: 1, ipc_equilibra: 1, ipc_online: 1 }],
         });
 
+        const nextInflationSource = [
+            { date: futureMonthly('2026-05-14'), label: 'INDEC' },
+            { date: futureMonthly('2026-05-10'), label: 'Equilibra' },
+            { date: futureMonthly('2026-05-03'), label: 'IPC Online' },
+        ].sort((a, b) => a.date.localeCompare(b.date))[0];
+
         expect(result.find(row => row.id === 'inflacion')).toMatchObject({
             fecha: '14 MAY 26',
-            proxima_fecha: formatDay(futureMonthly('2026-05-03')),
-            proxima_fecha_description: 'IPC Online',
+            proxima_fecha: formatDay(nextInflationSource.date),
+            proxima_fecha_description: nextInflationSource.label,
         });
     });
 
