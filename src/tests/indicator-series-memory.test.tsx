@@ -32,6 +32,7 @@ describe('indicator series memory', () => {
             data={normalData}
             areas={areas}
             methodology={[]}
+            indicatorId="emae"
             valueFormat="index"
             views={[{
                 id: 'sectores',
@@ -47,6 +48,7 @@ describe('indicator series memory', () => {
             }]}
         />);
 
+        expect(screen.getAllByRole('button', { name: 'Enviar feedback' })).toHaveLength(1);
         fireEvent.click(screen.getByRole('button', { name: 'Seleccionar industria' }));
         await waitFor(() => expect(screen.getByTestId('highlighted').textContent).toBe('industria_mm12'));
 

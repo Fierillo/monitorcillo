@@ -6,6 +6,7 @@ import { createAuthToken } from '../lib/auth-token';
 const mocks = vi.hoisted(() => ({
     cookieValue: undefined as string | undefined,
     getIndicators: vi.fn(),
+    getFeedback: vi.fn(),
 }));
 
 vi.mock('next/headers', () => ({
@@ -18,6 +19,10 @@ vi.mock('next/headers', () => ({
 
 vi.mock('@/lib/indicators', () => ({
     getIndicators: mocks.getIndicators,
+}));
+
+vi.mock('@/lib/db/feedback', () => ({
+    getFeedback: mocks.getFeedback,
 }));
 
 import AdminPage from '../app/admin/page';
@@ -37,6 +42,8 @@ beforeEach(() => {
     mocks.cookieValue = undefined;
     mocks.getIndicators.mockReset();
     mocks.getIndicators.mockResolvedValue([]);
+    mocks.getFeedback.mockReset();
+    mocks.getFeedback.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -52,6 +59,7 @@ describe('admin page auth', () => {
 
         expectElementType(element, LoginForm);
         expect(mocks.getIndicators).not.toHaveBeenCalled();
+        expect(mocks.getFeedback).not.toHaveBeenCalled();
     });
 
     it('renders the admin dashboard with a valid signed cookie', async () => {
@@ -61,5 +69,6 @@ describe('admin page auth', () => {
 
         expectElementType(element, AdminDashboard);
         expect(mocks.getIndicators).toHaveBeenCalledOnce();
+        expect(mocks.getFeedback).toHaveBeenCalledOnce();
     });
 });

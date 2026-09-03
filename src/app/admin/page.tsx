@@ -1,5 +1,6 @@
 import { isAuthenticated } from '@/lib/auth';
 import { getIndicators } from '@/lib/indicators';
+import { getFeedback } from '@/lib/db/feedback';
 import AdminDashboard from './AdminDashboard';
 import LoginForm from './LoginForm';
 
@@ -10,6 +11,6 @@ export default async function AdminPage() {
         return <LoginForm />;
     }
 
-    const data = await getIndicators();
-    return <AdminDashboard initialData={data} />;
+    const [data, feedback] = await Promise.all([getIndicators(), getFeedback()]);
+    return <AdminDashboard initialData={data} initialFeedback={feedback} />;
 }

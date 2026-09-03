@@ -2,14 +2,15 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import type { EmisionAdminEditableField, EmisionAdminRow, EmisionDataResponse, Indicator } from '@/types';
+import type { EmisionAdminEditableField, EmisionAdminRow, EmisionDataResponse, FeedbackRecord, Indicator } from '@/types';
 import { newEmisionRow, newIndicatorRow, updateEmisionCell, withEmisionTotals } from './admin-utils';
 import EmisionEditor from './components/EmisionEditor';
 import IndicatorsEditor from './components/IndicatorsEditor';
+import FeedbackList from './components/FeedbackList';
 
-type AdminTab = 'indicadores' | 'emision';
+type AdminTab = 'indicadores' | 'emision' | 'feedback';
 
-export default function AdminDashboard({ initialData }: { initialData: Indicator[] }) {
+export default function AdminDashboard({ initialData, initialFeedback }: { initialData: Indicator[]; initialFeedback: FeedbackRecord[] }) {
     const router = useRouter();
     const [data, setData] = useState<Indicator[]>(initialData);
     const [msg, setMsg] = useState('');
@@ -72,9 +73,9 @@ export default function AdminDashboard({ initialData }: { initialData: Indicator
             <AdminTabs activeTab={activeTab} onChange={setActiveTab} />
             {activeTab === 'indicadores' ? (
                 <IndicatorsEditor data={data} msg={msg} onAdd={() => setData(prev => [...prev, newIndicatorRow()])} onPop={() => setData(prev => prev.slice(0, -1))} onSave={handleSave} onCellChange={handleCellChange} />
-            ) : (
+            ) : activeTab === 'emision' ? (
                 <EmisionEditor data={emisionData} msg={emisionMsg} onAdd={() => setEmisionData(prev => [...prev, newEmisionRow(prev)])} onPop={() => setEmisionData(prev => prev.slice(0, -1))} onSave={handleSaveEmision} onCellChange={handleEmisionCellChange} />
-            )}
+            ) : <FeedbackList data={initialFeedback} />}
         </div>
     );
 }
@@ -87,6 +88,9 @@ function AdminTabs({ activeTab, onChange }: { activeTab: AdminTab; onChange: (ta
             </button>
             <button onClick={() => onChange('emision')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'emision' ? 'text-imperial-gold border-b-2 border-imperial-gold' : 'text-white/50 hover:text-white'}`}>
                 Emisión / Absorción
+            </button>
+            <button onClick={() => onChange('feedback')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'feedback' ? 'text-imperial-gold border-b-2 border-imperial-gold' : 'text-white/50 hover:text-white'}`}>
+                Feedback
             </button>
         </div>
     );

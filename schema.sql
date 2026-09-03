@@ -19,6 +19,23 @@ CREATE TABLE IF NOT EXISTS indicators_catalog (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS feedback (
+    id BIGSERIAL PRIMARY KEY,
+    message VARCHAR(500) NOT NULL,
+    surface VARCHAR(30) NOT NULL,
+    path VARCHAR(200) NOT NULL,
+    metric_id VARCHAR(100),
+    metric_title VARCHAR(255),
+    chart_title VARCHAR(255),
+    view_id VARCHAR(100),
+    view_title VARCHAR(255),
+    mode_id VARCHAR(100),
+    mode_title VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at DESC);
+
 -- ============================================
 -- EMISION (diaria)
 -- ============================================

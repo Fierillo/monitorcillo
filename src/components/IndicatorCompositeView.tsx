@@ -5,6 +5,7 @@ import { toPng } from 'html-to-image';
 import { startTransition, useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import type { ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, ChartReferenceLine, IndicatorCompositeViewProps } from '@/types/chart';
 import CompositeChartCard from './indicators/CompositeChartCard';
+import FeedbackButton from './FeedbackButton';
 import { collectAxisExtentValues } from './chart/utils';
 import TimeRangeSlider from './chart/TimeRangeSlider';
 
@@ -448,6 +449,8 @@ export default function IndicatorCompositeView({
         }
     }, [isMobile, title]);
 
+    const feedbackContext = { surface: 'chart' as const, path: `/indicador/${indicatorId ?? 'sin-id'}`, metricId: indicatorId, metricTitle: title, chartTitle: activeChartTitle, viewId: selectedView?.id, viewTitle: selectedView?.label, modeId: selectedMode?.id, modeTitle: selectedMode?.label };
+
     if (!sortedData || sortedData.length === 0) {
         return <div className="text-imperial-gold p-8 text-center font-bold">Cargando datos...</div>;
     }
@@ -455,7 +458,10 @@ export default function IndicatorCompositeView({
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-2 sm:p-6 lg:p-10">
             <header className="w-full sm:w-[96%] max-w-[1800px] mb-4 sm:mb-8 border-b-2 border-imperial-gold pb-4 mt-2 sm:mt-4 flex flex-col items-start gap-3 sm:flex-row-reverse sm:items-center sm:justify-between px-2">
-                <Link href="/" className="shrink-0 border-2 border-imperial-gold text-imperial-gold px-3 py-1 sm:px-4 sm:py-2 text-xs sm:text-base font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors uppercase">Volver</Link>
+                <div className="flex w-full items-stretch justify-end gap-2 sm:w-auto">
+                    <FeedbackButton context={feedbackContext} />
+                    <Link href="/" className="flex shrink-0 items-center justify-center border-2 border-imperial-gold px-3 py-1 text-xs font-bold uppercase text-imperial-gold transition-colors hover:bg-imperial-gold hover:text-imperial-blue sm:px-4 sm:py-2 sm:text-base">Volver</Link>
+                </div>
                 <div className="w-full text-center sm:text-left">
                     <h1 className="imperial-title text-xl sm:text-3xl font-bold tracking-widest text-imperial-gold leading-tight uppercase">
                         {title}
