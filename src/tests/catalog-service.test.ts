@@ -52,6 +52,64 @@ describe('buildCurrentIndicatorsCatalog', () => {
         expect(result.find(row => row.id === 'bma')).toMatchObject({ fecha: '2 MAY 26', dato: '6,7% del PBI real' });
     });
 
+    it('derives latest and reference rows from loaded tables without duplicate queries', async () => {
+        let latestQueries = 0;
+        let referenceQueries = 0;
+        let rawDateQueries = 0;
+        const result = await buildCurrentIndicatorsCatalog({
+            getCatalogRows: async () => [{ ...baseCatalogRow, id: 'bma' }],
+            getNormalizedRows: async () => [
+                { iso_fecha: '2026-03-01', BMAmplia: 5.8 },
+                { iso_fecha: '2026-04-01', BMAmplia: 6.7 },
+            ],
+            getRawRows: async () => [{ fecha: '2026-05-02', base_monetaria: 12 }],
+            getLatestNormalizedRow: async () => {
+                latestQueries += 1;
+                return null;
+            },
+            getLatestRawDate: async () => {
+                rawDateQueries += 1;
+                return null;
+            },
+            getNormalizedRowByDate: async () => {
+                referenceQueries += 1;
+                return null;
+            },
+            getRawRowByDate: async () => null,
+        });
+
+        expect(result.find(row => row.id === 'bma')).toMatchObject({ dato: '6,7% del PBI real', referencia: '5,8% del PBI real', fecha: '2 MAY 26' });
+        expect({ latestQueries, referenceQueries, rawDateQueries }).toEqual({ latestQueries: 0, referenceQueries: 0, rawDateQueries: 0 });
+    });
+
+    it('does not amplify a failed authoritative table read with more database queries', async () => {
+        let duplicateQueries = 0;
+        await buildCurrentIndicatorsCatalog({
+            loadedRowsAreAuthoritative: true,
+            getCatalogRows: async () => [{ ...baseCatalogRow, id: 'bma' }],
+            getNormalizedRows: async () => null,
+            getRawRows: async () => null,
+            getLatestNormalizedRow: async () => {
+                duplicateQueries += 1;
+                return null;
+            },
+            getLatestRawDate: async () => {
+                duplicateQueries += 1;
+                return null;
+            },
+            getNormalizedRowByDate: async () => {
+                duplicateQueries += 1;
+                return null;
+            },
+            getRawRowByDate: async () => {
+                duplicateQueries += 1;
+                return null;
+            },
+        });
+
+        expect(duplicateQueries).toBe(0);
+    });
+
     it('uses latest-row data sources without loading full tables', async () => {
         const result = await buildCurrentIndicatorsCatalog({
             getCatalogRows: async () => [{ ...baseCatalogRow, id: 'bma', fecha: '1 ABR 26', dato: '6,7%' }],

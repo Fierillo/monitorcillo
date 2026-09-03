@@ -2,6 +2,7 @@ import type { CatalogIndicatorRow, DataRow, IndicatorType } from '@/types';
 import { buildIndicatorCatalogItem, buildIndicatorsCatalog, CATALOG_INDICATOR_SPECS, DEFAULT_CATALOG } from './catalog';
 
 export type CatalogDataSources = {
+    loadedRowsAreAuthoritative?: boolean;
     getCatalogRows: () => Promise<CatalogIndicatorRow[]>;
     getNormalizedRows: (type: IndicatorType) => Promise<DataRow[] | null>;
     getRawRows: (type: IndicatorType) => Promise<DataRow[] | null>;
@@ -17,6 +18,7 @@ async function defaultCatalogDataSources(): Promise<CatalogDataSources> {
     const db = await import('./db');
 
     return {
+        loadedRowsAreAuthoritative: true,
         getCatalogRows: db.getIndicatorsCatalog,
         getNormalizedRows: async (type) => db.getNormalizedData(type) as Promise<DataRow[] | null>,
         getRawRows: async (type) => db.getRawData(type) as Promise<DataRow[]>,
@@ -41,6 +43,24 @@ function rowDate(row: DataRow | null): string | null {
     return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
 }
 
+function latestMatchingRow(rows: DataRow[], predicate: (row: DataRow) => boolean): DataRow | null {
+    let latest: DataRow | null = null;
+    for (const row of rows) {
+        const date = rowDate(row);
+        if (!date || !predicate(row)) continue;
+        if (!latest || date > (rowDate(latest) ?? '')) latest = row;
+    }
+    return latest;
+}
+
+function latestRawDate(rows: DataRow[], fields: string[]): string | null {
+    return rowDate(latestMatchingRow(rows, row => fields.some(field => row[field] != null)));
+}
+
+function rowByDate(rows: DataRow[], date: string): DataRow | null {
+    return rows.find(row => rowDate(row) === date) ?? null;
+}
+
 function catalogBaseFromRows(rows: CatalogIndicatorRow[]): CatalogIndicatorRow[] {
     if (rows.length === 0) return DEFAULT_CATALOG.map(row => ({ ...row }));
 
@@ -61,9 +81,9 @@ export async function buildCurrentIndicatorsCatalog(sources?: CatalogDataSources
             const spec = CATALOG_INDICATOR_SPECS[item.id];
             if (!spec) return { ...item };
 
-            const valueRow = await dataSources.getLatestNormalizedRow!(spec.type, spec.normalizedValueColumn, spec.fallbackValueColumns);
             let normalizedRows: DataRow[] = [];
             let rawRows: DataRow[] = [];
+            let rowsRequestCompleted = false;
             try {
                 const [normalizedRowsResult, rawRowsResult] = await Promise.all([
                     dataSources.getNormalizedRows(spec.type),
@@ -71,11 +91,19 @@ export async function buildCurrentIndicatorsCatalog(sources?: CatalogDataSources
                 ]);
                 normalizedRows = normalizedRowsResult ?? [];
                 rawRows = rawRowsResult ?? [];
+                rowsRequestCompleted = true;
             } catch { /* ignore */ }
+
+            const normalizedRowsAvailable = rowsRequestCompleted && (dataSources.loadedRowsAreAuthoritative === true || normalizedRows.length > 0);
+            const rawRowsAvailable = rowsRequestCompleted && (dataSources.loadedRowsAreAuthoritative === true || rawRows.length > 0);
+
+            const valueRow = normalizedRowsAvailable
+                ? latestMatchingRow(normalizedRows, row => spec.selectValue(row) != null)
+                : await dataSources.getLatestNormalizedRow!(spec.type, spec.normalizedValueColumn, spec.fallbackValueColumns);
 
             const sourcePublicationIds = SOURCE_PUBLICATION_IDS[item.id] ?? [];
             const [rawDate, publicationDate, sourcePublicationDates] = await Promise.all([
-                dataSources.getLatestRawDate!(spec.type, spec.rawDateFields),
+                rawRowsAvailable ? Promise.resolve(latestRawDate(rawRows, spec.rawDateFields)) : dataSources.getLatestRawDate!(spec.type, spec.rawDateFields),
                 dataSources.getPublicationDate ? dataSources.getPublicationDate(item.id) : Promise.resolve(null),
                 sourcePublicationIds.length > 0 && dataSources.getPublicationDates ? dataSources.getPublicationDates(sourcePublicationIds) : Promise.resolve(undefined),
             ]);
@@ -83,9 +111,11 @@ export async function buildCurrentIndicatorsCatalog(sources?: CatalogDataSources
             const valueDate = rowDate(valueRow);
             const referenceDate = valueDate ? spec.getReferenceDate(valueDate) : null;
             const referenceRow = referenceDate && dataSources.getNormalizedRowByDate && dataSources.getRawRowByDate
-                ? spec.referenceSource === 'raw'
-                    ? await dataSources.getRawRowByDate!(spec.type, referenceDate)
-                    : await dataSources.getNormalizedRowByDate!(spec.type, referenceDate)
+                ? (spec.referenceSource === 'raw' ? rawRowsAvailable : normalizedRowsAvailable)
+                    ? rowByDate(spec.referenceSource === 'raw' ? rawRows : normalizedRows, referenceDate)
+                    : spec.referenceSource === 'raw'
+                        ? await dataSources.getRawRowByDate!(spec.type, referenceDate)
+                        : await dataSources.getNormalizedRowByDate!(spec.type, referenceDate)
                 : null;
 
             return buildIndicatorCatalogItem(item, spec, valueRow, rawDate, publicationDate, referenceRow, normalizedRows ?? [], rawRows ?? [], sourcePublicationDates);
