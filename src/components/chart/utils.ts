@@ -6,6 +6,56 @@ export const SPANISH_MONTHS: Record<string, string> = {
     '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
 };
 
+export function createRoundTicks(minimum: number, maximum: number, divisions: number): number[] {
+    if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || divisions < 1) return [0, 1];
+    let min = Math.min(minimum, maximum);
+    let max = Math.max(minimum, maximum);
+    if (min === max) {
+        min -= 1;
+        max += 1;
+    }
+
+    let step = roundStep((max - min) / divisions);
+    let start = Math.floor(min / step) * step;
+    while (start + step * divisions < max) {
+        step = roundStep(step * 1.01);
+        start = Math.floor(min / step) * step;
+    }
+
+    return Array.from({ length: divisions + 1 }, (_, index) => Number((start + step * index).toPrecision(12)));
+}
+
+export function selectRoundTickDivisions(ranges: Array<[number, number]>, preferredDivisions: number): number {
+    let bestDivisions = Math.min(4, preferredDivisions);
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    for (let divisions = bestDivisions; divisions <= preferredDivisions; divisions += 1) {
+        const waste = ranges.reduce((total, [minimum, maximum]) => {
+            const ticks = createRoundTicks(minimum, maximum, divisions);
+            const dataRange = Math.max(Math.abs(maximum - minimum), Number.EPSILON);
+            return total + ((ticks.at(-1) ?? maximum) - ticks[0] - dataRange) / dataRange;
+        }, 0);
+        const score = waste + (preferredDivisions - divisions) * 0.02;
+        if (score < bestScore) {
+            bestScore = score;
+            bestDivisions = divisions;
+        }
+    }
+
+    return bestDivisions;
+}
+
+function roundStep(rawStep: number): number {
+    if (!Number.isFinite(rawStep) || rawStep <= 0) return 1;
+    const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+    const residual = rawStep / magnitude;
+    if (residual <= 1) return magnitude;
+    if (residual <= 2) return 2 * magnitude;
+    if (residual <= 2.5) return 2.5 * magnitude;
+    if (residual <= 5) return 5 * magnitude;
+    return 10 * magnitude;
+}
+
 export function calculateTooltipVerticalPosition(
     normalizedValues: number[],
     crosshairY: number,

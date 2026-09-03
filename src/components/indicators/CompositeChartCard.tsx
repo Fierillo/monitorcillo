@@ -11,7 +11,7 @@ import ChartLine from '../chart/ChartLine';
 import ChartTooltip from '../chart/ChartTooltip';
 import CustomLegend from '../chart/CustomLegend';
 import MethodologySection from '../chart/MethodologySection';
-import { calculateTooltipVerticalPosition, collectAxisExtentValues, formatAxisValueByType, formatValueByType } from '../chart/utils';
+import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, selectRoundTickDivisions } from '../chart/utils';
 
 type Props = {
     title: string;
@@ -281,8 +281,14 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
             .filter(area => area.type === 'line' && typeof lockedRow[area.key] === 'number')
             .map(area => ({ area, value: Number(lockedRow[area.key]) }))
         : [];
-    const leftTicks = axisTicks(props, 'left', !Array.isArray(props.leftAxisDomain));
-    const rightTicks = axisTicks(props, 'right', props.secondaryYAxis?.includeZero ?? !Array.isArray(props.secondaryYAxis?.domain));
+    const leftRange = axisTickRange(props, 'left', !Array.isArray(props.leftAxisDomain));
+    const rightRange = axisTickRange(props, 'right', props.secondaryYAxis?.includeZero ?? !Array.isArray(props.secondaryYAxis?.domain));
+    const preferredDivisions = props.valueFormat === 'millions' ? 12 : 8;
+    const pairedDivisions = props.secondaryYAxis
+        ? selectRoundTickDivisions([[leftRange.min, leftRange.max], [rightRange.min, rightRange.max]], preferredDivisions)
+        : undefined;
+    const leftTicks = ticksForRange(leftRange, props.valueFormat, pairedDivisions);
+    const rightTicks = ticksForRange(rightRange, props.valueFormat, pairedDivisions);
 
     const leftDomain = [leftTicks[0], leftTicks.at(-1) ?? 0];
     const rightDomain = [rightTicks[0], rightTicks.at(-1) ?? 0];
@@ -387,10 +393,11 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
                 if (!e?.activePayload?.length || e.activeTooltipIndex == null) props.onSelectMonth(null);
             }}
         >
-            <CartesianGrid vertical={false} horizontal stroke="#ffffff66" strokeWidth={0.75} />
+            <CartesianGrid vertical={false} horizontal={!props.secondaryYAxis} stroke="#ffffff66" strokeWidth={0.75} />
             <XAxis dataKey={props.xAxisKey} stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)} hide={props.isMobile} />
             <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions' && props.valueFormat !== 'currency'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
             {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
+            {props.secondaryYAxis ? leftTicks.map(tick => <ReferenceLine key={`tick-grid-${tick}`} y={tick} yAxisId="left" stroke="#FFFFFF" strokeOpacity={0.35} strokeWidth={0.5} />) : null}
             {!props.isCapturing && !props.crosshair?.locked && <Tooltip cursor={false} position={tooltipPosition} wrapperStyle={{ pointerEvents: 'none' }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={renderedAreas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} compact={props.isMobile} showTotal={props.showTooltipTotal} />} />}
             {visibleReferenceLines.filter(reference => !reference.foreground).map((reference, index) => renderReferenceLine(reference, reference.label ?? `${reference.value}-${index}`))}
             {renderedAreas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}
@@ -490,14 +497,14 @@ function ChartCrosshair({ crosshair, width, height, onUnlock, isControlPressed }
     );
 }
 
-function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZero: boolean): number[] {
+function axisTickRange(props: ChartRenderProps, axisId: 'left' | 'right', includeZero: boolean): { min: number; max: number; allNonNegative: boolean } {
     const values = collectAxisExtentValues(props.visibleData, props.areas, {
         yAxisId: axisId,
         highlightedAreas: props.highlightedAreas,
     });
     if (axisId === 'left') values.push(...props.referenceLines.map(reference => reference.value));
 
-    if (values.length === 0) return [0, 1];
+    if (values.length === 0) return { min: 0, max: 1, allNonNegative: true };
 
     const allNonNegative = values.every((value) => value >= 0);
     const dataMin = Math.min(...values);
@@ -516,7 +523,13 @@ function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZer
         max = Math.max(0, max);
     }
 
-    const targetDivisions = props.valueFormat === 'millions' ? 12 : 8;
+    return { min, max, allNonNegative };
+}
+
+function ticksForRange({ min, max, allNonNegative }: ReturnType<typeof axisTickRange>, valueFormat: ValueFormat, fixedDivisions?: number): number[] {
+    if (fixedDivisions) return createRoundTicks(min, max, fixedDivisions);
+
+    const targetDivisions = valueFormat === 'millions' ? 12 : 8;
     const step = niceStep((max - min) / targetDivisions);
     const start = allNonNegative ? Math.max(0, Math.floor(min / step) * step) : Math.floor(min / step) * step;
     const end = Math.ceil(max / step) * step;
@@ -527,7 +540,7 @@ function axisTicks(props: ChartRenderProps, axisId: 'left' | 'right', includeZer
     }
 
     if (ticks.length < 2) return [min, max];
-    return includeZero && !ticks.includes(0) ? [...ticks, 0].sort((a, b) => a - b) : ticks;
+    return ticks;
 }
 
 function niceStep(rawStep: number): number {
