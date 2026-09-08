@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { runSyncTasks } from '../lib/sync-runner';
 
 describe('runSyncTasks', () => {
-    it('runs every task and rejects when any task fails', async () => {
+    it('runs every task and reports successes and failures without stopping', async () => {
         const executed: string[] = [];
 
         await expect(runSyncTasks([
@@ -27,7 +27,14 @@ describe('runSyncTasks', () => {
                     return { appended: 0, total: 20 };
                 },
             },
-        ])).rejects.toThrow('Sync failed for bma: BCRA failed');
+        ])).resolves.toEqual({
+            results: {
+                emision: { appended: 1, total: 10 },
+                recaudacion: { appended: 0, total: 20 },
+            },
+            updated: ['emision', 'recaudacion'],
+            failed: [{ key: 'bma', error: 'BCRA failed' }],
+        });
 
         expect(executed).toEqual(['emision', 'bma', 'recaudacion']);
     });

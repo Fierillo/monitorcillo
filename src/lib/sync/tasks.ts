@@ -1,4 +1,4 @@
-import type { EmisionRawRow, IndicatorType, NormalizedDataRow, RawDataByType, SyncResult, SyncResults } from '@/types';
+import type { EmisionRawRow, IndicatorType, NormalizedDataRow, RawDataByType, SyncResult, SyncRunReport } from '@/types';
 import { getRawData, replaceNormalizedData, replaceRawData, saveIndicatorPublication, saveIndicatorsCatalog, saveRawData } from '../db';
 import { buildCurrentIndicatorsCatalog } from '../catalog-service';
 import { fechaToISO, normalizeBalanza, normalizeBma, normalizeDepositosPrestamos, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion } from '../normalize';
@@ -207,8 +207,8 @@ export async function syncBalanza(): Promise<SyncResult> {
     return result;
 }
 
-export async function runSync(): Promise<SyncResults> {
-    const indicatorResults = await runSyncTasks([
+export async function runSync(): Promise<SyncRunReport> {
+    const indicatorReport = await runSyncTasks([
         { key: 'emision', run: syncEmision },
         { key: 'emae', run: syncEmae },
         { key: 'bma', run: syncBma },
@@ -221,6 +221,10 @@ export async function runSync(): Promise<SyncResults> {
         { key: 'icg', run: syncIcg },
         { key: 'balanza_comercial', run: syncBalanza },
     ]);
-    const catalogResults = await runSyncTasks([{ key: 'catalog', run: syncIndicatorsCatalog }]);
-    return { ...indicatorResults, ...catalogResults };
+    const catalogReport = await runSyncTasks([{ key: 'catalog', run: syncIndicatorsCatalog }]);
+    return {
+        results: { ...indicatorReport.results, ...catalogReport.results },
+        updated: [...indicatorReport.updated, ...catalogReport.updated],
+        failed: [...indicatorReport.failed, ...catalogReport.failed],
+    };
 }

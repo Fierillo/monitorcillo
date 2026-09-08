@@ -17,3 +17,14 @@ export type SyncTask = {
     key: string;
     run: () => Promise<SyncResult>;
 };
+
+export type SyncFailure = {
+    key: string;
+    error: string;
+};
+
+export type SyncRunReport = {
+    results: SyncResults;
+    updated: string[];
+    failed: SyncFailure[];
+};

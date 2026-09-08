@@ -4,8 +4,21 @@ async function main(): Promise<void> {
     }
 
     const { runSync } = await import('../lib/sync');
-    const results = await runSync();
-    console.log(JSON.stringify({ success: true, results }, null, 2));
+    const report = await runSync();
+    const success = report.failed.length === 0;
+
+    console.log(JSON.stringify({
+        success,
+        updated: report.updated,
+        failed: report.failed,
+        results: report.results,
+    }, null, 2));
+
+    if (!success) {
+        console.error(`Updated: ${report.updated.join(', ') || 'none'}`);
+        console.error(`Failed: ${report.failed.map(item => `${item.key} (${item.error})`).join('; ')}`);
+        process.exit(1);
+    }
 }
 
 main().catch((error) => {
