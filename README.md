@@ -128,6 +128,11 @@ pnpm sync      # sincroniza fuentes oficiales
 - Documentación mínima: si algo cambia, debe cambiar el código.
 - Deploy reproducible con `pnpm run build`.
 
+## Pendientes
+
+- Agregar gráfico de deuda.
+- Agregar gráfico de reservas netas.
+
 ## Deploy
 
 El proyecto está preparado para Vercel. La sincronización automática corre con GitHub Actions cada 6 horas y requiere `NEON_URL` configurado como secret del repositorio.
