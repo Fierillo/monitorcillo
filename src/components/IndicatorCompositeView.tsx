@@ -73,10 +73,12 @@ export default function IndicatorCompositeView({
     showTooltipTotal = false,
     indicatorId,
     views,
+    initialViewId,
+    initialModeId,
 }: IndicatorCompositeViewProps) {
     const selectByMonth = indicatorId === 'recaudacion';
-    const [selectedViewId, setSelectedViewId] = useState(views?.[0]?.id ?? 'default');
-    const [selectedModeByView, setSelectedModeByView] = useState<Record<string, string>>({});
+    const [selectedViewId, setSelectedViewId] = useState(views?.some(view => view.id === initialViewId) ? initialViewId! : views?.[0]?.id ?? 'default');
+    const [selectedModeByView, setSelectedModeByView] = useState<Record<string, string>>(initialViewId && initialModeId ? { [initialViewId]: initialModeId } : {});
     const [baseDateByView, setBaseDateByView] = useState<Record<string, string>>({});
     const [highlightedAreasByView, setHighlightedAreasByView] = useState<Record<string, Set<string>>>({});
     const [isConfigLoaded, setIsConfigLoaded] = useState(false);
@@ -175,7 +177,7 @@ export default function IndicatorCompositeView({
             }
             const parsed = JSON.parse(stored) as PersistedChartConfig;
             const validViewIds = new Set((views?.map(view => view.id) ?? ['default']));
-            if (parsed.selectedViewId && validViewIds.has(parsed.selectedViewId)) setSelectedViewId(parsed.selectedViewId);
+            if (!initialViewId && parsed.selectedViewId && validViewIds.has(parsed.selectedViewId)) setSelectedViewId(parsed.selectedViewId);
             if (parsed.highlightedAreasByView) setHighlightedAreasByView(restoreHighlightedAreasByView(parsed.highlightedAreasByView, views));
             if (parsed.baseDateByView) {
                 setBaseDateByView(Object.fromEntries((views?.length ? views : [{ id: 'default', modes: [] }]).flatMap(view => {
@@ -202,7 +204,7 @@ export default function IndicatorCompositeView({
         } finally {
             setIsConfigLoaded(true);
         }
-    }, [storageKey, views, data]);
+    }, [storageKey, views, data, initialViewId]);
 
     useEffect(() => {
         if (!isConfigLoaded) return;
@@ -219,6 +221,15 @@ export default function IndicatorCompositeView({
         rangeByViewPayload[memoryKey] = [startIndex, endIndex];
         window.localStorage.setItem(storageKey, JSON.stringify({ selectedViewId, highlightedAreasByView: highlightedAreasPayload, rangeByView: rangeByViewPayload, baseDateByView }));
     }, [storageKey, selectedViewId, highlightedAreasByView, startIndex, endIndex, memoryKey, isConfigLoaded, previewRange, baseDateByView]);
+
+    useEffect(() => {
+        if (!isConfigLoaded) return;
+        const url = new URL(window.location.href);
+        if (selectedView?.id) url.searchParams.set('view', selectedView.id);
+        if (selectedMode?.id) url.searchParams.set('mode', selectedMode.id);
+        else url.searchParams.delete('mode');
+        window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    }, [isConfigLoaded, selectedView?.id, selectedMode?.id]);
 
     useEffect(() => {
         if (selectedMonth && selectByMonth) {

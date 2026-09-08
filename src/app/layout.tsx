@@ -16,8 +16,15 @@ const libreBaskerville = Libre_Baskerville({
 });
 
 export const metadata: Metadata = {
-  title: "Monitorcillo",
+  metadataBase: new URL(process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : 'https://monitorcillo.vercel.app'),
+  title: {
+    default: "Monitorcillo",
+    template: "%s | Monitorcillo",
+  },
   description: "El precio de la paz es la eterna vigilancia.",
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({

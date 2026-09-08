@@ -172,6 +172,8 @@ export interface IndicatorCompositeViewProps {
     showTooltipTotal?: boolean;
     indicatorId?: string;
     views?: ChartViewConfig[];
+    initialViewId?: string;
+    initialModeId?: string;
 }
 
 export type ChartTooltipProps = {
