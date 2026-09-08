@@ -14,10 +14,15 @@ type RateLimitOptions = {
 export const STRICT_RATE_LIMIT: RateLimitOptions = { maxAttempts: 3, windowMs: WINDOW_MS };
 export const READ_RATE_LIMIT: RateLimitOptions = { maxAttempts: 30, windowMs: WINDOW_MS };
 
+function headerValue(req: Request, name: string): string | null {
+    const value = req.headers.get(name)?.split(',')[0]?.trim();
+    return value || null;
+}
+
 export function getClientIP(req: Request): string {
-    const forwarded = req.headers.get('x-forwarded-for');
-    if (forwarded) return forwarded.split(',')[0].trim();
-    return req.headers.get('x-real-ip') || 'unknown';
+    return headerValue(req, 'x-vercel-forwarded-for')
+        ?? headerValue(req, 'x-real-ip')
+        ?? 'unknown';
 }
 
 function getSql(): NeonQueryFunction<false, false> | null {

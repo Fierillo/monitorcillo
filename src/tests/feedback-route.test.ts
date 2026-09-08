@@ -10,7 +10,7 @@ import { POST } from '../app/api/feedback/route';
 function feedbackRequest(message: string, ip = '203.0.113.10'): Request {
     return new Request('http://localhost/api/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ip },
+        headers: { 'Content-Type': 'application/json', 'x-real-ip': ip },
         body: JSON.stringify({
             message,
             context: {
