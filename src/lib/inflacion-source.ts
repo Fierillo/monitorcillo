@@ -7,7 +7,7 @@ const INDEC_GENERAL_SERIES_ID = '145.3_INGNACNAL_DICI_M_15';
 const INDEC_NUCLEO_SERIES_ID = '148.3_INUCLEONAL_DICI_M_19';
 const INDEC_IPC_WORKBOOK_BASE_URL = 'https://www.indec.gob.ar/ftp/cuadros/economia';
 const EQUILIBRA_FEED_URL = 'https://equilibra.ar/feed/?cat=19';
-const REM_BCRA_API_URL = 'https://api.bcra.gob.ar/estadisticas/v3.0/REM/IEF/000154';
+const REM_BCRA_API_URL = 'https://bcra-rem-api.facujallia.workers.dev/api/ipc_general';
 
 const MONTHS_ES: Record<string, number> = {
     enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
@@ -283,7 +283,7 @@ async function fetchEquilibraIpcReport(): Promise<InflacionSourceReport> {
 }
 
 type RemApiResponse = {
-    results: Array<{ Fecha: string; Mediana: number | string }>;
+    datos: Array<{ periodo: string; mediana: number | string }>;
 };
 
 export async function fetchRemRows(): Promise<InflacionRawRow[]> {
@@ -296,10 +296,11 @@ async function fetchRemReport(): Promise<InflacionSourceReport> {
         const json = JSON.parse(text) as RemApiResponse;
         const rows: InflacionRawRow[] = [];
 
-        for (const entry of json.results ?? []) {
-            const fecha = entry.Fecha?.split('T')[0];
-            if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) continue;
-            const mediana = parseOptionalDecimal(entry.Mediana);
+        for (const entry of json.datos ?? []) {
+            const date = new Date(entry.periodo);
+            if (Number.isNaN(date.getTime())) continue;
+            const fecha = date.toISOString().split('T')[0];
+            const mediana = parseOptionalDecimal(entry.mediana);
             if (mediana == null) continue;
             rows.push({ fecha, rem: mediana });
         }
