@@ -18,14 +18,14 @@ describe('normalizeInflacion', () => {
         expect(normalized[2].ipc_nucleo_indec).toBeCloseTo(1.98, 2);
     });
 
-    it('passes through equilibra and online values directly', () => {
+    it('passes through equilibra and rem values directly', () => {
         const raw = [
-            { fecha: '2026-02-01', ipc_equilibra: 2.5, ipc_online: 2.3 },
+            { fecha: '2026-02-01', ipc_equilibra: 2.5, rem: 2.3 },
         ];
         const normalized = normalizeInflacion(raw);
         expect(normalized).toHaveLength(1);
         expect(normalized[0].ipc_equilibra).toBe(2.5);
-        expect(normalized[0].ipc_online).toBe(2.3);
+        expect(normalized[0].rem).toBe(2.3);
         expect(normalized[0].ipc).toBe(2.5);
     });
 
@@ -49,9 +49,9 @@ describe('normalizeInflacion', () => {
         expect(normalized[1].ipc).toBe(2.6);
     });
 
-    it('falls back to equilibra then online for principal ipc', () => {
+    it('falls back to equilibra then rem for principal ipc', () => {
         const raw = [
-            { fecha: '2026-02-01', ipc_online: 1.8 },
+            { fecha: '2026-02-01', rem: 1.8 },
         ];
         const normalized = normalizeInflacion(raw);
         expect(normalized[0].ipc).toBe(1.8);

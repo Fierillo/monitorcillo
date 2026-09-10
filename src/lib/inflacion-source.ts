@@ -7,7 +7,7 @@ const INDEC_GENERAL_SERIES_ID = '145.3_INGNACNAL_DICI_M_15';
 const INDEC_NUCLEO_SERIES_ID = '148.3_INUCLEONAL_DICI_M_19';
 const INDEC_IPC_WORKBOOK_BASE_URL = 'https://www.indec.gob.ar/ftp/cuadros/economia';
 const EQUILIBRA_FEED_URL = 'https://equilibra.ar/feed/?cat=19';
-const IPC_ONLINE_FEED_URL = 'https://ipconlinebb.wordpress.com/feed/';
+const REM_BCRA_API_URL = 'https://api.bcra.gob.ar/estadisticas/v3.0/REM/IEF/000154';
 
 const MONTHS_ES: Record<string, number> = {
     enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
@@ -282,52 +282,34 @@ async function fetchEquilibraIpcReport(): Promise<InflacionSourceReport> {
     }
 }
 
-export function parseIpcOnlineRssItem(xml: string): InflacionRawRow | null {
-    const titleMatch = xml.match(/<title>([^<]+)<\/title>/);
-    const descMatch = xml.match(/<description>\s*<!\[CDATA\[\s*Inflaci[oó]n:\s*([\d.,]+)%/i);
-    const contentMatch = xml.match(/<content:encoded>\s*<!\[CDATA\[\s*<h2[^>]*>([\d.,]+)\s*%\s*<\/h2>/i);
+type RemApiResponse = {
+    results: Array<{ Fecha: string; Mediana: number | string }>;
+};
 
-    const title = titleMatch?.[1] ?? '';
-    const value = descMatch?.[1] ?? contentMatch?.[1];
-    if (!value) return null;
-
-    const my = extractMonthYearFromTitle(title);
-    if (!my) return null;
-
-    return { fecha: `${my.year}-${String(my.month).padStart(2, '0')}-01`, ipc_online: parseDecimal(value) };
+export async function fetchRemRows(): Promise<InflacionRawRow[]> {
+    return (await fetchRemReport()).rows;
 }
 
-export async function fetchIpcOnlineRows(): Promise<InflacionRawRow[]> {
-    return (await fetchIpcOnlineReport()).rows;
-}
-
-async function fetchIpcOnlineReport(): Promise<InflacionSourceReport> {
+async function fetchRemReport(): Promise<InflacionSourceReport> {
     try {
+        const text = await fetchTextFromUrl(REM_BCRA_API_URL);
+        const json = JSON.parse(text) as RemApiResponse;
         const rows: InflacionRawRow[] = [];
-        const seenFechas = new Set<string>();
-        let publishedAt: string | null = null;
 
-        const pages = [IPC_ONLINE_FEED_URL, `${IPC_ONLINE_FEED_URL}?paged=2`, `${IPC_ONLINE_FEED_URL}?paged=3`, `${IPC_ONLINE_FEED_URL}?paged=4`, `${IPC_ONLINE_FEED_URL}?paged=5`, `${IPC_ONLINE_FEED_URL}?paged=6`, `${IPC_ONLINE_FEED_URL}?paged=7`, `${IPC_ONLINE_FEED_URL}?paged=8`, `${IPC_ONLINE_FEED_URL}?paged=9`, `${IPC_ONLINE_FEED_URL}?paged=10`];
-        for (const url of pages) {
-            const xml = await fetchTextFromUrl(url);
-            const items = xml.match(/<item>[\s\S]*?<\/item>/g) ?? [];
-            if (items.length === 0) break;
-
-            let newItems = 0;
-            for (const item of items) {
-                const row = parseIpcOnlineRssItem(item);
-                if (!row || seenFechas.has(row.fecha)) continue;
-                seenFechas.add(row.fecha);
-                rows.push(row);
-                publishedAt = latestDate(publishedAt, isoDateFromValue(item.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1]));
-                newItems++;
-            }
-            if (newItems === 0) break;
+        for (const entry of json.results ?? []) {
+            const fecha = entry.Fecha?.split('T')[0];
+            if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) continue;
+            const mediana = parseOptionalDecimal(entry.Mediana);
+            if (mediana == null) continue;
+            rows.push({ fecha, rem: mediana });
         }
 
-        return { rows: rows.sort((a, b) => a.fecha.localeCompare(b.fecha)), publishedAt };
+        return {
+            rows: rows.sort((a, b) => a.fecha.localeCompare(b.fecha)),
+            publishedAt: null,
+        };
     } catch (error) {
-        console.error('[inflacion-source] Failed to fetch IPC Online:', error);
+        console.error('[inflacion-source] Failed to fetch REM:', error);
         return { rows: [], publishedAt: null };
     }
 }
@@ -337,12 +319,12 @@ export async function fetchInflacionRaw(): Promise<InflacionRawRow[]> {
 }
 
 export async function fetchInflacionRawReport(): Promise<InflacionSourceReport> {
-    const [indecGeneral, indecNucleo, indecWorkbookReport, equilibraReport, onlineReport] = await Promise.all([
+    const [indecGeneral, indecNucleo, indecWorkbookReport, equilibraReport, remReport] = await Promise.all([
         fetchIndecIpcRows(INDEC_GENERAL_SERIES_ID),
         fetchIndecIpcRows(INDEC_NUCLEO_SERIES_ID),
         fetchIndecIpcWorkbookReport(),
         fetchEquilibraIpcReport(),
-        fetchIpcOnlineReport(),
+        fetchRemReport(),
     ]);
 
     const byFecha = new Map<string, InflacionRawRow>();
@@ -357,17 +339,17 @@ export async function fetchInflacionRawReport(): Promise<InflacionSourceReport> 
     for (const row of equilibraReport.rows) {
         byFecha.set(row.fecha, { ...byFecha.get(row.fecha), ...row });
     }
-    for (const row of onlineReport.rows) {
+    for (const row of remReport.rows) {
         byFecha.set(row.fecha, { ...byFecha.get(row.fecha), ...row });
     }
 
     return {
         rows: Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha)),
-        publishedAt: latestDate(indecWorkbookReport.publishedAt, latestDate(equilibraReport.publishedAt, onlineReport.publishedAt)),
+        publishedAt: latestDate(indecWorkbookReport.publishedAt, latestDate(equilibraReport.publishedAt, remReport.publishedAt)),
         sourcePublications: [
             { id: 'inflacion-indec', publishedAt: indecWorkbookReport.publishedAt, periodDate: indecWorkbookReport.rows.at(-1)?.fecha ?? null },
             { id: 'inflacion-equilibra', publishedAt: equilibraReport.publishedAt, periodDate: equilibraReport.rows.at(-1)?.fecha ?? null },
-            { id: 'inflacion-ipc-online', publishedAt: onlineReport.publishedAt, periodDate: onlineReport.rows.at(-1)?.fecha ?? null },
+            { id: 'inflacion-rem', publishedAt: remReport.publishedAt, periodDate: remReport.rows.at(-1)?.fecha ?? null },
         ].filter((source): source is { id: string; publishedAt: string; periodDate: string | null } => source.publishedAt !== null),
     };
 }

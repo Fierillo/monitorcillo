@@ -366,7 +366,7 @@ CREATE TABLE IF NOT EXISTS inflacion_raw (
     ipc_indec_general DECIMAL,
     ipc_indec_nucleo DECIMAL,
     ipc_equilibra DECIMAL,
-    ipc_online DECIMAL,
+    rem DECIMAL,
     fetched_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -376,7 +376,7 @@ CREATE TABLE IF NOT EXISTS inflacion_normalized (
     ipc_indec DECIMAL,
     ipc_nucleo_indec DECIMAL,
     ipc_equilibra DECIMAL,
-    ipc_online DECIMAL,
+    rem DECIMAL,
     ipc DECIMAL,
     last_update TIMESTAMP DEFAULT NOW()
 );

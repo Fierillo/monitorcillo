@@ -146,7 +146,7 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
             ipc_indec: toNullableNumber(row.ipc_indec),
             ipc_nucleo_indec: toNullableNumber(row.ipc_nucleo_indec),
             ipc_equilibra: toNullableNumber(row.ipc_equilibra),
-            ipc_online: toNullableNumber(row.ipc_online),
+            rem: toNullableNumber(row.rem),
             ipc: toNullableNumber(row.ipc),
         } as NormalizedDataByType[T];
     }

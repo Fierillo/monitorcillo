@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
-import { parseEquilibraRssItem, parseIndecIpcWorkbook, parseIpcOnlineRssItem } from '../lib/inflacion-source';
+import { parseEquilibraRssItem, parseIndecIpcWorkbook } from '../lib/inflacion-source';
 
 function createWorkbook(rows: unknown[][]): Buffer {
     const workbook = XLSX.utils.book_new();
@@ -117,46 +117,5 @@ describe('parseEquilibraRssItem', () => {
             </item>
         `;
         expect(parseEquilibraRssItem(xml)).toBeNull();
-    });
-});
-
-describe('parseIpcOnlineRssItem', () => {
-    it('extracts IPC from RSS description', () => {
-        const xml = `
-            <item>
-                <title>IPC Abril 2026</title>
-                <description><![CDATA[
-Inflación: 1,71%
-Interanual: 27,56%
-]]></description>
-            </item>
-        `;
-        const result = parseIpcOnlineRssItem(xml);
-        expect(result).not.toBeNull();
-        expect(result?.fecha).toBe('2026-04-01');
-        expect(result?.ipc_online).toBe(1.71);
-    });
-
-    it('extracts IPC from RSS content encoded as fallback', () => {
-        const xml = `
-            <item>
-                <title>IPC Marzo 2026</title>
-                <content:encoded><![CDATA[<h2 style="text-align: center">2,60%</h2><p>La inflación...</p>]]></content:encoded>
-            </item>
-        `;
-        const result = parseIpcOnlineRssItem(xml);
-        expect(result).not.toBeNull();
-        expect(result?.fecha).toBe('2026-03-01');
-        expect(result?.ipc_online).toBe(2.6);
-    });
-
-    it('returns null when title has no month/year', () => {
-        const xml = '<item><title>Bienvenidos</title><description><![CDATA[Inflación: 1,5%]]></description></item>';
-        expect(parseIpcOnlineRssItem(xml)).toBeNull();
-    });
-
-    it('returns null when no percentage found', () => {
-        const xml = '<item><title>IPC Abril 2026</title><description><![CDATA[Resumen del mes]]></description></item>';
-        expect(parseIpcOnlineRssItem(xml)).toBeNull();
     });
 });

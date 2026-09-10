@@ -155,7 +155,7 @@ describe('buildCurrentIndicatorsCatalog', () => {
     });
 
     it('uses publication date metadata for inflation', async () => {
-        await expectPublishedDate('inflacion', 'inflacion', 'ipc', { iso_fecha: '2026-03-01', ipc: 6.1 }, '2026-04-15', { fecha: '15 ABR 26', dato: '6,1%', reference_description: 'Mes anterior', trend: 'down', proxima_fecha: formatDay(futureMonthly('2026-04-15')) }, ['ipc_equilibra', 'ipc_online', 'ipc_indec', 'ipc_nucleo_indec'], { iso_fecha: '2026-02-01', ipc: 5.5 });
+        await expectPublishedDate('inflacion', 'inflacion', 'ipc', { iso_fecha: '2026-03-01', ipc: 6.1 }, '2026-04-15', { fecha: '15 ABR 26', dato: '6,1%', reference_description: 'Mes anterior', trend: 'down', proxima_fecha: formatDay(futureMonthly('2026-04-15')) }, ['ipc_equilibra', 'rem', 'ipc_indec', 'ipc_nucleo_indec'], { iso_fecha: '2026-02-01', ipc: 5.5 });
     });
 
     it('uses INDEC publication date and nearest inflation source for next date', async () => {
@@ -167,18 +167,18 @@ describe('buildCurrentIndicatorsCatalog', () => {
             getPublicationDates: async () => ({
                 'inflacion-indec': '2026-05-14',
                 'inflacion-equilibra': '2026-05-10',
-                'inflacion-ipc-online': '2026-05-03',
+                'inflacion-rem': '2026-05-03',
             }),
             getNormalizedRowByDate: async (type, date) => type === 'inflacion' && date === '2026-03-01' ? { iso_fecha: '2026-03-01', ipc: 3.4 } : null,
             getRawRowByDate: async () => null,
             getNormalizedRows: async () => [],
-            getRawRows: async () => [{ fecha: '2026-04-01', ipc_indec_general: 1, ipc_equilibra: 1, ipc_online: 1 }],
+            getRawRows: async () => [{ fecha: '2026-04-01', ipc_indec_general: 1, ipc_equilibra: 1, rem: 1 }],
         });
 
         const nextInflationSource = [
             { date: futureMonthly('2026-05-14'), label: 'INDEC' },
             { date: futureMonthly('2026-05-10'), label: 'Equilibra' },
-            { date: futureMonthly('2026-05-03'), label: 'IPC Online' },
+            { date: futureMonthly('2026-05-03'), label: 'REM' },
         ].sort((a, b) => a.date.localeCompare(b.date))[0];
 
         expect(result.find(row => row.id === 'inflacion')).toMatchObject({

@@ -12,13 +12,13 @@ export function normalizeInflacion(rawData: InflacionRawRow[]): InflacionNormali
     const indecGeneralByFecha = new Map<string, number>();
     const indecNucleoByFecha = new Map<string, number>();
     const equilibraByFecha = new Map<string, number>();
-    const onlineByFecha = new Map<string, number>();
+    const remByFecha = new Map<string, number>();
 
     for (const row of sorted) {
         if (row.ipc_indec_general != null) indecGeneralByFecha.set(row.fecha, Number(row.ipc_indec_general));
         if (row.ipc_indec_nucleo != null) indecNucleoByFecha.set(row.fecha, Number(row.ipc_indec_nucleo));
         if (row.ipc_equilibra != null) equilibraByFecha.set(row.fecha, Number(row.ipc_equilibra));
-        if (row.ipc_online != null) onlineByFecha.set(row.fecha, Number(row.ipc_online));
+        if (row.rem != null) remByFecha.set(row.fecha, Number(row.rem));
     }
 
     const allFechas = Array.from(new Set(sorted.map(r => r.fecha))).sort();
@@ -41,9 +41,9 @@ export function normalizeInflacion(rawData: InflacionRawRow[]): InflacionNormali
             : null;
 
         const ipcEquilibra = toNullableNumber(equilibraByFecha.get(fecha) ?? null);
-        const ipcOnline = toNullableNumber(onlineByFecha.get(fecha) ?? null);
+        const rem = toNullableNumber(remByFecha.get(fecha) ?? null);
 
-        const ipc = ipcIndec ?? ipcEquilibra ?? ipcOnline ?? null;
+        const ipc = ipcIndec ?? ipcEquilibra ?? rem ?? null;
 
         const date = new Date(`${fecha}T00:00:00Z`);
         if (Number.isNaN(date.getTime())) continue;
@@ -54,7 +54,7 @@ export function normalizeInflacion(rawData: InflacionRawRow[]): InflacionNormali
             ipc_indec: ipcIndec != null ? Number(ipcIndec.toFixed(2)) : null,
             ipc_nucleo_indec: ipcNucleoIndec != null ? Number(ipcNucleoIndec.toFixed(2)) : null,
             ipc_equilibra: ipcEquilibra != null ? Number(ipcEquilibra.toFixed(2)) : null,
-            ipc_online: ipcOnline != null ? Number(ipcOnline.toFixed(2)) : null,
+            rem: rem != null ? Number(rem.toFixed(2)) : null,
             ipc: ipc != null ? Number(ipc.toFixed(2)) : null,
         });
     }
