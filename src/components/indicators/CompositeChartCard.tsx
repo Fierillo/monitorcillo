@@ -571,7 +571,8 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
 
 function ChartSeries({ areaConfig, props }: { areaConfig: AreaConfig; props: ChartRenderProps }) {
     const onCtrlClick = () => props.onToggleHighlight(areaConfig.legendKey || areaConfig.key);
-    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={false} data={props.visibleData} isCapturing={props.isCapturing} onCtrlClick={onCtrlClick} />;
+    const allSeriesKeys = props.areas.filter(a => a.type === 'line').map(a => a.key);
+    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={false} data={props.visibleData} chartData={props.visibleData} allSeriesKeys={allSeriesKeys} isCapturing={props.isCapturing} onCtrlClick={onCtrlClick} />;
     if (areaConfig.type === 'bar') return <ChartBar areaConfig={areaConfig} isDimmed={false} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} isCapturing={props.isCapturing} onCtrlClick={onCtrlClick} />;
     return <ChartArea areaConfig={areaConfig} isDimmed={false} onCtrlClick={onCtrlClick} />;
 }

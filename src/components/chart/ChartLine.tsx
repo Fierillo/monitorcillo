@@ -36,7 +36,41 @@ function isValueChange(data: ChartDataRow[] | undefined, index: number, key: str
     return !hasNext || current !== next;
 }
 
-export default function ChartLine({ areaConfig, isDimmed, data, isCapturing = false, onCtrlClick }: ChartLineProps) {
+const LABEL_HALF = 10;
+const MIN_GAP = 6;
+
+function computeLabelOffsets(
+    seriesKeys: string[],
+    data: ChartDataRow,
+): { offsets: Map<string, number>; arrowUp: Set<string> } {
+    const entries = seriesKeys
+        .map(key => ({ key, value: data[key] }))
+        .filter((entry): entry is { key: string; value: number } =>
+            typeof entry.value === 'number' && Number.isFinite(entry.value),
+        )
+        .sort((a, b) => b.value - a.value);
+
+    if (entries.length === 0) return { offsets: new Map(), arrowUp: new Set() };
+
+    const values = entries.map(e => e.value);
+    const dataCenter = (Math.min(...values) + Math.max(...values)) / 2;
+
+    const count = entries.length;
+    const step = LABEL_HALF * 2 + MIN_GAP;
+    const totalHeight = count * step - MIN_GAP;
+    const firstCenter = dataCenter - totalHeight / 2;
+
+    const offsets = new Map<string, number>();
+    const arrowUp = new Set<string>();
+    for (let i = 0; i < entries.length; i++) {
+        const cy = firstCenter + i * step;
+        offsets.set(entries[i].key, cy - dataCenter);
+        if (cy < dataCenter) arrowUp.add(entries[i].key);
+    }
+    return { offsets, arrowUp };
+}
+
+export default function ChartLine({ areaConfig, isDimmed, data, chartData, allSeriesKeys, isCapturing = false, onCtrlClick }: ChartLineProps) {
     const color = areaConfig.color;
     const gradientId = `line-reveal-${areaConfig.key}`;
     const stroke = areaConfig.revealStrokeAfterPercent == null ? color : `url(#${gradientId})`;
@@ -72,15 +106,30 @@ export default function ChartLine({ areaConfig, isDimmed, data, isCapturing = fa
         if (typeof labelProps.x !== 'number' || typeof labelProps.y !== 'number') return null;
         const value = Number(labelProps.value);
         if (!Number.isFinite(value)) return null;
-        const labelY = labelProps.y + (areaConfig.labelOffsetY ?? -10);
-        const needsLeader = areaConfig.labelLeader && Math.abs(labelY - labelProps.y) > 12;
+
+        let offsetY = areaConfig.labelOffsetY ?? -10;
+        let pointsUp = false;
+        if (chartData && allSeriesKeys && allSeriesKeys.length > 1) {
+            const row = chartData[index];
+            if (row) {
+                const { offsets, arrowUp } = computeLabelOffsets(allSeriesKeys, row);
+                offsetY = offsets.get(areaConfig.key) ?? offsetY;
+                pointsUp = arrowUp.has(areaConfig.key);
+            }
+        }
+
+        const labelY = labelProps.y + offsetY;
+        const needsLeader = areaConfig.labelLeader;
 
         return (
             <g>
                 {needsLeader ? (
                     <>
-                        <line x1={labelProps.x} y1={labelProps.y} x2={labelProps.x} y2={labelY + (labelY < labelProps.y ? 4 : -4)} stroke={color} strokeWidth={1} />
-                        <path d={labelY < labelProps.y ? `M ${labelProps.x - 3} ${labelProps.y - 5} L ${labelProps.x} ${labelProps.y} L ${labelProps.x + 3} ${labelProps.y - 5}` : `M ${labelProps.x - 3} ${labelProps.y + 5} L ${labelProps.x} ${labelProps.y} L ${labelProps.x + 3} ${labelProps.y + 5}`} fill="none" stroke={color} strokeWidth={1} />
+                        <line x1={labelProps.x} y1={labelProps.y} x2={labelProps.x} y2={labelY + (pointsUp ? 10 : -10)} stroke={color} strokeWidth={1} />
+                        <path d={pointsUp
+                            ? `M ${labelProps.x} ${labelY + 4} L ${labelProps.x - 3} ${labelY - 1} L ${labelProps.x + 3} ${labelY - 1} Z`
+                            : `M ${labelProps.x} ${labelY - 4} L ${labelProps.x - 3} ${labelY + 1} L ${labelProps.x + 3} ${labelY + 1} Z`
+                        } fill={color} stroke="none" />
                     </>
                 ) : null}
                 <text x={labelProps.x} y={labelY} fill={color} fontSize={11} fontWeight={700} textAnchor="middle" paintOrder="stroke" stroke="#00143F" strokeWidth={3} strokeOpacity={0.85}>

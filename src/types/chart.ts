@@ -206,6 +206,8 @@ export type ChartLineProps = {
     areaConfig: AreaConfig;
     isDimmed: boolean;
     data?: ChartDataRow[];
+    chartData?: ChartDataRow[];
+    allSeriesKeys?: string[];
     isCapturing?: boolean;
     onCtrlClick: () => void;
 };
