@@ -283,7 +283,7 @@ async function fetchEquilibraIpcReport(): Promise<InflacionSourceReport> {
 }
 
 type RemApiResponse = {
-    datos: Array<{ periodo: string; mediana: number | string }>;
+    datos: Array<Record<string, unknown>>;
 };
 
 export async function fetchRemRows(): Promise<InflacionRawRow[]> {
@@ -297,9 +297,12 @@ async function fetchRemReport(): Promise<InflacionSourceReport> {
         const rows: InflacionRawRow[] = [];
 
         for (const entry of json.datos ?? []) {
-            const date = new Date(entry.periodo);
+            const rawPeriodo = entry['período'];
+            if (typeof rawPeriodo !== 'string') continue;
+            const date = new Date(rawPeriodo);
             if (Number.isNaN(date.getTime())) continue;
             const fecha = date.toISOString().split('T')[0];
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) continue;
             const mediana = parseOptionalDecimal(entry.mediana);
             if (mediana == null) continue;
             rows.push({ fecha, rem: mediana });
