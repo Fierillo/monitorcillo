@@ -22,7 +22,7 @@ const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     poder: ['fecha', 'blanco', 'negro', 'privado', 'publico', 'ripte', 'jubilacion'],
     deuda: ['fecha', 'toma_deuda', 'vencimientos', 'vencimientos_proyectados', 'pagos', 'deuda_pbi', 'deuda_proyectada', 'acumulado', 'total'],
     pobreza: ['fecha', 'pobreza_indec', 'pobreza_utdt'],
-    inflacion: ['fecha', 'ipc_indec', 'ipc_nucleo_indec', 'ipc_equilibra', 'rem', 'ipc'],
+    inflacion: ['fecha', 'ipc_indec', 'ipc_nucleo_indec', 'ipc_equilibra', 'ipc_online', 'rem', 'ipc'],
     icg: ['fecha', 'icg'],
     balanza: [...BALANZA_NORMALIZED_COLUMNS],
 };
@@ -99,7 +99,7 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
     }
     if (type === 'deuda') return [fecha, toNullableNumber(row.toma_deuda), toNullableNumber(row.vencimientos), toNullableNumber(row.vencimientos_proyectados), toNullableNumber(row.pagos), toNullableNumber(row.deuda_pbi), toNullableNumber(row.deuda_proyectada), toNullableNumber(row.acumulado), toNullableNumber(row.total)];
     if (type === 'pobreza') return [fecha, toNullableNumber(row.pobreza_indec), toNullableNumber(row.pobreza_utdt)];
-    if (type === 'inflacion') return [fecha, toNullableNumber(row.ipc_indec), toNullableNumber(row.ipc_nucleo_indec), toNullableNumber(row.ipc_equilibra), toNullableNumber(row.rem), toNullableNumber(row.ipc)];
+    if (type === 'inflacion') return [fecha, toNullableNumber(row.ipc_indec), toNullableNumber(row.ipc_nucleo_indec), toNullableNumber(row.ipc_equilibra), toNullableNumber(row.ipc_online), toNullableNumber(row.rem), toNullableNumber(row.ipc)];
     if (type === 'icg') return [fecha, toNullableNumber(row.icg)];
     if (type === 'balanza') return [fecha, ...BALANZA_SERIES_KEYS.map(key => toNullableNumber(row[key])), toNullableNumber(row.pbi), toNullableNumber(row.tc), toNullableNumber(row.ipc_nucleo), toNullableNumber(row.pbi_usd)];
     return [fecha, toNullableNumber(row.blanco), toNullableNumber(row.negro), toNullableNumber(row.privado), toNullableNumber(row.publico), toNullableNumber(row.ripte), toNullableNumber(row.jubilacion)];

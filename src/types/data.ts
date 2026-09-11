@@ -299,6 +299,7 @@ export type InflacionRawRow = {
     ipc_indec_general?: NumericValue;
     ipc_indec_nucleo?: NumericValue;
     ipc_equilibra?: NumericValue;
+    ipc_online?: NumericValue;
     rem?: NumericValue;
 };
 
@@ -308,6 +309,7 @@ export type InflacionNormalizedRow = {
     ipc_indec: number | null;
     ipc_nucleo_indec: number | null;
     ipc_equilibra: number | null;
+    ipc_online: number | null;
     rem: number | null;
     ipc: number | null;
 };
