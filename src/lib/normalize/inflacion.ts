@@ -2,6 +2,55 @@ import type { InflacionNormalizedRow, InflacionRawRow } from '@/types';
 import { MONTHS_ES } from './dates';
 import { toNullableNumber } from './numbers';
 
+const INFLACION_RATE_KEYS = ['ipc_indec', 'ipc_nucleo_indec', 'ipc_equilibra', 'ipc_online', 'rem', 'ipc'] as const;
+
+function addMonths(fecha: string, offset: number): string {
+    const [year, month] = fecha.split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1 + offset, 1)).toISOString().split('T')[0];
+}
+
+function yearOverYearRate<T extends object>(byFecha: Map<string, T>, isoFecha: string, key: string): number | null {
+    let product = 1;
+    for (let offset = 0; offset < 12; offset++) {
+        const row = byFecha.get(addMonths(isoFecha, -offset));
+        const value = row && key in row ? (row as Record<string, unknown>)[key] : undefined;
+        if (typeof value !== 'number') return null;
+        product *= 1 + value / 100;
+    }
+    return Number(((product - 1) * 100).toFixed(2));
+}
+
+export function keepRemAfterLastIndec<T extends { iso_fecha?: string; ipc_indec?: unknown; rem?: unknown }>(rows: T[]): T[] {
+    const lastIndec = [...rows]
+        .reverse()
+        .find(row => typeof row.iso_fecha === 'string' && typeof row.ipc_indec === 'number')
+        ?.iso_fecha;
+    if (!lastIndec) return rows;
+
+    return rows.map(row => {
+        if (typeof row.iso_fecha !== 'string' || row.iso_fecha >= lastIndec) return row;
+        return { ...row, rem: null };
+    });
+}
+
+export function toYearOverYearInflacion<T extends { iso_fecha?: string }>(rows: T[]): T[] {
+    const byFecha = new Map<string, T>();
+    for (const row of rows) {
+        if (typeof row.iso_fecha === 'string') byFecha.set(row.iso_fecha, row);
+    }
+
+    return rows.map(row => {
+        const isoFecha = typeof row.iso_fecha === 'string' ? row.iso_fecha : null;
+        return {
+            ...row,
+            ...Object.fromEntries(INFLACION_RATE_KEYS.map(key => [
+                key,
+                isoFecha ? yearOverYearRate(byFecha, isoFecha, key) : null,
+            ])),
+        };
+    });
+}
+
 export function normalizeInflacion(rawData: InflacionRawRow[]): InflacionNormalizedRow[] {
     if (!Array.isArray(rawData) || rawData.length === 0) return [];
 

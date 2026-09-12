@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeInflacion } from '../lib/normalize/inflacion';
+import { keepRemAfterLastIndec, normalizeInflacion, toYearOverYearInflacion } from '../lib/normalize/inflacion';
 
 describe('normalizeInflacion', () => {
     it('calculates monthly percentage change from INDEC indices', () => {
@@ -59,5 +59,44 @@ describe('normalizeInflacion', () => {
 
     it('returns empty array for empty input', () => {
         expect(normalizeInflacion([])).toEqual([]);
+    });
+});
+
+describe('toYearOverYearInflacion', () => {
+    it('compounds twelve consecutive monthly rates', () => {
+        const rows = Array.from({ length: 13 }, (_, index) => ({
+            iso_fecha: new Date(Date.UTC(2025, index, 1)).toISOString().split('T')[0],
+            ipc_indec: 2,
+        }));
+        const yearOverYear = toYearOverYearInflacion(rows);
+        expect(yearOverYear[10].ipc_indec).toBeNull();
+        expect(yearOverYear[11].ipc_indec).toBeCloseTo(26.82, 2);
+        expect(yearOverYear[12].ipc_indec).toBeCloseTo(26.82, 2);
+    });
+
+    it('returns null when a month in the window is missing', () => {
+        const rows = Array.from({ length: 13 }, (_, index) => ({
+            iso_fecha: new Date(Date.UTC(2025, index, 1)).toISOString().split('T')[0],
+            ipc_indec: 2,
+        })).filter(row => row.iso_fecha !== '2025-02-01');
+        const yearOverYear = toYearOverYearInflacion(rows);
+        expect(yearOverYear.at(-1)?.ipc_indec).toBeNull();
+    });
+});
+
+describe('keepRemAfterLastIndec', () => {
+    it('keeps REM from the last INDEC month onward', () => {
+        const rows = [
+            { iso_fecha: '2026-07-01', ipc_indec: 2.1, rem: 2 },
+            { iso_fecha: '2026-08-01', ipc_indec: 1.7, rem: 1.8 },
+            { iso_fecha: '2026-09-01', ipc_indec: null, rem: 1.87 },
+            { iso_fecha: '2026-10-01', ipc_indec: null, rem: 1.8 },
+        ];
+        expect(keepRemAfterLastIndec(rows)).toEqual([
+            { iso_fecha: '2026-07-01', ipc_indec: 2.1, rem: null },
+            { iso_fecha: '2026-08-01', ipc_indec: 1.7, rem: 1.8 },
+            { iso_fecha: '2026-09-01', ipc_indec: null, rem: 1.87 },
+            { iso_fecha: '2026-10-01', ipc_indec: null, rem: 1.8 },
+        ]);
     });
 });

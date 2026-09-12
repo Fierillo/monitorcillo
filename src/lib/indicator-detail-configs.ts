@@ -5,7 +5,10 @@ import { PNFC_BREAKDOWNS } from './morosidad/schema';
 import { normalizeDepositosPrestamos } from './normalize/depositos-prestamos';
 import { RECAUDACION_BREAKDOWN_TYPES } from './recaudacion/schema';
 import { ICG_PRESIDENTIAL_MANDATES, PRESIDENTIAL_MANDATES } from './presidential-mandates';
+import { fetchRemExpectationsHistory, normalizeRemExpectations } from './inflacion-source';
+import { keepRemAfterLastIndec, toYearOverYearInflacion } from './normalize/inflacion';
 import { safeGetIndicatorData } from './storage';
+
 import { getRawData } from './db';
 import { COST_OF_LIVING_MODEL, calculateCostOfLivingBurden, fetchCostOfLivingIndices } from './purchasing-power-cost';
 import { RIGI_INVESTMENT_CHART_DATA, RIGI_INVESTMENTS } from './investments-source';
@@ -684,10 +687,84 @@ async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
     const methodology = [
         { title: 'INDEC', description: 'Índice de Precios al Consumidor Nacional (IPC General y Núcleo) base diciembre 2016=100. La variación mensual se calcula como (índice actual - índice anterior) / índice anterior * 100.' },
         { title: 'Equilibra', description: 'Proyección mensual de inflación de Equilibra.ar basada en relevamientos de precios propios.' },
-        { title: 'REM', description: 'Relevamiento de Expectativas de Mercado del Banco Central. Expectativa de inflación mensual (mediana) de los agentes del mercado.' },
+        { title: 'REM', description: 'Relevamiento de Expectativas de Mercado del Banco Central. En esta vista se muestra la mediana mensual de la última encuesta desde el último mes con IPC INDEC, para comparar, y los meses posteriores como proyección.' },
         { title: 'Serie principal', description: 'El dato destacado usa INDEC General como principal. Las consultoras se muestran superpuestas para comparabilidad.' },
+        { title: 'Interanual', description: 'El modo Interanual acumula las variaciones mensuales de los últimos 12 meses de cada serie. Si falta algún mes, el dato no se muestra.' },
     ];
-    return { subtitle: indicator.fuente, chartTitle: 'Inflación mensual', data: await safeGetIndicatorData('inflacion'), areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% mensual', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
+
+    const ipcData = keepRemAfterLastIndec(await safeGetIndicatorData('inflacion'));
+    const yearOverYearData = toYearOverYearInflacion(ipcData);
+
+    const actualIpcByMonth = new Map<string, number>();
+    for (const row of ipcData) {
+        if (typeof row.iso_fecha === 'string' && typeof row.ipc_indec === 'number') {
+            actualIpcByMonth.set(row.iso_fecha, row.ipc_indec);
+        }
+    }
+
+    const surveys = await fetchRemExpectationsHistory(6);
+    const expectationData = normalizeRemExpectations(surveys, actualIpcByMonth) as ChartDataRow[];
+    const surveyColors = ['#22C55E', '#38BDF8', '#A78BFA', '#F472B6', '#FB923C', '#FACC15', '#4ADE80', '#818CF8'];
+    const expectationAreas: AreaConfig[] = [
+        { key: 'ipc_indec', name: 'IPC INDEC (dato real)', color: '#FFD700', type: 'line', strokeWidth: 3, showDots: false },
+        ...surveys.map((survey, i) => ({
+            key: `enc_${survey.surveyDate}`,
+            name: `Enc. ${survey.surveyLabel}`,
+            color: surveyColors[i % surveyColors.length],
+            type: 'line' as const,
+            strokeWidth: 1.5,
+            showDots: false,
+            dash: [4, 3],
+        })),
+    ];
+    const expectationMethodology: MethodologyItem[] = [
+        { title: 'Tronco', description: 'La línea dorada sólida muestra la inflación mensual real publicada por INDEC (IPC Nivel General).' },
+        { title: 'Ramas', description: 'Cada línea punteada emerge del dato real del mes de la encuesta y proyecta los pronósticos REM hacia los meses futuros. Si una rama se acerca a la línea dorada, las expectativas se ajustaron al resultado real.' },
+        { title: 'Fuente', description: 'XLSX oficial del Relevamiento de Expectativas de Mercado del BCRA. Cada encuesta mensual contiene pronósticos de mediana de inflación para los próximos meses.' },
+        { title: 'Cobertura', description: `Se muestran las últimas ${surveys.length} encuestas disponibles.` },
+    ];
+
+    return {
+        subtitle: indicator.fuente,
+        chartTitle: 'Inflación mensual',
+        data: ipcData,
+        areas,
+        methodology,
+        valueFormat: 'percent',
+        yAxisDecimals: 1,
+        yAxisLabel: '% mensual',
+        leftYAxisDomain: 'auto-pad',
+        indicatorId: indicator.id,
+        views: [
+            {
+                id: 'ipc',
+                label: 'IPC',
+                chartTitle: 'Inflación mensual',
+                areas,
+                methodology,
+                valueFormat: 'percent',
+                yAxisDecimals: 1,
+                yAxisLabel: '% mensual',
+                leftYAxisDomain: 'auto-pad',
+                modes: [
+                    { id: 'mensual', label: 'Mensual', chartTitle: 'Inflación mensual', data: ipcData, yAxisLabel: '% mensual' },
+                    { id: 'interanual', label: 'Interanual', chartTitle: 'Inflación interanual', data: yearOverYearData, yAxisLabel: '% interanual' },
+                ],
+            },
+            {
+                id: 'expectativas',
+                label: 'Expectativas',
+                chartTitle: 'Evolución de expectativas REM',
+                data: expectationData,
+                areas: expectationAreas,
+                methodology: expectationMethodology,
+                valueFormat: 'percent',
+                yAxisDecimals: 1,
+                yAxisLabel: '% mensual',
+                leftYAxisDomain: 'auto-pad',
+            },
+        ],
+    };
 }
 
 async function icgConfig(indicator: Indicator): Promise<DetailConfig> {
