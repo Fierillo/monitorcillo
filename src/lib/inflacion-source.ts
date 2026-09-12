@@ -368,6 +368,89 @@ async function fetchRemReport(): Promise<InflacionSourceReport> {
     }
 }
 
+const REM_BCRA_XLSX_BASE = 'https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas';
+const MONTH_ABBR = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+function remXlsxUrl(month: number, year: number): string {
+    const abbr = MONTH_ABBR[month - 1];
+    const path = year >= 2026 ? `${REM_BCRA_XLSX_BASE}/informes` : REM_BCRA_XLSX_BASE;
+    return `${path}/tablas-relevamiento-expectativas-mercado-${abbr}-${year}.xlsx`;
+}
+
+export type RemExpectationSurvey = {
+    surveyDate: string;
+    surveyLabel: string;
+    targets: Array<{ month: string; median: number }>;
+};
+
+function parseExcelDate(serial: number): string | null {
+    if (serial < 40000) return null;
+    const date = new Date((serial - 25569) * 86400 * 1000);
+    if (Number.isNaN(date.getTime())) return null;
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-01`;
+}
+
+export function parseRemXlsx(buffer: Buffer, surveyYear: number, surveyMonth: number): RemExpectationSurvey | null {
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames.find(name => /cuadros de resultados/i.test(name));
+    if (!sheetName) return null;
+
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: true, defval: null }) as unknown[][];
+
+    const headerIdx = rows.findIndex(row => /precios minoristas.*ipc nivel general/i.test(String(row[0] ?? '')));
+    if (headerIdx < 0) return null;
+
+    const dataStart = headerIdx + 2;
+    const targets: Array<{ month: string; median: number }> = [];
+
+    for (let i = dataStart; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row[0] == null) break;
+        if (typeof row[0] === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(row[0])) break;
+        if (typeof row[0] === 'number' && row[0] < 40000) break;
+
+        const ref = String(row[1] ?? '');
+        if (!/var\. % mensual/i.test(ref)) continue;
+
+        const fecha = typeof row[0] === 'number' ? parseExcelDate(row[0]) : (typeof row[0] === 'string' ? row[0].split(' ')[0] : null);
+        const mediana = parseOptionalDecimal(row[2]);
+        if (!fecha || mediana == null) continue;
+
+        targets.push({ month: fecha, median: mediana });
+    }
+
+    if (targets.length === 0) return null;
+
+    const surveyDate = `${surveyYear}-${String(surveyMonth).padStart(2, '0')}-01`;
+    const label = `${MONTH_ABBR[surveyMonth - 1]}-${String(surveyYear).slice(-2)}`;
+    return { surveyDate, surveyLabel: label, targets };
+}
+
+export async function fetchRemXlsx(month: number, year: number): Promise<RemExpectationSurvey | null> {
+    const url = remXlsxUrl(month, year);
+    try {
+        const buffer = await fetchBufferFromUrl(url);
+        return parseRemXlsx(buffer, year, month);
+    } catch {
+        return null;
+    }
+}
+
+export async function fetchRemExpectationsHistory(monthsBack: number = 6): Promise<RemExpectationSurvey[]> {
+    const now = new Date();
+    const surveys: RemExpectationSurvey[] = [];
+
+    for (let offset = 0; offset < monthsBack; offset++) {
+        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+        const month = d.getUTCMonth() + 1;
+        const year = d.getUTCFullYear();
+        const survey = await fetchRemXlsx(month, year);
+        if (survey) surveys.push(survey);
+    }
+
+    return surveys.sort((a, b) => a.surveyDate.localeCompare(b.surveyDate));
+}
+
 export async function fetchInflacionRaw(): Promise<InflacionRawRow[]> {
     return (await fetchInflacionRawReport()).rows;
 }
@@ -411,4 +494,50 @@ export async function fetchInflacionRawReport(): Promise<InflacionSourceReport> 
             { id: 'inflacion-rem', publishedAt: remReport.publishedAt, periodDate: remReport.rows.at(-1)?.fecha ?? null },
         ].filter((source): source is { id: string; publishedAt: string; periodDate: string | null } => source.publishedAt !== null),
     };
+}
+
+const MONTHS_ES_REV = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
+
+export function normalizeRemExpectations(
+    surveys: RemExpectationSurvey[],
+    actualIpcByMonth: Map<string, number>,
+): Array<Record<string, unknown>> {
+    if (surveys.length === 0) return [];
+
+    const allMonths = new Set<string>();
+    for (const survey of surveys) {
+        for (const t of survey.targets) allMonths.add(t.month);
+    }
+    for (const month of actualIpcByMonth.keys()) allMonths.add(month);
+    const sortedMonths = Array.from(allMonths).sort();
+
+    return sortedMonths.map(month => {
+        const d = new Date(month + 'T12:00:00Z');
+        const row: Record<string, unknown> = {
+            fecha: `${MONTHS_ES_REV[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}`,
+            iso_fecha: month,
+        };
+
+        row.ipc_indec = actualIpcByMonth.get(month) ?? null;
+
+        for (const survey of surveys) {
+            const key = `enc_${survey.surveyDate}`;
+            const isFirstTarget = survey.targets[0]?.month === month;
+
+            if (isFirstTarget) {
+                row[key] = actualIpcByMonth.get(month) ?? survey.targets[0]?.median ?? null;
+                continue;
+            }
+
+            if (month < survey.surveyDate) {
+                row[key] = null;
+                continue;
+            }
+
+            const target = survey.targets.find(t => t.month === month);
+            row[key] = target?.median ?? null;
+        }
+
+        return row;
+    });
 }
