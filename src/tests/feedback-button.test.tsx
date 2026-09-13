@@ -18,6 +18,7 @@ describe('FeedbackButton', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'Enviar feedback' }));
         fireEvent.change(screen.getByLabelText('Mensaje'), { target: { value: 'Agregar otra métrica' } });
+        fireEvent.change(screen.getByLabelText('Usuario de X (opcional)'), { target: { value: '@fierillo' } });
         fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
 
         await screen.findByText('Feedback enviado. Gracias por ayudar a mejorar Monitorcillo.');
@@ -25,6 +26,7 @@ describe('FeedbackButton', () => {
         expect(request[0]).toBe('/api/feedback');
         expect(JSON.parse(request[1].body)).toEqual({
             message: 'Agregar otra métrica',
+            twitterHandle: '@fierillo',
             context: { surface: 'general_table', path: '/' },
         });
     });

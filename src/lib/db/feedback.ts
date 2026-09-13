@@ -22,16 +22,18 @@ async function ensureFeedbackTable(): Promise<void> {
         )
     `, []);
     await sql.query('CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at DESC)', []);
+    await sql.query('ALTER TABLE feedback ADD COLUMN IF NOT EXISTS implemented BOOLEAN NOT NULL DEFAULT FALSE', []);
+    await sql.query('ALTER TABLE feedback ADD COLUMN IF NOT EXISTS twitter_handle VARCHAR(15)', []);
     feedbackTableReady = true;
 }
 
-export async function saveFeedback({ message, context }: FeedbackSubmission): Promise<void> {
+export async function saveFeedback({ message, twitterHandle, context }: FeedbackSubmission): Promise<void> {
     await ensureFeedbackTable();
     await sql.query(`
         INSERT INTO feedback (
             message, surface, path, metric_id, metric_title, chart_title,
-            view_id, view_title, mode_id, mode_title
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            view_id, view_title, mode_id, mode_title, twitter_handle
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     `, [
         message,
         context.surface,
@@ -43,6 +45,7 @@ export async function saveFeedback({ message, context }: FeedbackSubmission): Pr
         context.viewTitle ?? null,
         context.modeId ?? null,
         context.modeTitle ?? null,
+        twitterHandle ?? null,
     ]);
 }
 
@@ -62,10 +65,21 @@ export async function getFeedback(): Promise<FeedbackRecord[]> {
             viewTitle: row.view_title == null ? undefined : String(row.view_title),
             modeId: row.mode_id == null ? undefined : String(row.mode_id),
             modeTitle: row.mode_title == null ? undefined : String(row.mode_title),
+            twitterHandle: row.twitter_handle == null || row.twitter_handle === '' ? undefined : String(row.twitter_handle),
             createdAt: new Date(String(row.created_at)).toISOString(),
+            implemented: Boolean(row.implemented),
         }));
     } catch (error) {
         console.error('[db] getFeedback failed', error);
         return [];
     }
+}
+
+export async function setFeedbackImplemented(id: number, implemented: boolean): Promise<boolean> {
+    await ensureFeedbackTable();
+    const rows = await sql.query(
+        'UPDATE feedback SET implemented = $1 WHERE id = $2 RETURNING id',
+        [implemented, id],
+    ) as DbRow[];
+    return rows.length > 0;
 }

@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const database = vi.hoisted(() => ({ query: vi.fn() }));
 
 vi.mock('../lib/db/client', () => ({ sql: database }));
 
-import { getFeedback, saveFeedback } from '../lib/db/feedback';
+import { getFeedback, saveFeedback, setFeedbackImplemented } from '../lib/db/feedback';
+
+beforeEach(() => {
+    database.query.mockReset();
+});
 
 describe('feedback database', () => {
     it('stores context and returns newest feedback first', async () => {
@@ -15,7 +19,7 @@ describe('feedback database', () => {
         });
 
         const insertCall = database.query.mock.calls.find(([query]) => String(query).includes('INSERT INTO feedback'));
-        expect(insertCall?.[1]).toEqual(['Revisar escala', 'chart', '/indicador/emae', 'emae', 'EMAE', null, null, null, null, null]);
+        expect(insertCall?.[1]).toEqual(['Revisar escala', 'chart', '/indicador/emae', 'emae', 'EMAE', null, null, null, null, null, null]);
 
         database.query.mockResolvedValueOnce([{
             id: 4,
@@ -32,7 +36,26 @@ describe('feedback database', () => {
             message: 'Revisar escala',
             metricId: 'emae',
             createdAt: '2026-08-25T12:00:00.000Z',
+            implemented: false,
         })]);
         expect(database.query).toHaveBeenLastCalledWith('SELECT * FROM feedback ORDER BY created_at DESC', []);
+    });
+
+    it('stores an optional twitter handle', async () => {
+        database.query.mockResolvedValue([]);
+        await saveFeedback({
+            message: 'Revisar escala',
+            twitterHandle: 'fierillo',
+            context: { surface: 'general_table', path: '/' },
+        });
+        const insertCall = database.query.mock.calls.find(([query]) => String(query).includes('INSERT INTO feedback'));
+        expect(insertCall?.[1]?.at(-1)).toBe('fierillo');
+    });
+
+    it('updates the implemented flag', async () => {
+        database.query.mockResolvedValue([{ id: 4 }]);
+        await expect(setFeedbackImplemented(4, true)).resolves.toBe(true);
+        const updateCall = database.query.mock.calls.find(([query]) => String(query).includes('UPDATE feedback'));
+        expect(updateCall?.[1]).toEqual([true, 4]);
     });
 });

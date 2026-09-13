@@ -14,11 +14,14 @@ export type FeedbackContext = {
 
 export type FeedbackSubmission = {
     message: string;
+    twitterHandle?: string;
     context: FeedbackContext;
 };
 
 export type FeedbackRecord = FeedbackContext & {
     id: number;
     message: string;
+    twitterHandle?: string;
     createdAt: string;
+    implemented: boolean;
 };

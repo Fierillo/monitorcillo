@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { saveFeedback } from '@/lib/db/feedback';
+import { isAuthenticated } from '@/lib/auth';
+import { saveFeedback, setFeedbackImplemented } from '@/lib/db/feedback';
 import { checkRequestRateLimit } from '@/lib/rate-limit';
 import type { FeedbackContext, FeedbackSubmission, FeedbackSurface } from '@/types';
 
@@ -35,21 +36,37 @@ function parseFeedbackContext(value: unknown): FeedbackContext {
     };
 }
 
+function parseTwitterHandle(value: unknown): string | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value !== 'string') throw new Error('Invalid twitter handle');
+    let handle = value.trim();
+    if (!handle) return undefined;
+    handle = handle.replace(/^https?:\/\/(?:www\.)?(?:twitter|x)\.com\//i, '');
+    handle = handle.replace(/^@/, '').split(/[/?#]/)[0];
+    if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) throw new Error('Invalid twitter handle');
+    return handle;
+}
+
 export function parseFeedbackSubmission(value: unknown): FeedbackSubmission {
     if (!value || typeof value !== 'object') throw new Error('Invalid feedback payload');
     const body = value as Record<string, unknown>;
     if (typeof body.message !== 'string') throw new Error('Invalid feedback payload');
     const message = body.message.trim();
     if (message.length < 3 || message.length > MAX_MESSAGE_LENGTH) throw new Error('Invalid feedback payload');
-    return { message, context: parseFeedbackContext(body.context) };
+    return { message, twitterHandle: parseTwitterHandle(body.twitterHandle), context: parseFeedbackContext(body.context) };
 }
 
 export async function POST(request: Request) {
     let feedback: FeedbackSubmission;
     try {
         feedback = parseFeedbackSubmission(await request.json());
-    } catch {
-        return NextResponse.json({ error: 'Escribí un mensaje de entre 3 y 500 caracteres.' }, { status: 400 });
+    } catch (error) {
+        const invalidHandle = error instanceof Error && error.message === 'Invalid twitter handle';
+        return NextResponse.json({
+            error: invalidHandle
+                ? 'El usuario de X no es válido. Usá @usuario, sin espacios.'
+                : 'Escribí un mensaje de entre 3 y 500 caracteres.',
+        }, { status: 400 });
     }
 
     if (!await checkRequestRateLimit(request, 'api:feedback:post', FEEDBACK_RATE_LIMIT)) {
@@ -65,5 +82,33 @@ export async function POST(request: Request) {
     } catch (error) {
         console.error('[api/feedback] error:', error);
         return NextResponse.json({ error: 'No se pudo guardar el feedback. Intentá nuevamente.' }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: Request) {
+    if (!await isAuthenticated()) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    let id: number;
+    let implemented: boolean;
+    try {
+        const body = await request.json() as { id?: unknown; implemented?: unknown };
+        id = Number(body.id);
+        implemented = body.implemented === true;
+        if (!Number.isInteger(id) || id < 1 || typeof body.implemented !== 'boolean') {
+            throw new Error('Invalid feedback update');
+        }
+    } catch {
+        return NextResponse.json({ error: 'Pedido inválido. Enviá id e implemented.' }, { status: 400 });
+    }
+
+    try {
+        const updated = await setFeedbackImplemented(id, implemented);
+        if (!updated) return NextResponse.json({ error: 'No se encontró ese feedback.' }, { status: 404 });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('[api/feedback] patch error:', error);
+        return NextResponse.json({ error: 'No se pudo actualizar el feedback. Intentá nuevamente.' }, { status: 500 });
     }
 }
