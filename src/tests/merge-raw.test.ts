@@ -81,6 +81,29 @@ describe('mergeRawSeries', () => {
         ]);
     });
 
+    it('overwrites nowcast values on matching dates and keeps the rest', () => {
+        const existing = [
+            { fecha: '2026-01-01', pobreza_utdt: 30.2 },
+            { fecha: '2026-03-01', pobreza_utdt: 29 },
+        ];
+        const incoming = [
+            { fecha: '2026-01-01', pobreza_utdt: 28.7 },
+            { fecha: '2026-08-01', pobreza_utdt: 31.3 },
+        ];
+
+        const result = mergeRawSeries(existing, incoming);
+
+        expect(result.merged).toEqual([
+            { fecha: '2026-01-01', pobreza_utdt: 28.7 },
+            { fecha: '2026-03-01', pobreza_utdt: 29 },
+            { fecha: '2026-08-01', pobreza_utdt: 31.3 },
+        ]);
+        expect(result.upserts).toEqual([
+            { fecha: '2026-01-01', pobreza_utdt: 28.7 },
+            { fecha: '2026-08-01', pobreza_utdt: 31.3 },
+        ]);
+    });
+
     it('treats numeric strings from the database as equal to numbers', () => {
         const existing = [{ fecha: '2026-03-01', pobreza_utdt: '29' as string | number }];
         const incoming = [{ fecha: '2026-03-01', pobreza_utdt: 29 as string | number }];

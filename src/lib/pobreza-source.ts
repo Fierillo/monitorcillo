@@ -4,7 +4,7 @@ import pdf from 'pdf-parse/lib/pdf-parse.js';
 import type { PobrezaRawRow } from '@/types';
 import { fetchBufferFromUrl, fetchTextFromUrl } from './sync/http-client';
 import { fetchTimeSeries } from './sync/time-series-client';
-import { extractUtdtChartData, periodToFecha } from './pobreza-ocr';
+import { periodToFecha } from './pobreza-ocr';
 
 const INDEC_POBREZA_SERIES_ID = '64.2_POBLACION_NUA_0_0_34_74';
 const UTDT_POBREZA_URL = 'https://www.utdt.edu/ver_contenido.php?id_contenido=22217&id_item_menu=36605';
@@ -18,7 +18,7 @@ export type UtdtPeriodPdfLink = {
     url: string;
 };
 
-type UtdtShinyTrace = {
+export type UtdtShinyTrace = {
     name?: string;
     text?: unknown[];
     y?: unknown[];
@@ -118,17 +118,57 @@ export function parseUtdtNowcastRowsFromChartData(chartData: Record<string, numb
         .sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
+export function utdtShinyTracesIncludeProjection(traces: UtdtShinyTrace[]): boolean {
+    return traces.some(trace => trace.name === 'proy' && (trace.y?.length ?? 0) > 0);
+}
+
 export function parseUtdtShinyRows(traces: UtdtShinyTrace[]): PobrezaRawRow[] {
     const byFecha = new Map<string, PobrezaRawRow>();
+    const tracesByName = new Map(traces.map(trace => [trace.name, trace]));
 
-    for (const trace of traces) {
-        if (!['oficial', 'serie', 'proy'].includes(trace.name ?? '')) continue;
+    for (const name of ['oficial', 'serie', 'proy'] as const) {
+        const trace = tracesByName.get(name);
+        if (!trace) continue;
         for (let index = 0; index < (trace.text?.length ?? 0); index++) {
             const period = String(trace.text?.[index]).match(/Semestre\s*:\s*([A-Za-z]{3}\d{2}[A-Za-z]{3}\d{2})/i)?.[1];
             const value = Number(trace.y?.[index]);
             const fecha = period ? periodToFecha(period) : null;
             if (fecha && Number.isFinite(value)) byFecha.set(fecha, { fecha, pobreza_utdt: value });
         }
+    }
+
+    return Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+export function composeUtdtNowcastRows(sources: {
+    shiny?: PobrezaRawRow[];
+    pdf?: PobrezaRawRow[];
+    latest?: PobrezaRawRow | null;
+}): PobrezaRawRow[] {
+    const byFecha = new Map<string, PobrezaRawRow>();
+    for (const row of sources.shiny ?? []) byFecha.set(row.fecha, row);
+    for (const row of sources.pdf ?? []) byFecha.set(row.fecha, row);
+    if (sources.latest) byFecha.set(sources.latest.fecha, sources.latest);
+    return Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+export function indecFechaToSemesterEnd(fecha: string): string | null {
+    const [year, month] = fecha.split('-').map(Number);
+    if (!year || !month) return null;
+    return new Date(Date.UTC(year, month - 2, 1)).toISOString().split('T')[0];
+}
+
+export function overlayIndecOnNowcast(rows: PobrezaRawRow[]): PobrezaRawRow[] {
+    const byFecha = new Map(rows.map(row => [row.fecha, { ...row }]));
+
+    for (const row of rows) {
+        const indec = Number(row.pobreza_indec);
+        if (!Number.isFinite(indec)) continue;
+        const semesterEnd = indecFechaToSemesterEnd(row.fecha);
+        if (!semesterEnd) continue;
+        const current = byFecha.get(semesterEnd);
+        if (current?.pobreza_utdt == null) continue;
+        byFecha.set(semesterEnd, { ...current, pobreza_utdt: indec });
     }
 
     return Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -181,18 +221,21 @@ async function fetchUtdtRowsFromShiny(): Promise<PobrezaRawRow[]> {
         return await new Promise<PobrezaRawRow[]>((resolve, reject) => {
             const socket = new WebSocket(socketUrl);
             let settled = false;
+            let bestRows: PobrezaRawRow[] = [];
 
             const finish = (rows: PobrezaRawRow[], error?: Error) => {
                 if (settled) return;
                 settled = true;
                 socket.close();
-                if (error) reject(error);
+                if (error && rows.length === 0) reject(error);
                 else resolve(rows);
             };
 
-            controller.signal.addEventListener('abort', () => finish([], new Error('UTDT Shiny request timed out.')), { once: true });
-            socket.onerror = () => finish([], new Error('UTDT Shiny WebSocket connection failed.'));
-            socket.onclose = () => finish([], new Error('UTDT Shiny WebSocket closed before returning graph data.'));
+            controller.signal.addEventListener('abort', () => {
+                finish(bestRows, bestRows.length > 0 ? undefined : new Error('UTDT Shiny request timed out.'));
+            }, { once: true });
+            socket.onerror = () => finish(bestRows, bestRows.length > 0 ? undefined : new Error('UTDT Shiny WebSocket connection failed.'));
+            socket.onclose = () => finish(bestRows, bestRows.length > 0 ? undefined : new Error('UTDT Shiny WebSocket closed before returning graph data.'));
             socket.onmessage = (event) => {
                 const message = String(event.data);
                 if (message === 'o') {
@@ -207,8 +250,8 @@ async function fetchUtdtRowsFromShiny(): Promise<PobrezaRawRow[]> {
                         '.clientdata_url_port': '',
                         '.clientdata_url_pathname': '/shinynowcast/',
                         '.clientdata_url_search': '',
-                        '.clientdata_url_hash_initial': '',
                         '.clientdata_url_hash': '',
+                        '.clientdata_url_hash_initial': '',
                         '.clientdata_singletons': '',
                     };
                     socket.send(JSON.stringify([`1#0|m|${JSON.stringify({ method: 'init', data })}`]));
@@ -223,7 +266,8 @@ async function fetchUtdtRowsFromShiny(): Promise<PobrezaRawRow[]> {
                     const traces = payload.values?.graph?.x?.data;
                     if (!Array.isArray(traces)) continue;
                     const rows = parseUtdtShinyRows(traces);
-                    if (rows.length > 0) finish(rows);
+                    if (rows.length > bestRows.length) bestRows = rows;
+                    if (utdtShinyTracesIncludeProjection(traces) && rows.length > 0) finish(rows);
                 }
             };
         });
@@ -310,55 +354,32 @@ async function fetchUtdtPublishedAt(imageUrl: string | null): Promise<string | n
     }
 }
 
-async function fetchUtdtRowsFromChartOcr(html: string): Promise<PobrezaRawRow[]> {
-    try {
-        const imageUrl = parseUtdtChartImageUrl(html);
-        if (!imageUrl) return [];
-        const chartData = await extractUtdtChartData(imageUrl);
-        return parseUtdtNowcastRowsFromChartData(chartData);
-    } catch (error) {
-        console.error('Failed to extract UTDT nowcast from chart OCR:', error);
-        return [];
-    }
-}
-
 async function fetchUtdtPobrezaReport(): Promise<PobrezaSourceReport> {
     try {
+        const shinyPromise = fetchUtdtRowsFromShiny().catch((error) => {
+            console.error('Failed to extract UTDT nowcast from Shiny:', error);
+            return [] as PobrezaRawRow[];
+        });
         const html = await fetchTextFromUrl(UTDT_POBREZA_URL);
         const periodLinks = parseUtdtPeriodPdfLinks(html);
         const imageUrl = parseUtdtChartImageUrl(html);
         const publishedAt = await fetchUtdtPublishedAt(imageUrl);
+        const latestPdfLinks = periodLinks.slice(0, 1);
 
-        const byFecha = new Map<string, PobrezaRawRow>();
+        const [shinyRows, pdfRows] = await Promise.all([
+            shinyPromise,
+            latestPdfLinks.length > 0
+                ? fetchUtdtRowsFromPeriodPdfs(latestPdfLinks)
+                : Promise.resolve([] as PobrezaRawRow[]),
+        ]);
 
-        for (const row of await fetchUtdtRowsFromShiny().catch((error) => {
-            console.error('Failed to extract UTDT nowcast from Shiny:', error);
-            return [];
-        })) {
-            byFecha.set(row.fecha, row);
-        }
-
-        // Fallback: monthly PDF archive linked on the UTDT page.
-        if (byFecha.size === 0 && periodLinks.length > 0) {
-            for (const row of await fetchUtdtRowsFromPeriodPdfs(periodLinks)) {
-                byFecha.set(row.fecha, row);
-            }
-        }
-
-        // Fallback / complement: OCR of the evolution chart when PDFs fail or are partial.
-        if (byFecha.size < 3) {
-            for (const row of await fetchUtdtRowsFromChartOcr(html)) {
-                if (!byFecha.has(row.fecha)) byFecha.set(row.fecha, row);
-            }
-        }
-
-        // Prefer the headline value printed on the page for the latest period.
-        const latestTextRow = parseLatestUtdtNowcastRow(html);
-        if (latestTextRow) byFecha.set(latestTextRow.fecha, latestTextRow);
-
-        const rows = Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
+        const rows = composeUtdtNowcastRows({
+            shiny: shinyRows,
+            pdf: pdfRows,
+            latest: parseLatestUtdtNowcastRow(html),
+        });
         if (rows.length === 0) {
-            console.error('UTDT nowcast: no rows extracted from PDFs, OCR, or page text.');
+            console.error('UTDT nowcast: no rows extracted from Shiny, the latest PDF, or page text.');
         }
 
         return { rows, publishedAt };
@@ -384,7 +405,7 @@ export async function fetchPobrezaRawReport(): Promise<PobrezaSourceReport> {
         byFecha.set(row.fecha, { ...byFecha.get(row.fecha), ...row });
     }
 
-    const rows = Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const rows = overlayIndecOnNowcast(Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha)));
 
     return {
         rows,

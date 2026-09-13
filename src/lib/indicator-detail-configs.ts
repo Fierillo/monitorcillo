@@ -671,7 +671,7 @@ async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {
     ];
     const methodology = [
         { title: 'INDEC', description: 'Serie oficial semestral de población con ingresos debajo de la línea de pobreza, total EPH continua. Línea amarilla sólida; los puntos marcan el mes exacto de publicación.' },
-        { title: 'UTDT', description: 'Proyección mensual (nowcast) de pobreza de Martín González-Rozada, Universidad Torcuato Di Tella. Línea roja discontinua obtenida del gráfico interactivo oficial; los reportes PDF y el gráfico estático se usan como respaldo.' },
+        { title: 'UTDT', description: 'Nowcast de Martín González-Rozada (UTDT). Cada mes se toma la serie vigente del gráfico interactivo (EPH + proyección) y, si hace falta, del último PDF o del titular de la página; los puntos nuevos pisan los anteriores de esas fechas y el resto de la historia se conserva.' },
         { title: 'Frecuencia', description: 'INDEC publica datos semestrales; UTDT publica proyecciones mensuales actualizadas cada mes.' },
     ];
     return { subtitle: indicator.fuente, chartTitle: 'Incidencia de la pobreza', data: await safeGetIndicatorData('pobreza'), areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% de población', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };

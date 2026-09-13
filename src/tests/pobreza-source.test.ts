@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { extractUtdtChartDataFromText, getUtdtNowcastValues } from '../lib/pobreza-ocr';
 import {
+    composeUtdtNowcastRows,
+    overlayIndecOnNowcast,
     parseLatestUtdtNowcastRow,
     parsePovertyRateFromPdfText,
     parseUtdtChartImageUrl,
@@ -8,6 +10,7 @@ import {
     parseUtdtPeriodPdfLinks,
     parseUtdtShinyRows,
     parseUtdtShinyWorkerId,
+    utdtShinyTracesIncludeProjection,
 } from '../lib/pobreza-source';
 
 describe('pobreza UTDT source parsing', () => {
@@ -74,6 +77,11 @@ describe('pobreza UTDT source parsing', () => {
                 text: ['Tasa de pobreza: 28.2 <br>Semestre : Jul25Dic25'],
             },
             {
+                name: 'serie',
+                y: [31],
+                text: ['Semestre : Jun25Nov25'],
+            },
+            {
                 name: 'proy',
                 y: [28.9, 29.4, 30, 30.3, 30.6, 31.6],
                 text: [
@@ -87,6 +95,7 @@ describe('pobreza UTDT source parsing', () => {
             },
             { name: 'confidence-band', y: [20], text: ['Semestre : Ene26Jun26'] },
         ])).toEqual([
+            { fecha: '2025-11-01', pobreza_utdt: 31 },
             { fecha: '2025-12-01', pobreza_utdt: 28.2 },
             { fecha: '2026-01-01', pobreza_utdt: 28.9 },
             { fecha: '2026-02-01', pobreza_utdt: 29.4 },
@@ -94,6 +103,50 @@ describe('pobreza UTDT source parsing', () => {
             { fecha: '2026-04-01', pobreza_utdt: 30.3 },
             { fecha: '2026-05-01', pobreza_utdt: 30.6 },
             { fecha: '2026-06-01', pobreza_utdt: 31.6 },
+        ]);
+    });
+
+    it('lets the current projection overwrite overlapping EPH series points', () => {
+        expect(parseUtdtShinyRows([
+            {
+                name: 'proy',
+                y: [28.7],
+                text: ['Semestre : Ago25Ene26'],
+            },
+            {
+                name: 'serie',
+                y: [30.2],
+                text: ['Semestre : Ago25Ene26'],
+            },
+        ])).toEqual([{ fecha: '2026-01-01', pobreza_utdt: 28.7 }]);
+    });
+
+    it('detects when the Shiny graph includes the current projection', () => {
+        expect(utdtShinyTracesIncludeProjection([{ name: 'oficial', y: [28.2] }])).toBe(false);
+        expect(utdtShinyTracesIncludeProjection([{ name: 'proy', y: [31.3] }])).toBe(true);
+    });
+
+    it('replaces a leftover nowcast at the INDEC semester-end month with the official rate', () => {
+        expect(overlayIndecOnNowcast([
+            { fecha: '2025-12-01', pobreza_utdt: 30.6 },
+            { fecha: '2026-01-01', pobreza_indec: 28.2, pobreza_utdt: 28.7 },
+        ])).toEqual([
+            { fecha: '2025-12-01', pobreza_utdt: 28.2 },
+            { fecha: '2026-01-01', pobreza_indec: 28.2, pobreza_utdt: 28.7 },
+        ]);
+    });
+
+    it('overlays the latest PDF and page headline on the current Shiny series', () => {
+        expect(composeUtdtNowcastRows({
+            shiny: [
+                { fecha: '2026-01-01', pobreza_utdt: 28.7 },
+                { fecha: '2026-08-01', pobreza_utdt: 31.1 },
+            ],
+            pdf: [{ fecha: '2026-08-01', pobreza_utdt: 31.3 }],
+            latest: { fecha: '2026-08-01', pobreza_utdt: 31.3 },
+        })).toEqual([
+            { fecha: '2026-01-01', pobreza_utdt: 28.7 },
+            { fecha: '2026-08-01', pobreza_utdt: 31.3 },
         ]);
     });
 
