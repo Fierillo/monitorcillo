@@ -1,5 +1,5 @@
-import * as XLSX from 'xlsx';
 import type { DatosGobSeriesRow, EmaeRawRow, NumericValue } from '@/types';
+import { readWorkbook, sheetRows } from './protocols';
 import { EMAE_SECTORS } from './emae/schema';
 
 const MONTHS_ES: Record<string, string> = {
@@ -41,11 +41,8 @@ function parseNumber(value: unknown): NumericValue {
 }
 
 export function parseEmaeWorkbook(buffer: Buffer): EmaeRawRow[] {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets.EMAE ?? workbook.Sheets[workbook.SheetNames[0]];
-    if (!sheet) return [];
-
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null }) as unknown[][];
+    const workbook = readWorkbook(buffer);
+    const rows = sheetRows(workbook.Sheets.EMAE ?? workbook.Sheets[workbook.SheetNames[0]]);
     const parsedRows: EmaeRawRow[] = [];
     let year: number | null = null;
 
@@ -96,11 +93,7 @@ export function prependHistoricalEmae(currentRows: EmaeRawRow[], historicalRows:
 }
 
 export function parseEmaeSectorWorkbook(buffer: Buffer): EmaeRawRow[] {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets['Tabla Letras'];
-    if (!sheet) return [];
-
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null }) as unknown[][];
+    const rows = sheetRows(readWorkbook(buffer).Sheets['Tabla Letras']);
     const headerRow = rows.find(row => EMAE_SECTORS.some(sector => row.some(cell => normalizedIncludes(cell, sector.header))));
     if (!headerRow) return [];
 

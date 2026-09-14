@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import type { DepositosPrestamosRawRow } from '@/types';
 import { PNFC_BREAKDOWNS } from './morosidad/schema';
+import { readWorkbook } from './protocols';
 import { fetchBufferFromUrl } from './sync/http-client';
 
 const PNFC_ANNEX_URL = 'https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/anexo-estadistico-proveedores-no-financieros-credito-junio-2026.xlsx';
@@ -18,7 +19,7 @@ function numberFromCell(cell: XLSX.CellObject | undefined): number | null {
 }
 
 export function parsePnfcWorkbook(buffer: Buffer): DepositosPrestamosRawRow[] {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const workbook = readWorkbook(buffer);
     const rows = new Map<string, DepositosPrestamosRawRow>();
 
     for (const breakdown of PNFC_BREAKDOWNS) {

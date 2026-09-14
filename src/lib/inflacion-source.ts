@@ -1,12 +1,13 @@
 import type { InflacionRawRow } from '@/types';
 import * as XLSX from 'xlsx';
+import { unstable_cache } from 'next/cache';
+import { readWorkbook, sheetRows } from './protocols';
 import { fetchBufferFromUrl, fetchTextFromUrl } from './sync/http-client';
 import { fetchTimeSeries } from './sync/time-series-client';
 
 const INDEC_GENERAL_SERIES_ID = '145.3_INGNACNAL_DICI_M_15';
 const INDEC_NUCLEO_SERIES_ID = '148.3_INUCLEONAL_DICI_M_19';
 const INDEC_IPC_WORKBOOK_BASE_URL = 'https://www.indec.gob.ar/ftp/cuadros/economia';
-const EQUILIBRA_FEED_URL = 'https://equilibra.ar/feed/?cat=19';
 const IPC_ONLINE_FEED_URL = 'https://ipconlinebb.wordpress.com/feed/';
 const REM_BCRA_API_URL = 'https://bcra-rem-api.facujallia.workers.dev/api/ipc_general';
 
@@ -94,11 +95,11 @@ function latestIndecWorkbookUrls(): string[] {
 }
 
 export function parseIndecIpcWorkbook(buffer: Buffer): IndecIpcVariationRow[] {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const workbook = readWorkbook(buffer);
     const sheetName = workbook.SheetNames.find(name => /variaci[oó]n mensual IPC nacional/i.test(name));
     if (!sheetName) return [];
 
-    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: false, defval: null }) as unknown[][];
+    const rows = sheetRows(workbook.Sheets[sheetName]);
     const headerIndex = rows.findIndex(row => /^total nacional$/i.test(String(row[0] ?? '').trim()));
     if (headerIndex < 0) return [];
 
@@ -121,12 +122,6 @@ export function parseIndecIpcWorkbook(buffer: Buffer): IndecIpcVariationRow[] {
             };
         })
         .filter((row): row is IndecIpcVariationRow => row !== null);
-}
-
-function isoDateFromHttpDate(value: string | null): string | null {
-    if (!value) return null;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
 }
 
 async function fetchIndecIpcWorkbookReport(): Promise<IndecIpcWorkbookReport> {
@@ -391,7 +386,7 @@ function parseExcelDate(serial: number): string | null {
 }
 
 export function parseRemXlsx(buffer: Buffer, surveyYear: number, surveyMonth: number): RemExpectationSurvey | null {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const workbook = readWorkbook(buffer);
     const sheetName = workbook.SheetNames.find(name => /cuadros de resultados/i.test(name));
     if (!sheetName) return null;
 
@@ -437,22 +432,21 @@ export async function fetchRemXlsx(month: number, year: number): Promise<RemExpe
 }
 
 export async function fetchRemExpectationsHistory(monthsBack: number = 6): Promise<RemExpectationSurvey[]> {
-    const now = new Date();
-    const surveys: RemExpectationSurvey[] = [];
+    return unstable_cache(
+        async () => {
+            const now = new Date();
+            const surveys = await Promise.all(Array.from({ length: monthsBack }, async (_, offset) => {
+                const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+                return fetchRemXlsx(d.getUTCMonth() + 1, d.getUTCFullYear());
+            }));
 
-    for (let offset = 0; offset < monthsBack; offset++) {
-        const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
-        const month = d.getUTCMonth() + 1;
-        const year = d.getUTCFullYear();
-        const survey = await fetchRemXlsx(month, year);
-        if (survey) surveys.push(survey);
-    }
-
-    return surveys.sort((a, b) => a.surveyDate.localeCompare(b.surveyDate));
-}
-
-export async function fetchInflacionRaw(): Promise<InflacionRawRow[]> {
-    return (await fetchInflacionRawReport()).rows;
+            return surveys
+                .filter((survey): survey is RemExpectationSurvey => survey != null)
+                .sort((a, b) => a.surveyDate.localeCompare(b.surveyDate));
+        },
+        ['rem-expectations-history', String(monthsBack)],
+        { revalidate: 21600 },
+    )();
 }
 
 export async function fetchInflacionRawReport(): Promise<InflacionSourceReport> {

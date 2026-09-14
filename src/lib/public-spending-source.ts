@@ -1,5 +1,7 @@
 import * as XLSX from 'xlsx';
+import { unstable_cache } from 'next/cache';
 import type { ChartDataRow } from '@/types';
+import { readWorkbook } from './protocols';
 
 const PUBLIC_SPENDING_URLS = {
     consolidated: 'https://www.argentina.gob.ar/sites/default/files/gasto%5Fpublico%5Fconsolidado%5Fdesde%5F1980%5F2.xls',
@@ -22,7 +24,7 @@ function numericValue(value: unknown): number | null {
 }
 
 export function parsePublicSpendingWorkbook(buffer: ArrayBuffer | Uint8Array): PublicSpendingSeries {
-    const workbook = XLSX.read(buffer, { type: 'array' });
+    const workbook = readWorkbook(buffer);
     const sheet = workbook.Sheets['% del PIB'];
     if (!sheet) throw new Error('Failed to parse public spending workbook. Missing "% del PIB" sheet.');
 
@@ -93,9 +95,13 @@ async function fetchWorkbook(url: string): Promise<ArrayBuffer> {
     return response.arrayBuffer();
 }
 
-export async function fetchPublicSpendingChartData(): Promise<ChartDataRow[]> {
-    const [consolidated, nation, provinces, municipalities] = await Promise.all(
-        Object.values(PUBLIC_SPENDING_URLS).map(async url => parsePublicSpendingWorkbook(await fetchWorkbook(url))),
-    );
-    return addPublicSpendingEstimates(buildPublicSpendingChartData(consolidated, nation, provinces, municipalities));
-}
+export const fetchPublicSpendingChartData = unstable_cache(
+    async (): Promise<ChartDataRow[]> => {
+        const [consolidated, nation, provinces, municipalities] = await Promise.all(
+            Object.values(PUBLIC_SPENDING_URLS).map(async url => parsePublicSpendingWorkbook(await fetchWorkbook(url))),
+        );
+        return addPublicSpendingEstimates(buildPublicSpendingChartData(consolidated, nation, provinces, municipalities));
+    },
+    ['public-spending-chart'],
+    { revalidate: 86400 },
+);

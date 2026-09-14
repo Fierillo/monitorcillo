@@ -1,5 +1,5 @@
-import * as XLSX from 'xlsx';
 import type { BalanzaRawRow } from '@/types';
+import { readWorkbook, sheetRows } from './protocols';
 import type { BalanzaSeriesKey } from './balanza/schema';
 
 const MONTHS = new Map([
@@ -23,9 +23,8 @@ type IcaWorkbookUrls = {
 };
 
 function workbookRows(buffer: Buffer): unknown[][] {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null }) as unknown[][];
+    const workbook = readWorkbook(buffer);
+    return sheetRows(workbook.Sheets[workbook.SheetNames[0]]);
 }
 
 function numericValue(value: unknown): number | null {

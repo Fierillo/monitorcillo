@@ -1,4 +1,5 @@
 import type { ChartDataRow, DatosGobSeriesRow, PoderAdquisitivoRawRow } from '@/types';
+import { unstable_cache } from 'next/cache';
 import { fetchTimeSeries } from './sync/time-series-client';
 
 export const COST_OF_LIVING_MODEL = {
@@ -64,9 +65,11 @@ export function calculateCostOfLivingBurden(
     });
 }
 
-export async function fetchCostOfLivingIndices(): Promise<DatosGobSeriesRow[]> {
-    return (await fetchTimeSeries({ ids: COST_INDEX_IDS })).data ?? [];
-}
+export const fetchCostOfLivingIndices = unstable_cache(
+    async (): Promise<DatosGobSeriesRow[]> => (await fetchTimeSeries({ ids: COST_INDEX_IDS })).data ?? [],
+    ['cost-of-living-indices'],
+    { revalidate: 21600 },
+);
 
 function valueAtOrBefore<T>(values: Map<string, T>, date: string): T | null {
     let result: T | null = null;

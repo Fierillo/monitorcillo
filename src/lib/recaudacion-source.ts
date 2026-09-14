@@ -1,5 +1,5 @@
-import * as XLSX from 'xlsx';
 import type { RecaudacionOfficialReport, RecaudacionRawRow } from '@/types';
+import { readWorkbook, sheetRows } from './protocols';
 import { conceptToTaxField, RECAUDACION_TAX_RAW_KEYS } from './recaudacion/schema';
 
 const ARGENTINA_GOB_BASE_URL = 'https://www.argentina.gob.ar';
@@ -138,11 +138,11 @@ export function mergeRecaudacionOfficialReport(
 }
 
 export function parseRecaudacionWorkbook(buffer: Buffer): RecaudacionOfficialReport | null {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const workbook = readWorkbook(buffer);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     if (!sheet) return null;
 
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null }) as unknown[][];
+    const rows = sheetRows(sheet);
     let publishedAt: string | null = null;
     let periodDate: string | null = null;
     const values: Partial<RecaudacionRawRow> = {};

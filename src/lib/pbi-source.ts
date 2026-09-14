@@ -1,5 +1,5 @@
-import * as XLSX from 'xlsx';
 import type { EmaeRawRow, PbiAnchorRow } from '@/types';
+import { readWorkbook, sheetRows } from './protocols';
 
 const INDEC_BASE_URL = 'https://www.indec.gob.ar';
 const PBI_DESEASONALIZED_SHEET = 'desestacionalizado n';
@@ -74,11 +74,8 @@ export function parseLatestPbiWorkbookUrl(html: string): string | null {
 }
 
 export function parsePbiWorkbook(buffer: Buffer): PbiAnchorRow[] {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[PBI_DESEASONALIZED_SHEET] ?? workbook.Sheets[workbook.SheetNames[0]];
-    if (!sheet) return [];
-
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null }) as unknown[][];
+    const workbook = readWorkbook(buffer);
+    const rows = sheetRows(workbook.Sheets[PBI_DESEASONALIZED_SHEET] ?? workbook.Sheets[workbook.SheetNames[0]]);
     const anchors: PbiAnchorRow[] = [];
     let currentYear: number | null = null;
 

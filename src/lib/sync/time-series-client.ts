@@ -1,5 +1,5 @@
 import type { DatosGobSeriesResponse, DatosGobSeriesRow } from '@/types';
-import { fetchTextFromUrl } from './http-client';
+import { fetchJson } from '../protocols';
 
 const API_URL = 'https://apis.datos.gob.ar/series/api/series/';
 const DEFAULT_LIMIT = 5000;
@@ -45,20 +45,16 @@ export function fetchTimeSeries(options: FetchTimeSeriesOptions): Promise<DatosG
     const cached = responseCache.get(url);
     if (cached) return cached;
 
-    const request = fetchTextFromUrl(url, { timeoutMs: REQUEST_TIMEOUT_MS })
-        .then(text => {
-            try {
-                return parseTimeSeriesResponse(JSON.parse(text), options.ids);
-            } catch (error) {
-                if (error instanceof SyntaxError) {
+    const request = fetchJson(url, { timeoutMs: REQUEST_TIMEOUT_MS })
+        .then(document => parseTimeSeriesResponse(document.content, options.ids))
+        .catch(error => {
+            responseCache.delete(url);
+            if (error instanceof Error && error.message.startsWith('Failed to parse')) {
+                if (error.message.includes('JSON')) {
                     throw new Error(`Failed to parse time series ${options.ids.join(', ')}. The API returned invalid JSON.`);
                 }
                 throw error;
             }
-        })
-        .catch(error => {
-            responseCache.delete(url);
-            if (error instanceof Error && error.message.startsWith('Failed to parse time series')) throw error;
             const message = error instanceof Error ? error.message : String(error);
             throw new Error(`Failed to fetch time series ${options.ids.join(', ')}. ${message}`);
         });

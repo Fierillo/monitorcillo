@@ -1,6 +1,6 @@
-import * as XLSX from 'xlsx';
 import type { IcgRawRow } from '@/types';
-import { fetchBufferFromUrl } from './sync/http-client';
+import { extractFileLinks, readWorkbook, sheetRows } from './protocols';
+import { fetchBufferFromUrl, fetchLastModifiedDate, isoDateFromHttpDate } from './sync/http-client';
 
 const UTDT_ICG_DATA_PAGE_URL = 'https://www.utdt.edu/listado_contenidos.php?id_item_menu=28756';
 const UTDT_ORIGIN = 'https://www.utdt.edu';
@@ -24,16 +24,6 @@ type IcgSourceReport = {
     publishedAt: string | null;
 };
 
-function absoluteUtdtUrl(url: string): string {
-    return url.startsWith('http') ? url : `${UTDT_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
-}
-
-function isoDateFromHttpDate(value: string | null): string | null {
-    if (!value) return null;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
-}
-
 function parseMonth(value: unknown): string | null {
     const match = String(value ?? '').trim().match(/^([A-Za-z]{3})-(\d{2}|\d{4})$/);
     if (!match) return null;
@@ -45,11 +35,11 @@ function parseMonth(value: unknown): string | null {
 }
 
 export function parseIcgWorkbook(buffer: Buffer): IcgRawRow[] {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const workbook = readWorkbook(buffer);
     const rowsByDate = new Map<string, IcgRawRow>();
 
     for (const sheetName of workbook.SheetNames) {
-        const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], { header: 1, raw: false, defval: null });
+        const rows = sheetRows(workbook.Sheets[sheetName]);
         const dateRowIndex = rows.findIndex(row => row.filter(value => parseMonth(value)).length >= 2);
         if (dateRowIndex < 0) continue;
         const valueRow = rows.slice(dateRowIndex + 1).find(row => row.some(value => /^ICG\s*$/i.test(String(value ?? '').trim())));
@@ -66,17 +56,9 @@ export function parseIcgWorkbook(buffer: Buffer): IcgRawRow[] {
 }
 
 export function parseIcgWorkbookUrl(html: string): string | null {
-    const match = html.match(/href=["']([^"']*download\.php\?fname=[^"']+\.xls)["'][^>]*>[^<]*Excel/i);
-    return match ? absoluteUtdtUrl(match[1].replace(/&amp;/g, '&')) : null;
-}
-
-async function fetchPublishedAt(url: string): Promise<string | null> {
-    try {
-        const response = await fetch(url, { method: 'HEAD' });
-        return response.ok ? isoDateFromHttpDate(response.headers.get('last-modified')) : null;
-    } catch {
-        return null;
-    }
+    const link = extractFileLinks(html, { origin: UTDT_ORIGIN, extensions: ['xls'] })
+        .find(candidate => /excel/i.test(candidate.label));
+    return link?.href ?? null;
 }
 
 export async function fetchIcgRawReport(): Promise<IcgSourceReport> {
@@ -86,12 +68,8 @@ export async function fetchIcgRawReport(): Promise<IcgSourceReport> {
     const html = await pageResponse.text();
     const workbookUrl = parseIcgWorkbookUrl(html);
     if (!workbookUrl) throw new Error(`Failed to find the UTDT ICG Excel download at ${UTDT_ICG_DATA_PAGE_URL}. Verify the page format.`);
-    const [buffer, publishedAt] = await Promise.all([fetchBufferFromUrl(workbookUrl), fetchPublishedAt(workbookUrl)]);
+    const [buffer, publishedAt] = await Promise.all([fetchBufferFromUrl(workbookUrl), fetchLastModifiedDate(workbookUrl)]);
     const rows = parseIcgWorkbook(buffer);
     if (rows.length === 0) throw new Error(`Failed to parse ICG observations from ${workbookUrl}. Verify the workbook format.`);
     return { rows, publishedAt: publishedAt ?? pagePublishedAt };
-}
-
-export async function fetchIcgRaw(): Promise<IcgRawRow[]> {
-    return (await fetchIcgRawReport()).rows;
 }

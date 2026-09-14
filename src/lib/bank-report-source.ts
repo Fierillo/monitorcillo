@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { DepositosPrestamosRawRow } from '@/types';
+import { readWorkbook } from './protocols';
 import { fetchBufferFromUrl, fetchTextFromUrl } from './sync/http-client';
 
 const BANK_REPORT_CATALOG_URL = 'https://www.bcra.gob.ar/wp-json/bcra/v1/publicaciones?category=informe-sobre-bancos&lang=es&action=total';
@@ -78,7 +79,7 @@ export function parseBankReportAnnexUrl(html: string, pageUrl: string): string {
 }
 
 export function parseBankReportMorosidadWorkbook(buffer: Buffer): DepositosPrestamosRawRow[] {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const workbook = readWorkbook(buffer);
     const sheet = workbook.Sheets.Indicadores;
     if (!sheet) throw new Error('Failed to parse the BCRA bank report annex. Sheet "Indicadores" was not found.');
     const debtorSectorSheet = workbook.Sheets['Calidad de Cartera (por líneas)'];
