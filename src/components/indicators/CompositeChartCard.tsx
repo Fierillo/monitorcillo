@@ -1,15 +1,16 @@
 import { ImageDown } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { MouseEvent } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import { CartesianGrid, ComposedChart, Customized, ReferenceDot, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, ComposedChart, Customized, ReferenceDot, ReferenceLine, XAxis, YAxis } from 'recharts';
 import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, ChartReferenceLine, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
 import ChartArea from '../chart/ChartArea';
 import ChartBar from '../chart/ChartBar';
 import ChartLine from '../chart/ChartLine';
 import ChartTooltip from '../chart/ChartTooltip';
 import CustomLegend from '../chart/CustomLegend';
+import { createHoverTooltipStore, type HoverTooltipStore } from '../chart/hover-tooltip-store';
 import MethodologySection from '../chart/MethodologySection';
 import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, selectRoundTickDivisions } from '../chart/utils';
 
@@ -109,6 +110,7 @@ function ChartHeader({ onPrepareDownload, onDownloadChart, isCapturing, viewSele
 function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRenderProps & { chartContainerRef: React.RefObject<HTMLDivElement | null>; scrollViewportRef: React.RefObject<HTMLDivElement | null> }) {
     const chainsawCursorRef = useRef<HTMLImageElement | null>(null);
     const pointerPositionRef = useRef<{ left: number; top: number } | null>(null);
+    const hoverTooltipStoreRef = useRef(createHoverTooltipStore());
     const [isControlPressed, setIsControlPressed] = useState(false);
     const renderedAreas = activeAreas(props.areas, props.highlightedAreas);
     const hasBars = renderedAreas.some(area => area.type === 'bar');
@@ -177,7 +179,19 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
                     }}
                 >
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center select-none"><span className="watermark text-imperial-gold/21 text-xl font-sans font-bold uppercase tracking-[0.5em] sm:text-4xl">@fierillo</span></div>
-                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} isControlPressed={isControlPressed} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
+                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} isControlPressed={isControlPressed} hoverTooltipStore={hoverTooltipStoreRef.current} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
+                    {!props.isCapturing && !props.crosshair?.locked && !isControlPressed ? (
+                        <HoverTooltipOverlay
+                            store={hoverTooltipStoreRef.current}
+                            areas={renderedAreas}
+                            valueFormat={props.valueFormat}
+                            sortedData={props.sortedData}
+                            chartWidth={props.chartSize.width}
+                            chartHeight={props.chartSize.height}
+                            showTotal={props.showTooltipTotal}
+                            compact={props.isMobile}
+                        />
+                    ) : null}
                     {props.crosshair?.locked && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} compact={props.isMobile} isCapturing={props.isCapturing} /> : null}
                     {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} compact={false} isCapturing /> : null}
                     {isControlPressed && !props.isCapturing ? (
@@ -258,13 +272,12 @@ function AxisLabel({ label, color, right = false, control }: { label: string; co
     return <div className={`flex ${control ? 'w-14' : 'w-5'} shrink-0 items-center justify-center`}><div className={`${right ? 'rotate-90' : '-rotate-90'} flex flex-col items-center gap-1 whitespace-nowrap ${color ? '' : 'text-imperial-gold'} font-bold text-xs uppercase tracking-widest`} style={{ color }}><span>{label}</span>{control}</div></div>;
 }
 
-function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: boolean }) {
-    const { isControlPressed, onHoverTooltipChange } = props;
+function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: boolean; hoverTooltipStore: HoverTooltipStore }) {
+    const { isControlPressed, onHoverTooltipChange, hoverTooltipStore } = props;
     const hoverVerticalRef = useRef<SVGLineElement | null>(null);
     const hoverHorizontalRef = useRef<SVGLineElement | null>(null);
     const rafRef = useRef<number | null>(null);
     const [activeComparisonGroup, setActiveComparisonGroup] = useState<string | null>(null);
-    const [tooltipPosition, setTooltipPosition] = useState<{ y: number }>();
     const renderedAreas = activeAreas(props.areas, props.highlightedAreas);
     const comparesMandateMonths = renderedAreas.some(area => area.comparisonMode === 'mandate-month');
     const lockedRow = props.crosshair?.locked && props.crosshair.label
@@ -319,12 +332,14 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
     useEffect(() => {
         if (!isControlPressed) return;
         hideHoverCrosshair();
+        hoverTooltipStore.clear();
         onHoverTooltipChange(null);
-    }, [hideHoverCrosshair, isControlPressed, onHoverTooltipChange]);
+    }, [hideHoverCrosshair, hoverTooltipStore, isControlPressed, onHoverTooltipChange]);
 
     const updateHoverCrosshair = (state: ChartClickState | null) => {
         if (props.crosshair?.locked || props.isCapturing || isControlPressed) {
             hideHoverCrosshair();
+            hoverTooltipStore.clear();
             return;
         }
 
@@ -332,18 +347,23 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
         const y = state?.activeCoordinate?.y;
         if (typeof x !== 'number' || typeof y !== 'number') {
             hideHoverCrosshair();
+            hoverTooltipStore.clear();
             props.onHoverTooltipChange(null);
-            setTooltipPosition(undefined);
             return;
         }
 
         const idx = state?.activeTooltipIndex;
         const activeIndex = typeof idx === 'number' ? idx : typeof idx === 'string' && /^\d+$/.test(idx) ? Number(idx) : null;
         const activeRow = activeIndex !== null ? props.visibleData[activeIndex] : state?.activePayload?.[0]?.payload;
-        setActiveComparisonGroup(comparesMandateMonths && typeof activeRow?.comparison_group === 'string' ? activeRow.comparison_group : null);
+        const nextComparisonGroup = comparesMandateMonths && typeof activeRow?.comparison_group === 'string'
+            ? activeRow.comparison_group
+            : null;
+        setActiveComparisonGroup(current => current === nextComparisonGroup ? current : nextComparisonGroup);
         const labelValue = activeRow?.fecha ?? activeRow?.iso_fecha;
         const label = labelValue ? String(labelValue) : undefined;
-        props.onHoverTooltipChange(state?.activePayload?.length && label ? { x, y, locked: false, activePayload: state.activePayload, label } : null);
+        const hoverTooltip = state?.activePayload?.length && label ? { x, y, locked: false, activePayload: state.activePayload, label } : null;
+        props.onHoverTooltipChange(hoverTooltip);
+
         const normalizedValues = (state?.activePayload ?? []).flatMap(item => {
             const area = renderedAreas.find(config => config.key === String(item.dataKey) || config.name === item.name);
             if (!area || typeof item.value !== 'number') return [];
@@ -354,7 +374,12 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
         const tooltipRows = renderedAreas.filter(area => !area.hideInTooltip).length + (props.showTooltipTotal ? 1 : 0);
         const tooltipHeight = props.isMobile ? 24 + tooltipRows * 15 : 40 + tooltipRows * 24;
         const tooltipY = calculateTooltipVerticalPosition(normalizedValues, y, props.chartSize.height, tooltipHeight);
-        setTooltipPosition(current => current?.y === tooltipY ? current : tooltipY === undefined ? undefined : { y: tooltipY });
+
+        if (hoverTooltip?.label) {
+            hoverTooltipStore.set({ label: hoverTooltip.label, x, y, tooltipY });
+        } else {
+            hoverTooltipStore.clear();
+        }
 
         if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
         rafRef.current = requestAnimationFrame(() => {
@@ -382,13 +407,14 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
             onMouseMove={(e: ChartClickState | null) => updateHoverCrosshair(e)}
             onMouseLeave={() => {
                 hideHoverCrosshair();
+                hoverTooltipStore.clear();
                 props.onHoverTooltipChange(null);
                 setActiveComparisonGroup(null);
-                setTooltipPosition(undefined);
             }}
             onClick={(e: ChartClickState | null) => {
                 if (props.isControlPressed) return;
                 hideHoverCrosshair();
+                hoverTooltipStore.clear();
                 props.onCrosshairClick(e);
                 if (!e?.activePayload?.length || e.activeTooltipIndex == null) props.onSelectMonth(null);
             }}
@@ -398,7 +424,6 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
             <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions' && props.valueFormat !== 'currency'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
             {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
             {props.secondaryYAxis ? leftTicks.map(tick => <ReferenceLine key={`tick-grid-${tick}`} y={tick} yAxisId="left" stroke="#FFFFFF" strokeOpacity={0.35} strokeWidth={0.5} />) : null}
-            {!props.isCapturing && !props.crosshair?.locked && <Tooltip cursor={false} position={tooltipPosition} wrapperStyle={{ pointerEvents: 'none' }} content={(tooltipProps) => <ChartTooltip chartData={props.sortedData} areaConfigs={renderedAreas} valueFormat={props.valueFormat} tooltipProps={tooltipProps} compact={props.isMobile} showTotal={props.showTooltipTotal} />} />}
             {visibleReferenceLines.filter(reference => !reference.foreground).map((reference, index) => renderReferenceLine(reference, reference.label ?? `${reference.value}-${index}`))}
             {renderedAreas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}
             {comparisonRows.map(row => <MandatePoint key={String(row.iso_fecha)} x={row[props.xAxisKey] as string | number} y={Number(row.icg)} yAxisId="left" primaryColor={String(row.mandate_color ?? '#FFD700')} secondaryColor={typeof row.mandate_secondary_color === 'string' ? row.mandate_secondary_color : undefined} />)}
@@ -413,6 +438,49 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
             <HoverCrosshair verticalRef={hoverVerticalRef} horizontalRef={hoverHorizontalRef} width={props.chartSize.width} height={props.chartSize.height} />
             <ChartCrosshair crosshair={props.crosshair} width={props.chartSize.width} height={props.chartSize.height} onUnlock={props.onCrosshairUnlock} isControlPressed={props.isControlPressed} />
         </ComposedChart>
+    );
+}
+
+function HoverTooltipOverlay({
+    store,
+    areas,
+    valueFormat,
+    sortedData,
+    chartWidth,
+    chartHeight,
+    showTotal,
+    compact,
+}: {
+    store: HoverTooltipStore;
+    areas: AreaConfig[];
+    valueFormat: ValueFormat;
+    sortedData: ChartDataRow[];
+    chartWidth: number;
+    chartHeight: number;
+    showTotal: boolean;
+    compact: boolean;
+}) {
+    const hover = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+    if (!hover.label) return null;
+
+    return (
+        <CrosshairTooltip
+            crosshair={{
+                x: hover.x,
+                y: hover.y,
+                locked: false,
+                label: hover.label,
+                tooltipPosition: hover.tooltipY == null ? undefined : { y: hover.tooltipY },
+            }}
+            areas={areas}
+            valueFormat={valueFormat}
+            sortedData={sortedData}
+            chartWidth={chartWidth}
+            chartHeight={chartHeight}
+            showTotal={showTotal}
+            compact={compact}
+            isCapturing={false}
+        />
     );
 }
 

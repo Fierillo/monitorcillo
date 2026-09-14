@@ -140,7 +140,7 @@ export type ChartCrosshairState = {
     locked: boolean;
     activePayload?: readonly TooltipPayload[];
     label?: string;
-    tooltipPosition?: { x: number; y: number };
+    tooltipPosition?: { x?: number; y?: number };
 };
 
 export type ChartSeriesClickEvent = {
