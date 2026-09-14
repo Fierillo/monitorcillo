@@ -8,8 +8,7 @@ export async function getRawData<T extends IndicatorType>(type: T): Promise<Arra
         const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`, []) as DbRow[];
         return rows.map((row) => ({ ...row, fecha: formatDbDate(row.fecha) })) as Array<RawDataByType[T]>;
     } catch (error) {
-        if (isMissingTableError(error)) return [];
-        console.error(`[db] getRawData failed for ${type}`, error);
+        if (!isMissingTableError(error)) throw error;
         return [];
     }
 }
@@ -48,24 +47,13 @@ export async function saveRawData<T extends IndicatorType>(type: T, data: Array<
     }
 }
 
-export async function replaceRawData<T extends IndicatorType>(type: T, data: Array<Partial<RawDataByType[T]>>): Promise<void> {
-    if (data.length === 0) {
-        console.warn(`[db] replaceRawData(${type}) refused empty payload to preserve existing history`);
-        return;
-    }
-    const table = getTableName(type, false);
-    await sql.query(`DELETE FROM ${table}`, []);
-    await saveRawData(type, data);
-}
-
 export async function getRawDataByDate<T extends IndicatorType>(type: T, date: string): Promise<RawDataByType[T] | null> {
     const table = getTableName(type, false);
     try {
         const rows = await sql.query(`SELECT * FROM ${table} WHERE fecha = $1 LIMIT 1`, [date]) as DbRow[];
         return rows.length === 0 ? null : { ...rows[0], fecha: formatDbDate(rows[0].fecha) } as RawDataByType[T];
     } catch (error) {
-        if (isMissingTableError(error)) return null;
-        console.error(`[db] getRawDataByDate failed for ${type}`, error);
+        if (!isMissingTableError(error)) throw error;
         return null;
     }
 }
@@ -80,8 +68,7 @@ export async function getLatestRawDate(type: IndicatorType, fields: string[]): P
         const rows = await sql.query(`SELECT fecha FROM ${table} WHERE ${whereClause} ORDER BY fecha DESC LIMIT 1`, []) as DbRow[];
         return rows.length > 0 ? formatDbDate(rows[0].fecha) : null;
     } catch (error) {
-        if (isMissingTableError(error) || isMissingColumnError(error)) return null;
-        console.error(`[db] getLatestRawDate failed for ${type}`, error);
+        if (!isMissingTableError(error) && !isMissingColumnError(error)) throw error;
         return null;
     }
 }

@@ -1,7 +1,6 @@
-import { fetchInflacionRaw, fetchInflacionRawReport } from '../inflacion-source';
 import { sql } from '../db/client';
 
-export { fetchInflacionRaw, fetchInflacionRawReport };
+export { fetchInflacionRawReport } from '../inflacion-source';
 
 export async function ensureInflacionTables(): Promise<void> {
     await sql.query(`CREATE TABLE IF NOT EXISTS inflacion_raw (id SERIAL PRIMARY KEY, fecha DATE UNIQUE NOT NULL, ipc_indec_general NUMERIC, ipc_indec_nucleo NUMERIC, ipc_equilibra NUMERIC, ipc_online NUMERIC, rem NUMERIC, fetched_at TIMESTAMP DEFAULT NOW())`, []);

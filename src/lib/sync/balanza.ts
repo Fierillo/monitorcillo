@@ -82,7 +82,3 @@ export async function fetchBalanzaRawReport(): Promise<{ rows: BalanzaRawRow[]; 
         publishedAt: parseIcaPublicationDate(publicationHtml),
     };
 }
-
-export async function fetchBalanzaRaw(): Promise<BalanzaRawRow[]> {
-    return (await fetchBalanzaRawReport()).rows;
-}

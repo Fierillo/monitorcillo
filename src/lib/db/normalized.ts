@@ -33,8 +33,7 @@ export async function getNormalizedData<T extends IndicatorType>(type: T): Promi
         const rows = await sql.query(`SELECT * FROM ${table} ORDER BY fecha`, []) as DbRow[];
         return rows.length === 0 ? null : rows.map((row) => toNormalizedRow(type, row));
     } catch (error) {
-        if (isMissingTableError(error)) return null;
-        console.error(`[db] getNormalizedData failed for ${type}`, error);
+        if (!isMissingTableError(error)) throw error;
         return null;
     }
 }
@@ -49,8 +48,7 @@ export async function getLatestNormalizedData<T extends IndicatorType>(type: T, 
         const rows = await sql.query(`SELECT * FROM ${table} WHERE ${whereClause} ORDER BY fecha DESC LIMIT 1`, []) as DbRow[];
         return rows.length === 0 ? null : toNormalizedRow(type, rows[0]);
     } catch (error) {
-        if (isMissingTableError(error)) return null;
-        console.error(`[db] getLatestNormalizedData failed for ${type}`, error);
+        if (!isMissingTableError(error)) throw error;
         return null;
     }
 }
@@ -61,8 +59,7 @@ export async function getNormalizedDataByDate<T extends IndicatorType>(type: T, 
         const rows = await sql.query(`SELECT * FROM ${table} WHERE fecha = $1 LIMIT 1`, [date]) as DbRow[];
         return rows.length === 0 ? null : toNormalizedRow(type, rows[0]);
     } catch (error) {
-        if (isMissingTableError(error)) return null;
-        console.error(`[db] getNormalizedDataByDate failed for ${type}`, error);
+        if (!isMissingTableError(error)) throw error;
         return null;
     }
 }
@@ -141,13 +138,6 @@ async function ensureBmaMillionsColumns(table: string): Promise<void> {
     }
 }
 
-export async function saveNormalizedData(type: IndicatorType, data: NormalizedDataRow[]): Promise<void> {
-    if (data.length === 0) return;
-    const table = getTableName(type, true);
-    await ensureNormalizedColumns(type, table);
-    for (const query of normalizedInsertQueries(type, data)) await query;
-}
-
 async function ensureRecaudacionTaxColumns(table: string): Promise<void> {
     await sql.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS pct_pbi_mm12 NUMERIC`, []);
     for (const column of [...RECAUDACION_TAX_PCT_DB_COLUMNS, ...RECAUDACION_TAX_MM12_DB_COLUMNS]) {
@@ -177,14 +167,4 @@ export async function replaceNormalizedData(type: IndicatorType, data: Normalize
         sql.query(`DELETE FROM ${table}`, []),
         ...normalizedInsertQueries(type, data),
     ]);
-}
-
-export async function getLastUpdate(type: IndicatorType): Promise<string | null> {
-    const table = getTableName(type, true);
-    try {
-        const rows = await sql.query(`SELECT last_update FROM ${table} ORDER BY last_update DESC LIMIT 1`, []) as DbRow[];
-        return rows.length > 0 ? String(rows[0].last_update ?? '') : null;
-    } catch {
-        return null;
-    }
 }

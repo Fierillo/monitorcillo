@@ -3,7 +3,7 @@ async function main(): Promise<void> {
         throw new Error('NEON_URL is required to run sync. Configure it as a GitHub Actions secret.');
     }
 
-    const { runSync } = await import('../lib/sync');
+    const { runSync } = await import('../lib/sync/tasks');
     const report = await runSync();
     const success = report.failed.length === 0;
 
