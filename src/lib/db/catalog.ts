@@ -1,7 +1,7 @@
 import type { CatalogIndicatorRow, DbRow } from '@/types';
 import { sql } from './client';
 import { toCatalogTrend } from './row-mappers';
-import { formatDbDate } from './tables';
+import { formatDbDate, isMissingTableError } from './tables';
 
 let indicatorPublicationsTableReady = false;
 
@@ -22,7 +22,7 @@ export async function getIndicatorsCatalog(): Promise<CatalogIndicatorRow[]> {
             proxima_fecha: row.proxima_fecha == null ? undefined : String(row.proxima_fecha),
         }));
     } catch (error) {
-        console.error('[db] getIndicatorsCatalog failed', error);
+        if (!isMissingTableError(error)) throw error;
         return [];
     }
 }
@@ -82,7 +82,7 @@ export async function getIndicatorPublicationDate(id: string): Promise<string | 
         const rows = await sql.query('SELECT published_at FROM indicator_publications WHERE id = $1', [id]) as DbRow[];
         return rows.length > 0 ? formatDbDate(rows[0].published_at) : null;
     } catch (error) {
-        console.error(`[db] getIndicatorPublicationDate failed for ${id}`, error);
+        if (!isMissingTableError(error)) throw error;
         return null;
     }
 }
