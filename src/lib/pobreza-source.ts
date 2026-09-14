@@ -1,10 +1,7 @@
-// Import the implementation module directly: the package root runs a debug harness when
-// `module.parent` is missing (common under Vitest / certain bundlers).
-import pdf from 'pdf-parse/lib/pdf-parse.js';
 import type { PobrezaRawRow } from '@/types';
-import { fetchBufferFromUrl, fetchTextFromUrl } from './sync/http-client';
+import { extractFileLinks, fetchPdf } from './protocols';
+import { fetchLastModifiedDate, fetchTextFromUrl } from './sync/http-client';
 import { fetchTimeSeries } from './sync/time-series-client';
-import { periodToFecha } from './pobreza-ocr';
 
 const INDEC_POBREZA_SERIES_ID = '64.2_POBLACION_NUA_0_0_34_74';
 const UTDT_POBREZA_URL = 'https://www.utdt.edu/ver_contenido.php?id_contenido=22217&id_item_menu=36605';
@@ -12,6 +9,20 @@ const UTDT_ORIGIN = 'https://www.utdt.edu';
 const UTDT_SHINY_URL = 'https://mrozada.shinyapps.io/shinynowcast/';
 const PDF_FETCH_CONCURRENCY = 4;
 const SHINY_TIMEOUT_MS = 30_000;
+const SEMESTER_MONTHS: Record<string, number> = {
+    ene: 1, feb: 2, mar: 3, abr: 4, may: 5, jun: 6,
+    jul: 7, ago: 8, sep: 9, oct: 10, nov: 11, dic: 12,
+};
+
+function periodToFecha(period: string): string | null {
+    const match = period.match(/([A-Za-z]{3})(\d{2})([A-Za-z]{3})(\d{2})/);
+    if (!match) return null;
+
+    const endMonth = SEMESTER_MONTHS[match[3].toLowerCase()];
+    if (!endMonth) return null;
+
+    return `${2000 + Number(match[4])}-${String(endMonth).padStart(2, '0')}-01`;
+}
 
 export type UtdtPeriodPdfLink = {
     period: string;
@@ -29,12 +40,6 @@ type PobrezaSourceReport = {
     publishedAt: string | null;
     sourcePublications?: Array<{ id: string; publishedAt: string; periodDate: string | null }>;
 };
-
-function isoDateFromHttpDate(value: string | null): string | null {
-    if (!value) return null;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
-}
 
 function latestDate(a: string | null, b: string | null): string | null {
     if (!a) return b;
@@ -66,18 +71,14 @@ export function parseUtdtChartImageUrl(html: string): string | null {
 
 /** Archive of monthly nowcast reports linked on the UTDT page (period label → PDF). */
 export function parseUtdtPeriodPdfLinks(html: string): UtdtPeriodPdfLink[] {
-    const links: UtdtPeriodPdfLink[] = [];
-    const seen = new Set<string>();
+    const byPeriod = new Map<string, UtdtPeriodPdfLink>();
 
-    for (const match of html.matchAll(/<a[^>]+href=["']([^"']*download\.php\?fname=[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
-        const period = stripHtml(match[2]);
-        if (!/^[A-Za-z]{3}\d{2}[A-Za-z]{3}\d{2}$/.test(period)) continue;
-        if (seen.has(period)) continue;
-        seen.add(period);
-        links.push({ period, url: absoluteUtdtUrl(match[1]) });
+    for (const link of extractFileLinks(html, { origin: UTDT_ORIGIN, extensions: ['pdf'] })) {
+        if (!/^[A-Za-z]{3}\d{2}[A-Za-z]{3}\d{2}$/.test(link.label)) continue;
+        if (!byPeriod.has(link.label)) byPeriod.set(link.label, { period: link.label, url: link.href });
     }
 
-    return links;
+    return Array.from(byPeriod.values());
 }
 
 export function parsePovertyRateFromPdfText(text: string): number | null {
@@ -106,16 +107,6 @@ export function parseLatestUtdtNowcastRow(html: string): PobrezaRawRow | null {
     const fecha = periodToFecha(match[2]);
     const value = parsePercentToken(match[1]);
     return fecha && value != null ? { fecha, pobreza_utdt: value } : null;
-}
-
-export function parseUtdtNowcastRowsFromChartData(chartData: Record<string, number>): PobrezaRawRow[] {
-    return Object.entries(chartData)
-        .map(([period, value]): PobrezaRawRow | null => {
-            const fecha = periodToFecha(period);
-            return fecha ? { fecha, pobreza_utdt: value } : null;
-        })
-        .filter((row): row is PobrezaRawRow => row !== null)
-        .sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
 export function utdtShinyTracesIncludeProjection(traces: UtdtShinyTrace[]): boolean {
@@ -276,16 +267,6 @@ async function fetchUtdtRowsFromShiny(): Promise<PobrezaRawRow[]> {
     }
 }
 
-export async function extractPovertyRateFromPdfBuffer(buffer: Buffer): Promise<number | null> {
-    try {
-        const parsed = await pdf(buffer);
-        return parsePovertyRateFromPdfText(parsed.text ?? '');
-    } catch (error) {
-        console.error('Failed to parse UTDT poverty PDF:', error);
-        return null;
-    }
-}
-
 async function mapWithConcurrency<T, R>(items: T[], concurrency: number, mapper: (item: T) => Promise<R>): Promise<R[]> {
     if (items.length === 0) return [];
     const results = new Array<R>(items.length);
@@ -308,8 +289,8 @@ export async function fetchUtdtRowsFromPeriodPdfs(links: UtdtPeriodPdfLink[]): P
         if (!fecha) return null;
 
         try {
-            const buffer = await fetchBufferFromUrl(link.url);
-            const value = await extractPovertyRateFromPdfBuffer(buffer);
+            const document = await fetchPdf(link.url);
+            const value = parsePovertyRateFromPdfText(document.content.text);
             if (value == null) {
                 console.warn(`UTDT PDF ${link.period}: could not extract poverty rate`);
                 return null;
@@ -337,21 +318,10 @@ export async function fetchIndecPobrezaRows(): Promise<PobrezaRawRow[]> {
         .sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
-export async function fetchUtdtPobrezaRows(): Promise<PobrezaRawRow[]> {
-    return (await fetchUtdtPobrezaReport()).rows;
-}
-
 async function fetchUtdtPublishedAt(imageUrl: string | null): Promise<string | null> {
-    try {
-        const requests: Array<Promise<Response>> = [fetch(UTDT_POBREZA_URL, { method: 'HEAD' })];
-        if (imageUrl) requests.push(fetch(imageUrl, { method: 'HEAD' }));
-        const responses = await Promise.all(requests);
-        return responses.reduce<string | null>((latest, response) => (
-            latestDate(latest, isoDateFromHttpDate(response.headers.get('last-modified')))
-        ), null);
-    } catch {
-        return null;
-    }
+    const urls = imageUrl ? [UTDT_POBREZA_URL, imageUrl] : [UTDT_POBREZA_URL];
+    const dates = await Promise.all(urls.map(url => fetchLastModifiedDate(url)));
+    return dates.reduce(latestDate, null);
 }
 
 async function fetchUtdtPobrezaReport(): Promise<PobrezaSourceReport> {
