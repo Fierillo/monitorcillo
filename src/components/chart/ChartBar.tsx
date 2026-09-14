@@ -4,7 +4,7 @@ import { Bar, Rectangle } from 'recharts';
 import type { ChartBarProps, ChartBarShapeProps, ChartSeriesClickEvent } from '@/types/chart';
 import { handleSeriesCtrlClick } from './seriesInteraction';
 
-const DEFAULT_BAR_BORDER_COLOR = '#FFD700';
+const DEFAULT_BAR_BORDER_COLOR = '#00143F';
 const DEFAULT_BAR_BORDER_WIDTH = 0.5;
 
 export default function ChartBar({
