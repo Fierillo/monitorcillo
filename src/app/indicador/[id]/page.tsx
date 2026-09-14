@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
-import { getIndicators } from '@/lib/indicators';
+import { getStoredIndicator } from '@/lib/indicators';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { IndicatorPageProps } from '@/types';
 import IndicatorCompositeView from '@/components/IndicatorCompositeView';
 import { getIndicatorDetailConfig } from '@/lib/indicator-detail-configs';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 21600;
 
 function chartOgImage(id: string, view?: string, mode?: string) {
     const params = new URLSearchParams();
@@ -23,7 +23,7 @@ function chartOgImage(id: string, view?: string, mode?: string) {
 export async function generateMetadata({ params, searchParams }: IndicatorPageProps): Promise<Metadata> {
     const { id } = await params;
     const query = searchParams ? await searchParams : {};
-    const indicator = (await getIndicators()).find(item => item.id === id);
+    const indicator = await getStoredIndicator(id);
     const image = chartOgImage(id, query.view, query.mode);
     if (!indicator) return { title: 'Indicador', openGraph: { images: [image] }, twitter: { card: 'summary_large_image', images: [image.url] } };
 
@@ -38,8 +38,7 @@ export async function generateMetadata({ params, searchParams }: IndicatorPagePr
 export default async function IndicatorDetailPage({ params, searchParams }: IndicatorPageProps) {
     const resolvedParams = await params;
     const query = searchParams ? await searchParams : {};
-    const data = await getIndicators();
-    const indicator = data.find(i => i.id === resolvedParams.id);
+    const indicator = await getStoredIndicator(resolvedParams.id);
 
     if (!indicator) return notFound();
 

@@ -1,29 +1,39 @@
+import { cache } from 'react';
 import type { CatalogIndicatorRow, Indicator } from '@/types';
-import { saveIndicatorsCatalog } from './db';
+import { getIndicatorsCatalog, saveIndicatorsCatalog } from './db';
 import { buildCurrentIndicatorsCatalog } from './catalog-service';
 
+function mapCatalogRow(row: CatalogIndicatorRow): Indicator {
+    return {
+        id: row.id,
+        indicador: row.indicador,
+        referencia: row.referencia,
+        referenceDescription: row.reference_description,
+        dato: row.dato,
+        fecha: row.fecha,
+        fuente: row.fuente,
+        trend: row.trend,
+        category: row.category,
+        hasDetails: row.has_details,
+        sourceUrl: row.source_url,
+        proximaFecha: row.proxima_fecha,
+        proximaFechaDescription: row.proxima_fecha_description,
+    };
+}
+
 export async function getIndicators(): Promise<Indicator[]> {
-    try {
-        const rows = await buildCurrentIndicatorsCatalog();
-        
-        return rows.map((row) => ({
-            id: row.id,
-            indicador: row.indicador,
-            referencia: row.referencia,
-            referenceDescription: row.reference_description,
-            dato: row.dato,
-            fecha: row.fecha,
-            fuente: row.fuente,
-            trend: row.trend,
-            category: row.category,
-            hasDetails: row.has_details,
-            sourceUrl: row.source_url,
-            proximaFecha: row.proxima_fecha,
-            proximaFechaDescription: row.proxima_fecha_description,
-        }));
-    } catch {
-        return [];
-    }
+    const rows = await buildCurrentIndicatorsCatalog();
+    return rows.map(mapCatalogRow);
+}
+
+export const getStoredIndicators = cache(async (): Promise<Indicator[]> => {
+    const rows = await getIndicatorsCatalog();
+    return rows.map(mapCatalogRow);
+});
+
+export async function getStoredIndicator(id: string): Promise<Indicator | null> {
+    const indicators = await getStoredIndicators();
+    return indicators.find(item => item.id === id) ?? null;
 }
 
 export async function saveIndicators(data: Indicator[]): Promise<void> {

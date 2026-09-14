@@ -7,7 +7,7 @@ import { RECAUDACION_BREAKDOWN_TYPES } from './recaudacion/schema';
 import { ICG_PRESIDENTIAL_MANDATES, PRESIDENTIAL_MANDATES } from './presidential-mandates';
 import { fetchRemExpectationsHistory, normalizeRemExpectations } from './inflacion-source';
 import { keepRemAfterLastIndec, toYearOverYearInflacion } from './normalize/inflacion';
-import { safeGetIndicatorData } from './storage';
+import { getIndicatorData } from './storage';
 
 import { getRawData } from './db';
 import { COST_OF_LIVING_MODEL, calculateCostOfLivingBurden, fetchCostOfLivingIndices } from './purchasing-power-cost';
@@ -36,14 +36,14 @@ export async function getIndicatorDetailConfig(indicator: Indicator): Promise<De
 async function publicSpendingConfig(indicator: Indicator): Promise<DetailConfig> {
     const data = await fetchPublicSpendingChartData();
     const areas: AreaConfig[] = [
-        { key: 'nation', name: 'Nación', color: '#8B5CF6', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'preliminary', preliminaryBorderColor: '#FFD700', preliminaryFillPattern: 'diagonal-stripes', preliminaryLabel: 'Preliminar: cifras MECON' },
-        { key: 'provinces', name: 'Provincias', color: '#0284C7', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'preliminary', preliminaryBorderColor: '#FFD700', preliminaryFillPattern: 'diagonal-stripes' },
-        { key: 'municipalities', name: 'Municipios', color: '#7DD3FC', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'preliminary', preliminaryBorderColor: '#FFD700', preliminaryFillPattern: 'diagonal-stripes' },
-        { key: 'interest', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'preliminary', preliminaryBorderColor: '#FFD700', preliminaryFillPattern: 'diagonal-stripes' },
-        { key: 'nationEstimate', name: 'Nación', color: '#8B5CF6', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'estimate', preliminaryColor: 'rgba(139, 92, 246, 0.45)', preliminaryBorderColor: 'rgba(255, 215, 0, 0.45)', legendKey: 'nation', hideInLegend: true, preliminaryLabel: 'Estimación 2025: Econviews' },
-        { key: 'provincesEstimate', name: 'Provincias', color: '#0284C7', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'estimate', preliminaryColor: 'rgba(2, 132, 199, 0.45)', preliminaryBorderColor: 'rgba(255, 215, 0, 0.45)', legendKey: 'provinces', hideInLegend: true },
-        { key: 'municipalitiesEstimate', name: 'Municipios', color: '#7DD3FC', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'estimate', preliminaryColor: 'rgba(125, 211, 252, 0.45)', preliminaryBorderColor: 'rgba(255, 215, 0, 0.45)', legendKey: 'municipalities', hideInLegend: true },
-        { key: 'interestEstimate', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending', borderColor: '#FFD700', borderWidth: 0.5, preliminaryKey: 'estimate', preliminaryColor: 'rgba(148, 163, 184, 0.45)', preliminaryBorderColor: 'rgba(255, 215, 0, 0.45)', legendKey: 'interest', hideInLegend: true },
+        { key: 'nation', name: 'Nación', color: '#8B5CF6', type: 'bar', stackId: 'spending', preliminaryKey: 'preliminary', preliminaryFillPattern: 'diagonal-stripes', preliminaryLabel: 'Preliminar: cifras MECON' },
+        { key: 'provinces', name: 'Provincias', color: '#0284C7', type: 'bar', stackId: 'spending', preliminaryKey: 'preliminary', preliminaryFillPattern: 'diagonal-stripes' },
+        { key: 'municipalities', name: 'Municipios', color: '#7DD3FC', type: 'bar', stackId: 'spending', preliminaryKey: 'preliminary', preliminaryFillPattern: 'diagonal-stripes' },
+        { key: 'interest', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending', preliminaryKey: 'preliminary', preliminaryFillPattern: 'diagonal-stripes' },
+        { key: 'nationEstimate', name: 'Nación', color: '#8B5CF6', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(139, 92, 246, 0.45)', legendKey: 'nation', hideInLegend: true, preliminaryLabel: 'Estimación 2025: Econviews' },
+        { key: 'provincesEstimate', name: 'Provincias', color: '#0284C7', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(2, 132, 199, 0.45)', legendKey: 'provinces', hideInLegend: true },
+        { key: 'municipalitiesEstimate', name: 'Municipios', color: '#7DD3FC', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(125, 211, 252, 0.45)', legendKey: 'municipalities', hideInLegend: true },
+        { key: 'interestEstimate', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(148, 163, 184, 0.45)', legendKey: 'interest', hideInLegend: true },
         { key: 'total', name: 'Gasto total', color: '#FFD700', type: 'line', strokeWidth: 3, showDots: false, hideInTooltip: true },
         { key: 'totalEstimate', name: 'Gasto total estimado', color: 'rgba(255, 215, 0, 0.7)', type: 'line', strokeWidth: 3, showDots: false, dash: [6, 3], legendKey: 'total', hideInLegend: true, hideInTooltip: true },
     ];
@@ -121,7 +121,7 @@ async function bmaConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Millones de pesos nominales', description: 'Muestra los promedios mensuales en millones de pesos corrientes, sin ajuste por inflación.' },
         { title: 'Porcentaje del PBI real', description: 'Deflacta cada agregado monetario con el IPC núcleo, lo expresa a precios de enero de 2017 y lo divide por el PBI real desestacionalizado de INDEC expresado en la misma base.' },
     ];
-    const percentageData = await safeGetIndicatorData('bma');
+    const percentageData = await getIndicatorData('bma');
     const millionsData = percentageData.map(row => ({
         ...row,
         BaseMonetaria: row.BaseMonetariaMillones,
@@ -137,7 +137,7 @@ async function bmaConfig(indicator: Indicator): Promise<DetailConfig> {
 }
 
 async function depositosPrestamosConfig(indicator: Indicator): Promise<DetailConfig> {
-    const normalizedData = await safeGetIndicatorData('depositos-prestamos');
+    const normalizedData = await getIndicatorData('depositos-prestamos');
     const hasMorosidad = normalizedData.some(row => row.moraIrregularPct != null || row.moraTotalIrregularPct != null || row.moraFamiliasPct != null || row.moraPnfcHasta29Pct != null);
     const data = (hasMorosidad ? normalizedData : normalizeDepositosPrestamos(await getRawData('depositos-prestamos'))) as ChartDataRow[];
     const depositosData = data.filter(row => row.depositosTotalPbi != null || row.prestamosTotalPbi != null);
@@ -339,7 +339,7 @@ async function depositosPrestamosConfig(indicator: Indicator): Promise<DetailCon
 
 async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
     const [data, rawData, costIndices] = await Promise.all([
-        safeGetIndicatorData('poder-adquisitivo'),
+        getIndicatorData('poder-adquisitivo'),
         getRawData('poder'),
         fetchCostOfLivingIndices(),
     ]);
@@ -406,7 +406,7 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
 }
 
 async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
-    const data = await safeGetIndicatorData('emae');
+    const data = await getIndicatorData('emae');
     const sectorData = data.filter(row => typeof row.iso_fecha === 'string' && row.iso_fecha >= '2017-01-01');
     const populationAdjustmentFor = (row: ChartDataRow): number | null => {
         const seasonallyAdjusted = row.emae_desestacionalizado;
@@ -559,7 +559,7 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
 }
 
 async function emisionConfig(indicator: Indicator): Promise<DetailConfig> {
-    const cached = await safeGetIndicatorData('emision');
+    const cached = await getIndicatorData('emision');
     const data = cached
         ? [...cached]
             .sort((a, b) => String(a.iso_fecha ?? '').localeCompare(String(b.iso_fecha ?? '')))
@@ -599,11 +599,11 @@ async function emisionConfig(indicator: Indicator): Promise<DetailConfig> {
 }
 
 async function recaudacionConfig(indicator: Indicator): Promise<DetailConfig> {
-    const [recaudacionData, emaeData] = await Promise.all([safeGetIndicatorData('recaudacion'), safeGetIndicatorData('emae')]);
+    const [recaudacionData, emaeData] = await Promise.all([getIndicatorData('recaudacion'), getIndicatorData('emae')]);
     const emaeDates = new Set(emaeData.map(row => row.iso_fecha));
     const data: ChartDataRow[] = recaudacionData.map(row => ({ ...row, preliminary: typeof row.iso_fecha === 'string' && !emaeDates.has(row.iso_fecha) }));
     const areas: AreaConfig[] = [
-        { key: 'pctPbi', name: '% PBI mensual real', color: '#FFD700', type: 'bar', yAxisId: 'left', preliminaryKey: 'preliminary', preliminaryColor: 'rgba(255, 215, 0, 0.45)', preliminaryBorderColor: 'rgba(255, 215, 0, 0.45)', preliminaryLabel: 'Preliminar: sin EMAE del mes' },
+        { key: 'pctPbi', name: '% PBI mensual real', color: '#FFD700', type: 'bar', yAxisId: 'left', preliminaryKey: 'preliminary', preliminaryColor: 'rgba(255, 215, 0, 0.45)', preliminaryLabel: 'Preliminar: sin EMAE del mes' },
         { key: 'pctPbiMm12', name: '% PBI real MM12 log.', color: '#00BFFF', type: 'line', yAxisId: 'left' },
     ];
     const methodology = [
@@ -644,7 +644,7 @@ async function recaudacionConfig(indicator: Indicator): Promise<DetailConfig> {
 }
 
 async function deudaConfig(indicator: Indicator): Promise<DetailConfig> {
-    const data = await safeGetIndicatorData('deuda') ?? null;
+    const data = await getIndicatorData('deuda') ?? null;
 const areas: AreaConfig[] = [
         { key: 'toma_deuda', name: 'Toma deuda', color: '#FFD700', type: 'bar', stackId: 'deuda' },
         { key: 'vencimientos', name: 'Vencimientos', color: '#60A5FA', type: 'bar', stackId: 'deuda' },
@@ -674,7 +674,7 @@ async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'UTDT', description: 'Nowcast de Martín González-Rozada (UTDT). Cada mes se toma la serie vigente del gráfico interactivo (EPH + proyección) y, si hace falta, del último PDF o del titular de la página; los puntos nuevos pisan los anteriores de esas fechas y el resto de la historia se conserva.' },
         { title: 'Frecuencia', description: 'INDEC publica datos semestrales; UTDT publica proyecciones mensuales actualizadas cada mes.' },
     ];
-    return { subtitle: indicator.fuente, chartTitle: 'Incidencia de la pobreza', data: await safeGetIndicatorData('pobreza'), areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% de población', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
+    return { subtitle: indicator.fuente, chartTitle: 'Incidencia de la pobreza', data: await getIndicatorData('pobreza'), areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% de población', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
 }
 
 async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
@@ -692,7 +692,11 @@ async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
         { title: 'Interanual', description: 'El modo Interanual acumula las variaciones mensuales de los últimos 12 meses de cada serie. Si falta algún mes, el dato no se muestra.' },
     ];
 
-    const ipcData = keepRemAfterLastIndec(await safeGetIndicatorData('inflacion'));
+    const [ipcRaw, surveys] = await Promise.all([
+        getIndicatorData('inflacion'),
+        fetchRemExpectationsHistory(6),
+    ]);
+    const ipcData = keepRemAfterLastIndec(ipcRaw);
     const yearOverYearData = toYearOverYearInflacion(ipcData);
 
     const actualIpcByMonth = new Map<string, number>();
@@ -702,7 +706,6 @@ async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
         }
     }
 
-    const surveys = await fetchRemExpectationsHistory(6);
     const expectationData = normalizeRemExpectations(surveys, actualIpcByMonth) as ChartDataRow[];
     const surveyColors = ['#22C55E', '#38BDF8', '#A78BFA', '#F472B6', '#FB923C', '#FACC15', '#4ADE80', '#818CF8'];
     const expectationAreas: AreaConfig[] = [
@@ -769,7 +772,7 @@ async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
 
 async function icgConfig(indicator: Indicator): Promise<DetailConfig> {
     const mandates = ICG_PRESIDENTIAL_MANDATES;
-    const rawData = await safeGetIndicatorData('icg');
+    const rawData = await getIndicatorData('icg');
     const data: ChartDataRow[] = rawData.map(row => {
         if (typeof row.iso_fecha !== 'string') return row;
         const mandate = mandates.find(item => row.iso_fecha! >= item.start && (!item.end || row.iso_fecha! < item.end));
@@ -846,7 +849,7 @@ async function icgConfig(indicator: Indicator): Promise<DetailConfig> {
 }
 
 async function balanzaConfig(indicator: Indicator): Promise<DetailConfig> {
-    const data = (await safeGetIndicatorData('balanza-comercial')).map(row => withNegativeImports(row));
+    const data = (await getIndicatorData('balanza-comercial')).map(row => withNegativeImports(row));
     const pbiData = data.map(row => ({
         ...row,
         ...Object.fromEntries(BALANZA_SERIES_KEYS.map(key => [key, usdMillionsToPctPbi(row[key], row.pbi_usd)])),
