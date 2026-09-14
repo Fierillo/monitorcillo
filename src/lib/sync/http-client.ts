@@ -80,11 +80,16 @@ export async function fetchTextFromUrl(url: string, options?: HttpRequestOptions
     return (await downloadWithRetry(url, options)).toString();
 }
 
-export async function fetchCSV(url: string): Promise<string[][]> {
+export function isoDateFromHttpDate(value: string | null): string | null {
+    const date = new Date(value ?? '');
+    return Number.isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
+}
+
+export async function fetchLastModifiedDate(url: string): Promise<string | null> {
     try {
-        const data = await fetchTextFromUrl(url);
-        return data.split('\n').map(line => line.trim().split(',')).filter(row => row.length > 1);
+        const response = await fetch(url, { method: 'HEAD' });
+        return response.ok ? isoDateFromHttpDate(response.headers.get('last-modified')) : null;
     } catch {
-        return [];
+        return null;
     }
 }

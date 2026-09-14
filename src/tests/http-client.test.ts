@@ -78,3 +78,45 @@ describe('sync HTTP client', () => {
         expect(request.setTimeout).toHaveBeenCalledWith(60_000, expect.any(Function));
     });
 });
+
+describe('fetchLastModifiedDate', () => {
+    const originalFetch = globalThis.fetch;
+
+    afterEach(() => {
+        globalThis.fetch = originalFetch;
+    });
+
+    function mockHeadResponse(response: { ok: boolean; lastModified?: string } | Error) {
+        globalThis.fetch = vi.fn(async () => {
+            if (response instanceof Error) throw response;
+            return {
+                ok: response.ok,
+                headers: { get: () => response.lastModified ?? null },
+            } as unknown as Response;
+        }) as typeof fetch;
+    }
+
+    it('reports the publication date advertised by the server', async () => {
+        mockHeadResponse({ ok: true, lastModified: 'Tue, 10 Feb 2026 14:03:00 GMT' });
+        const { fetchLastModifiedDate } = await import('@/lib/sync/http-client');
+
+        await expect(fetchLastModifiedDate('https://www.utdt.edu/icg.xls')).resolves.toBe('2026-02-10');
+        expect(globalThis.fetch).toHaveBeenCalledWith('https://www.utdt.edu/icg.xls', { method: 'HEAD' });
+    });
+
+    it('reports an unknown date rather than failing the sync', async () => {
+        const { fetchLastModifiedDate } = await import('@/lib/sync/http-client');
+
+        mockHeadResponse({ ok: true });
+        await expect(fetchLastModifiedDate('https://www.utdt.edu/icg.xls')).resolves.toBeNull();
+
+        mockHeadResponse({ ok: true, lastModified: 'not a date' });
+        await expect(fetchLastModifiedDate('https://www.utdt.edu/icg.xls')).resolves.toBeNull();
+
+        mockHeadResponse({ ok: false });
+        await expect(fetchLastModifiedDate('https://www.utdt.edu/icg.xls')).resolves.toBeNull();
+
+        mockHeadResponse(new Error('network down'));
+        await expect(fetchLastModifiedDate('https://www.utdt.edu/icg.xls')).resolves.toBeNull();
+    });
+});

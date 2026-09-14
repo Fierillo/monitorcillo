@@ -11,7 +11,7 @@ const forbiddenImports = [
     'fetchFromUrl',
     'fetchTimeSeries',
     'time-series-client',
-    'fetchCSV',
+    'fetchTextFromUrl',
 ];
 
 function routeFiles(directory: string): string[] {
