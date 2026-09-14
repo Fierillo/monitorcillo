@@ -1,11 +1,12 @@
 import type { PoderAdquisitivoRawRow } from '@/types';
 import { parseSalaryPublicationDate } from '../salary-source';
 import { SALARY_PUBLICATION_PAGE_URL } from './constants';
-import { fetchCSV, fetchTextFromUrl } from './http-client';
+import { fetchTextFromUrl } from './http-client';
 import { fetchTimeSeries } from './time-series-client';
 import { seriesValueMap } from './series';
 
 const OFFICIAL_SALARY_CSV_URL = 'https://www.indec.gob.ar/ftp/cuadros/sociedad/indice_salarios.csv';
+const RIPTE_CSV_URL = 'https://infra.datos.gob.ar/catalog/sspm/dataset/158/distribution/158.1/download/remuneracion-imponible-promedio-trabajadores-estables-ripte-total-pais-pesos-serie-mensual.csv';
 
 function parseDecimal(value: string | undefined): number | null {
     if (!value || value === 'NA') return null;
@@ -35,7 +36,18 @@ export function parseOfficialSalaryCsvRows(csv: string): Map<string, Pick<PoderA
     return rows;
 }
 
-function buildSalaryRow(fecha: string, salaryRow: Partial<PoderAdquisitivoRawRow> | null, ipc: Map<string, number>, jubilaciones: Map<string, number>, ripte: Map<string, string>): PoderAdquisitivoRawRow {
+export function parseRipteCsvRows(csv: string): Map<string, number> {
+    const rows = new Map<string, number>();
+    for (const line of csv.trim().split('\n').slice(1)) {
+        const [fecha, value] = line.trim().split(',');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha ?? '')) continue;
+        const parsed = Number(value);
+        if (value && Number.isFinite(parsed)) rows.set(fecha, parsed);
+    }
+    return rows;
+}
+
+function buildSalaryRow(fecha: string, salaryRow: Partial<PoderAdquisitivoRawRow> | null, ipc: Map<string, number>, jubilaciones: Map<string, number>, ripte: Map<string, number>): PoderAdquisitivoRawRow {
     return {
         fecha,
         ipc_nucleo: ipc.get(fecha) ?? null,
@@ -43,7 +55,7 @@ function buildSalaryRow(fecha: string, salaryRow: Partial<PoderAdquisitivoRawRow
         salario_no_registrado: salaryRow?.salario_no_registrado ?? null,
         salario_privado: salaryRow?.salario_privado ?? null,
         salario_publico: salaryRow?.salario_publico ?? null,
-        ripte: ripte.get(fecha) ? Number(ripte.get(fecha)) : null,
+        ripte: ripte.get(fecha) ?? null,
         jubilacion_minima: jubilaciones.get(fecha) ? Number(jubilaciones.get(fecha)) : null,
     };
 }
@@ -53,14 +65,14 @@ export async function fetchPoderAdquisitivoRawReport(): Promise<{ rows: PoderAdq
         fetchTimeSeries({ ids: ['148.3_INUCLEONAL_DICI_M_19'] }),
         fetchTimeSeries({ ids: ['58.1_MP_0_M_24'] }),
         fetchTextFromUrl(OFFICIAL_SALARY_CSV_URL),
-        fetchCSV('https://infra.datos.gob.ar/catalog/sspm/dataset/158/distribution/158.1/download/remuneracion-imponible-promedio-trabajadores-estables-ripte-total-pais-pesos-serie-mensual.csv'),
+        fetchTextFromUrl(RIPTE_CSV_URL),
         fetchTextFromUrl(SALARY_PUBLICATION_PAGE_URL),
     ]);
 
     const ipcByFecha = seriesValueMap(ipc.data || []);
     const jubilacionesByFecha = seriesValueMap(jubilaciones.data || []);
     const salariosByFecha = parseOfficialSalaryCsvRows(salariosCsv);
-    const ripteByFecha = new Map(ripteCsv.slice(1).map(row => [row[0], row[1]]));
+    const ripteByFecha = parseRipteCsvRows(ripteCsv);
     const combinedMap = new Map<string, PoderAdquisitivoRawRow>();
 
     for (const [fecha, salaryRow] of salariosByFecha) {
