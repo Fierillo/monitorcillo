@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Indicator } from '@/types';
 import { fechaToTimestamp } from '@/lib/normalize/dates';
+import LoadingModal from '@/components/LoadingModal';
 
 type ReferenceTooltip = { text: string; x: number; y: number } | null;
 
@@ -43,6 +44,10 @@ export function sortIndicatorsByDate(data: Indicator[]): Indicator[] {
     });
 }
 
+function isModifiedNavigation(event: React.MouseEvent): boolean {
+    return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
+}
+
 function FitText({ children, className = '' }: { children: string; className?: string }) {
     const textRef = useRef<HTMLSpanElement>(null);
 
@@ -73,6 +78,7 @@ function FitText({ children, className = '' }: { children: string; className?: s
 
 export default function IndicatorsTable({ data }: { data: Indicator[] }) {
     const [tooltip, setTooltip] = useState<ReferenceTooltip>(null);
+    const [isNavigating, setIsNavigating] = useState(false);
 
     if (!data || data.length === 0) {
         return <div className="text-center p-8 border-2 border-imperial-gold text-imperial-gold font-bold">Sin datos.</div>;
@@ -85,9 +91,23 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
         setTooltip({ text, x: Math.max(TOOLTIP_OFFSET, Math.min(rect.left, maxX)), y: rect.bottom + TOOLTIP_OFFSET });
     };
 
+    const handleMetricClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+        if (isNavigating) {
+            event.preventDefault();
+            return;
+        }
+        if (isModifiedNavigation(event)) return;
+        setTooltip(null);
+        setIsNavigating(true);
+    };
+
     return (
         <>
-            <div className="overflow-x-auto border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 w-full">
+            <div
+                className="overflow-x-auto border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 w-full"
+                inert={isNavigating ? true : undefined}
+                aria-busy={isNavigating}
+            >
                 <table className="w-max min-w-full table-auto border-separate border-spacing-x-1 border-spacing-y-0 text-left lg:w-full lg:min-w-[900px] lg:border-collapse lg:border-spacing-0">
                     <thead>
                         <tr className="h-12 bg-imperial-gold text-imperial-blue text-xs sm:text-base uppercase tracking-wider imperial-title">
@@ -132,6 +152,9 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                                         {row.hasDetails ? (
                                             <Link
                                                 href={`/indicador/${row.id}`}
+                                                onClick={handleMetricClick}
+                                                tabIndex={isNavigating ? -1 : undefined}
+                                                aria-disabled={isNavigating}
                                                 className="inline-flex w-max items-center gap-1.5 whitespace-nowrap text-white hover:text-imperial-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold lg:flex lg:w-full lg:min-w-0 lg:max-w-full lg:overflow-hidden"
                                             >
                                                 <FitText className="lg:flex-1">{indicator}</FitText>
@@ -160,7 +183,7 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                     </tbody>
                 </table>
             </div>
-            {tooltip ? (
+            {tooltip && !isNavigating ? (
                 <div
                     className="pointer-events-none fixed z-[9999] whitespace-normal border border-imperial-blue/30 bg-imperial-gold text-imperial-blue shadow-md shadow-imperial-blue/50"
                     style={{ left: tooltip.x, top: tooltip.y, width: 150, padding: '3px 5px', fontSize: '10px', lineHeight: '1.15', fontWeight: 700, letterSpacing: 0, textTransform: 'none', transform: 'scale(0.75)', transformOrigin: 'top left' }}
@@ -168,6 +191,7 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                     {tooltip.text}
                 </div>
             ) : null}
+            {isNavigating ? <LoadingModal message="Cargando métrica..." /> : null}
         </>
     );
 }
