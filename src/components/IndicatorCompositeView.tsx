@@ -7,7 +7,7 @@ import type { ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRo
 import CompositeChartCard from './indicators/CompositeChartCard';
 import FeedbackButton from './FeedbackButton';
 import LoadingModal from './LoadingModal';
-import { collectAxisExtentValues } from './chart/utils';
+import { collectAxisExtentValues, resolveChartHoverPoint } from './chart/utils';
 import TimeRangeSlider from './chart/TimeRangeSlider';
 
 type PersistedChartConfig = {
@@ -381,34 +381,13 @@ export default function IndicatorCompositeView({
     };
 
     const crosshairFromChartState = (state: ChartClickState | null, locked: boolean): ChartCrosshairState | null => {
-        const x = state?.activeCoordinate?.x;
-        const y = state?.activeCoordinate?.y;
-        if (typeof x !== 'number' || typeof y !== 'number') return null;
-        const idx = state?.activeTooltipIndex;
-        const activeIndex = typeof idx === 'number' ? idx : typeof idx === 'string' && /^\d+$/.test(idx) ? Number(idx) : null;
-        const payloadRow = state?.activePayload?.[0]?.payload;
-        const labelValue = activeIndex !== null ? visibleData[activeIndex]?.fecha : payloadRow?.fecha ?? payloadRow?.iso_fecha;
-        const label = labelValue ? String(labelValue) : undefined;
-        return { x, y, locked, activePayload: state?.activePayload, label };
+        const hoverPoint = resolveChartHoverPoint(state, visibleData);
+        if (!hoverPoint) return null;
+        return { x: hoverPoint.x, y: hoverPoint.y, locked, label: hoverPoint.label };
     };
 
     const handleCrosshairClick = (state: ChartClickState | null) => {
-        const nextCrosshair = crosshairFromChartState(state, true);
-        const chart = chartContainerRef.current;
-        const tooltip = chart?.querySelector<HTMLElement>('.recharts-tooltip-wrapper');
-        if (!nextCrosshair || !chart || !tooltip) {
-            setCrosshair(nextCrosshair);
-            return;
-        }
-        const chartRect = chart.getBoundingClientRect();
-        const tooltipRect = tooltip.getBoundingClientRect();
-        setCrosshair({
-            ...nextCrosshair,
-            tooltipPosition: {
-                x: tooltipRect.left - chartRect.left,
-                y: tooltipRect.top - chartRect.top,
-            },
-        });
+        setCrosshair(crosshairFromChartState(state, true));
     };
 
     const handleCrosshairUnlock = () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, selectRoundTickDivisions } from '../components/chart/utils';
+import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, parseActiveTooltipIndex, resolveChartHoverPoint, selectRoundTickDivisions } from '../components/chart/utils';
 
 describe('collectAxisExtentValues', () => {
     it('uses positive and negative stack totals for mixed-sign columns', () => {
@@ -55,5 +55,39 @@ describe('createRoundTicks', () => {
         expect(left).toEqual([30, 40, 50, 60, 70, 80, 90, 100]);
         expect(right).toHaveLength(left.length);
         expect(right.at(-1)).toBe(6);
+    });
+});
+
+describe('resolveChartHoverPoint', () => {
+    const rows = [
+        { fecha: 'ENE 26', iso_fecha: '2026-01-01', valor: 1 },
+        { fecha: 'FEB 26', iso_fecha: '2026-02-01', valor: 2 },
+    ];
+
+    it('parses numeric and string tooltip indexes', () => {
+        expect(parseActiveTooltipIndex(1)).toBe(1);
+        expect(parseActiveTooltipIndex('1')).toBe(1);
+        expect(parseActiveTooltipIndex(null)).toBeNull();
+        expect(parseActiveTooltipIndex('[0]')).toBeNull();
+    });
+
+    it('resolves hover points from Recharts 3 mouse state without activePayload', () => {
+        expect(resolveChartHoverPoint({
+            activeTooltipIndex: '1',
+            activeCoordinate: { x: 120, y: 80 },
+        }, rows)).toEqual({
+            x: 120,
+            y: 80,
+            label: 'FEB 26',
+            row: rows[1],
+            activeIndex: 1,
+        });
+    });
+
+    it('returns null when activePayload is present but the tooltip index is missing', () => {
+        expect(resolveChartHoverPoint({
+            activeCoordinate: { x: 120, y: 80 },
+            activePayload: [{ payload: rows[0], value: 1, name: 'valor', dataKey: 'valor' }],
+        }, rows)).toBeNull();
     });
 });

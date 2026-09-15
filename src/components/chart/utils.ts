@@ -1,4 +1,5 @@
-import type { AreaConfig, ChartAxisDomainParams, ChartDataRow, ValueFormat } from '@/types/chart';
+import type { AreaConfig, ChartAxisDomainParams, ChartClickState, ChartDataRow, ValueFormat } from '@/types/chart';
+
 
 export const SPANISH_MONTHS: Record<string, string> = {
     '01': 'ENE', '02': 'FEB', '03': 'MAR', '04': 'ABR',
@@ -176,4 +177,30 @@ export function calculateYAxisDomain(params: ChartAxisDomainParams): [number, nu
         Math.floor(minValue - padding),
         Math.ceil(maxValue + padding)
     ];
+}
+
+export function parseActiveTooltipIndex(index: ChartClickState['activeTooltipIndex']): number | null {
+    if (typeof index === 'number' && Number.isFinite(index)) return index;
+    if (typeof index === 'string' && /^\d+$/.test(index)) return Number(index);
+    return null;
+}
+
+export function resolveChartHoverPoint(
+    state: ChartClickState | null,
+    visibleData: ChartDataRow[],
+): { x: number; y: number; label: string; row: ChartDataRow; activeIndex: number } | null {
+    const x = state?.activeCoordinate?.x;
+    const y = state?.activeCoordinate?.y;
+    if (typeof x !== 'number' || typeof y !== 'number') return null;
+
+    const activeIndex = parseActiveTooltipIndex(state?.activeTooltipIndex);
+    if (activeIndex === null) return null;
+
+    const row = visibleData[activeIndex];
+    if (!row) return null;
+
+    const labelValue = row.fecha ?? row.iso_fecha;
+    if (labelValue == null) return null;
+
+    return { x, y, label: String(labelValue), row, activeIndex };
 }

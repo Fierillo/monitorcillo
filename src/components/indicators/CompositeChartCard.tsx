@@ -12,7 +12,7 @@ import ChartTooltip from '../chart/ChartTooltip';
 import CustomLegend from '../chart/CustomLegend';
 import { createHoverTooltipStore, type HoverTooltipStore } from '../chart/hover-tooltip-store';
 import MethodologySection from '../chart/MethodologySection';
-import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, selectRoundTickDivisions } from '../chart/utils';
+import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectRoundTickDivisions } from '../chart/utils';
 
 type Props = {
     title: string;
@@ -343,43 +343,32 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
             return;
         }
 
-        const x = state?.activeCoordinate?.x;
-        const y = state?.activeCoordinate?.y;
-        if (typeof x !== 'number' || typeof y !== 'number') {
+        const hoverPoint = resolveChartHoverPoint(state, props.visibleData);
+        if (!hoverPoint) {
             hideHoverCrosshair();
             hoverTooltipStore.clear();
             props.onHoverTooltipChange(null);
             return;
         }
 
-        const idx = state?.activeTooltipIndex;
-        const activeIndex = typeof idx === 'number' ? idx : typeof idx === 'string' && /^\d+$/.test(idx) ? Number(idx) : null;
-        const activeRow = activeIndex !== null ? props.visibleData[activeIndex] : state?.activePayload?.[0]?.payload;
-        const nextComparisonGroup = comparesMandateMonths && typeof activeRow?.comparison_group === 'string'
+        const { x, y, label, row: activeRow } = hoverPoint;
+        const nextComparisonGroup = comparesMandateMonths && typeof activeRow.comparison_group === 'string'
             ? activeRow.comparison_group
             : null;
         setActiveComparisonGroup(current => current === nextComparisonGroup ? current : nextComparisonGroup);
-        const labelValue = activeRow?.fecha ?? activeRow?.iso_fecha;
-        const label = labelValue ? String(labelValue) : undefined;
-        const hoverTooltip = state?.activePayload?.length && label ? { x, y, locked: false, activePayload: state.activePayload, label } : null;
-        props.onHoverTooltipChange(hoverTooltip);
+        props.onHoverTooltipChange({ x, y, locked: false, label });
 
-        const normalizedValues = (state?.activePayload ?? []).flatMap(item => {
-            const area = renderedAreas.find(config => config.key === String(item.dataKey) || config.name === item.name);
-            if (!area || typeof item.value !== 'number') return [];
+        const normalizedValues = renderedAreas.flatMap(area => {
+            const value = activeRow[area.key];
+            if (typeof value !== 'number') return [];
             const domain = area.yAxisId === 'right' ? rightDomain : leftDomain;
             const range = domain[1] - domain[0];
-            return range > 0 ? [(item.value - domain[0]) / range] : [];
+            return range > 0 ? [(value - domain[0]) / range] : [];
         });
         const tooltipRows = renderedAreas.filter(area => !area.hideInTooltip).length + (props.showTooltipTotal ? 1 : 0);
         const tooltipHeight = props.isMobile ? 24 + tooltipRows * 15 : 40 + tooltipRows * 24;
         const tooltipY = calculateTooltipVerticalPosition(normalizedValues, y, props.chartSize.height, tooltipHeight);
-
-        if (hoverTooltip?.label) {
-            hoverTooltipStore.set({ label: hoverTooltip.label, x, y, tooltipY });
-        } else {
-            hoverTooltipStore.clear();
-        }
+        hoverTooltipStore.set({ label, x, y, tooltipY });
 
         if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
         rafRef.current = requestAnimationFrame(() => {
@@ -416,7 +405,7 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
                 hideHoverCrosshair();
                 hoverTooltipStore.clear();
                 props.onCrosshairClick(e);
-                if (!e?.activePayload?.length || e.activeTooltipIndex == null) props.onSelectMonth(null);
+                if (resolveChartHoverPoint(e, props.visibleData) == null) props.onSelectMonth(null);
             }}
         >
             <CartesianGrid vertical={false} horizontal={!props.secondaryYAxis} stroke="#ffffff66" strokeWidth={0.75} />
