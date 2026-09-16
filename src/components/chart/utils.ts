@@ -204,3 +204,55 @@ export function resolveChartHoverPoint(
 
     return { x, y, label: String(labelValue), row, activeIndex };
 }
+
+const ISO_MONTH_PATTERN = /^(\d{4})-(\d{2})/;
+const MONTH_ALIGNED_STEPS = [1, 2, 3, 4, 6, 12, 24, 36, 48, 60, 120];
+
+function monthIndexFromIso(value: string): number | null {
+    const match = value.match(ISO_MONTH_PATTERN);
+    if (!match) return null;
+    return Number(match[1]) * 12 + Number(match[2]) - 1;
+}
+
+export function selectMonthAlignedXTicks(values: string[], targetCount = 8): string[] {
+    const dated = values
+        .map(value => {
+            const monthIndex = monthIndexFromIso(value);
+            return monthIndex == null ? null : { value, monthIndex };
+        })
+        .filter((entry): entry is { value: string; monthIndex: number } => entry != null);
+
+    if (dated.length === 0) return values;
+    if (dated.length <= 2) return dated.map(entry => entry.value);
+
+    const first = dated[0].monthIndex;
+    const last = dated.at(-1)!.monthIndex;
+    const span = last - first;
+    if (span <= 0) return [dated[0].value];
+
+    const maxTicks = Math.max(2, targetCount);
+    let bestStep = MONTH_ALIGNED_STEPS[MONTH_ALIGNED_STEPS.length - 1];
+    let bestCount = 0;
+    for (const step of MONTH_ALIGNED_STEPS) {
+        const count = Math.floor(span / step) + 1;
+        if (count < 2 || count > maxTicks) continue;
+        if (count > bestCount) {
+            bestCount = count;
+            bestStep = step;
+        }
+    }
+
+    const byMonth = new Map(dated.map(entry => [entry.monthIndex, entry.value]));
+    const ticks: string[] = [];
+    for (let cursor = last; cursor >= first; cursor -= bestStep) {
+        const tick = byMonth.get(cursor);
+        if (tick) ticks.push(tick);
+    }
+
+    return ticks.reverse();
+}
+
+export function targetXTickCount(chartWidth: number, axisMargins = 0): number {
+    const availableWidth = Math.max(0, chartWidth - axisMargins);
+    return Math.max(2, Math.min(10, Math.floor(availableWidth / 72) || 2));
+}

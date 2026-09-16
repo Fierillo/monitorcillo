@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, parseActiveTooltipIndex, resolveChartHoverPoint, selectRoundTickDivisions } from '../components/chart/utils';
+import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, parseActiveTooltipIndex, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount } from '../components/chart/utils';
 
 describe('collectAxisExtentValues', () => {
     it('uses positive and negative stack totals for mixed-sign columns', () => {
@@ -89,5 +89,72 @@ describe('resolveChartHoverPoint', () => {
             activeCoordinate: { x: 120, y: 80 },
             activePayload: [{ payload: rows[0], value: 1, name: 'valor', dataKey: 'valor' }],
         }, rows)).toBeNull();
+    });
+});
+
+describe('selectMonthAlignedXTicks', () => {
+    function monthlyRange(startIso: string, months: number): string[] {
+        const [year, month] = startIso.split('-').map(Number);
+        return Array.from({ length: months }, (_, index) => {
+            const total = year * 12 + (month - 1) + index;
+            const nextYear = Math.floor(total / 12);
+            const nextMonth = (total % 12) + 1;
+            return `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+        });
+    }
+
+    it('keeps yearly ticks on the same calendar month', () => {
+        const dates = monthlyRange('2017-06-01', 12 * 8 + 1);
+        const ticks = selectMonthAlignedXTicks(dates, 8);
+
+        expect(ticks.length).toBeGreaterThanOrEqual(2);
+        expect(ticks.every(tick => tick.slice(5, 7) === '06')).toBe(true);
+        expect(ticks.at(-1)).toBe('2025-06-01');
+    });
+
+    it('keeps ticks on a fixed month phase from the latest date', () => {
+        const dates = monthlyRange('2020-03-01', 36);
+        const ticks = selectMonthAlignedXTicks(dates, 8);
+        const toIndex = (iso: string) => {
+            const [year, month] = iso.split('-').map(Number);
+            return year * 12 + month - 1;
+        };
+
+        expect(ticks.at(-1)).toBe('2023-02-01');
+        expect(ticks.length).toBeGreaterThanOrEqual(2);
+        const step = toIndex(ticks[1]) - toIndex(ticks[0]);
+        expect(step).toBeGreaterThan(0);
+        for (let index = 1; index < ticks.length; index += 1) {
+            expect(toIndex(ticks[index]) - toIndex(ticks[index - 1])).toBe(step);
+        }
+    });
+
+    it('returns all dates when the series is shorter than the target tick count', () => {
+        const dates = monthlyRange('2026-01-01', 4);
+        expect(selectMonthAlignedXTicks(dates, 8)).toEqual(dates);
+    });
+
+    it('never exceeds the target tick count even for dense monthly ranges', () => {
+        const dates = monthlyRange('2024-01-01', 12);
+        const ticks = selectMonthAlignedXTicks(dates, 6);
+
+        expect(ticks.length).toBeLessThanOrEqual(6);
+        expect(ticks.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('skips missing months instead of drifting to another month', () => {
+        const dates = monthlyRange('2020-06-01', 61).filter(date => date !== '2022-06-01');
+        const ticks = selectMonthAlignedXTicks(dates, 6);
+
+        expect(ticks.every(tick => tick.slice(5, 7) === '06')).toBe(true);
+        expect(ticks).not.toContain('2022-06-01');
+    });
+});
+
+describe('targetXTickCount', () => {
+    it('reserves roughly one label width of space per tick', () => {
+        expect(targetXTickCount(800, 80)).toBe(10);
+        expect(targetXTickCount(400, 80)).toBe(4);
+        expect(targetXTickCount(120, 80)).toBe(2);
     });
 });

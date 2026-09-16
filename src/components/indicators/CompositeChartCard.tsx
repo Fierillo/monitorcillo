@@ -12,7 +12,7 @@ import ChartTooltip from '../chart/ChartTooltip';
 import CustomLegend from '../chart/CustomLegend';
 import { createHoverTooltipStore, type HoverTooltipStore } from '../chart/hover-tooltip-store';
 import MethodologySection from '../chart/MethodologySection';
-import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectRoundTickDivisions } from '../chart/utils';
+import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount } from '../chart/utils';
 
 type Props = {
     title: string;
@@ -153,11 +153,11 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
             <div
                 ref={scrollViewportRef}
                 data-testid="chart-scroll-viewport"
-                className="relative min-w-0 flex-1 overflow-hidden"
+                className={`relative min-w-0 flex-1 ${props.isMobile ? 'overflow-x-auto overflow-y-hidden' : 'overflow-hidden'}`}
             >
                 <div
                     ref={chartContainerRef}
-                    className={`relative h-full overflow-hidden ${isControlPressed && !props.isCapturing ? 'chainsaw-cursor' : ''}`}
+                    className={`relative h-full ${props.isMobile ? 'overflow-visible' : 'overflow-hidden'} ${isControlPressed && !props.isCapturing ? 'chainsaw-cursor' : ''}`}
                     style={captureChartStyle}
                     tabIndex={-1}
                     onPointerMove={(event) => {
@@ -307,8 +307,16 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
     const rightDomain = [rightTicks[0], rightTicks.at(-1) ?? 0];
 
     const yAxisWidth = props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 76 : 52);
-    const leftMargin = props.isMobile ? 5 : yAxisWidth + -50;
-    const rightMargin = props.isMobile ? 5 : (props.secondaryYAxis ? 15 : 10);
+    const leftMargin = props.isMobile ? 8 : yAxisWidth + -50;
+    const rightMargin = props.isMobile ? 8 : (props.secondaryYAxis ? 15 : 10);
+    const xAxisHeight = props.isMobile ? 32 : 30;
+    const xTicks = props.xAxisKey === 'iso_fecha'
+        ? selectMonthAlignedXTicks(
+            props.visibleData.map(row => String(row.iso_fecha ?? '')),
+            targetXTickCount(props.chartSize.width, leftMargin + rightMargin),
+        )
+        : undefined;
+
     const visibleReferenceLines = props.referenceLines.filter(reference => reference.value >= 0);
     const renderReferenceLine = (reference: ChartReferenceLine, key: string, outline = false) => <ReferenceLine
         key={key}
@@ -389,7 +397,7 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
             width={props.chartSize.width}
             height={props.chartSize.height}
             data={props.visibleData}
-            margin={{ top: 5, right: rightMargin, bottom: 5, left: leftMargin }}
+            margin={{ top: 5, right: rightMargin, bottom: props.isMobile ? xAxisHeight + 8 : 5, left: leftMargin }}
             barCategoryGap={props.isMobile && renderedAreas.some(area => area.type === 'bar') ? '8%' : '0%'}
             stackOffset="sign"
             style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }}
@@ -409,7 +417,16 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
             }}
         >
             <CartesianGrid vertical={false} horizontal={!props.secondaryYAxis} stroke="#ffffff66" strokeWidth={0.75} />
-            <XAxis dataKey={props.xAxisKey} stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)} hide={props.isMobile} />
+            <XAxis
+                dataKey={props.xAxisKey}
+                stroke="#FFD700"
+                tick={{ fill: '#FFD700', fontSize: props.isMobile ? 9 : 10 }}
+                tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)}
+                ticks={xTicks}
+                interval={0}
+                height={xAxisHeight}
+                tickMargin={props.isMobile ? 6 : 4}
+            />
             <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions' && props.valueFormat !== 'currency'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
             {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
             {props.secondaryYAxis ? leftTicks.map(tick => <ReferenceLine key={`tick-grid-${tick}`} y={tick} yAxisId="left" stroke="#FFFFFF" strokeOpacity={0.35} strokeWidth={0.5} />) : null}
