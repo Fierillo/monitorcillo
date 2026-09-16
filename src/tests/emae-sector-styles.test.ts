@@ -15,13 +15,13 @@ describe('EMAE sector styles', () => {
 
     it('distinguishes secondary and tertiary activities by dash density', () => {
         for (const key of ['industria', 'energia', 'construccion']) expect(sector(key)).toMatchObject({ dash: [8, 5] });
-        for (const key of ['comercio', 'hoteles', 'transporte', 'finanzas', 'inmobiliarias', 'administracion_publica', 'ensenanza', 'salud', 'otros_servicios']) {
+        for (const key of ['comercio', 'hoteles', 'transporte', 'finanzas', 'inmobiliarias', 'administracion_publica', 'ensenanza', 'salud', 'otros_servicios', 'impuestos']) {
             expect(sector(key)).toMatchObject({ dash: [2, 5] });
         }
     });
 
     it('uses a black and red treatment for taxes', () => {
-        expect(sector('impuestos')).toMatchObject({ color: '#000000', secondaryColor: '#EF4444' });
+        expect(sector('impuestos')).toMatchObject({ color: '#000000', secondaryColor: '#EF4444', dash: [2, 5] });
     });
 
     it('uses custom colors for selected activities', () => {

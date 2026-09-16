@@ -14,7 +14,7 @@ export const EMAE_SECTORS = [
     { key: 'ensenanza', label: 'Ensenanza', header: 'Ensenanza', color: '#14B8A6', weight: 0.042, dash: [2, 5] },
     { key: 'salud', label: 'Salud', header: 'Servicios sociales y de salud', color: '#F97316', weight: 0.041, dash: [2, 5] },
     { key: 'otros_servicios', label: 'Otros servicios', header: 'Otras actividades de servicios comunitarios, sociales y personales', color: '#A3E635', weight: 0.034, dash: [2, 5] },
-    { key: 'impuestos', label: 'Impuestos', header: 'Impuestos netos de subsidios', color: '#000000', secondaryColor: '#EF4444', weight: 0.092 },
+    { key: 'impuestos', label: 'Impuestos', header: 'Impuestos netos de subsidios', color: '#000000', secondaryColor: '#EF4444', borderColor: '#FFFFFF', weight: 0.092, dash: [2, 5] },
 ] as const;
 
 export type EmaeSectorKey = typeof EMAE_SECTORS[number]['key'];

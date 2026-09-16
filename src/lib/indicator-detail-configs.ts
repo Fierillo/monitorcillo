@@ -445,6 +445,8 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         name: sector.label,
         color: sector.color,
         secondaryColor: 'secondaryColor' in sector ? sector.secondaryColor : undefined,
+        borderColor: 'borderColor' in sector ? sector.borderColor : undefined,
+        borderWidth: 'borderColor' in sector ? 5 : undefined,
         type: 'line',
         strokeWidth: sector.key === 'impuestos' ? 3 : 2,
         dash: 'dash' in sector ? [...sector.dash] : undefined,
