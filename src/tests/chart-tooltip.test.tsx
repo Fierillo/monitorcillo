@@ -13,6 +13,41 @@ const props = {
 };
 
 describe('ChartTooltip', () => {
+    it('keeps the tooltip panel translucent so chart data stays visible behind it', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip {...props} />);
+
+        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
+        expect(markup).toContain('backdrop-filter:blur(2px)');
+    });
+
+    it('uses a light outward outline for near-black series text', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip
+            chartData={[{ fecha: 'ENE 26', negro: 95.4 }]}
+            areaConfigs={[{ key: 'negro', name: 'PA [IS negro/IPCC]', color: '#000000', type: 'line' }]}
+            valueFormat="index"
+            tooltipProps={{ active: true, label: 'ENE 26' }}
+        />);
+
+        expect(markup).toContain('color:#000000');
+        expect(markup).toContain('-webkit-text-stroke:3px rgba(255, 255, 255, 0.9)');
+        expect(markup).toContain('paint-order:stroke fill');
+        expect(markup).not.toContain('background-color:rgba(255, 255, 255, 0.9)');
+    });
+
+    it('keeps series colors with an outward text outline on the translucent panel', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip
+            chartData={[{ fecha: 'ENE 26', dark: 95.4 }]}
+            areaConfigs={[{ key: 'dark', name: 'Serie oscura', color: '#2E2D2C', type: 'line' }]}
+            valueFormat="index"
+            tooltipProps={{ active: true, label: 'ENE 26' }}
+        />);
+
+        expect(markup).toContain('color:#2E2D2C');
+        expect(markup).toContain('-webkit-text-stroke:3px rgba(0, 20, 63, 0.85)');
+        expect(markup).toContain('paint-order:stroke fill');
+        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
+    });
+
     it('hides totals by default for stacked series', () => {
         const markup = renderToStaticMarkup(<ChartTooltip {...props} />);
 
@@ -31,8 +66,14 @@ describe('ChartTooltip', () => {
         expect(markup).toContain('data-compact="true"');
         expect(markup).toContain('max-width:176px');
         expect(markup).toContain('max-height:38vh');
-        expect(markup).toContain('font-size:9px');
+        expect(markup).toContain('font-size:12px');
         expect(markup).toContain('padding:4px');
+    });
+
+    it('uses a larger desktop type size so series text stays legible', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip {...props} />);
+
+        expect(markup).toContain('font-size:14px');
     });
 
     it('honors series tooltip decimals', () => {
@@ -62,7 +103,9 @@ describe('ChartTooltip', () => {
         expect(markup).toContain('height:22px');
         expect(markup).toContain('line-height:22px');
         expect(markup).toContain('align-items:center');
-        expect(markup).toContain('Primero</span><span style="color:#fff">: 2,0%');
+        expect(markup).toContain('Primero</span><span style="color:#fff;-webkit-text-stroke:3px rgba(0, 20, 63, 0.85);paint-order:stroke fill">: 2,0%');
+        expect(markup).toContain('Segundo</span><span style="color:#000;-webkit-text-stroke:3px rgba(255, 255, 255, 0.9);paint-order:stroke fill">: 3,0%');
+        expect(markup).toContain('paint-order:stroke fill');
     });
 
     it('does not apply chart borders to tooltip text', () => {
@@ -74,7 +117,9 @@ describe('ChartTooltip', () => {
         />);
 
         expect(markup).toContain('color:#2E2D2C');
-        expect(markup).not.toContain('-webkit-text-stroke');
+        expect(markup).toContain('-webkit-text-stroke:3px rgba(0, 20, 63, 0.85)');
+        expect(markup).not.toContain('-webkit-text-stroke:#FFFFFF');
+        expect(markup).not.toContain('border-color:#FFFFFF');
     });
 
     it('applies an explicit tooltip background only to the configured series', () => {
@@ -89,8 +134,8 @@ describe('ChartTooltip', () => {
         />);
 
         expect(markup).toContain('background-color:rgba(255, 255, 255, 0.9)');
-        expect(markup).not.toContain('-webkit-text-stroke');
-        expect(markup).toContain('<span style="color:#FFFFFF">Salario formal:');
+        expect(markup).toContain('<span style="color:#000000;-webkit-text-stroke:3px rgba(255, 255, 255, 0.9);paint-order:stroke fill">Salario informal:');
+        expect(markup).toContain('<span style="color:#FFFFFF;-webkit-text-stroke:3px rgba(0, 20, 63, 0.85);paint-order:stroke fill">Salario formal:');
     });
 
     it('omits every series without a value for the active month', () => {
@@ -138,6 +183,8 @@ describe('ChartTooltip', () => {
         expect(markup).toContain('Javier Milei');
         expect(markup).toContain('2,40');
         expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
+        expect(markup).toContain('-webkit-text-stroke:3px rgba(0, 20, 63, 0.85)');
+        expect(markup).toContain('paint-order:stroke fill');
         expect(markup).toContain('backdrop-filter:blur(2px)');
     });
 });
