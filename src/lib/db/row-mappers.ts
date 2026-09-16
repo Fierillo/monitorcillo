@@ -137,6 +137,7 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
             ...common,
             pobreza_indec: toNullableNumber(row.pobreza_indec),
             pobreza_utdt: toNullableNumber(row.pobreza_utdt),
+            pobreza_uca: toNullableNumber(row.pobreza_uca),
         } as NormalizedDataByType[T];
     }
 

@@ -5,6 +5,7 @@ import { toNullableNumber } from './numbers';
 type MonthlyPovertyRow = {
     pobreza_indec: number | null;
     pobreza_utdt: number | null;
+    pobreza_uca: number | null;
 };
 
 function addMonths(fecha: string, offset: number): string {
@@ -19,7 +20,7 @@ function monthRange(start: string, end: string): string[] {
 }
 
 function emptyMonthlyRow(): MonthlyPovertyRow {
-    return { pobreza_indec: null, pobreza_utdt: null };
+    return { pobreza_indec: null, pobreza_utdt: null, pobreza_uca: null };
 }
 
 function setMonthlyValue(rowsByFecha: Map<string, MonthlyPovertyRow>, fecha: string, values: Partial<MonthlyPovertyRow>) {
@@ -58,10 +59,16 @@ export function normalizePobreza(rawData: PobrezaRawRow[]): PobrezaNormalizedRow
         });
     }
 
+    for (const row of sortedRows) {
+        const pobrezaUca = toNullableNumber(row.pobreza_uca ?? null);
+        if (pobrezaUca == null) continue;
+        setMonthlyValue(rowsByFecha, row.fecha, { pobreza_uca: pobrezaUca });
+    }
+
     const normalizedRows: PobrezaNormalizedRow[] = [];
     for (const [fecha, row] of Array.from(rowsByFecha.entries()).sort(([a], [b]) => a.localeCompare(b))) {
         const date = new Date(`${fecha}T00:00:00Z`);
-        if (row.pobreza_indec == null && row.pobreza_utdt == null) continue;
+        if (row.pobreza_indec == null && row.pobreza_utdt == null && row.pobreza_uca == null) continue;
         if (Number.isNaN(date.getTime())) continue;
 
         normalizedRows.push({
@@ -69,6 +76,7 @@ export function normalizePobreza(rawData: PobrezaRawRow[]): PobrezaNormalizedRow
             iso_fecha: fecha,
             pobreza_indec: row.pobreza_indec,
             pobreza_utdt: row.pobreza_utdt,
+            pobreza_uca: row.pobreza_uca,
         });
     }
 

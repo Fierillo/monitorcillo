@@ -216,6 +216,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         getNextExpectedEvents: ({ rawRows, rawDate, sourcePublicationDates, today }) => [
             ...futureMonthly(sourcePublicationDates?.['pobreza-utdt'] ?? latestDateWithValue(rawRows, ['pobreza_utdt']) ?? rawDate, today, 'Nowcast UTDT', 10),
             ...futureMonthly(latestDateWithValue(rawRows, ['pobreza_indec']), today, 'Pobreza INDEC', 8, 6),
+            ...futureMonthly(sourcePublicationDates?.['pobreza-uca'] ?? latestDateWithValue(rawRows, ['pobreza_uca']), today, 'Pobreza UCA', 6, 12),
         ],
     },
     inflacion: {

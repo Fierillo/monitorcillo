@@ -7,8 +7,13 @@ const INDEC_POBREZA_SERIES_ID = '64.2_POBLACION_NUA_0_0_34_74';
 const UTDT_POBREZA_URL = 'https://www.utdt.edu/ver_contenido.php?id_contenido=22217&id_item_menu=36605';
 const UTDT_ORIGIN = 'https://www.utdt.edu';
 const UTDT_SHINY_URL = 'https://mrozada.shinyapps.io/shinynowcast/';
+const UCA_REPO_ORIGIN = 'https://repositorio.uca.edu.ar';
+const UCA_POBREZA_SEARCH_URL = `${UCA_REPO_ORIGIN}/simple-search?query=%22privaciones+socio-econ%C3%B3micas+de+los+hogares+urbanos%22+OR+%22condiciones+materiales+de+vida+de+los+hogares+y+la+poblaci%C3%B3n%22&sort_by=dc.date.issued_dt&order=desc&rpp=20`;
+const UCA_POBREZA_TITLE = /condiciones materiales de vida de los hogares|privaciones socio-econ[oó]micas de los hogares urbanos/i;
 const PDF_FETCH_CONCURRENCY = 4;
 const SHINY_TIMEOUT_MS = 30_000;
+const UCA_FETCH_TIMEOUT_MS = 30_000;
+const UCA_EDSA_START_YEAR = 2010;
 const SEMESTER_MONTHS: Record<string, number> = {
     ene: 1, feb: 2, mar: 3, abr: 4, may: 5, jun: 6,
     jul: 7, ago: 8, sep: 9, oct: 10, nov: 11, dic: 12,
@@ -147,6 +152,97 @@ export function indecFechaToSemesterEnd(fecha: string): string | null {
     const [year, month] = fecha.split('-').map(Number);
     if (!year || !month) return null;
     return new Date(Date.UTC(year, month - 2, 1)).toISOString().split('T')[0];
+}
+
+function lastMatchIndex(text: string, pattern: RegExp): number {
+    let last = -1;
+    const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+    for (const match of text.matchAll(new RegExp(pattern.source, flags))) {
+        if (match.index != null) last = match.index;
+    }
+    return last;
+}
+
+function parseUcaPercentRun(text: string): number[] {
+    return [...text.matchAll(/\d{1,2}[.,]\d/g)]
+        .map(match => Number(match[0].replace(',', '.')))
+        .filter(value => Number.isFinite(value));
+}
+
+function selectUcaEstimates(values: number[], expectedCount: number): number[] {
+    if (values.length >= expectedCount * 2) return values.slice(0, expectedCount);
+    if (values.length >= expectedCount) return values.slice(0, expectedCount);
+    return values;
+}
+
+function parseUcaYearRange(text: string): { startYear: number; expectedCount: number } | null {
+    const match = text.match(/Años\s+(\d{4})-(\d{4})/i);
+    if (!match) return null;
+    const startYear = Number(match[1]);
+    const endYear = Number(match[2]);
+    if (!Number.isFinite(startYear) || !Number.isFinite(endYear) || endYear < startYear) return null;
+    return { startYear, expectedCount: endYear - startYear + 1 };
+}
+
+function parseUcaTotalesFromWindow(window: string): PobrezaRawRow[] {
+    const totalsIdx = window.lastIndexOf('TOTALES');
+    if (totalsIdx < 0) return [];
+
+    const afterTotals = window.slice(totalsIdx);
+    const estadistico = afterTotals.match(/Estad[ií]stico(?:\s+L[ií]mite\s+superior)?[^\d\n]*([^\n]+)/i);
+    if (!estadistico) return [];
+
+    const yearRange = parseUcaYearRange(window);
+    const startYear = yearRange?.startYear ?? UCA_EDSA_START_YEAR;
+    const expectedCount = yearRange?.expectedCount ?? 0;
+    const values = parseUcaPercentRun(estadistico[1]);
+    const estimates = expectedCount > 0 ? selectUcaEstimates(values, expectedCount) : values;
+    if (estimates.length < 8 || estimates.some(value => value < 15 || value > 70)) return [];
+
+    return estimates.map((pobreza_uca, index) => ({
+        fecha: `${startYear + index}-09-01`,
+        pobreza_uca,
+    }));
+}
+
+export function parseUcaEdsaPovertyRows(text: string): PobrezaRawRow[] {
+    const caption = lastMatchIndex(text, /Figura\s*2\.4/gi);
+    const windows = caption >= 0
+        ? [text.slice(Math.max(0, caption - 5000), caption), text.slice(caption, caption + 4000)]
+        : [text];
+
+    for (const window of windows) {
+        const rows = parseUcaTotalesFromWindow(window);
+        if (rows.length > 0) return rows;
+    }
+
+    return [];
+}
+
+function decodeHtmlEntities(value: string): string {
+    return value
+        .replace(/&#x20;/gi, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+        .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(Number.parseInt(code, 16)));
+}
+
+export function parseUcaPovertyItemUrl(html: string): string | null {
+    for (const match of html.matchAll(/<td headers=["']t3["'][^>]*>\s*<a href=["'](\/handle\/\d+\/\d+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+        const title = decodeHtmlEntities(stripHtml(match[2]));
+        if (!UCA_POBREZA_TITLE.test(title)) continue;
+        return `${UCA_REPO_ORIGIN}${match[1]}`;
+    }
+
+    return null;
+}
+
+export function parseUcaPovertyPdfUrl(html: string): string | null {
+    const link = extractFileLinks(html, { origin: UCA_REPO_ORIGIN, extensions: ['pdf'] })
+        .find(candidate => /\/bitstream\//i.test(candidate.href));
+    return link?.href ?? null;
 }
 
 export function overlayIndecOnNowcast(rows: PobrezaRawRow[]): PobrezaRawRow[] {
@@ -359,19 +455,53 @@ async function fetchUtdtPobrezaReport(): Promise<PobrezaSourceReport> {
     }
 }
 
+async function fetchUcaPobrezaReport(): Promise<PobrezaSourceReport> {
+    try {
+        const searchHtml = await fetchTextFromUrl(UCA_POBREZA_SEARCH_URL, { timeoutMs: UCA_FETCH_TIMEOUT_MS });
+        const itemUrl = parseUcaPovertyItemUrl(searchHtml);
+        if (!itemUrl) {
+            console.error('UCA EDSA: no poverty statistical document found in the repository search.');
+            return { rows: [], publishedAt: null };
+        }
+
+        const itemHtml = await fetchTextFromUrl(itemUrl, { timeoutMs: UCA_FETCH_TIMEOUT_MS });
+        const pdfUrl = parseUcaPovertyPdfUrl(itemHtml);
+        if (!pdfUrl) {
+            console.error(`UCA EDSA: no PDF bitstream linked from ${itemUrl}.`);
+            return { rows: [], publishedAt: null };
+        }
+
+        const [document, publishedAt] = await Promise.all([
+            fetchPdf(pdfUrl, { timeoutMs: UCA_FETCH_TIMEOUT_MS }),
+            fetchLastModifiedDate(pdfUrl),
+        ]);
+        const rows = parseUcaEdsaPovertyRows(document.content.text);
+        if (rows.length === 0) {
+            console.error(`UCA EDSA: could not extract the poverty series from ${pdfUrl}.`);
+            return { rows: [], publishedAt: null };
+        }
+
+        return { rows, publishedAt };
+    } catch (error) {
+        console.error('Failed to extract UCA EDSA poverty series:', error);
+        return { rows: [], publishedAt: null };
+    }
+}
+
 export async function fetchPobrezaRaw(): Promise<PobrezaRawRow[]> {
     return (await fetchPobrezaRawReport()).rows;
 }
 
 export async function fetchPobrezaRawReport(): Promise<PobrezaSourceReport> {
-    const [indecRows, utdtReport] = await Promise.all([
+    const [indecRows, utdtReport, ucaReport] = await Promise.all([
         fetchIndecPobrezaRows(),
         fetchUtdtPobrezaReport(),
+        fetchUcaPobrezaReport(),
     ]);
 
     const byFecha = new Map(indecRows.map(row => [row.fecha, row]));
 
-    for (const row of utdtReport.rows) {
+    for (const row of [...utdtReport.rows, ...ucaReport.rows]) {
         byFecha.set(row.fecha, { ...byFecha.get(row.fecha), ...row });
     }
 
@@ -382,6 +512,7 @@ export async function fetchPobrezaRawReport(): Promise<PobrezaSourceReport> {
         publishedAt: utdtReport.publishedAt,
         sourcePublications: [
             { id: 'pobreza-utdt', publishedAt: utdtReport.publishedAt, periodDate: utdtReport.rows.at(-1)?.fecha ?? null },
+            { id: 'pobreza-uca', publishedAt: ucaReport.publishedAt, periodDate: ucaReport.rows.at(-1)?.fecha ?? null },
         ].filter((source): source is { id: string; publishedAt: string; periodDate: string | null } => source.publishedAt !== null),
     };
 }

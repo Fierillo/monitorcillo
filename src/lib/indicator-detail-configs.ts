@@ -670,11 +670,13 @@ async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {
     const areas: AreaConfig[] = [
         { key: 'pobreza_indec', name: 'Pobreza INDEC', color: '#FFD700', type: 'line', strokeWidth: 2.5, connectNulls: true },
         { key: 'pobreza_utdt', name: 'Nowcast UTDT', color: '#FF4D4D', type: 'line', dash: [6, 4], strokeWidth: 2, connectNulls: true, showDots: false },
+        { key: 'pobreza_uca', name: 'Pobreza UCA', color: '#38BDF8', type: 'line', strokeWidth: 2, connectNulls: true, showDots: true },
     ];
     const methodology = [
         { title: 'INDEC', description: 'Serie oficial semestral de población con ingresos debajo de la línea de pobreza, total EPH continua. Línea amarilla sólida; los puntos marcan el mes exacto de publicación.' },
         { title: 'UTDT', description: 'Nowcast de Martín González-Rozada (UTDT). Cada mes se toma la serie vigente del gráfico interactivo (EPH + proyección) y, si hace falta, del último PDF o del titular de la página; los puntos nuevos pisan los anteriores de esas fechas y el resto de la historia se conserva.' },
-        { title: 'Frecuencia', description: 'INDEC publica datos semestrales; UTDT publica proyecciones mensuales actualizadas cada mes.' },
+        { title: 'UCA', description: 'Serie anual de la Encuesta de la Deuda Social Argentina (EDSA-ODSA/UCA): incidencia de pobreza en personas, tercer trimestre, aglomerados urbanos de más de 80 mil habitantes. No es comparable uno a uno con INDEC/EPH: muestra, cobertura y método son distintos. Los puntos marcan cada relevamiento anual.' },
+        { title: 'Frecuencia', description: 'INDEC publica datos semestrales; UTDT publica proyecciones mensuales actualizadas cada mes; UCA publica un dato anual de tercer trimestre.' },
     ];
     return { subtitle: indicator.fuente, chartTitle: 'Incidencia de la pobreza', data: await getIndicatorData('pobreza'), areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% de población', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
 }

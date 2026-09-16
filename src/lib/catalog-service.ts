@@ -33,7 +33,7 @@ async function defaultCatalogDataSources(): Promise<CatalogDataSources> {
 
 const SOURCE_PUBLICATION_IDS: Partial<Record<string, string[]>> = {
     inflacion: ['inflacion-indec', 'inflacion-equilibra', 'inflacion-rem'],
-    pobreza: ['pobreza-utdt'],
+    pobreza: ['pobreza-utdt', 'pobreza-uca'],
 };
 
 function rowDate(row: DataRow | null): string | null {

@@ -257,6 +257,7 @@ export type PobrezaRawRow = {
     fecha: string;
     pobreza_indec?: NumericValue;
     pobreza_utdt?: NumericValue;
+    pobreza_uca?: NumericValue;
 };
 
 export type PobrezaNormalizedRow = {
@@ -264,6 +265,7 @@ export type PobrezaNormalizedRow = {
     iso_fecha: string;
     pobreza_indec: number | null;
     pobreza_utdt: number | null;
+    pobreza_uca: number | null;
 };
 
 export type IcgRawRow = {

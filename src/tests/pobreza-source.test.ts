@@ -4,6 +4,9 @@ import {
     overlayIndecOnNowcast,
     parseLatestUtdtNowcastRow,
     parsePovertyRateFromPdfText,
+    parseUcaEdsaPovertyRows,
+    parseUcaPovertyItemUrl,
+    parseUcaPovertyPdfUrl,
     parseUtdtChartImageUrl,
     parseUtdtPeriodPdfLinks,
     parseUtdtShinyRows,
@@ -131,5 +134,79 @@ describe('pobreza UTDT source parsing', () => {
     it('extracts the worker ID from the UTDT Shiny bootstrap response', () => {
         expect(parseUtdtShinyWorkerId('{"config":{"workerId":"abc123"}}')).toBe('abc123');
         expect(parseUtdtShinyWorkerId('invalid')).toBeNull();
+    });
+});
+
+describe('pobreza UCA EDSA source parsing', () => {
+    it('picks the first repository search hit that matches the EDSA poverty document family', () => {
+        const html = `
+            <tr><td headers="t3"><a href="/handle/1/10">Informe metodológico ODSA</a></td></tr>
+            <tr>
+              <td headers="t3">
+                <a href="/handle/1/20">Condiciones&#x20;materiales&#x20;de&#x20;vida&#x20;de&#x20;los&#x20;hogares&#x20;y&#x20;la&#x20;población&#x20;(2010-2017)</a>
+              </td>
+            </tr>
+            <tr>
+              <td headers="t3">
+                <a href="/handle/1/30">Condiciones materiales de vida de los hogares y la población (2010-2016)</a>
+              </td>
+            </tr>
+        `;
+
+        expect(parseUcaPovertyItemUrl(html)).toBe('https://repositorio.uca.edu.ar/handle/1/20');
+    });
+
+    it('prefers the repository bitstream PDF over other PDF links on the item page', () => {
+        const html = `
+            <a href="/static/guide.pdf">Guía</a>
+            <a href="/bitstream/1/20/1/serie.pdf">serie.pdf</a>
+            <a href="/handle/1/20">Ítem</a>
+        `;
+
+        expect(parseUcaPovertyPdfUrl(html)).toBe('https://repositorio.uca.edu.ar/bitstream/1/20/1/serie.pdf');
+    });
+
+    it('takes the people-poverty TOTALES nearest to Figura 2.4, not an earlier table', () => {
+        const text = `
+TOTALES
+Estadístico10,111,112,113,114,115,116,117,1
+Años 2000-2007. En porcentaje de población.
+TOTALES
+Límite inferior19,019,119,219,319,419,519,619,7
+Estadístico20,120,220,320,420,520,620,720,8
+Límite superior21,021,121,221,321,421,521,621,7
+Figura 2.4
+Personas en hogares en situación de pobreza
+`;
+        expect(parseUcaEdsaPovertyRows(text)).toEqual([
+            { fecha: '2000-09-01', pobreza_uca: 20.1 },
+            { fecha: '2001-09-01', pobreza_uca: 20.2 },
+            { fecha: '2002-09-01', pobreza_uca: 20.3 },
+            { fecha: '2003-09-01', pobreza_uca: 20.4 },
+            { fecha: '2004-09-01', pobreza_uca: 20.5 },
+            { fecha: '2005-09-01', pobreza_uca: 20.6 },
+            { fecha: '2006-09-01', pobreza_uca: 20.7 },
+            { fecha: '2007-09-01', pobreza_uca: 20.8 },
+        ]);
+    });
+
+    it('keeps only the estadístico values when the confidence band is concatenated', () => {
+        const text = `
+Años 2000-2007. En porcentaje de población.
+TOTALES
+Estadístico Límite superior 20,1 20,2 20,3 20,4 20,5 20,6 20,7 20,8 30,1 30,2 30,3 30,4 30,5 30,6 30,7 30,8
+Figura 2.4
+Personas en hogares en situación de pobreza
+`;
+        expect(parseUcaEdsaPovertyRows(text)).toEqual([
+            { fecha: '2000-09-01', pobreza_uca: 20.1 },
+            { fecha: '2001-09-01', pobreza_uca: 20.2 },
+            { fecha: '2002-09-01', pobreza_uca: 20.3 },
+            { fecha: '2003-09-01', pobreza_uca: 20.4 },
+            { fecha: '2004-09-01', pobreza_uca: 20.5 },
+            { fecha: '2005-09-01', pobreza_uca: 20.6 },
+            { fecha: '2006-09-01', pobreza_uca: 20.7 },
+            { fecha: '2007-09-01', pobreza_uca: 20.8 },
+        ]);
     });
 });
