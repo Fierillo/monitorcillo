@@ -43,6 +43,19 @@ describe('chart series interactions', () => {
 
     afterEach(cleanup);
 
+    it('keeps bordered line outlines inside the series stroke width', () => {
+        render(<ChartLine
+            areaConfig={{ ...area, type: 'line', color: '#000000', borderColor: '#FFFFFF', borderWidth: 5, strokeWidth: 3 }}
+            isDimmed={false}
+            data={[]}
+            onCtrlClick={vi.fn()}
+        />);
+
+        const [borderLine, colorLine] = rechartsProps.lines;
+        expect(borderLine).toMatchObject({ stroke: '#FFFFFF', strokeWidth: 3 });
+        expect(colorLine).toMatchObject({ stroke: '#000000', strokeWidth: 2 });
+    });
+
     it('toggles a line on Ctrl + click through its wide hit target', () => {
         const onCtrlClick = vi.fn();
         const stopPropagation = vi.fn();
@@ -100,14 +113,14 @@ describe('chart series interactions', () => {
         expect(onCtrlClick).not.toHaveBeenCalled();
     });
 
-    it('uses the consolidated spending border style for every bar', () => {
+    it('uses the imperial blue border style for every bar', () => {
         render(<ChartBar areaConfig={{ ...area, type: 'bar' }} isDimmed={false} selectedMonth={null} onSelectMonth={vi.fn()} onCtrlClick={vi.fn()} />);
         const shape = rechartsProps.bars[0].shape as (props: Record<string, unknown>) => ReactElement;
 
         render(shape({ payload: { iso_fecha: '2026-08-01' }, x: 10, y: 20, width: 30, height: 40 }));
 
         expect(rechartsProps.rectangles[0]).toMatchObject({
-            stroke: '#FFD700',
+            stroke: '#00143F',
             strokeWidth: 0.5,
             x: 10.25,
             y: 20.25,
@@ -116,12 +129,12 @@ describe('chart series interactions', () => {
         });
     });
 
-    it('keeps the same gold border on preliminary bars', () => {
+    it('keeps the same imperial blue border on preliminary bars', () => {
         render(<ChartBar areaConfig={{ ...area, type: 'bar', preliminaryKey: 'preliminary' }} isDimmed={false} selectedMonth={null} onSelectMonth={vi.fn()} onCtrlClick={vi.fn()} />);
         const shape = rechartsProps.bars[0].shape as (props: Record<string, unknown>) => ReactElement;
 
         render(shape({ payload: { iso_fecha: '2026-08-01', preliminary: true }, x: 0, y: 0, width: 20, height: 20 }));
 
-        expect(rechartsProps.rectangles[0]).toMatchObject({ stroke: '#FFD700', strokeWidth: 0.5 });
+        expect(rechartsProps.rectangles[0]).toMatchObject({ stroke: '#00143F', strokeWidth: 0.5 });
     });
 });

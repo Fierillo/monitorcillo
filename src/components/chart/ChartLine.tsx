@@ -77,6 +77,9 @@ export default function ChartLine({ areaConfig, isDimmed, data, chartData, allSe
     const showDots = areaConfig.showDots !== false;
     const showAllDots = Boolean(areaConfig.connectNulls) && showDots;
     const strokeWidth = areaConfig.strokeWidth ?? 3;
+    const fillWidth = areaConfig.borderColor
+        ? Math.max(1, strokeWidth - 1)
+        : strokeWidth;
     const showValueLabels = areaConfig.showValueLabels && !isDimmed && (data?.length ?? 0) <= 36;
 
     const dot = isDimmed || !showDots ? false : (dotProps: { index?: number; cx?: number; cy?: number }) => {
@@ -153,7 +156,7 @@ export default function ChartLine({ areaConfig, isDimmed, data, chartData, allSe
             type="monotone"
             dataKey={areaConfig.key}
             stroke={areaConfig.borderColor}
-            strokeWidth={areaConfig.borderWidth ?? strokeWidth + 2}
+            strokeWidth={strokeWidth}
             strokeDasharray={areaConfig.dash ? areaConfig.dash.join(' ') : undefined}
             dot={false}
             activeDot={false}
@@ -168,7 +171,7 @@ export default function ChartLine({ areaConfig, isDimmed, data, chartData, allSe
             type="monotone"
             dataKey={areaConfig.key}
             stroke={stroke}
-            strokeWidth={strokeWidth}
+            strokeWidth={fillWidth}
             strokeDasharray={areaConfig.dash ? areaConfig.dash.join(' ') : undefined}
             dot={dot}
             label={label}
