@@ -24,6 +24,7 @@ async function ensureFeedbackTable(): Promise<void> {
     await sql.query('CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at DESC)', []);
     await sql.query('ALTER TABLE feedback ADD COLUMN IF NOT EXISTS implemented BOOLEAN NOT NULL DEFAULT FALSE', []);
     await sql.query('ALTER TABLE feedback ADD COLUMN IF NOT EXISTS twitter_handle VARCHAR(15)', []);
+    await sql.query('ALTER TABLE feedback ADD COLUMN IF NOT EXISTS rejected BOOLEAN NOT NULL DEFAULT FALSE', []);
     feedbackTableReady = true;
 }
 
@@ -52,7 +53,7 @@ export async function saveFeedback({ message, twitterHandle, context }: Feedback
 export async function getFeedback(): Promise<FeedbackRecord[]> {
     try {
         await ensureFeedbackTable();
-        const rows = await sql.query('SELECT * FROM feedback ORDER BY created_at DESC', []) as DbRow[];
+        const rows = await sql.query('SELECT * FROM feedback ORDER BY rejected ASC, created_at DESC', []) as DbRow[];
         return rows.map(row => ({
             id: Number(row.id),
             message: String(row.message),
@@ -68,6 +69,7 @@ export async function getFeedback(): Promise<FeedbackRecord[]> {
             twitterHandle: row.twitter_handle == null || row.twitter_handle === '' ? undefined : String(row.twitter_handle),
             createdAt: new Date(String(row.created_at)).toISOString(),
             implemented: Boolean(row.implemented),
+            rejected: Boolean(row.rejected),
         }));
     } catch (error) {
         console.error('[db] getFeedback failed', error);
@@ -75,11 +77,29 @@ export async function getFeedback(): Promise<FeedbackRecord[]> {
     }
 }
 
-export async function setFeedbackImplemented(id: number, implemented: boolean): Promise<boolean> {
+export async function setFeedbackStatus(id: number, status: { implemented?: boolean; rejected?: boolean }): Promise<boolean> {
     await ensureFeedbackTable();
+    let implemented = status.implemented;
+    let rejected = status.rejected;
+    if (implemented === true) rejected = false;
+    if (rejected === true) implemented = false;
+
+    const assignments: string[] = [];
+    const values: Array<boolean | number> = [];
+    if (typeof implemented === 'boolean') {
+        assignments.push(`implemented = $${assignments.length + 1}`);
+        values.push(implemented);
+    }
+    if (typeof rejected === 'boolean') {
+        assignments.push(`rejected = $${assignments.length + 1}`);
+        values.push(rejected);
+    }
+    if (assignments.length === 0) return false;
+
+    values.push(id);
     const rows = await sql.query(
-        'UPDATE feedback SET implemented = $1 WHERE id = $2 RETURNING id',
-        [implemented, id],
+        `UPDATE feedback SET ${assignments.join(', ')} WHERE id = $${values.length} RETURNING id`,
+        values,
     ) as DbRow[];
     return rows.length > 0;
 }

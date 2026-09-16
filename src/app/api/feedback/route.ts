@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
-import { saveFeedback, setFeedbackImplemented } from '@/lib/db/feedback';
+import { saveFeedback, setFeedbackStatus } from '@/lib/db/feedback';
 import { checkRequestRateLimit } from '@/lib/rate-limit';
 import type { FeedbackContext, FeedbackSubmission, FeedbackSurface } from '@/types';
 
@@ -91,20 +91,22 @@ export async function PATCH(request: Request) {
     }
 
     let id: number;
-    let implemented: boolean;
+    let status: { implemented?: boolean; rejected?: boolean };
     try {
-        const body = await request.json() as { id?: unknown; implemented?: unknown };
+        const body = await request.json() as { id?: unknown; implemented?: unknown; rejected?: unknown };
         id = Number(body.id);
-        implemented = body.implemented === true;
-        if (!Number.isInteger(id) || id < 1 || typeof body.implemented !== 'boolean') {
+        const implemented = typeof body.implemented === 'boolean' ? body.implemented : undefined;
+        const rejected = typeof body.rejected === 'boolean' ? body.rejected : undefined;
+        if (!Number.isInteger(id) || id < 1 || (implemented === undefined && rejected === undefined)) {
             throw new Error('Invalid feedback update');
         }
+        status = { implemented, rejected };
     } catch {
-        return NextResponse.json({ error: 'Pedido inválido. Enviá id e implemented.' }, { status: 400 });
+        return NextResponse.json({ error: 'Pedido inválido. Enviá id e implemented o rejected.' }, { status: 400 });
     }
 
     try {
-        const updated = await setFeedbackImplemented(id, implemented);
+        const updated = await setFeedbackStatus(id, status);
         if (!updated) return NextResponse.json({ error: 'No se encontró ese feedback.' }, { status: 404 });
         return NextResponse.json({ success: true });
     } catch (error) {

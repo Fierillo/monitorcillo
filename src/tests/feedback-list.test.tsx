@@ -10,6 +10,7 @@ const feedback = {
     metricTitle: 'Inflación (IPC)',
     createdAt: '2026-09-10T22:00:16.943Z',
     implemented: false,
+    rejected: false,
 };
 
 describe('admin feedback list', () => {
@@ -26,6 +27,19 @@ describe('admin feedback list', () => {
         expect(screen.getByRole('link', { name: '@fierillo' }).getAttribute('href')).toBe('https://x.com/fierillo');
     });
 
+    it('tints implemented gold and rejected red without muting open items', () => {
+        render(<FeedbackList data={[
+            { ...feedback, id: 1, message: 'Abierto' },
+            { ...feedback, id: 2, message: 'Hecho', implemented: true },
+            { ...feedback, id: 3, message: 'No', rejected: true },
+        ]} />);
+        const [open, implemented, rejected] = screen.getAllByRole('article');
+        expect(open.className).toContain('bg-imperial-blue');
+        expect(open.className).not.toContain('opacity-');
+        expect(implemented.className).toContain('bg-imperial-gold/8');
+        expect(rejected.className).toContain('bg-red-950/35');
+    });
+
     it('toggles implemented and persists it', async () => {
         render(<FeedbackList data={[feedback]} />);
         const checkbox = screen.getByRole('checkbox', { name: 'Implementado' }) as HTMLInputElement;
@@ -35,7 +49,22 @@ describe('admin feedback list', () => {
         await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/feedback', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: 3, implemented: true }),
+            body: JSON.stringify({ id: 3, implemented: true, rejected: false }),
         }));
+    });
+
+    it('sends rejected feedback to the bottom', async () => {
+        const older = { ...feedback, id: 1, message: 'SIPA', createdAt: '2026-09-03T22:57:42.237Z', rejected: false };
+        const newer = { ...feedback, id: 2, message: 'Colores', createdAt: '2026-09-10T22:00:16.943Z', rejected: false };
+        render(<FeedbackList data={[newer, older]} />);
+        const articles = screen.getAllByRole('article');
+        expect(articles[0].textContent).toContain('Colores');
+        fireEvent.click(screen.getAllByRole('checkbox', { name: 'Rechazado' })[0]);
+        await waitFor(() => expect(screen.getAllByRole('article')[1].textContent).toContain('Colores'));
+        expect(fetch).toHaveBeenCalledWith('/api/feedback', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: 2, implemented: false, rejected: true }),
+        });
     });
 });

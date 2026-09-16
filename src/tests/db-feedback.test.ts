@@ -4,7 +4,7 @@ const database = vi.hoisted(() => ({ query: vi.fn() }));
 
 vi.mock('../lib/db/client', () => ({ sql: database }));
 
-import { getFeedback, saveFeedback, setFeedbackImplemented } from '../lib/db/feedback';
+import { getFeedback, saveFeedback, setFeedbackStatus } from '../lib/db/feedback';
 
 beforeEach(() => {
     database.query.mockReset();
@@ -37,8 +37,9 @@ describe('feedback database', () => {
             metricId: 'emae',
             createdAt: '2026-08-25T12:00:00.000Z',
             implemented: false,
+            rejected: false,
         })]);
-        expect(database.query).toHaveBeenLastCalledWith('SELECT * FROM feedback ORDER BY created_at DESC', []);
+        expect(database.query).toHaveBeenLastCalledWith('SELECT * FROM feedback ORDER BY rejected ASC, created_at DESC', []);
     });
 
     it('stores an optional twitter handle', async () => {
@@ -54,8 +55,17 @@ describe('feedback database', () => {
 
     it('updates the implemented flag', async () => {
         database.query.mockResolvedValue([{ id: 4 }]);
-        await expect(setFeedbackImplemented(4, true)).resolves.toBe(true);
+        await expect(setFeedbackStatus(4, { implemented: true })).resolves.toBe(true);
         const updateCall = database.query.mock.calls.find(([query]) => String(query).includes('UPDATE feedback'));
-        expect(updateCall?.[1]).toEqual([true, 4]);
+        expect(updateCall?.[0]).toContain('implemented = $1');
+        expect(updateCall?.[0]).toContain('rejected = $2');
+        expect(updateCall?.[1]).toEqual([true, false, 4]);
+    });
+
+    it('marks feedback as rejected and clears implemented', async () => {
+        database.query.mockResolvedValue([{ id: 4 }]);
+        await expect(setFeedbackStatus(4, { rejected: true })).resolves.toBe(true);
+        const updateCall = database.query.mock.calls.find(([query]) => String(query).includes('UPDATE feedback'));
+        expect(updateCall?.[1]).toEqual([false, true, 4]);
     });
 });

@@ -3,13 +3,13 @@ import { resetRateLimits } from '../lib/rate-limit';
 
 const mocks = vi.hoisted(() => ({
     saveFeedback: vi.fn(),
-    setFeedbackImplemented: vi.fn(),
+    setFeedbackStatus: vi.fn(),
     isAuthenticated: vi.fn(),
 }));
 
 vi.mock('@/lib/db/feedback', () => ({
     saveFeedback: mocks.saveFeedback,
-    setFeedbackImplemented: mocks.setFeedbackImplemented,
+    setFeedbackStatus: mocks.setFeedbackStatus,
 }));
 vi.mock('@/lib/auth', () => ({ isAuthenticated: mocks.isAuthenticated }));
 
@@ -39,7 +39,7 @@ beforeEach(() => {
     resetRateLimits();
     mocks.saveFeedback.mockReset();
     mocks.saveFeedback.mockResolvedValue(undefined);
-    mocks.setFeedbackImplemented.mockReset();
+    mocks.setFeedbackStatus.mockReset();
     mocks.isAuthenticated.mockReset();
     mocks.isAuthenticated.mockResolvedValue(true);
 });
@@ -106,18 +106,25 @@ describe('feedback implemented patch', () => {
         mocks.isAuthenticated.mockResolvedValueOnce(false);
         const response = await PATCH(patchRequest({ id: 3, implemented: true }));
         expect(response.status).toBe(401);
-        expect(mocks.setFeedbackImplemented).not.toHaveBeenCalled();
+        expect(mocks.setFeedbackStatus).not.toHaveBeenCalled();
     });
 
     it('marks feedback as implemented', async () => {
-        mocks.setFeedbackImplemented.mockResolvedValueOnce(true);
+        mocks.setFeedbackStatus.mockResolvedValueOnce(true);
         const response = await PATCH(patchRequest({ id: 3, implemented: true }));
         expect(response.status).toBe(200);
-        expect(mocks.setFeedbackImplemented).toHaveBeenCalledWith(3, true);
+        expect(mocks.setFeedbackStatus).toHaveBeenCalledWith(3, { implemented: true, rejected: undefined });
+    });
+
+    it('marks feedback as rejected', async () => {
+        mocks.setFeedbackStatus.mockResolvedValueOnce(true);
+        const response = await PATCH(patchRequest({ id: 3, rejected: true }));
+        expect(response.status).toBe(200);
+        expect(mocks.setFeedbackStatus).toHaveBeenCalledWith(3, { implemented: undefined, rejected: true });
     });
 
     it('returns not found when the feedback does not exist', async () => {
-        mocks.setFeedbackImplemented.mockResolvedValueOnce(false);
+        mocks.setFeedbackStatus.mockResolvedValueOnce(false);
         const response = await PATCH(patchRequest({ id: 99, implemented: false }));
         expect(response.status).toBe(404);
     });

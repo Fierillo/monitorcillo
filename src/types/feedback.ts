@@ -24,4 +24,5 @@ export type FeedbackRecord = FeedbackContext & {
     twitterHandle?: string;
     createdAt: string;
     implemented: boolean;
+    rejected: boolean;
 };
