@@ -14,17 +14,48 @@ const icgSource = vi.hoisted(() => ({
     fetchIcgRawReport: vi.fn(),
 }));
 
+const sipaSource = vi.hoisted(() => ({
+    ensureSipaTables: vi.fn(),
+    fetchSipaRawReport: vi.fn(),
+}));
+
 const bmaSource = vi.hoisted(() => ({ fetchBmaRaw: vi.fn() }));
 
 vi.mock('@/lib/db/client', () => ({ sql: { query: vi.fn(), transaction: vi.fn() } }));
 vi.mock('@/lib/db', () => db);
 vi.mock('@/lib/sync/icg', () => icgSource);
+vi.mock('@/lib/sync/sipa', () => sipaSource);
 vi.mock('@/lib/sync/bma', () => bmaSource);
 
 const STORED_ICG_HISTORY = [
     { fecha: '2025-10-01', icg: 2.41 },
     { fecha: '2025-11-01', icg: 2.35 },
     { fecha: '2025-12-01', icg: 2.29 },
+];
+
+const STORED_SIPA_HISTORY = [
+    {
+        fecha: '2026-04-01',
+        privado: 6141.4,
+        publico: 3385.7,
+        casas_particulares: 444.5,
+        autonomos: 394.7,
+        monotributo: 2198.1,
+        monotributo_social: 236.7,
+        total: 12801,
+        provisional: true,
+    },
+    {
+        fecha: '2026-05-01',
+        privado: 6132.6,
+        publico: 3385.1,
+        casas_particulares: 445,
+        autonomos: 391.7,
+        monotributo: 2202.4,
+        monotributo_social: 232.1,
+        total: 12789,
+        provisional: true,
+    },
 ];
 
 function expectNoSeriesWrites() {
@@ -36,7 +67,7 @@ function expectNoSeriesWrites() {
 describe('sync data preservation', () => {
     beforeEach(() => {
         vi.resetModules();
-        [...Object.values(db), ...Object.values(icgSource), ...Object.values(bmaSource)].forEach(mock => mock.mockReset());
+        [...Object.values(db), ...Object.values(icgSource), ...Object.values(sipaSource), ...Object.values(bmaSource)].forEach(mock => mock.mockReset());
         db.getRawData.mockResolvedValue(STORED_ICG_HISTORY);
     });
 
@@ -98,6 +129,45 @@ describe('sync data preservation', () => {
 
         await expect(syncIcg()).rejects.toThrow('ECONNREFUSED');
         expectNoSeriesWrites();
+    });
+
+    it('upserts only the new SIPA dates and rebuilds normalized modality totals from stored history', async () => {
+        const persistedAfterUpsert = [
+            ...STORED_SIPA_HISTORY,
+            {
+                fecha: '2026-06-01',
+                privado: 6126.4,
+                publico: 3380,
+                casas_particulares: 444.1,
+                autonomos: 388.9,
+                monotributo: 2206.8,
+                monotributo_social: 227.3,
+                total: 12773.4,
+                provisional: true,
+            },
+        ];
+        db.getRawData
+            .mockResolvedValueOnce(STORED_SIPA_HISTORY)
+            .mockResolvedValueOnce(persistedAfterUpsert);
+        sipaSource.fetchSipaRawReport.mockResolvedValue({
+            rows: [STORED_SIPA_HISTORY[1], persistedAfterUpsert[2]],
+            publishedAt: '2026-07-10',
+        });
+        const { syncSipa } = await import('@/lib/sync/tasks');
+
+        await expect(syncSipa()).resolves.toEqual({ appended: 1, total: 3 });
+
+        expect(db.replaceRawData).not.toHaveBeenCalled();
+        expect(db.saveRawData).toHaveBeenCalledWith('sipa', [persistedAfterUpsert[2]]);
+        expect(db.replaceNormalizedData.mock.calls[0][1].map((row: { iso_fecha: string; total: number | null }) => ({
+            iso_fecha: row.iso_fecha,
+            total: row.total,
+        }))).toEqual([
+            { iso_fecha: '2026-04-01', total: 12801 },
+            { iso_fecha: '2026-05-01', total: 12789 },
+            { iso_fecha: '2026-06-01', total: 12773.4 },
+        ]);
+        expect(db.saveIndicatorPublication).toHaveBeenCalledWith('sipa', '2026-07-10', '2026-06-01');
     });
 
     it('keeps the stored series when a full-replacement source returns nothing', async () => {

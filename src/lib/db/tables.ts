@@ -12,6 +12,7 @@ const TABLES: Record<IndicatorType, { raw: string; normalized: string }> = {
     inflacion: { raw: 'inflacion_raw', normalized: 'inflacion_normalized' },
     icg: { raw: 'icg_raw', normalized: 'icg_normalized' },
     balanza: { raw: 'balanza_raw', normalized: 'balanza_normalized' },
+    sipa: { raw: 'sipa_raw', normalized: 'sipa_normalized' },
 };
 
 export function getTableName(type: IndicatorType, normalized: boolean): string {

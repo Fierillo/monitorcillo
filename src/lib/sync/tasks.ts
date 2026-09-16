@@ -1,7 +1,7 @@
 import type { EmisionRawRow, IndicatorType, NormalizedDataRow, RawDataByType, SyncResult, SyncRunReport } from '@/types';
 import { getRawData, replaceNormalizedData, saveIndicatorPublication, saveIndicatorsCatalog, saveRawData } from '../db';
 import { buildCurrentIndicatorsCatalog } from '../catalog-service';
-import { fechaToISO, normalizeBalanza, normalizeBma, normalizeDepositosPrestamos, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion } from '../normalize';
+import { fechaToISO, normalizeBalanza, normalizeBma, normalizeDepositosPrestamos, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion, normalizeSipa } from '../normalize';
 import { runSyncTasks } from '../sync-runner';
 import { buildEmissionRows, fetchEmisionRaw } from './bcra';
 import { fetchBmaRaw } from './bma';
@@ -14,6 +14,7 @@ import { ensurePobrezaTables, fetchPobrezaRawReport } from './pobreza';
 import { ensureInflacionTables, fetchInflacionRawReport } from './inflacion';
 import { ensureIcgTables, fetchIcgRawReport } from './icg';
 import { ensureBalanzaTables, fetchBalanzaRawReport } from './balanza';
+import { ensureSipaTables, fetchSipaRawReport } from './sipa';
 import { mergeRawSeries } from './merge-raw';
 
 function normalizeEmisionRawRow(row: EmisionRawRow): EmisionRawRow {
@@ -198,6 +199,16 @@ export async function syncBalanza(): Promise<SyncResult> {
     return result;
 }
 
+export async function syncSipa(): Promise<SyncResult> {
+    const type: IndicatorType = 'sipa';
+    await ensureSipaTables();
+    const existingData = (await getRawData(type)) ?? [];
+    const { rows: rawData, publishedAt } = await fetchSipaRawReport();
+    const result = await persistMergedRawAndNormalize(type, existingData, rawData, normalizeSipa);
+    if (publishedAt && rawData.length > 0) await saveIndicatorPublication('sipa', publishedAt, rawData.at(-1)?.fecha ?? null);
+    return result;
+}
+
 export async function runSync(): Promise<SyncRunReport> {
     const indicatorReport = await runSyncTasks([
         { key: 'emision', run: syncEmision },
@@ -211,6 +222,7 @@ export async function runSync(): Promise<SyncRunReport> {
         { key: 'inflacion', run: syncInflacion },
         { key: 'icg', run: syncIcg },
         { key: 'balanza_comercial', run: syncBalanza },
+        { key: 'sipa', run: syncSipa },
     ]);
     const catalogReport = await runSyncTasks([{ key: 'catalog', run: syncIndicatorsCatalog }]);
     return {

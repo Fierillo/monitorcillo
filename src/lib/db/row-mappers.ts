@@ -4,6 +4,7 @@ import { EMAE_SECTOR_APORTE_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
 import { PNFC_SERIES } from '../morosidad/schema';
 import { isoToFecha, isoToMonthLabel } from '../normalize';
 import { RECAUDACION_BREAKDOWN_TYPES } from '../recaudacion/schema';
+import { SIPA_VALUE_KEYS } from '../sipa-schema';
 import { formatDbDate, toNullableNumber, toNumber } from './tables';
 
 export function toCatalogTrend(value: unknown): IndicatorTrend {
@@ -170,6 +171,14 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
             tc: toNullableNumber(row.tc),
             ipc_nucleo: toNullableNumber(row.ipc_nucleo),
             pbi_usd: toNullableNumber(row.pbi_usd),
+        } as NormalizedDataByType[T];
+    }
+
+    if (type === 'sipa') {
+        return {
+            ...common,
+            ...Object.fromEntries(SIPA_VALUE_KEYS.map(key => [key, toNullableNumber(row[key])])),
+            provisional: Boolean(row.provisional),
         } as NormalizedDataByType[T];
     }
 

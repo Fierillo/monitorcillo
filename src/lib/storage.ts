@@ -15,6 +15,7 @@ const MAPPING: Record<string, IndicatorType> = {
     'poder-adquisitivo': 'poder',
     inflacion: 'inflacion',
     icg: 'icg',
+    sipa: 'sipa',
     balanza: 'balanza',
     'balanza-comercial': 'balanza',
 };

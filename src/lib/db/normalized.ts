@@ -9,6 +9,7 @@ import {
     RECAUDACION_TAX_MM12_DB_COLUMNS,
     RECAUDACION_TAX_PCT_DB_COLUMNS,
 } from '../recaudacion/schema';
+import { SIPA_NORMALIZED_COLUMNS, SIPA_VALUE_KEYS } from '../sipa-schema';
 import { sql } from './client';
 import { toNormalizedRow } from './row-mappers';
 import { getTableName, isMissingTableError, isSafeColumn, toNullableNumber, toNumber } from './tables';
@@ -25,6 +26,7 @@ const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     inflacion: ['fecha', 'ipc_indec', 'ipc_nucleo_indec', 'ipc_equilibra', 'ipc_online', 'rem', 'ipc'],
     icg: ['fecha', 'icg'],
     balanza: [...BALANZA_NORMALIZED_COLUMNS],
+    sipa: [...SIPA_NORMALIZED_COLUMNS],
 };
 
 export async function getNormalizedData<T extends IndicatorType>(type: T): Promise<Array<NormalizedDataByType[T]> | null> {
@@ -99,6 +101,7 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
     if (type === 'inflacion') return [fecha, toNullableNumber(row.ipc_indec), toNullableNumber(row.ipc_nucleo_indec), toNullableNumber(row.ipc_equilibra), toNullableNumber(row.ipc_online), toNullableNumber(row.rem), toNullableNumber(row.ipc)];
     if (type === 'icg') return [fecha, toNullableNumber(row.icg)];
     if (type === 'balanza') return [fecha, ...BALANZA_SERIES_KEYS.map(key => toNullableNumber(row[key])), toNullableNumber(row.pbi), toNullableNumber(row.tc), toNullableNumber(row.ipc_nucleo), toNullableNumber(row.pbi_usd)];
+    if (type === 'sipa') return [fecha, ...SIPA_VALUE_KEYS.map(key => toNullableNumber(row[key])), Boolean(row.provisional)];
     return [fecha, toNullableNumber(row.blanco), toNullableNumber(row.negro), toNullableNumber(row.privado), toNullableNumber(row.publico), toNullableNumber(row.ripte), toNullableNumber(row.jubilacion)];
 }
 

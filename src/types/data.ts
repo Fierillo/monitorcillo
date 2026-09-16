@@ -1,6 +1,7 @@
 import type { BalanzaSeriesKey } from '@/lib/balanza/schema';
 import type { EmaeSectorAporteKey, EmaeSectorKey, EmaeSectorMm12Key } from '@/lib/emae/schema';
 import type { PnfcNormalizedKey, PnfcRawKey } from '@/lib/morosidad/schema';
+import type { SipaValueKey } from '@/lib/sipa-schema';
 import type { NumericValue } from './common';
 import type { IndicatorType } from './indicators';
 
@@ -279,6 +280,17 @@ export type IcgNormalizedRow = {
     icg: number | null;
 };
 
+export type SipaRawRow = {
+    fecha: string;
+    provisional: boolean;
+} & Partial<Record<SipaValueKey, NumericValue>>;
+
+export type SipaNormalizedRow = {
+    fecha: string;
+    iso_fecha: string;
+    provisional: boolean;
+} & Record<SipaValueKey, number | null>;
+
 export type BalanzaRawRow = {
     fecha: string;
     pbi_trimestral?: NumericValue;
@@ -328,6 +340,7 @@ export type RawDataByType = {
     inflacion: InflacionRawRow;
     icg: IcgRawRow;
     balanza: BalanzaRawRow;
+    sipa: SipaRawRow;
 };
 
 export type NormalizedDataByType = {
@@ -342,6 +355,7 @@ export type NormalizedDataByType = {
     inflacion: InflacionNormalizedRow;
     icg: IcgNormalizedRow;
     balanza: BalanzaNormalizedRow;
+    sipa: SipaNormalizedRow;
 };
 
 export type RawDataRow = RawDataByType[IndicatorType];

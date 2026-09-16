@@ -142,4 +142,24 @@ describe('buildIndicatorsCatalog', () => {
             proxima_fecha: formatDay(futureDate('2026-06-01', date => addMonthsFromDate(date, 1))),
         });
     });
+
+    it('shows the latest SIPA total registered employment in millions of workers', () => {
+        const result = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'sipa' }], {
+            sipa: [
+                { iso_fecha: '2026-05-01', total: 12800 },
+                { iso_fecha: '2026-06-01', total: 12773.4 },
+            ],
+        }, {
+            sipa: [{ fecha: '2026-06-01', total: 12773.4, privado: 6126.4 }],
+        });
+
+        expect(result[0]).toMatchObject({
+            fecha: 'JUN 26',
+            dato: '12,8 millones',
+            referencia: '12,8 millones',
+            reference_description: 'Mes anterior desest.',
+            trend: 'down',
+            proxima_fecha: formatDay(futureDate('2026-06-01', date => addMonthsFromDate(date, 1))),
+        });
+    });
 });

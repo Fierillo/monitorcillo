@@ -4,6 +4,7 @@ import { EMAE_SECTORS } from './emae/schema';
 import { PNFC_BREAKDOWNS } from './morosidad/schema';
 import { normalizeDepositosPrestamos } from './normalize/depositos-prestamos';
 import { RECAUDACION_BREAKDOWN_TYPES } from './recaudacion/schema';
+import { SIPA_BREAKDOWN_SERIES } from './sipa-schema';
 import { ICG_PRESIDENTIAL_MANDATES, PRESIDENTIAL_MANDATES } from './presidential-mandates';
 import { fetchRemExpectationsHistory, normalizeRemExpectations } from './inflacion-source';
 import { keepRemAfterLastIndec, toYearOverYearInflacion } from './normalize/inflacion';
@@ -29,6 +30,7 @@ export async function getIndicatorDetailConfig(indicator: Indicator): Promise<De
     if (indicator.id === 'pobreza') return pobrezaConfig(indicator);
     if (indicator.id === 'inflacion') return inflacionConfig(indicator);
     if (indicator.id === 'icg') return icgConfig(indicator);
+    if (indicator.id === 'sipa') return sipaConfig(indicator);
     if (indicator.id === 'balanza-comercial') return balanzaConfig(indicator);
     return null;
 }
@@ -849,6 +851,47 @@ async function icgConfig(indicator: Indicator): Promise<DetailConfig> {
             { id: 'general', label: 'GENERAL', chartTitle: 'Índice de Confianza en el Gobierno', areas, methodology, valueFormat: 'index', yAxisDecimals: 2, yAxisLabel: 'Puntos (0-5)', leftYAxisDomain: 'auto-pad' },
             { id: 'mandatos', label: 'POR MANDATO', chartTitle: 'Confianza en el Gobierno por mandato', data: mandateData, areas: mandateAreas, methodology: mandateMethodology, valueFormat: 'index', yAxisDecimals: 2, yAxisLabel: 'Puntos (0-5)', leftYAxisDomain: 'auto-pad' },
         ],
+    };
+}
+
+async function sipaConfig(indicator: Indicator): Promise<DetailConfig> {
+    const data: ChartDataRow[] = (await getIndicatorData('sipa')).map(row => ({
+        ...row,
+        preliminary: Boolean(row.provisional),
+    }));
+    const areas: AreaConfig[] = [
+        ...SIPA_BREAKDOWN_SERIES.map((series, index) => ({
+            key: series.key,
+            name: series.name,
+            color: series.color,
+            type: 'bar' as const,
+            stackId: 'sipa',
+            preliminaryKey: 'preliminary',
+            preliminaryColor: `${series.color}99`,
+            ...(index === 0 ? { preliminaryLabel: 'Provisorio: declaración AFIP incompleta' } : {}),
+        })),
+        { key: 'total', name: 'Total registrado', color: '#FFD700', type: 'line', strokeWidth: 3, showDots: false, hideInTooltip: true },
+    ];
+    const methodology: MethodologyItem[] = [
+        { title: 'Fuente', description: 'Situación y evolución del trabajo registrado (SIPA) de la Secretaría de Trabajo, Empleo y Seguridad Social, sobre registros administrativos de ARCA.' },
+        { title: 'Cobertura', description: 'Incluye asalariados privados y públicos, trabajo en casas particulares, autónomos, monotributistas y monotributistas sociales.' },
+        { title: 'Desestacionalización', description: 'Las series del detalle corresponden a la tabla T.2.2 sin estacionalidad. El total coincide con la suma de las modalidades.' },
+        { title: 'Dato provisorio', description: 'Los meses marcados con asterisco en el anexo oficial se muestran con relleno atenuado porque las declaraciones juradas aún pueden corregirse.' },
+        { title: 'Unidad', description: 'Valores en miles de trabajadores registrados.' },
+    ];
+
+    return {
+        subtitle: indicator.fuente,
+        chartTitle: 'Trabajo registrado por modalidad (SIPA)',
+        data,
+        areas,
+        methodology,
+        valueFormat: 'index',
+        yAxisDecimals: 1,
+        yAxisLabel: 'Miles de trabajadores',
+        leftYAxisDomain: [0, 'auto'],
+        showTooltipTotal: true,
+        indicatorId: indicator.id,
     };
 }
 
