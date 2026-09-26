@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { IndicatorPageProps } from '@/types';
 import IndicatorCompositeView from '@/components/IndicatorCompositeView';
+import { OG_IMAGE_VERSION } from '@/lib/chart-og-preview';
 import { getIndicatorDetailConfig } from '@/lib/indicator-detail-configs';
 
 export const revalidate = 21600;
@@ -12,6 +13,7 @@ function chartOgImage(id: string, view?: string, mode?: string) {
     const params = new URLSearchParams();
     if (view) params.set('view', view);
     if (mode) params.set('mode', mode);
+    params.set('v', OG_IMAGE_VERSION);
     const query = params.toString();
     return {
         url: `/api/og/indicador/${id}${query ? `?${query}` : ''}`,
