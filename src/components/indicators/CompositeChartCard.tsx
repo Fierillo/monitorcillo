@@ -110,7 +110,7 @@ function ChartHeader({ onPrepareDownload, onDownloadChart, isCapturing, viewSele
 function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRenderProps & { chartContainerRef: React.RefObject<HTMLDivElement | null>; scrollViewportRef: React.RefObject<HTMLDivElement | null> }) {
     const chainsawCursorRef = useRef<HTMLImageElement | null>(null);
     const pointerPositionRef = useRef<{ left: number; top: number } | null>(null);
-    const hoverTooltipStoreRef = useRef(createHoverTooltipStore());
+    const [hoverTooltipStore] = useState(createHoverTooltipStore);
     const [isControlPressed, setIsControlPressed] = useState(false);
     const renderedAreas = activeAreas(props.areas, props.highlightedAreas);
     const hasBars = renderedAreas.some(area => area.type === 'bar');
@@ -179,10 +179,10 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
                     }}
                 >
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center select-none"><span className="watermark text-imperial-gold/21 text-xl font-sans font-bold uppercase tracking-[0.5em] sm:text-4xl">@fierillo</span></div>
-                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} isControlPressed={isControlPressed} hoverTooltipStore={hoverTooltipStoreRef.current} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
+                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} isControlPressed={isControlPressed} hoverTooltipStore={hoverTooltipStore} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
                     {!props.isCapturing && !props.crosshair?.locked && !isControlPressed ? (
                         <HoverTooltipOverlay
-                            store={hoverTooltipStoreRef.current}
+                            store={hoverTooltipStore}
                             areas={renderedAreas}
                             valueFormat={props.valueFormat}
                             sortedData={props.sortedData}
