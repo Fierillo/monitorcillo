@@ -12,7 +12,7 @@ import ChartTooltip from '../chart/ChartTooltip';
 import CustomLegend from '../chart/CustomLegend';
 import { createHoverTooltipStore, type HoverTooltipStore } from '../chart/hover-tooltip-store';
 import MethodologySection from '../chart/MethodologySection';
-import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount } from '../chart/utils';
+import { calculateTooltipVerticalPosition, chartClickStateFromPointer, chartMargins, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount } from '../chart/utils';
 
 type Props = {
     title: string;
@@ -74,7 +74,6 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
                     <ChartHeader onPrepareDownload={renderProps.onPrepareDownload} onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} viewSelector={renderProps.viewSelector} />
                     <ChartCanvas {...renderProps} chartContainerRef={chartContainerRef} scrollViewportRef={scrollViewportRef} />
                     <CustomLegend areas={renderProps.areas} highlightedAreas={renderProps.highlightedAreas} onToggleHighlight={renderProps.onToggleHighlight} compact={renderProps.isCapturing} />
-                    {!renderProps.isCapturing ? <ChartPanSlider viewportRef={scrollViewportRef} contentKey={`${renderProps.visibleData.length}:${renderProps.chartSize.width}:${renderProps.areas.map(area => area.key).join(',')}`} /> : null}
                     {renderProps.timeRangeSlider ? <div className="no-capture my-2">{renderProps.timeRangeSlider}</div> : null}
                     <MethodologySection methodology={renderProps.methodology} forceOpen={renderProps.isCapturing} />
                     {renderProps.isCapturing ? <ExportFooter /> : null}
@@ -113,12 +112,10 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
     const [hoverTooltipStore] = useState(createHoverTooltipStore);
     const [isControlPressed, setIsControlPressed] = useState(false);
     const renderedAreas = activeAreas(props.areas, props.highlightedAreas);
-    const hasBars = renderedAreas.some(area => area.type === 'bar');
-    const minimumTouchWidth = props.isMobile ? props.visibleData.length * (hasBars ? 8 : 10) : 0;
     const captureCanvasStyle = props.forceDesktopLayout ? { outline: 'none', height: 780 } : { outline: 'none' };
     const captureChartStyle = props.forceDesktopLayout
         ? { outline: 'none', width: 1240, height: 780 }
-        : { outline: 'none', width: '100%', minWidth: minimumTouchWidth || undefined };
+        : { outline: 'none', width: '100%', touchAction: props.isMobile ? 'none' : undefined };
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -179,7 +176,7 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
                     }}
                 >
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center select-none"><span className="watermark text-imperial-gold/21 text-xl font-sans font-bold uppercase tracking-[0.5em] sm:text-4xl">@fierillo</span></div>
-                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} isControlPressed={isControlPressed} hoverTooltipStore={hoverTooltipStore} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
+                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} chartContainerRef={chartContainerRef} scrollViewportRef={scrollViewportRef} isControlPressed={isControlPressed} hoverTooltipStore={hoverTooltipStore} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
                     {!props.isCapturing && !props.crosshair?.locked && !isControlPressed ? (
                         <HoverTooltipOverlay
                             store={hoverTooltipStore}
@@ -215,65 +212,12 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
     );
 }
 
-function ChartPanSlider({ viewportRef, contentKey }: { viewportRef: RefObject<HTMLDivElement | null>; contentKey: string }) {
-    const [position, setPosition] = useState(0);
-    const [maximum, setMaximum] = useState(0);
-
-    useEffect(() => {
-        const viewport = viewportRef.current;
-        if (!viewport) return;
-
-        const update = () => {
-            const nextMaximum = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
-            setMaximum(nextMaximum);
-            setPosition(Math.min(viewport.scrollLeft, nextMaximum));
-        };
-        const frame = requestAnimationFrame(update);
-        const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
-        observer?.observe(viewport);
-        if (viewport.firstElementChild) observer?.observe(viewport.firstElementChild);
-        viewport.addEventListener('scroll', update, { passive: true });
-        window.addEventListener('resize', update);
-        return () => {
-            cancelAnimationFrame(frame);
-            observer?.disconnect();
-            viewport.removeEventListener('scroll', update);
-            window.removeEventListener('resize', update);
-        };
-    }, [contentKey, viewportRef]);
-
-    if (maximum <= 0) return null;
-
-    return (
-        <div className="no-capture flex items-center gap-2 px-1 py-1.5 text-imperial-gold">
-            <span aria-hidden className="text-xs">◀</span>
-            <label className="sr-only" htmlFor="chart-pan-slider">Desplazar gráfico horizontalmente</label>
-            <input
-                id="chart-pan-slider"
-                data-testid="chart-pan-slider"
-                type="range"
-                min={0}
-                max={maximum}
-                value={position}
-                aria-valuetext={`${Math.round(position / maximum * 100)}%`}
-                onChange={(event) => {
-                    const nextPosition = Number(event.target.value);
-                    setPosition(nextPosition);
-                    if (viewportRef.current) viewportRef.current.scrollLeft = nextPosition;
-                }}
-                className="h-5 min-w-0 flex-1 cursor-grab accent-[#FFD700] active:cursor-grabbing"
-            />
-            <span aria-hidden className="text-xs">▶</span>
-        </div>
-    );
-}
-
 function AxisLabel({ label, color, right = false, control }: { label: string; color?: string; right?: boolean; control?: ReactNode }) {
     return <div className={`flex ${control ? 'w-14' : 'w-5'} shrink-0 items-center justify-center`}><div className={`${right ? 'rotate-90' : '-rotate-90'} flex flex-col items-center gap-1 whitespace-nowrap ${color ? '' : 'text-imperial-gold'} font-bold text-xs uppercase tracking-widest`} style={{ color }}><span>{label}</span>{control}</div></div>;
 }
 
-function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: boolean; hoverTooltipStore: HoverTooltipStore }) {
-    const { isControlPressed, onHoverTooltipChange, hoverTooltipStore } = props;
+function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: RefObject<HTMLDivElement | null>; scrollViewportRef: RefObject<HTMLDivElement | null>; isControlPressed: boolean; hoverTooltipStore: HoverTooltipStore }) {
+    const { chartContainerRef, chartSize, crosshair, isCapturing, isControlPressed, isMobile, onCrosshairClick, onCrosshairUnlock, onHoverTooltipChange, hoverTooltipStore, scrollViewportRef, visibleData } = props;
     const hoverVerticalRef = useRef<SVGLineElement | null>(null);
     const hoverHorizontalRef = useRef<SVGLineElement | null>(null);
     const rafRef = useRef<number | null>(null);
@@ -306,9 +250,9 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
     const leftDomain = [leftTicks[0], leftTicks.at(-1) ?? 0];
     const rightDomain = [rightTicks[0], rightTicks.at(-1) ?? 0];
 
-    const yAxisWidth = props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 76 : 52);
-    const leftMargin = props.isMobile ? 8 : yAxisWidth + -50;
-    const rightMargin = props.isMobile ? 8 : (props.secondaryYAxis ? 15 : 10);
+    const margins = chartMargins({ isMobile: Boolean(props.isMobile), valueFormat: props.valueFormat, hasSecondaryAxis: Boolean(props.secondaryYAxis) });
+    const leftMargin = margins.left;
+    const rightMargin = margins.right;
     const xAxisHeight = props.isMobile ? 32 : 30;
     const xTicks = props.xAxisKey === 'iso_fecha'
         ? selectMonthAlignedXTicks(
@@ -391,6 +335,123 @@ function ResponsiveComposedChart(props: ChartRenderProps & { isControlPressed: b
             horizontal.setAttribute('display', 'block');
         });
     };
+
+    const hasBars = renderedAreas.some(area => area.type === 'bar');
+    const gestureInputRef = useRef({ chartSize, crosshair, hasBars, onCrosshairClick, onCrosshairUnlock, onHoverTooltipChange, updateHoverCrosshair, visibleData });
+    useEffect(() => {
+        gestureInputRef.current = { chartSize, crosshair, hasBars, onCrosshairClick, onCrosshairUnlock, onHoverTooltipChange, updateHoverCrosshair, visibleData };
+    });
+    useEffect(() => {
+        if (!isMobile || isCapturing) return;
+        const element = chartContainerRef.current;
+        if (!element) return;
+
+        const latest = () => gestureInputRef.current;
+        const gesture = { pointerId: -1, startX: 0, startY: 0, moved: false };
+        const activeTouches = new Map<number, { x: number; y: number }>();
+        let twoFingerGesture = false;
+        let previousCenterY: number | null = null;
+        const ignoreSlideClick = { current: false };
+        const stateFromEvent = (event: PointerEvent) => {
+            const rect = element.getBoundingClientRect();
+            return chartClickStateFromPointer({
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top,
+                width: latest().chartSize.width,
+                height: latest().chartSize.height,
+                count: latest().visibleData.length,
+                hasBars: latest().hasBars,
+                left: leftMargin,
+                right: rightMargin,
+                top: 5,
+                bottom: xAxisHeight + 8,
+            });
+        };
+        const clearHover = () => {
+            hideHoverCrosshair();
+            hoverTooltipStore.clear();
+            latest().onHoverTooltipChange(null);
+        };
+        const touchCenterY = () => [...activeTouches.values()].reduce((sum, touch) => sum + touch.y, 0) / activeTouches.size;
+        const isTouch = (event: PointerEvent) => event.pointerType !== 'mouse';
+        const onPointerDown = (event: PointerEvent) => {
+            if (!isTouch(event)) return;
+            activeTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            if (activeTouches.size >= 2) {
+                twoFingerGesture = true;
+                gesture.pointerId = -1;
+                previousCenterY = touchCenterY();
+                clearHover();
+                return;
+            }
+            gesture.pointerId = event.pointerId;
+            gesture.startX = event.clientX;
+            gesture.startY = event.clientY;
+            gesture.moved = false;
+            const state = stateFromEvent(event);
+            if (state) latest().updateHoverCrosshair(state);
+        };
+        const onPointerMove = (event: PointerEvent) => {
+            if (activeTouches.has(event.pointerId)) activeTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            if (twoFingerGesture && activeTouches.size >= 2) {
+                const centerY = touchCenterY();
+                const deltaY = previousCenterY == null ? 0 : previousCenterY - centerY;
+                if (deltaY !== 0) window.scrollBy(0, deltaY);
+                previousCenterY = centerY;
+                event.preventDefault();
+                return;
+            }
+            if (event.pointerId !== gesture.pointerId) return;
+            if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > 12) gesture.moved = true;
+            const state = stateFromEvent(event);
+            if (state) latest().updateHoverCrosshair(state);
+        };
+        const onPointerUp = (event: PointerEvent) => {
+            activeTouches.delete(event.pointerId);
+            if (twoFingerGesture) {
+                ignoreSlideClick.current = true;
+                if (activeTouches.size === 0) {
+                    twoFingerGesture = false;
+                    previousCenterY = null;
+                }
+                clearHover();
+                return;
+            }
+            if (event.pointerId !== gesture.pointerId) return;
+            const moved = gesture.moved || Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > 12;
+            gesture.pointerId = -1;
+            ignoreSlideClick.current = true;
+            if (moved) {
+                clearHover();
+                return;
+            }
+            const state = stateFromEvent(event);
+            if (!state) return;
+            const { crosshair: lockedCrosshair, onCrosshairClick: lock, onCrosshairUnlock: unlock, visibleData: rows } = latest();
+            const point = resolveChartHoverPoint(state, rows);
+            if (lockedCrosshair?.locked && point?.label === lockedCrosshair.label) unlock();
+            else lock(state);
+        };
+        const onClickCapture = (event: Event) => {
+            if (!ignoreSlideClick.current) return;
+            ignoreSlideClick.current = false;
+            event.preventDefault();
+            event.stopPropagation();
+        };
+
+        element.addEventListener('pointerdown', onPointerDown);
+        element.addEventListener('pointermove', onPointerMove);
+        element.addEventListener('pointerup', onPointerUp);
+        element.addEventListener('pointercancel', onPointerUp);
+        element.addEventListener('click', onClickCapture, true);
+        return () => {
+            element.removeEventListener('pointerdown', onPointerDown);
+            element.removeEventListener('pointermove', onPointerMove);
+            element.removeEventListener('pointerup', onPointerUp);
+            element.removeEventListener('pointercancel', onPointerUp);
+            element.removeEventListener('click', onClickCapture, true);
+        };
+    }, [chartContainerRef, hideHoverCrosshair, hoverTooltipStore, isCapturing, isMobile, leftMargin, rightMargin, scrollViewportRef, xAxisHeight]);
 
     return (
         <ComposedChart
@@ -646,8 +707,8 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
 function ChartSeries({ areaConfig, props }: { areaConfig: AreaConfig; props: ChartRenderProps }) {
     const onCtrlClick = () => props.onToggleHighlight(areaConfig.legendKey || areaConfig.key);
     const allSeriesKeys = props.areas.filter(a => a.type === 'line').map(a => a.key);
-    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={false} data={props.visibleData} chartData={props.visibleData} allSeriesKeys={allSeriesKeys} isCapturing={props.isCapturing} onCtrlClick={onCtrlClick} />;
-    if (areaConfig.type === 'bar') return <ChartBar areaConfig={areaConfig} isDimmed={false} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} isCapturing={props.isCapturing} onCtrlClick={onCtrlClick} />;
+    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={false} data={props.visibleData} chartData={props.visibleData} allSeriesKeys={allSeriesKeys} isCapturing={props.isCapturing} isMobile={props.isMobile} onCtrlClick={onCtrlClick} />;
+    if (areaConfig.type === 'bar') return <ChartBar areaConfig={props.isMobile ? { ...areaConfig, maxBarSize: Math.min(areaConfig.maxBarSize ?? 10, 10) } : areaConfig} isDimmed={false} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} isCapturing={props.isCapturing} onCtrlClick={onCtrlClick} />;
     return <ChartArea areaConfig={areaConfig} isDimmed={false} onCtrlClick={onCtrlClick} />;
 }
 

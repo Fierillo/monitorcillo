@@ -43,6 +43,21 @@ describe('chart series interactions', () => {
 
     afterEach(cleanup);
 
+    it('thins out line strokes on mobile', () => {
+        render(<ChartLine
+            areaConfig={{ ...area, type: 'line', strokeWidth: 3 }}
+            isDimmed={false}
+            data={[]}
+            allSeriesKeys={[]}
+            isMobile
+            onCtrlClick={vi.fn()}
+        />);
+
+        const mobileWidth = rechartsProps.lines[0].strokeWidth as number;
+        expect(mobileWidth).toBeLessThan(3);
+        expect(mobileWidth).toBeGreaterThanOrEqual(1.5);
+    });
+
     it('keeps bordered line outlines inside the series stroke width', () => {
         render(<ChartLine
             areaConfig={{ ...area, type: 'line', color: '#000000', borderColor: '#FFFFFF', borderWidth: 5, strokeWidth: 3 }}

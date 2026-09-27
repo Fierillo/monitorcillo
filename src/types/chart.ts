@@ -209,6 +209,7 @@ export type ChartLineProps = {
     chartData?: ChartDataRow[];
     allSeriesKeys?: string[];
     isCapturing?: boolean;
+    isMobile?: boolean;
     onCtrlClick: () => void;
 };
 

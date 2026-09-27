@@ -92,6 +92,38 @@ describe('resolveChartHoverPoint', () => {
     });
 });
 
+describe('targetXTickCount', () => {
+    it('packs ticks using the minimum label spacing instead of a fixed wide gap', () => {
+        expect(targetXTickCount(320, 16)).toBe(6);
+        expect(targetXTickCount(600, 20)).toBe(13);
+        expect(targetXTickCount(900, 20)).toBe(20);
+    });
+
+    it('never proposes fewer than two ticks on a very narrow chart', () => {
+        expect(targetXTickCount(40, 0)).toBe(2);
+        expect(targetXTickCount(120, 80)).toBe(2);
+    });
+
+    it('fills the available width while keeping ticks evenly spaced', () => {
+        const dates = Array.from({ length: 121 }, (_, index) => {
+            const total = 2016 * 12 + 8 + index;
+            return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}-01`;
+        });
+        const ticks = selectMonthAlignedXTicks(dates, targetXTickCount(600, 20));
+        const toIndex = (iso: string) => {
+            const [year, month] = iso.split('-').map(Number);
+            return year * 12 + month - 1;
+        };
+
+        expect(ticks).toHaveLength(11);
+        const step = toIndex(ticks[1]) - toIndex(ticks[0]);
+        expect(step).toBe(12);
+        for (let index = 1; index < ticks.length; index += 1) {
+            expect(toIndex(ticks[index]) - toIndex(ticks[index - 1])).toBe(step);
+        }
+    });
+});
+
 describe('selectMonthAlignedXTicks', () => {
     function monthlyRange(startIso: string, months: number): string[] {
         const [year, month] = startIso.split('-').map(Number);
@@ -148,13 +180,5 @@ describe('selectMonthAlignedXTicks', () => {
 
         expect(ticks.every(tick => tick.slice(5, 7) === '06')).toBe(true);
         expect(ticks).not.toContain('2022-06-01');
-    });
-});
-
-describe('targetXTickCount', () => {
-    it('reserves roughly one label width of space per tick', () => {
-        expect(targetXTickCount(800, 80)).toBe(10);
-        expect(targetXTickCount(400, 80)).toBe(4);
-        expect(targetXTickCount(120, 80)).toBe(2);
     });
 });

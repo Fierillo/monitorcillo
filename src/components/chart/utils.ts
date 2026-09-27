@@ -179,6 +179,89 @@ export function calculateYAxisDomain(params: ChartAxisDomainParams): [number, nu
     ];
 }
 
+export function chartMargins({ isMobile, valueFormat, hasSecondaryAxis }: { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean }): { left: number; right: number; top: number; bottom: number } {
+    if (isMobile) return { left: 8, right: 8, top: 5, bottom: 40 };
+    const yAxisWidth = valueFormat === 'currency' ? 90 : valueFormat === 'millions' ? 76 : 52;
+    return { left: yAxisWidth - 50, right: hasSecondaryAxis ? 15 : 10, top: 5, bottom: 5 };
+}
+
+export function axisComponentWidth({ isMobile, valueFormat, hasSecondaryAxis }: { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean }): { left: number; right: number } {
+    if (isMobile) return { left: 0, right: 0 };
+    const left = valueFormat === 'currency' ? 90 : valueFormat === 'millions' ? 80 : 60;
+    return { left, right: hasSecondaryAxis ? 60 : 0 };
+}
+
+export function chartPlotArea(options: { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean }): { left: number; right: number; top: number; bottom: number } {
+    const margins = chartMargins(options);
+    const axes = axisComponentWidth(options);
+    return {
+        left: margins.left + axes.left,
+        right: margins.right + axes.right,
+        top: margins.top,
+        bottom: margins.bottom,
+    };
+}
+
+type ChartGeometry = {
+    count: number;
+    hasBars: boolean;
+    left: number;
+    right: number;
+    width: number;
+};
+
+export function chartIndexForX({ x, count, hasBars, left, right, width }: ChartGeometry & { x: number }): number {
+    if (count <= 0 || width <= 0) return 0;
+
+    const plotWidth = Math.max(1, width - left - right);
+    const clampedX = Math.min(Math.max(x, left), left + plotWidth);
+    if (hasBars || count === 1) {
+        return Math.min(count - 1, Math.max(0, Math.floor((clampedX - left) / (plotWidth / count))));
+    }
+    return Math.min(count - 1, Math.max(0, Math.round(((clampedX - left) / plotWidth) * (count - 1))));
+}
+
+export function chartXForIndex({ index, count, hasBars, left, right, width }: ChartGeometry & { index: number }): number {
+    if (count <= 0) return left;
+
+    const plotWidth = Math.max(1, width - left - right);
+    if (hasBars || count === 1) return left + (index + 0.5) * (plotWidth / count);
+    return left + (index / (count - 1)) * plotWidth;
+}
+
+export function chartClickStateFromPointer({
+    x,
+    y,
+    width,
+    height,
+    count,
+    hasBars,
+    left,
+    right,
+    top,
+    bottom,
+}: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    count: number;
+    hasBars: boolean;
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+}): ChartClickState | null {
+    if (count <= 0 || width <= 0 || height <= 0) return null;
+
+    const plotBottom = Math.max(top, height - bottom);
+    const clampedY = Math.min(Math.max(y, top), plotBottom);
+    const geometry = { count, hasBars, left, right, width };
+    const index = chartIndexForX({ ...geometry, x });
+
+    return { activeTooltipIndex: index, activeCoordinate: { x: chartXForIndex({ ...geometry, index }), y: clampedY } };
+}
+
 export function parseActiveTooltipIndex(index: ChartClickState['activeTooltipIndex']): number | null {
     if (typeof index === 'number' && Number.isFinite(index)) return index;
     if (typeof index === 'string' && /^\d+$/.test(index)) return Number(index);
@@ -252,7 +335,9 @@ export function selectMonthAlignedXTicks(values: string[], targetCount = 8): str
     return ticks.reverse();
 }
 
+export const MIN_X_TICK_SPACING_PX = 44;
+
 export function targetXTickCount(chartWidth: number, axisMargins = 0): number {
     const availableWidth = Math.max(0, chartWidth - axisMargins);
-    return Math.max(2, Math.min(10, Math.floor(availableWidth / 72) || 2));
+    return Math.max(2, Math.floor(availableWidth / MIN_X_TICK_SPACING_PX) || 2);
 }

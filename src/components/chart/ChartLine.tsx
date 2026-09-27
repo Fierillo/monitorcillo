@@ -70,13 +70,14 @@ function computeLabelOffsets(
     return { offsets, arrowUp };
 }
 
-export default function ChartLine({ areaConfig, isDimmed, data, chartData, allSeriesKeys, isCapturing = false, onCtrlClick }: ChartLineProps) {
+export default function ChartLine({ areaConfig, isDimmed, data, chartData, allSeriesKeys, isCapturing = false, isMobile = false, onCtrlClick }: ChartLineProps) {
     const color = areaConfig.color;
     const gradientId = `line-reveal-${areaConfig.key}`;
     const stroke = areaConfig.revealStrokeAfterPercent == null ? color : `url(#${gradientId})`;
     const showDots = areaConfig.showDots !== false;
     const showAllDots = Boolean(areaConfig.connectNulls) && showDots;
-    const strokeWidth = areaConfig.strokeWidth ?? 3;
+    const baseStrokeWidth = areaConfig.strokeWidth ?? 3;
+    const strokeWidth = isMobile ? Math.max(1.5, baseStrokeWidth - 1) : baseStrokeWidth;
     const fillWidth = areaConfig.borderColor
         ? Math.max(1, strokeWidth - 1)
         : strokeWidth;
