@@ -85,6 +85,145 @@ describe('mobile chart interaction', () => {
         expect(recharts.chartProps).not.toHaveProperty('onTouchEnd');
     });
 
+    it('places the range selector next to the download button above the chart', () => {
+        const rows = Array.from({ length: 6 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-0${index + 1}-01`, value: index }));
+        const chartContainerRef = createRef<HTMLDivElement>();
+        render(<CompositeChartCard
+            title="Indicador"
+            chartTitle="Gráfico"
+            captureRef={createRef<HTMLDivElement>()}
+            chartContainerRef={chartContainerRef}
+            chartSize={{ width: 320, height: 360 }}
+            visibleData={rows}
+            sortedData={rows}
+            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
+            methodology={[]}
+            valueFormat="percent"
+            yAxisDecimals={1}
+            leftAxisDomain={[0, 20]}
+            xAxisKey="iso_fecha"
+            labelByXAxisValue={new Map()}
+            highlightedAreas={new Set()}
+            selectedMonth={null}
+            selectByMonth={false}
+            showTooltipTotal={false}
+            referenceLines={[]}
+            rangePreview={null}
+            committedRange={[0, 5]}
+            crosshair={null}
+            captureTooltip={null}
+            isMobile
+            isCapturing={false}
+            onPrepareDownload={() => undefined}
+            onDownloadChart={() => undefined}
+            onSelectMonth={() => undefined}
+            onToggleHighlight={() => undefined}
+            rangeSelectControl={<button type="button">Acotar rango</button>}
+            onCrosshairClick={() => undefined}
+            onCrosshairUnlock={() => undefined}
+            onHoverTooltipChange={() => undefined}
+        />);
+
+        const axis = screen.getByTestId('chart-scroll-viewport');
+        const control = screen.getByRole('button', { name: 'Acotar rango' });
+        const save = screen.getByTitle('Descargar gráfico');
+
+        expect(control.parentElement).toBe(save.parentElement);
+        expect(axis.compareDocumentPosition(control) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    });
+
+    it('places the guide on the picked month when the chart shows only a slice', () => {
+        const rows = Array.from({ length: 10 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-${String((index % 12) + 1).padStart(2, '0')}-01`, value: index }));
+        const chartContainerRef = createRef<HTMLDivElement>();
+        render(<CompositeChartCard
+            title="Indicador"
+            chartTitle="Gráfico"
+            captureRef={createRef<HTMLDivElement>()}
+            chartContainerRef={chartContainerRef}
+            chartSize={{ width: 320, height: 360 }}
+            visibleData={rows.slice(3, 8)}
+            sortedData={rows}
+            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
+            methodology={[]}
+            valueFormat="percent"
+            yAxisDecimals={1}
+            leftAxisDomain={[0, 20]}
+            xAxisKey="iso_fecha"
+            labelByXAxisValue={new Map()}
+            highlightedAreas={new Set()}
+            selectedMonth={null}
+            selectByMonth={false}
+            showTooltipTotal={false}
+            referenceLines={[]}
+            rangePreview={null}
+            committedRange={[3, 7]}
+            crosshair={null}
+            captureTooltip={null}
+            isMobile
+            isCapturing={false}
+            onPrepareDownload={() => undefined}
+            onDownloadChart={() => undefined}
+            onSelectMonth={() => undefined}
+            onToggleHighlight={() => undefined}
+            rangeSelection={{ selection: { phase: 'end', index: 5, startIndex: 3, endIndex: 7 }, maxIndex: 9, onSelectionChange: () => undefined, onCommit: () => undefined, onCancel: () => undefined }}
+            onCrosshairClick={() => undefined}
+            onCrosshairUnlock={() => undefined}
+            onHoverTooltipChange={() => undefined}
+        />);
+
+        expect(screen.getByTestId('range-picker-date').textContent).toBe('MES 5');
+        expect(screen.getByTestId('range-picker-guide').style.left).toBe('160px');
+    });
+
+    it('anchors the range picker guide to the chart plot area on both viewports', () => {
+        const rows = Array.from({ length: 5 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-0${index + 1}-01`, value: index }));
+        const chartContainerRef = createRef<HTMLDivElement>();
+        const selection = { phase: 'end' as const, index: 2, startIndex: 1, endIndex: 4 };
+        const card = (isMobile: boolean) => <CompositeChartCard
+            title="Indicador"
+            chartTitle="Gráfico"
+            captureRef={createRef<HTMLDivElement>()}
+            chartContainerRef={chartContainerRef}
+            chartSize={{ width: 320, height: 360 }}
+            visibleData={rows}
+            sortedData={rows}
+            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
+            methodology={[]}
+            valueFormat="percent"
+            yAxisDecimals={1}
+            leftAxisDomain={[0, 20]}
+            xAxisKey="iso_fecha"
+            labelByXAxisValue={new Map()}
+            highlightedAreas={new Set()}
+            selectedMonth={null}
+            selectByMonth={false}
+            showTooltipTotal={false}
+            referenceLines={[]}
+            rangePreview={null}
+            committedRange={[0, 4]}
+            crosshair={null}
+            captureTooltip={null}
+            isMobile={isMobile}
+            isCapturing={false}
+            onPrepareDownload={() => undefined}
+            onDownloadChart={() => undefined}
+            onSelectMonth={() => undefined}
+            onToggleHighlight={() => undefined}
+            rangeSelection={{ selection, maxIndex: 4, onSelectionChange: () => undefined, onCommit: () => undefined, onCancel: () => undefined }}
+            onCrosshairClick={() => undefined}
+            onCrosshairUnlock={() => undefined}
+            onHoverTooltipChange={() => undefined}
+        />;
+
+        const { rerender } = render(card(true));
+        const mobileGuide = screen.getByTestId('range-picker-guide').style.left;
+        rerender(card(false));
+        const desktopGuide = screen.getByTestId('range-picker-guide').style.left;
+
+        expect(mobileGuide).toBe('160px');
+        expect(desktopGuide).toBe('186px');
+    });
+
     it('scrubs the tooltip with one finger over the X axis without resizing the chart', () => {
         const rows = Array.from({ length: 3 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-0${index + 1}-01`, value: index }));
         const chartContainerRef = createRef<HTMLDivElement>();

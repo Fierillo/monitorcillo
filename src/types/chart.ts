@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import type { RangeSelection } from '@/lib/chart-range-selection';
 
 export interface AreaConfig {
     key: string;
@@ -65,6 +66,14 @@ export type ChartDataRow = {
     pctPbiMm12?: number | null;
     preliminary?: boolean;
     [key: string]: ChartValue;
+};
+
+export type ChartMobileRangeSelection = {
+    selection: RangeSelection;
+    maxIndex: number;
+    onSelectionChange: (selection: RangeSelection) => void;
+    onCommit: (range: [number, number]) => void;
+    onCancel: () => void;
 };
 
 export type ChartAxisDomainValue = number | string;

@@ -1,11 +1,11 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import IndicatorCompositeView from '../components/IndicatorCompositeView';
 import CompositeChartCard from '../components/indicators/CompositeChartCard';
 import type { ChartDataRow, ChartViewConfig } from '@/types';
 
-const received = vi.hoisted(() => [] as Array<{ selectedMonth: string | null; committedRange: [number, number]; visibleCount: number; chartTitle: string }>);
+const received = vi.hoisted(() => [] as Array<{ selectedMonth: string | null; committedRange: [number, number]; visibleCount: number; chartTitle: string; rangeSelectControl: unknown; rangeResetControl: unknown; rangeSelection: unknown }>);
 
 vi.mock('../components/indicators/CompositeChartCard', () => ({
     default: (props: ComponentProps<typeof CompositeChartCard>) => {
@@ -14,10 +14,15 @@ vi.mock('../components/indicators/CompositeChartCard', () => ({
             committedRange: props.committedRange,
             visibleCount: props.visibleData.length,
             chartTitle: props.chartTitle,
+            rangeSelectControl: props.rangeSelectControl,
+            rangeResetControl: props.rangeResetControl,
+            rangeSelection: props.rangeSelection,
         });
         return (
             <div>
                 {props.viewSelector}
+                {props.rangeSelectControl}
+                {props.rangeResetControl}
                 <button type="button" onClick={() => props.onSelectMonth('2017-02-01')}>Elegir febrero</button>
             </div>
         );
@@ -110,6 +115,14 @@ describe('chart derived state', () => {
         expect(received[0]?.visibleCount).toBe(4);
     });
 
+    it('keeps a selected range ending shortly before the newest observation', () => {
+        window.localStorage.setItem('monitorcillo:chart:test', JSON.stringify({ rangeByView: { default: [2, 9] } }));
+        renderChart(monthlyRows(12));
+
+        expect(received.at(-1)?.committedRange).toEqual([2, 9]);
+        expect(received.at(-1)?.visibleCount).toBe(8);
+    });
+
     it('shows every row of a longer view on the first paint after switching', () => {
         renderChart(monthlyRows(4), {
             views: [view('alpha', 'Alpha', monthlyRows(4)), view('beta', 'Beta', monthlyRows(12))],
@@ -119,6 +132,70 @@ describe('chart derived state', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Beta' }));
 
         const firstBeta = received.find(paint => paint.chartTitle === 'Vista Beta');
-        expect(firstBeta).toEqual({ selectedMonth: null, committedRange: [0, 11], visibleCount: 12, chartTitle: 'Vista Beta' });
+        expect(firstBeta).toMatchObject({ selectedMonth: null, committedRange: [0, 11], visibleCount: 12, chartTitle: 'Vista Beta' });
+    });
+
+    it('offers a range selector on mobile and asks for the first endpoint', () => {
+        vi.stubGlobal('innerWidth', 375);
+        renderChart(monthlyRows(12));
+
+        fireEvent.click(screen.getByRole('button', { name: 'Acotar rango' }));
+
+        expect(received.at(-1)?.rangeSelection).toMatchObject({
+            selection: { phase: 'start', index: 0, startIndex: 0, endIndex: 11 },
+            maxIndex: 11,
+        });
+        vi.unstubAllGlobals();
+    });
+
+    it('offers no reset while the chart already shows the whole series', () => {
+        renderChart(monthlyRows(12));
+
+        expect(received.at(-1)?.rangeResetControl).toBeFalsy();
+    });
+
+    it('restores the whole series and drops the reset control when asked', () => {
+        window.localStorage.setItem('monitorcillo:chart:test', JSON.stringify({ rangeByView: { default: [2, 9] } }));
+        renderChart(monthlyRows(12));
+        expect(received.at(-1)?.committedRange).toEqual([2, 9]);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Restablecer rango' }));
+
+        expect(received.at(-1)?.committedRange).toEqual([0, 11]);
+        expect(received.at(-1)?.visibleCount).toBe(12);
+        expect(received.at(-1)?.rangeResetControl).toBeFalsy();
+    });
+
+    it('offers a compact icon button that keeps an accessible name', () => {
+        vi.stubGlobal('innerWidth', 375);
+        renderChart(monthlyRows(12));
+
+        const control = screen.getByRole('button', { name: 'Acotar rango' });
+
+        expect(control.querySelector('svg')).not.toBeNull();
+        expect(control.textContent).toBe('');
+        vi.unstubAllGlobals();
+    });
+
+    it('offers the range selector outside mobile too', () => {
+        vi.stubGlobal('innerWidth', 1280);
+        renderChart(monthlyRows(12));
+
+        expect(received.at(-1)?.rangeSelectControl).toBeTruthy();
+        vi.unstubAllGlobals();
+    });
+
+    it('persists the range picked on the chart and closes the selector', () => {
+        vi.stubGlobal('innerWidth', 375);
+        renderChart(monthlyRows(12));
+        fireEvent.click(screen.getByRole('button', { name: 'Acotar rango' }));
+
+        const picker = received.at(-1)?.rangeSelection as { onCommit: (range: [number, number]) => void } | undefined;
+        act(() => picker?.onCommit([3, 8]));
+
+        expect(received.at(-1)?.committedRange).toEqual([3, 8]);
+        expect(received.at(-1)?.visibleCount).toBe(6);
+        expect(received.at(-1)?.rangeSelection).toBeFalsy();
+        vi.unstubAllGlobals();
     });
 });

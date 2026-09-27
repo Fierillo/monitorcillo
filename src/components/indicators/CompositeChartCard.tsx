@@ -4,15 +4,16 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import type { MouseEvent } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { CartesianGrid, ComposedChart, Customized, ReferenceDot, ReferenceLine, XAxis, YAxis } from 'recharts';
-import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, ChartReferenceLine, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
+import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, ChartMobileRangeSelection, ChartReferenceLine, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
 import ChartArea from '../chart/ChartArea';
 import ChartBar from '../chart/ChartBar';
 import ChartLine from '../chart/ChartLine';
 import ChartTooltip from '../chart/ChartTooltip';
 import CustomLegend from '../chart/CustomLegend';
+import MobileRangePicker from '../chart/MobileRangePicker';
 import { createHoverTooltipStore, type HoverTooltipStore } from '../chart/hover-tooltip-store';
 import MethodologySection from '../chart/MethodologySection';
-import { calculateTooltipVerticalPosition, chartClickStateFromPointer, chartMargins, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount } from '../chart/utils';
+import { calculateTooltipVerticalPosition, chartClickStateFromPointer, chartMargins, chartPlotArea, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount } from '../chart/utils';
 
 type Props = {
     title: string;
@@ -47,7 +48,9 @@ type Props = {
     viewSelector?: ReactNode;
     axisModeSelector?: ReactNode;
     axisModeLabel?: string;
-    timeRangeSlider?: ReactNode;
+    rangeSelectControl?: ReactNode;
+    rangeResetControl?: ReactNode;
+    rangeSelection?: ChartMobileRangeSelection | null;
     onPrepareDownload: () => void;
     onDownloadChart: () => void;
     onSelectMonth: (month: string | null) => void;
@@ -71,10 +74,9 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
             <div className={`${chartProps.forceDesktopLayout ? 'w-[1400px] min-h-[850px] p-4' : 'w-full min-h-[600px] sm:min-h-[850px] p-2 sm:p-4'} bg-imperial-blue border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 flex flex-col overflow-hidden`} style={{ outline: 'none' }} tabIndex={-1}>
                 <div ref={captureRef} className="flex-1 flex flex-col bg-imperial-blue overflow-hidden" style={captureStyle} tabIndex={-1}>
                     {renderProps.isCapturing ? <ExportHeader title={renderProps.title} subtitle={renderProps.subtitle} /> : null}
-                    <ChartHeader onPrepareDownload={renderProps.onPrepareDownload} onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} viewSelector={renderProps.viewSelector} />
+                    <ChartHeader onPrepareDownload={renderProps.onPrepareDownload} onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} viewSelector={renderProps.viewSelector} extraControl={<>{renderProps.rangeResetControl}{renderProps.rangeSelectControl}</>} />
                     <ChartCanvas {...renderProps} chartContainerRef={chartContainerRef} scrollViewportRef={scrollViewportRef} />
                     <CustomLegend areas={renderProps.areas} highlightedAreas={renderProps.highlightedAreas} onToggleHighlight={renderProps.onToggleHighlight} compact={renderProps.isCapturing} />
-                    {renderProps.timeRangeSlider ? <div className="no-capture my-2">{renderProps.timeRangeSlider}</div> : null}
                     <MethodologySection methodology={renderProps.methodology} forceOpen={renderProps.isCapturing} />
                     {renderProps.isCapturing ? <ExportFooter /> : null}
                 </div>
@@ -91,13 +93,14 @@ function ExportFooter() {
     return <div className="mt-0.5 border-t border-imperial-gold/40 pt-1 text-center text-[3px] font-bold uppercase tracking-wider text-imperial-cyan"><span className="text-imperial-gold">Monitorcillo</span> fue hecho con amor por <span className="text-imperial-gold">Fierillo</span></div>;
 }
 
-function ChartHeader({ onPrepareDownload, onDownloadChart, isCapturing, viewSelector }: { onPrepareDownload: () => void; onDownloadChart: () => void; isCapturing: boolean; viewSelector?: ReactNode }) {
+function ChartHeader({ onPrepareDownload, onDownloadChart, isCapturing, viewSelector, extraControl }: { onPrepareDownload: () => void; onDownloadChart: () => void; isCapturing: boolean; viewSelector?: ReactNode; extraControl?: ReactNode }) {
     if (isCapturing) return null;
 
     return (
         <div className="mb-2 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" style={{ outline: 'none' }}>
             <div>{viewSelector}</div>
             <div className="flex justify-end gap-2 w-full sm:w-auto">
+                {extraControl}
                 <button onMouseDown={onPrepareDownload} onTouchStart={onPrepareDownload} onClick={onDownloadChart} className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center" title="Descargar gráfico">
                     <ImageDown size={16} /> Guardar
                 </button>
@@ -112,6 +115,8 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
     const [hoverTooltipStore] = useState(createHoverTooltipStore);
     const [isControlPressed, setIsControlPressed] = useState(false);
     const renderedAreas = activeAreas(props.areas, props.highlightedAreas);
+    const hasBars = renderedAreas.some(area => area.type === 'bar');
+    const plotArea = chartPlotArea({ isMobile: Boolean(props.isMobile), valueFormat: props.valueFormat, hasSecondaryAxis: Boolean(props.secondaryYAxis) });
     const captureCanvasStyle = props.forceDesktopLayout ? { outline: 'none', height: 780 } : { outline: 'none' };
     const captureChartStyle = props.forceDesktopLayout
         ? { outline: 'none', width: 1240, height: 780 }
@@ -176,6 +181,21 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
                     }}
                 >
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center select-none"><span className="watermark text-imperial-gold/21 text-xl font-sans font-bold uppercase tracking-[0.5em] sm:text-4xl">@fierillo</span></div>
+                    {props.rangeSelection && !props.isCapturing ? <MobileRangePicker
+                        data={props.sortedData}
+                        xAxisKey={props.xAxisKey}
+                        labelByXAxisValue={props.labelByXAxisValue}
+                        selection={props.rangeSelection.selection}
+                        maxIndex={props.rangeSelection.maxIndex}
+                        visibleRange={props.committedRange}
+                        chartWidth={props.chartSize.width}
+                        plotLeft={plotArea.left}
+                        plotRight={plotArea.right}
+                        hasBars={hasBars}
+                        onSelectionChange={props.rangeSelection.onSelectionChange}
+                        onCommit={props.rangeSelection.onCommit}
+                        onCancel={props.rangeSelection.onCancel}
+                    /> : null}
                     {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} chartContainerRef={chartContainerRef} scrollViewportRef={scrollViewportRef} isControlPressed={isControlPressed} hoverTooltipStore={hoverTooltipStore} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
                     {!props.isCapturing && !props.crosshair?.locked && !isControlPressed ? (
                         <HoverTooltipOverlay

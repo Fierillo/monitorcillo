@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { toPng } from 'html-to-image';
+import { MoveHorizontal, RotateCcw } from 'lucide-react';
 import { startTransition, useRef, useState, useEffect, useSyncExternalStore } from 'react';
 import type { ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, ChartReferenceLine, IndicatorCompositeViewProps } from '@/types/chart';
 import CompositeChartCard from './indicators/CompositeChartCard';
 import FeedbackButton from './FeedbackButton';
 import LoadingModal from './LoadingModal';
 import { collectAxisExtentValues, resolveChartHoverPoint } from './chart/utils';
-import TimeRangeSlider from './chart/TimeRangeSlider';
+import { beginRangeSelection } from '@/lib/chart-range-selection';
+import type { RangeSelection } from '@/lib/chart-range-selection';
 
 type PersistedChartConfig = {
     selectedViewId?: string;
@@ -79,7 +81,7 @@ function restoreBaseDateByView(config: Record<string, string> | undefined, views
 function clampChartRange(range: [number, number] | undefined, maxIndex: number): [number, number] {
     if (!range) return [0, maxIndex];
     const start = Math.min(Math.max(0, range[0]), maxIndex);
-    const end = range[1] >= maxIndex - 5 ? maxIndex : Math.min(Math.max(range[1], start), maxIndex);
+    const end = Math.min(Math.max(range[1], start), maxIndex);
     return [start, end];
 }
 
@@ -242,6 +244,7 @@ export default function IndicatorCompositeView({
     const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
     const [isCapturing, setIsCapturing] = useState(false);
     const [previewRange, setPreviewRange] = useState<[number, number] | null>(null);
+    const [rangeSelection, setRangeSelection] = useState<RangeSelection | null>(null);
     const [isMobile, setIsMobile] = useState(false);
     const [isReturning, setIsReturning] = useState(false);
 
@@ -398,6 +401,22 @@ export default function IndicatorCompositeView({
         hoverTooltipRef.current = tooltip;
     };
 
+    const handleRangeCommit = (range: [number, number]) => {
+        setRangeSelection(null);
+        setPreviewRange(null);
+        startTransition(() => persistChartConfig({
+            rangeByView: { ...storedConfig?.rangeByView, [memoryKey]: range },
+        }));
+    };
+
+    const handleRangeReset = () => {
+        setRangeSelection(null);
+        setPreviewRange(null);
+        const nextRangeByView = { ...storedConfig?.rangeByView };
+        delete nextRangeByView[memoryKey];
+        startTransition(() => persistChartConfig({ rangeByView: nextRangeByView }));
+    };
+
     const handlePrepareDownload = () => {
         setCaptureTooltip(crosshair?.locked ? null : hoverTooltipRef.current);
     };
@@ -474,23 +493,37 @@ export default function IndicatorCompositeView({
                     rangePreview={previewRange} committedRange={[rangeStart, rangeEnd]}
                     crosshair={crosshair} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={handleHoverTooltipChange}
                     isMobile={isMobile} isCapturing={isCapturing && !isMobile} onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
-                    onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} viewSelector={viewSelector} axisModeSelector={axisModeSelector} axisModeLabel={selectedMode?.label}
-                    timeRangeSlider={!isCapturing && sortedData.length > 1 ? (
-                        <TimeRangeSlider
-                            data={sortedData}
-                            startIndex={rangeStart}
-                            endIndex={rangeEnd}
-                            xAxisKey={xAxisKey}
-                            labelByXAxisValue={labelByXAxisValue}
-                            onPreviewChange={(start, end) => setPreviewRange([start, end])}
-                            onCommitChange={(start, end) => {
-                                setPreviewRange(null);
-                                startTransition(() => persistChartConfig({
-                                    rangeByView: { ...storedConfig?.rangeByView, [memoryKey]: [start, end] },
-                                }));
-                            }}
-                        />
+                    rangeSelectControl={!isCapturing && sortedData.length > 1 ? (
+                        <button
+                            type="button"
+                            onClick={() => setRangeSelection(beginRangeSelection([rangeStart, rangeEnd]))}
+                            aria-label="Acotar rango"
+                            title="Acotar rango"
+                            aria-pressed={rangeSelection !== null}
+                            className="no-capture flex size-9 shrink-0 items-center justify-center border-2 border-imperial-gold text-imperial-gold transition-colors hover:bg-imperial-gold hover:text-imperial-blue aria-pressed:border-imperial-gold aria-pressed:bg-imperial-gold aria-pressed:text-imperial-blue"
+                        >
+                            <MoveHorizontal size={16} aria-hidden="true" />
+                        </button>
                     ) : null}
+                    rangeResetControl={!isCapturing && (rangeStart > 0 || rangeEnd < maxIndex) ? (
+                        <button
+                            type="button"
+                            onClick={handleRangeReset}
+                            aria-label="Restablecer rango"
+                            title="Restablecer rango"
+                            className="no-capture flex size-9 shrink-0 items-center justify-center border-2 border-red-500 text-red-500 transition-colors hover:bg-red-500 hover:text-white"
+                        >
+                            <RotateCcw size={16} aria-hidden="true" />
+                        </button>
+                    ) : null}
+                    rangeSelection={rangeSelection ? {
+                        selection: rangeSelection,
+                        maxIndex,
+                        onSelectionChange: setRangeSelection,
+                        onCommit: handleRangeCommit,
+                        onCancel: () => setRangeSelection(null),
+                    } : null}
+                    onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} viewSelector={viewSelector} axisModeSelector={axisModeSelector} axisModeLabel={selectedMode?.label}
                 />
                 {isMobile && isCapturing ? (
                     <div className="fixed left-[-10000px] top-0 z-[-1]">
@@ -507,7 +540,6 @@ export default function IndicatorCompositeView({
                             crosshair={crosshair?.locked ? crosshair : null} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={handleHoverTooltipChange}
                             isMobile={false} isCapturing forceDesktopLayout onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
                             onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} axisModeLabel={selectedMode?.label}
-                            timeRangeSlider={null}
                         />
                     </div>
                 ) : null}
