@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cinzel, Libre_Baskerville } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SITE_TAGLINE, SITE_TITLE } from "@/lib/site";
 import "./globals.css";
 
 const cinzel = Cinzel({
@@ -20,11 +21,12 @@ export const metadata: Metadata = {
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : 'https://monitorcillo.vercel.app'),
   title: {
-    default: "Monitorcillo",
+    default: SITE_TITLE,
     template: "%s | Monitorcillo",
   },
-  description: "El precio de la paz es la eterna vigilancia.",
-  twitter: { card: "summary_large_image" },
+  description: SITE_TAGLINE,
+  openGraph: { images: ["/api/og"] },
+  twitter: { card: "summary_large_image", images: ["/api/og"] },
 };
 
 export default function RootLayout({

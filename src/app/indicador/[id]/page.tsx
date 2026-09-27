@@ -4,36 +4,18 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { IndicatorPageProps } from '@/types';
 import IndicatorCompositeView from '@/components/IndicatorCompositeView';
-import { OG_IMAGE_VERSION } from '@/lib/chart-og-preview';
 import { getIndicatorDetailConfig } from '@/lib/indicator-detail-configs';
 
 export const revalidate = 21600;
 
-function chartOgImage(id: string, view?: string, mode?: string) {
-    const params = new URLSearchParams();
-    if (view) params.set('view', view);
-    if (mode) params.set('mode', mode);
-    params.set('v', OG_IMAGE_VERSION);
-    const query = params.toString();
-    return {
-        url: `/api/og/indicador/${id}${query ? `?${query}` : ''}`,
-        width: 1200,
-        height: 630,
-    };
-}
-
-export async function generateMetadata({ params, searchParams }: IndicatorPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: IndicatorPageProps): Promise<Metadata> {
     const { id } = await params;
-    const query = searchParams ? await searchParams : {};
     const indicator = await getStoredIndicator(id);
-    const image = chartOgImage(id, query.view, query.mode);
-    if (!indicator) return { title: 'Indicador', openGraph: { images: [image] }, twitter: { card: 'summary_large_image', images: [image.url] } };
+    if (!indicator) return { title: 'Indicador' };
 
     return {
         title: indicator.indicador,
         description: `${indicator.dato} · ${indicator.fuente}`,
-        openGraph: { images: [image] },
-        twitter: { card: 'summary_large_image', images: [image.url] },
     };
 }
 
