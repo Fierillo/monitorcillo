@@ -85,4 +85,27 @@ describe('getStoredIndicator', () => {
         });
         expect(catalogService.buildCurrentIndicatorsCatalog).not.toHaveBeenCalled();
     });
+
+    it('falls back to DEFAULT_CATALOG when the stored catalog is missing a default indicator', async () => {
+        db.getIndicatorsCatalog.mockResolvedValue([{
+            id: 'icg',
+            indicador: 'Confianza en el Gobierno',
+            referencia: '2,29',
+            dato: '2,41',
+            fecha: 'DIC 25',
+            fuente: 'UTDT',
+            trend: 'up',
+            category: 'expectativas',
+            has_details: true,
+            source_url: null,
+        }]);
+        const { getStoredIndicator } = await import('../lib/indicators');
+
+        await expect(getStoredIndicator('presupuesto-nacional')).resolves.toMatchObject({
+            id: 'presupuesto-nacional',
+            hasDetails: true,
+            indicador: 'Presupuesto nacional',
+        });
+        expect(catalogService.buildCurrentIndicatorsCatalog).not.toHaveBeenCalled();
+    });
 });

@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import type { CatalogIndicatorRow, Indicator } from '@/types';
+import { DEFAULT_CATALOG } from './catalog';
 import { getIndicatorsCatalog, saveIndicatorsCatalog } from './db';
 import { buildCurrentIndicatorsCatalog } from './catalog-service';
 
@@ -33,7 +34,11 @@ export const getStoredIndicators = cache(async (): Promise<Indicator[]> => {
 
 export async function getStoredIndicator(id: string): Promise<Indicator | null> {
     const indicators = await getStoredIndicators();
-    return indicators.find(item => item.id === id) ?? null;
+    const stored = indicators.find(item => item.id === id);
+    if (stored) return stored;
+
+    const fallback = DEFAULT_CATALOG.find(row => row.id === id);
+    return fallback ? mapCatalogRow(fallback) : null;
 }
 
 export async function saveIndicators(data: Indicator[]): Promise<void> {
