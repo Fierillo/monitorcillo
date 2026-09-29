@@ -24,7 +24,7 @@ export default function MethodologySection({ methodology, forceOpen }: Methodolo
                     {forceOpen ? <h3 className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-imperial-gold">Fuentes y metodología</h3> : null}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
                     {methodology.map((item, idx) => (
-                        <div key={idx} className="text-[7px] leading-[1.1]">
+                        <div key={idx} className={`text-[7px] leading-[1.1]${item.title === 'Detalle' ? ' sm:col-span-2 mt-1' : ''}`}>
                             <span className="text-imperial-cyan font-bold uppercase">{item.title}:</span>{' '}
                             <span className="text-foreground/50">{item.description}</span>
                         </div>

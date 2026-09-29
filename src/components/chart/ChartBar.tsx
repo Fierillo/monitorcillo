@@ -44,6 +44,7 @@ export default function ChartBar({
                 const monthValue = selectByMonth ? payload?.iso_fecha?.slice(5, 7) : payload?.iso_fecha;
                 const isSelected = selectedMonth && monthValue === selectedMonth;
                 const isPreliminary = areaConfig.preliminaryKey ? payload?.[areaConfig.preliminaryKey] === true : false;
+                const isProposal = areaConfig.proposalKey ? payload?.[areaConfig.proposalKey] === true : false;
                 const opacity = selectedMonth ? (isSelected ? 1 : 0.3) : 1;
                 const fillOpacity = isPreliminary ? 0.45 : (areaConfig.fill === false ? 0 : 1);
                 const strokeColor = areaConfig.borderColor ?? DEFAULT_BAR_BORDER_COLOR;
@@ -55,6 +56,30 @@ export default function ChartBar({
                 const rectHeight = Math.max(0, barAbsHeight - strokeWidth);
                 const dash = areaConfig.dash;
                 const patternId = `bar-pattern-${areaConfig.key}-${payload?.iso_fecha ?? 'row'}`.replace(/[^a-zA-Z0-9-_]/g, '-');
+                if (isProposal) {
+                    return (
+                        <g>
+                            {areaConfig.proposalFillPattern === 'diagonal-stripes' ? (
+                                <defs>
+                                    <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                                        <rect width="6" height="6" fill={areaConfig.color} />
+                                        <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
+                                    </pattern>
+                                </defs>
+                            ) : null}
+                            <Rectangle
+                                x={rectX}
+                                y={rectY}
+                                width={rectWidth}
+                                height={rectHeight}
+                                fill={areaConfig.proposalFillPattern === 'diagonal-stripes' ? `url(#${patternId})` : areaConfig.color}
+                                stroke={strokeColor}
+                                strokeWidth={strokeWidth}
+                                style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
+                            />
+                        </g>
+                    );
+                }
                 if (isPreliminary) {
                     return (
                         <g>

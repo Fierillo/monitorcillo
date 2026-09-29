@@ -14,6 +14,8 @@ import { getRawData } from './db';
 import { COST_OF_LIVING_MODEL, calculateCostOfLivingBurden, fetchCostOfLivingIndices } from './purchasing-power-cost';
 import { RIGI_INVESTMENT_CHART_DATA, RIGI_INVESTMENTS } from './investments-source';
 import { fetchPublicSpendingChartData } from './public-spending-source';
+import { PRESUPUESTO_EXPENSE_SERIES, PRESUPUESTO_RESOURCE_SERIES } from './presupuesto/schema';
+import { fetchPresupuestoRubrosChartData } from './presupuesto-source';
 
 type DetailConfig = Omit<IndicatorCompositeViewProps, 'title' | 'subtitle'> & { subtitle?: string };
 
@@ -27,6 +29,7 @@ export async function getIndicatorDetailConfig(indicator: Indicator): Promise<De
     if (indicator.id === 'inversiones') return investmentsConfig(indicator);
     if (indicator.id === 'deuda') return deudaConfig(indicator);
     if (indicator.id === 'gasto-publico') return publicSpendingConfig(indicator);
+    if (indicator.id === 'presupuesto-nacional') return presupuestoNacionalConfig(indicator);
     if (indicator.id === 'pobreza') return pobrezaConfig(indicator);
     if (indicator.id === 'inflacion') return inflacionConfig(indicator);
     if (indicator.id === 'icg') return icgConfig(indicator);
@@ -70,6 +73,74 @@ async function publicSpendingConfig(indicator: Indicator): Promise<DetailConfig>
         leftYAxisDomain: [0, 55],
         showTooltipTotal: true,
         indicatorId: indicator.id,
+    };
+}
+
+async function presupuestoNacionalConfig(indicator: Indicator): Promise<DetailConfig> {
+    const data = await fetchPresupuestoRubrosChartData();
+    const areas: AreaConfig[] = [
+        ...PRESUPUESTO_RESOURCE_SERIES.map((item, index) => ({
+            key: item.key,
+            name: item.label,
+            color: item.color,
+            type: 'bar' as const,
+            stackId: 'presupuesto',
+            preliminaryKey: 'preliminary',
+            proposalKey: 'proyecto',
+            proposalFillPattern: 'diagonal-stripes' as const,
+            ...(index === 0 ? {
+                preliminaryLabel: 'Prórroga (sin ley propia): 2024 y 2025',
+                proposalLabel: 'Proyecto (aún no ley): 2027',
+            } : {}),
+        })),
+        ...PRESUPUESTO_EXPENSE_SERIES.map(item => ({
+            key: item.key,
+            name: item.label,
+            color: item.color,
+            type: 'bar' as const,
+            stackId: 'presupuesto',
+            preliminaryKey: 'preliminary',
+            proposalKey: 'proyecto',
+            proposalFillPattern: 'diagonal-stripes' as const,
+        })),
+        { key: 'resultado', name: 'Resultado financiero', color: '#FFD700', type: 'line', strokeWidth: 2 },
+    ];
+    const methodology: MethodologyItem[] = [
+        { title: 'Fuente', description: 'Presupuesto anual de la Administración Nacional según informes ciudadano ONP (crédito/recurso vigente). 2026 toma la Ley de Presupuesto. 2027 toma el proyecto de ley enviado al Congreso el 15/09/2026.' },
+        { title: 'Lectura', description: 'Rubros de recursos hacia arriba y de gasto hacia abajo, como porcentaje del PBI presupuestado del ejercicio. La línea dorada es el resultado financiero presupuestado. Barras atenuadas: prórroga. Barras rayadas: proyecto aún no sancionado.' },
+        { title: 'Recursos', description: 'Tributarios, aportes y contribuciones a la seguridad social, otros ingresos corrientes y recursos de capital.' },
+        { title: 'Gastos', description: 'Prestaciones de la seguridad social, gastos de consumo y operación, transferencias corrientes, intereses y gastos de capital.' },
+        { title: 'Prórrogas 2024-2025', description: 'Sin ley de presupuesto propia. 2024 rige por Decreto 88/2023 (prórroga de la Ley 27.701/2023). 2025 continúa bajo el mismo régimen de prórroga, con créditos redistribuidos por decisión administrativa.' },
+        { title: 'Proyecto 2027', description: 'Ingresó a Diputados el 15/09/2026. Aún no es ley; el debate en comisión está previsto para octubre. Cifras del mensaje ONP del proyecto.' },
+        { title: 'Detalle', description: 'El techo de recursos se ve casi plano porque el gráfico usa el PBI presupuestado de cada ejercicio: recursos y denominador se estiman juntos, así que la ratio % PBI cambia poco entre años.' },
+    ];
+
+    return {
+        subtitle: `Fuente: ${indicator.fuente}`,
+        chartTitle: 'Recursos y gastos del Presupuesto Nacional',
+        data,
+        areas,
+        methodology,
+        valueFormat: 'percent',
+        yAxisDecimals: 1,
+        yAxisLabel: '% del PBI',
+        leftYAxisDomain: 'auto-pad',
+        showTooltipTotal: false,
+        indicatorId: indicator.id,
+        views: [{
+            id: 'por-rubro',
+            label: 'Por rubro',
+            chartTitle: 'Recursos y gastos del Presupuesto Nacional',
+            data,
+            areas,
+            methodology,
+            valueFormat: 'percent',
+            yAxisDecimals: 1,
+            yAxisLabel: '% del PBI',
+            leftYAxisDomain: 'auto-pad',
+            showTooltipTotal: false,
+            referenceLines: [{ value: 0, color: '#64748B', dash: [4, 4] }],
+        }],
     };
 }
 

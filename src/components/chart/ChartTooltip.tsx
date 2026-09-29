@@ -103,18 +103,29 @@ export default function ChartTooltip({
 
     if (valueRows.length === 0) return null;
 
-    const showStackTotal = showTotal && valueRows.length > 1;
-    const total = showStackTotal ? valueRows.reduce((sum, row) => sum + row.value, 0) : null;
-    const totalFormat = valueRows[0]?.format ?? valueFormat;
+    const stackRows = valueRows.filter(row => row.countsTowardTotal);
+    const separatedRows = valueRows.filter(row => !row.countsTowardTotal);
+    const showStackTotal = showTotal && stackRows.length > 1;
+    const total = showStackTotal ? stackRows.reduce((sum, row) => sum + row.value, 0) : null;
+    const totalFormat = stackRows[0]?.format ?? valueFormat;
+    const separateFooter = separatedRows.length > 0 && stackRows.length > 0;
+
+    const renderRow = (row: (typeof valueRows)[number]) => compact || isCapturing ? (
+        <div key={row.key} style={{ display: 'flex', alignItems: 'center', justifyContent: compact ? 'space-between' : 'flex-start', gap: compact ? '4px' : '4px', height: isCapturing ? '22px' : undefined, lineHeight: isCapturing ? '22px' : undefined, padding: row.tooltipBackgroundColor ? '1px 4px' : undefined, backgroundColor: row.tooltipBackgroundColor, borderRadius: row.tooltipBackgroundColor ? '2px' : undefined, fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+            <span style={{ color: row.color, maxWidth: compact ? '108px' : undefined, overflow: 'hidden', textOverflow: 'ellipsis', ...tooltipTextOutline(row.color) }}>{row.name}</span>
+            <span style={{ color: row.secondaryColor ?? row.color, ...tooltipTextOutline(row.secondaryColor ?? row.color) }}>{compact ? row.formatted : `: ${row.formatted}`}</span>
+        </div>
+    ) : row.node;
+
     return (
         <div key={tooltipLabel} data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: compact ? '4px' : '10px', color: '#FFF', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '12px' : '14px', lineHeight: compact ? 1.2 : 1.35, whiteSpace: 'nowrap', backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
             <div style={{ height: isCapturing ? '24px' : undefined, lineHeight: isCapturing ? '20px' : undefined, color: '#FFD700', fontWeight: 'bold', marginBottom: compact ? '2px' : '4px', ...tooltipTextOutline() }}>{rowData.fecha}</div>
-            {valueRows.map(row => compact || isCapturing ? (
-                <div key={row.key} style={{ display: 'flex', alignItems: 'center', justifyContent: compact ? 'space-between' : 'flex-start', gap: compact ? '4px' : '4px', height: isCapturing ? '22px' : undefined, lineHeight: isCapturing ? '22px' : undefined, padding: row.tooltipBackgroundColor ? '1px 4px' : undefined, backgroundColor: row.tooltipBackgroundColor, borderRadius: row.tooltipBackgroundColor ? '2px' : undefined, fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                    <span style={{ color: row.color, maxWidth: compact ? '108px' : undefined, overflow: 'hidden', textOverflow: 'ellipsis', ...tooltipTextOutline(row.color) }}>{row.name}</span>
-                    <span style={{ color: row.secondaryColor ?? row.color, ...tooltipTextOutline(row.secondaryColor ?? row.color) }}>{compact ? row.formatted : `: ${row.formatted}`}</span>
+            {(separateFooter ? stackRows : valueRows).map(renderRow)}
+            {separateFooter ? (
+                <div style={{ marginTop: compact ? '3px' : '6px', paddingTop: compact ? '3px' : '6px', borderTop: '1px solid #666' }}>
+                    {separatedRows.map(renderRow)}
                 </div>
-            ) : row.node)}
+            ) : null}
             {showStackTotal && total != null ? (
                 <div style={{ marginTop: compact ? '3px' : '6px', paddingTop: compact ? '3px' : '6px', borderTop: '1px solid #666', color: '#FFD700', fontWeight: 'bold', ...tooltipTextOutline() }}>
                     Total: {formatValueByType(total, totalFormat, 1)}
@@ -139,6 +150,7 @@ function renderValueRow(rowData: ChartDataRow, area: ChartTooltipProps['areaConf
         tooltipBackgroundColor: area.tooltipBackgroundColor,
         value: numericValue,
         format,
+        countsTowardTotal: area.type === 'bar' || Boolean(area.stackId),
         formatted: formatValueByType(numericValue, format, area.valueDecimals ?? 1),
         node: (
             <div key={area.key} style={{ padding: area.tooltipBackgroundColor ? '1px 4px' : undefined, backgroundColor: area.tooltipBackgroundColor, borderRadius: area.tooltipBackgroundColor ? '2px' : undefined, fontWeight: 'bold' }}>

@@ -60,6 +60,46 @@ describe('ChartTooltip', () => {
         expect(renderToStaticMarkup(<ChartTooltip {...props} showTotal />)).toContain('Total: 5,0%');
     });
 
+    it('excludes line series from the stack total', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip
+            chartData={[{ fecha: '2024', first: 10, second: -6, resultado: 4 }]}
+            areaConfigs={[
+                { key: 'first', name: 'Recursos', color: '#0f0', type: 'bar', stackId: 'presupuesto' },
+                { key: 'second', name: 'Gastos', color: '#f00', type: 'bar', stackId: 'presupuesto' },
+                { key: 'resultado', name: 'Resultado financiero', color: '#FFD700', type: 'line' },
+            ]}
+            valueFormat="percent"
+            tooltipProps={{ active: true, label: '2024' }}
+            showTotal
+        />);
+
+        expect(markup).toContain('Total: 4,0%');
+        expect(markup).toContain('Resultado financiero');
+    });
+
+    it('renders line series below a separator instead of mixing them with stacked bars', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip
+            chartData={[{ fecha: '2024', first: 10, second: -6, resultado: 4 }]}
+            areaConfigs={[
+                { key: 'first', name: 'Recursos', color: '#0f0', type: 'bar', stackId: 'presupuesto' },
+                { key: 'second', name: 'Gastos', color: '#f00', type: 'bar', stackId: 'presupuesto' },
+                { key: 'resultado', name: 'Resultado financiero', color: '#FFD700', type: 'line' },
+            ]}
+            valueFormat="percent"
+            tooltipProps={{ active: true, label: '2024' }}
+        />);
+
+        const separatorIndex = markup.indexOf('border-top:1px solid #666');
+        const resultadoIndex = markup.indexOf('Resultado financiero');
+        const recursosIndex = markup.indexOf('Recursos');
+
+        expect(separatorIndex).toBeGreaterThan(-1);
+        expect(recursosIndex).toBeGreaterThan(-1);
+        expect(recursosIndex).toBeLessThan(separatorIndex);
+        expect(resultadoIndex).toBeGreaterThan(separatorIndex);
+        expect(markup).not.toContain('Total:');
+    });
+
     it('uses the reduced mobile footprint in compact mode', () => {
         const markup = renderToStaticMarkup(<ChartTooltip {...props} compact />);
 

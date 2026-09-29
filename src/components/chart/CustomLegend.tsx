@@ -10,6 +10,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
         return areas.findIndex((candidate) => (candidate.legendKey || candidate.key) === toggleKey && !candidate.hideInLegend) === index;
     });
     const preliminaryItems = areas.filter(area => area.preliminaryLabel);
+    const proposalItems = areas.filter(area => area.proposalLabel);
     const hasHighlights = highlightedAreas.size > 0;
 
     return (
@@ -67,6 +68,32 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                         <rect x="1" y="1" width="12" height="8" fill={(area.preliminaryFillPattern ?? area.fillPattern) === 'diagonal-stripes' ? `url(#legend-pattern-${area.key})` : area.color} fillOpacity={area.preliminaryFillPattern || area.fillPattern ? 1 : 0.45} stroke={area.preliminaryBorderColor ?? area.borderColor ?? area.color} strokeDasharray={area.preliminaryFillPattern || area.fillPattern ? undefined : '3 2'} />
                     </svg>
                     {area.preliminaryLabel}
+                </span>
+            ))}
+            {proposalItems.map(area => (
+                <span
+                    key={`${area.key}-proposal`}
+                    style={{
+                        color: '#FFD700',
+                        opacity: 0.8,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        fontSize: 12,
+                    }}
+                >
+                    <svg width="14" height="10">
+                        {area.proposalFillPattern === 'diagonal-stripes' ? (
+                            <defs>
+                                <pattern id={`legend-proposal-pattern-${area.key}`} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                                    <rect width="4" height="4" fill={area.color} />
+                                    <line x1="0" y1="0" x2="0" y2="4" stroke="#00143F" strokeOpacity="0.55" strokeWidth="1.5" />
+                                </pattern>
+                            </defs>
+                        ) : null}
+                        <rect x="1" y="1" width="12" height="8" fill={area.proposalFillPattern === 'diagonal-stripes' ? `url(#legend-proposal-pattern-${area.key})` : area.color} fillOpacity={area.proposalFillPattern ? 1 : 0.45} stroke={area.borderColor ?? area.color} strokeDasharray={area.proposalFillPattern ? undefined : '3 2'} />
+                    </svg>
+                    {area.proposalLabel}
                 </span>
             ))}
         </div>

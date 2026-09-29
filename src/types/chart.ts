@@ -22,6 +22,9 @@ export interface AreaConfig {
     preliminaryColor?: string;
     preliminaryBorderColor?: string;
     preliminaryFillPattern?: 'diagonal-stripes';
+    proposalKey?: string;
+    proposalLabel?: string;
+    proposalFillPattern?: 'diagonal-stripes';
     dash?: number[];
     borderColor?: string;
     borderWidth?: number;
