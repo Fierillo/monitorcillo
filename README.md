@@ -37,6 +37,7 @@ Monitorcillo consolida indicadores económicos argentinos en una interfaz compac
 | Poder adquisitivo | INDEC, RIPTE y ANSES | Índices reales con mes base seleccionable |
 | EMAE | INDEC | Agregado, desestacionalizado, tendencia y sectores MM12 |
 | Deuda pública | MECON, BCRA e INDEC | Perfil de compromisos y deuda/PBI |
+| Gasto público consolidado | MECON y Econviews | Primario por nivel de gobierno más intereses (% PBI) |
 | Presupuesto nacional | ONP / datos.gob.ar | Recursos y gastos desagregados por rubro (% PBI) |
 | Pobreza | INDEC y UTDT | Serie oficial semestral y nowcast mensual (gráfico interactivo UTDT) |
 | Índice de Confianza en el Gobierno | UTDT | Serie mensual general y comparación por mandato |
