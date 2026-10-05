@@ -517,13 +517,9 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
         key: `${sector.key}_mm12`,
         name: sector.label,
         color: sector.color,
-        secondaryColor: 'secondaryColor' in sector ? sector.secondaryColor : undefined,
-        borderColor: 'borderColor' in sector ? sector.borderColor : undefined,
-        borderWidth: 'borderColor' in sector ? 5 : undefined,
         type: 'line',
-        strokeWidth: sector.key === 'impuestos' ? 3 : 2,
+        strokeWidth: 2,
         dash: 'dash' in sector ? [...sector.dash] : undefined,
-        tooltipBackgroundColor: sector.key === 'impuestos' ? 'rgba(255, 255, 255, 0.9)' : undefined,
     }));
     const sectorPerCapitaData: ChartDataRow[] = sectorData.map(row => {
         const populationAdjustment = populationAdjustmentFor(row);

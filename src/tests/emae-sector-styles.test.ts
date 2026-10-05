@@ -20,8 +20,10 @@ describe('EMAE sector styles', () => {
         }
     });
 
-    it('uses a black and red treatment for taxes', () => {
-        expect(sector('impuestos')).toMatchObject({ color: '#000000', secondaryColor: '#EF4444', dash: [2, 5] });
+    it('draws taxes as a single dotted line like the other service series', () => {
+        expect(sector('impuestos')).toMatchObject({ color: '#FFFFFF', dash: [2, 5] });
+        expect('secondaryColor' in sector('impuestos')!).toBe(false);
+        expect('borderColor' in sector('impuestos')!).toBe(false);
     });
 
     it('uses custom colors for selected activities', () => {
