@@ -1,21 +1,131 @@
 'use client';
 
 import { Bar, Rectangle } from 'recharts';
+import { memo, useCallback } from 'react';
 import type { ChartBarProps, ChartBarShapeProps, ChartSeriesClickEvent } from '@/types/chart';
 import { handleSeriesCtrlClick } from './seriesInteraction';
 
 const DEFAULT_BAR_BORDER_COLOR = '#00143F';
 const DEFAULT_BAR_BORDER_WIDTH = 0.5;
 
-export default function ChartBar({
+function ChartBar({
     areaConfig,
     isDimmed,
     selectedMonth,
     onSelectMonth,
     selectByMonth,
     isCapturing = false,
+    animate = true,
     onCtrlClick,
 }: ChartBarProps) {
+    const handleClick = useCallback((data: unknown, _index: number, event: ChartSeriesClickEvent) => {
+        if (handleSeriesCtrlClick(event, onCtrlClick)) return;
+        if (event && event.stopPropagation) {
+            event.stopPropagation();
+        }
+        const isoFecha = getBarIsoFecha(data);
+        if (isoFecha) {
+            const monthValue = selectByMonth ? isoFecha.slice(5, 7) : isoFecha;
+            onSelectMonth(selectedMonth === monthValue ? null : monthValue);
+        }
+    }, [onCtrlClick, onSelectMonth, selectByMonth, selectedMonth]);
+
+    const renderShape = useCallback((props: ChartBarShapeProps) => {
+        const { payload, x, y, width, height } = props;
+        const barHeight = height ?? 0;
+        const barY = barHeight < 0 ? (y ?? 0) + barHeight : y;
+        const barAbsHeight = Math.abs(barHeight);
+        const monthValue = selectByMonth ? payload?.iso_fecha?.slice(5, 7) : payload?.iso_fecha;
+        const isSelected = selectedMonth && monthValue === selectedMonth;
+        const isPreliminary = areaConfig.preliminaryKey ? payload?.[areaConfig.preliminaryKey] === true : false;
+        const isProposal = areaConfig.proposalKey ? payload?.[areaConfig.proposalKey] === true : false;
+        const opacity = selectedMonth ? (isSelected ? 1 : 0.3) : 1;
+        const fillOpacity = isPreliminary ? 0.45 : (areaConfig.fill === false ? 0 : 1);
+        const strokeColor = areaConfig.borderColor ?? DEFAULT_BAR_BORDER_COLOR;
+        const strokeWidth = areaConfig.borderWidth ?? DEFAULT_BAR_BORDER_WIDTH;
+        const borderInset = strokeWidth / 2;
+        const rectX = (x ?? 0) + borderInset;
+        const rectY = (barY ?? 0) + borderInset;
+        const rectWidth = Math.max(0, (width ?? 0) - strokeWidth);
+        const rectHeight = Math.max(0, barAbsHeight - strokeWidth);
+        const dash = areaConfig.dash;
+        const patternId = `bar-pattern-${areaConfig.key}-${payload?.iso_fecha ?? 'row'}`.replace(/[^a-zA-Z0-9-_]/g, '-');
+        if (isProposal) {
+            return (
+                <g>
+                    {areaConfig.proposalFillPattern === 'diagonal-stripes' ? (
+                        <defs>
+                            <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                                <rect width="6" height="6" fill={areaConfig.color} />
+                                <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
+                            </pattern>
+                        </defs>
+                    ) : null}
+                    <Rectangle
+                        x={rectX}
+                        y={rectY}
+                        width={rectWidth}
+                        height={rectHeight}
+                        fill={areaConfig.proposalFillPattern === 'diagonal-stripes' ? `url(#${patternId})` : areaConfig.color}
+                        stroke={strokeColor}
+                        strokeWidth={strokeWidth}
+                        style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
+                    />
+                </g>
+            );
+        }
+        if (isPreliminary) {
+            return (
+                <g>
+                    {areaConfig.preliminaryFillPattern === 'diagonal-stripes' ? (
+                        <defs>
+                            <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                                <rect width="6" height="6" fill={areaConfig.preliminaryColor ?? areaConfig.color} />
+                                <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
+                            </pattern>
+                        </defs>
+                    ) : null}
+                    <Rectangle
+                        x={rectX}
+                        y={rectY}
+                        width={rectWidth}
+                        height={rectHeight}
+                        fill={areaConfig.preliminaryFillPattern === 'diagonal-stripes' ? `url(#${patternId})` : (areaConfig.preliminaryColor ?? areaConfig.color)}
+                        fillOpacity={areaConfig.preliminaryFillPattern === 'diagonal-stripes' ? 1 : fillOpacity}
+                        stroke={areaConfig.preliminaryBorderColor ?? strokeColor}
+                        strokeDasharray={areaConfig.preliminaryFillPattern === 'diagonal-stripes' ? undefined : '4 3'}
+                        strokeWidth={strokeWidth}
+                        style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
+                    />
+                </g>
+            );
+        }
+
+        const rectangle = <Rectangle
+            x={rectX}
+            y={rectY}
+            width={rectWidth}
+            height={rectHeight}
+            fill={areaConfig.fillPattern === 'diagonal-stripes' ? `url(#${patternId})` : areaConfig.color}
+            fillOpacity={fillOpacity}
+            stroke={strokeColor}
+            strokeDasharray={dash?.join(' ')}
+            strokeWidth={strokeWidth}
+            style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
+        />;
+        if (areaConfig.fillPattern !== 'diagonal-stripes') return rectangle;
+
+        return <g>
+            <defs>
+                <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                    <rect width="6" height="6" fill={areaConfig.color} />
+                    <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
+                </pattern>
+            </defs>
+            {rectangle}
+        </g>;
+    }, [areaConfig, isDimmed, selectByMonth, selectedMonth]);
+
     return (
         <Bar
             dataKey={areaConfig.key}
@@ -24,119 +134,14 @@ export default function ChartBar({
             fill={areaConfig.color}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
-            isAnimationActive={!isCapturing}
-            onClick={(data: unknown, _index: number, event: ChartSeriesClickEvent) => {
-                if (handleSeriesCtrlClick(event, onCtrlClick)) return;
-                if (event && event.stopPropagation) {
-                    event.stopPropagation();
-                }
-                const isoFecha = getBarIsoFecha(data);
-                if (isoFecha) {
-                    const monthValue = selectByMonth ? isoFecha.slice(5, 7) : isoFecha;
-                    onSelectMonth(selectedMonth === monthValue ? null : monthValue);
-                }
-            }}
-            shape={(props: ChartBarShapeProps) => {
-                const { payload, x, y, width, height } = props;
-                const barHeight = height ?? 0;
-                const barY = barHeight < 0 ? (y ?? 0) + barHeight : y;
-                const barAbsHeight = Math.abs(barHeight);
-                const monthValue = selectByMonth ? payload?.iso_fecha?.slice(5, 7) : payload?.iso_fecha;
-                const isSelected = selectedMonth && monthValue === selectedMonth;
-                const isPreliminary = areaConfig.preliminaryKey ? payload?.[areaConfig.preliminaryKey] === true : false;
-                const isProposal = areaConfig.proposalKey ? payload?.[areaConfig.proposalKey] === true : false;
-                const opacity = selectedMonth ? (isSelected ? 1 : 0.3) : 1;
-                const fillOpacity = isPreliminary ? 0.45 : (areaConfig.fill === false ? 0 : 1);
-                const strokeColor = areaConfig.borderColor ?? DEFAULT_BAR_BORDER_COLOR;
-                const strokeWidth = areaConfig.borderWidth ?? DEFAULT_BAR_BORDER_WIDTH;
-                const borderInset = strokeWidth / 2;
-                const rectX = (x ?? 0) + borderInset;
-                const rectY = (barY ?? 0) + borderInset;
-                const rectWidth = Math.max(0, (width ?? 0) - strokeWidth);
-                const rectHeight = Math.max(0, barAbsHeight - strokeWidth);
-                const dash = areaConfig.dash;
-                const patternId = `bar-pattern-${areaConfig.key}-${payload?.iso_fecha ?? 'row'}`.replace(/[^a-zA-Z0-9-_]/g, '-');
-                if (isProposal) {
-                    return (
-                        <g>
-                            {areaConfig.proposalFillPattern === 'diagonal-stripes' ? (
-                                <defs>
-                                    <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                                        <rect width="6" height="6" fill={areaConfig.color} />
-                                        <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
-                                    </pattern>
-                                </defs>
-                            ) : null}
-                            <Rectangle
-                                x={rectX}
-                                y={rectY}
-                                width={rectWidth}
-                                height={rectHeight}
-                                fill={areaConfig.proposalFillPattern === 'diagonal-stripes' ? `url(#${patternId})` : areaConfig.color}
-                                stroke={strokeColor}
-                                strokeWidth={strokeWidth}
-                                style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
-                            />
-                        </g>
-                    );
-                }
-                if (isPreliminary) {
-                    return (
-                        <g>
-                            {areaConfig.preliminaryFillPattern === 'diagonal-stripes' ? (
-                                <defs>
-                                    <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                                        <rect width="6" height="6" fill={areaConfig.preliminaryColor ?? areaConfig.color} />
-                                        <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
-                                    </pattern>
-                                </defs>
-                            ) : null}
-                            <Rectangle
-                                x={rectX}
-                                y={rectY}
-                                width={rectWidth}
-                                height={rectHeight}
-                                fill={areaConfig.preliminaryFillPattern === 'diagonal-stripes' ? `url(#${patternId})` : (areaConfig.preliminaryColor ?? areaConfig.color)}
-                                stroke={areaConfig.preliminaryBorderColor ?? strokeColor}
-                                strokeWidth={strokeWidth}
-                                style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
-                            />
-                        </g>
-                    );
-                }
-
-                return (
-                    <g>
-                        {areaConfig.fillPattern === 'diagonal-stripes' ? (
-                            <defs>
-                                <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                                    <rect width="6" height="6" fill={areaConfig.color} />
-                                    <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
-                                </pattern>
-                            </defs>
-                        ) : null}
-                        <Rectangle
-                            x={rectX}
-                            y={rectY}
-                            width={rectWidth}
-                            height={rectHeight}
-                            fill={areaConfig.fillPattern === 'diagonal-stripes' ? `url(#${patternId})` : areaConfig.color}
-                            fillOpacity={fillOpacity}
-                            stroke={strokeColor}
-                            strokeDasharray={dash ? dash.join(' ') : (isPreliminary && !isSelected ? '4 3' : undefined)}
-                            strokeWidth={strokeWidth}
-                            style={{
-                                opacity: isDimmed ? opacity * 0.2 : opacity,
-                                cursor: 'pointer',
-                                outline: 'none'
-                            }}
-                        />
-                    </g>
-                );
-            }}
+            isAnimationActive={!isCapturing && animate}
+            onClick={handleClick}
+            shape={renderShape}
         />
     );
 }
+
+export default memo(ChartBar);
 
 function getBarIsoFecha(data: unknown): string | null {
     if (!data || typeof data !== 'object') return null;

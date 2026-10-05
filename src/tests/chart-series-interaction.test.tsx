@@ -1,6 +1,7 @@
 import { cleanup, render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Rectangle } from 'recharts';
 import ChartArea from '../components/chart/ChartArea';
 import ChartBar from '../components/chart/ChartBar';
 import ChartLine from '../components/chart/ChartLine';
@@ -142,6 +143,21 @@ describe('chart series interactions', () => {
             width: 29.5,
             height: 39.5,
         });
+    });
+
+    it('draws ordinary bars without an extra SVG group', () => {
+        render(<ChartBar areaConfig={{ ...area, type: 'bar' }} isDimmed={false} selectedMonth={null} onSelectMonth={vi.fn()} onCtrlClick={vi.fn()} />);
+        const shape = rechartsProps.bars[0].shape as (props: Record<string, unknown>) => ReactElement;
+
+        expect(shape({ x: 0, y: 0, width: 20, height: 20 }).type).toBe(Rectangle);
+    });
+
+    it('honors disabled animations for bars and lines', () => {
+        render(<ChartBar areaConfig={{ ...area, type: 'bar' }} isDimmed={false} selectedMonth={null} onSelectMonth={vi.fn()} onCtrlClick={vi.fn()} animate={false} />);
+        render(<ChartLine areaConfig={{ ...area, type: 'line' }} isDimmed={false} data={[]} onCtrlClick={vi.fn()} animate={false} />);
+
+        expect(rechartsProps.bars[0].isAnimationActive).toBe(false);
+        expect(rechartsProps.lines.every(line => line.isAnimationActive === false)).toBe(true);
     });
 
     it('keeps the same imperial blue border on preliminary bars', () => {

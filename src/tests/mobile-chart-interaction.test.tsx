@@ -181,6 +181,28 @@ describe('mobile chart interaction', () => {
         expect(recharts.chartProps).not.toHaveProperty('onTouchStart');
         expect(recharts.chartProps).not.toHaveProperty('onTouchMove');
         expect(recharts.chartProps).not.toHaveProperty('onTouchEnd');
+        expect(recharts.barProps?.isAnimationActive).toBe(true);
+    });
+
+    it('draws dense bar histories without animating every bar', () => {
+        const rows = Array.from({ length: 501 }, (_, index) => ({ fecha: `Mes ${index}`, iso_fecha: String(index), value: index }));
+        render(<CompositeChartCard
+            title="Indicador" chartTitle="Gráfico"
+            captureRef={createRef<HTMLDivElement>()} chartContainerRef={createRef<HTMLDivElement>()}
+            chartSize={{ width: 320, height: 360 }} visibleData={rows} sortedData={rows}
+            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'bar' }]}
+            methodology={[]} valueFormat="percent" yAxisDecimals={1} leftAxisDomain={[0, 501]}
+            xAxisKey="iso_fecha" labelByXAxisValue={new Map()} highlightedAreas={new Set()}
+            selectedMonth={null} selectByMonth={false} showTooltipTotal={false} referenceLines={[]}
+            rangePreview={null} committedRange={[0, 500]} crosshair={null} captureTooltip={null}
+            isMobile isCapturing={false}
+            onPrepareDownload={() => undefined} onDownloadChart={() => undefined}
+            onSelectMonth={() => undefined} onToggleHighlight={() => undefined}
+            onCrosshairClick={() => undefined} onCrosshairUnlock={() => undefined}
+            onHoverTooltipChange={() => undefined}
+        />);
+
+        expect(recharts.barProps?.isAnimationActive).toBe(false);
     });
 
     it('places the range selector next to the download button above the chart', () => {

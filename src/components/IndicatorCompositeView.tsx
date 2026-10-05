@@ -286,21 +286,20 @@ export default function IndicatorCompositeView({
 
         const updateSize = () => {
             const rect = element.getBoundingClientRect();
-            setChartSize({
-                width: Math.max(0, Math.floor(rect.width)),
-                height: Math.max(0, Math.floor(rect.height)),
-            });
+            const width = Math.max(0, Math.floor(rect.width));
+            const height = Math.max(0, Math.floor(rect.height));
+            setChartSize(previous => previous.width === width && previous.height === height ? previous : { width, height });
         };
 
         const frame = requestAnimationFrame(updateSize);
         const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateSize);
         observer?.observe(element);
-        window.addEventListener('resize', updateSize);
+        if (!observer) window.addEventListener('resize', updateSize);
 
         return () => {
             cancelAnimationFrame(frame);
             observer?.disconnect();
-            window.removeEventListener('resize', updateSize);
+            if (!observer) window.removeEventListener('resize', updateSize);
         };
     }, [isMobile]);
 

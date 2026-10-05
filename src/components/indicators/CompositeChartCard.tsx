@@ -247,7 +247,9 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
     const hoverHorizontalRef = useRef<SVGLineElement | null>(null);
     const rafRef = useRef<number | null>(null);
     const [activeComparisonGroup, setActiveComparisonGroup] = useState<string | null>(null);
-    const renderedAreas = activeAreas(props.areas, props.highlightedAreas);
+    const renderedAreas = useMemo(() => activeAreas(props.areas, props.highlightedAreas), [props.areas, props.highlightedAreas]);
+    const animateBars = props.visibleData.length * renderedAreas.filter(area => area.type === 'bar').length <= 500;
+    const animateLines = props.visibleData.length * renderedAreas.filter(area => area.type === 'line').length <= 1000;
     const comparesMandateMonths = renderedAreas.some(area => area.comparisonMode === 'mandate-month');
     const lockedRow = props.crosshair?.locked && props.crosshair.label
         ? props.sortedData.find(row => row.fecha === props.crosshair?.label || row.iso_fecha === props.crosshair?.label)
@@ -263,19 +265,25 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
             .filter(area => area.type === 'line' && typeof lockedRow[area.key] === 'number')
             .map(area => ({ area, value: Number(lockedRow[area.key]) }))
         : [];
-    const leftRange = axisTickRange(props, 'left', !Array.isArray(props.leftAxisDomain));
-    const rightRange = axisTickRange(props, 'right', props.secondaryYAxis?.includeZero ?? !Array.isArray(props.secondaryYAxis?.domain));
+    const leftRange = useMemo(
+        () => axisTickRange(props, 'left', !Array.isArray(props.leftAxisDomain)),
+        [props.visibleData, props.areas, props.highlightedAreas, props.referenceLines, props.leftAxisDomain, props.secondaryYAxis],
+    );
+    const rightRange = useMemo(
+        () => axisTickRange(props, 'right', props.secondaryYAxis?.includeZero ?? !Array.isArray(props.secondaryYAxis?.domain)),
+        [props.visibleData, props.areas, props.highlightedAreas, props.secondaryYAxis],
+    );
     const preferredDivisions = props.valueFormat === 'millions' ? 12 : 8;
     const pairedDivisions = props.secondaryYAxis
         ? selectRoundTickDivisions([[leftRange.min, leftRange.max], [rightRange.min, rightRange.max]], preferredDivisions)
         : undefined;
-    const leftTicks = ticksForRange(leftRange, props.valueFormat, pairedDivisions);
-    const rightTicks = ticksForRange(rightRange, props.valueFormat, pairedDivisions);
+    const leftTicks = useMemo(() => ticksForRange(leftRange, props.valueFormat, pairedDivisions), [leftRange, props.valueFormat, pairedDivisions]);
+    const rightTicks = useMemo(() => ticksForRange(rightRange, props.valueFormat, pairedDivisions), [rightRange, props.valueFormat, pairedDivisions]);
 
-    const leftDomain = [leftTicks[0], leftTicks.at(-1) ?? 0];
-    const rightDomain = [rightTicks[0], rightTicks.at(-1) ?? 0];
+    const leftDomain = useMemo<[number, number]>(() => [leftTicks[0], leftTicks.at(-1) ?? 0], [leftTicks]);
+    const rightDomain = useMemo<[number, number]>(() => [rightTicks[0], rightTicks.at(-1) ?? 0], [rightTicks]);
 
-    const margins = chartMargins({ isMobile: Boolean(props.isMobile), valueFormat: props.valueFormat, hasSecondaryAxis: Boolean(props.secondaryYAxis) });
+    const margins = useMemo(() => chartMargins({ isMobile: Boolean(props.isMobile), valueFormat: props.valueFormat, hasSecondaryAxis: Boolean(props.secondaryYAxis) }), [props.isMobile, props.valueFormat, props.secondaryYAxis]);
     const leftMargin = margins.left;
     const rightMargin = margins.right;
     const xAxisHeight = props.isMobile ? 32 : 30;
@@ -287,6 +295,7 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
     const xTicks = useMemo(() => props.xAxisKey === 'iso_fecha' ? selectMonthAlignedXTicks(xTickValues, xTickCount) : undefined, [props.xAxisKey, xTickValues, xTickCount]);
 
     const xAxisPadding = useMemo(() => ({ left: xAxisEdgePadding, right: xAxisEdgePadding }), [xAxisEdgePadding]);
+    const chartMargin = useMemo(() => ({ top: 5, right: rightMargin, bottom: props.isMobile ? xAxisHeight + 8 : 5, left: leftMargin }), [rightMargin, props.isMobile, xAxisHeight, leftMargin]);
     const renderXAxisTick = useCallback((tickProps: XAxisTickContentProps) => (
         <text
             className={tickProps.className}
@@ -300,8 +309,14 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
         </text>
     ), [xTickFontSize]);
     const formatXAxisTick = useCallback((value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value), [props.labelByXAxisValue]);
+    const formatLeftTick = useCallback((value: number) => formatAxisValueByType(value, props.valueFormat, props.yAxisDecimals), [props.valueFormat, props.yAxisDecimals]);
+    const rightAxisFormat = props.secondaryYAxis?.format;
+    const formatRightTick = useCallback((value: number) => formatValueByType(value, rightAxisFormat), [rightAxisFormat]);
+    const leftTickStyle = useMemo(() => ({ fill: '#FFD700', fontSize: 10 }), []);
+    const rightTickStyle = useMemo(() => ({ fill: props.secondaryYAxis?.color || '#00BFFF', fontSize: 10 }), [props.secondaryYAxis?.color]);
 
-    const visibleReferenceLines = props.referenceLines.filter(reference => reference.value >= 0);
+    const visibleReferenceLines = useMemo(() => props.referenceLines.filter(reference => reference.value >= 0), [props.referenceLines]);
+    const backgroundReferenceLines = useMemo(() => visibleReferenceLines.filter(reference => !reference.foreground), [visibleReferenceLines]);
     const renderReferenceLine = (reference: ChartReferenceLine, key: string, outline = false) => <ReferenceLine
         key={key}
         y={reference.value}
@@ -498,7 +513,7 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
             width={props.chartSize.width}
             height={props.chartSize.height}
             data={props.visibleData}
-            margin={{ top: 5, right: rightMargin, bottom: props.isMobile ? xAxisHeight + 8 : 5, left: leftMargin }}
+            margin={chartMargin}
             barCategoryGap={props.isMobile && renderedAreas.some(area => area.type === 'bar') ? '8%' : '0%'}
             stackOffset="sign"
             style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }}
@@ -530,11 +545,11 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
                 height={xAxisHeight}
                 tickMargin={props.isMobile ? 6 : 4}
             />
-            <YAxis orientation="left" stroke="#FFD700" tick={{ fill: '#FFD700', fontSize: 10 }} tickFormatter={(val) => formatAxisValueByType(val, props.valueFormat, props.yAxisDecimals)} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions' && props.valueFormat !== 'currency'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
-            {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={{ fill: props.secondaryYAxis.color || '#00BFFF', fontSize: 10 }} tickFormatter={(val) => formatValueByType(val, props.secondaryYAxis?.format)} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
+            <YAxis orientation="left" stroke="#FFD700" tick={leftTickStyle} tickFormatter={formatLeftTick} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions' && props.valueFormat !== 'currency'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
+            {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={rightTickStyle} tickFormatter={formatRightTick} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
             {props.secondaryYAxis ? leftTicks.map(tick => <ReferenceLine key={`tick-grid-${tick}`} y={tick} yAxisId="left" stroke="#FFFFFF" strokeOpacity={0.35} strokeWidth={0.5} />) : null}
-            {visibleReferenceLines.filter(reference => !reference.foreground).map((reference, index) => renderReferenceLine(reference, reference.label ?? `${reference.value}-${index}`))}
-            {renderedAreas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} />)}
+            {backgroundReferenceLines.map((reference, index) => renderReferenceLine(reference, reference.label ?? `${reference.value}-${index}`))}
+            {renderedAreas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} animate={areaConfig.type === 'bar' ? animateBars : animateLines} />)}
             {comparisonRows.map(row => <MandatePoint key={String(row.iso_fecha)} x={row[props.xAxisKey] as string | number} y={Number(row.icg)} yAxisId="left" primaryColor={String(row.mandate_color ?? '#FFD700')} secondaryColor={typeof row.mandate_secondary_color === 'string' ? row.mandate_secondary_color : undefined} />)}
             {lockedSeriesPoints.map(({ area, value }) => <MandatePoint key={`locked-${area.key}`} x={lockedRow![props.xAxisKey] as string | number} y={value} yAxisId={area.yAxisId ?? 'left'} primaryColor={area.color} secondaryColor={area.secondaryColor} />)}
             <Customized component={(chartState: unknown) => <RangePreviewGuides previewRange={props.rangePreview} committedRange={props.committedRange} sortedData={props.sortedData} xAxisKey={props.xAxisKey} chartState={chartState} />} />
@@ -746,11 +761,11 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
     );
 }
 
-function ChartSeries({ areaConfig, props }: { areaConfig: AreaConfig; props: ChartRenderProps }) {
-    const onCtrlClick = () => props.onToggleHighlight(areaConfig.legendKey || areaConfig.key);
-    const allSeriesKeys = props.areas.filter(a => a.type === 'line').map(a => a.key);
-    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={false} data={props.visibleData} chartData={props.visibleData} allSeriesKeys={allSeriesKeys} isCapturing={props.isCapturing} isMobile={props.isMobile} onCtrlClick={onCtrlClick} />;
-    if (areaConfig.type === 'bar') return <ChartBar areaConfig={props.isMobile ? { ...areaConfig, maxBarSize: Math.min(areaConfig.maxBarSize ?? 10, 10) } : areaConfig} isDimmed={false} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} isCapturing={props.isCapturing} onCtrlClick={onCtrlClick} />;
+function ChartSeries({ areaConfig, props, animate }: { areaConfig: AreaConfig; props: ChartRenderProps; animate: boolean }) {
+    const onCtrlClick = useCallback(() => props.onToggleHighlight(areaConfig.legendKey || areaConfig.key), [props.onToggleHighlight, areaConfig.legendKey, areaConfig.key]);
+    const allSeriesKeys = useMemo(() => props.areas.filter(a => a.type === 'line').map(a => a.key), [props.areas]);
+    if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={false} data={props.visibleData} chartData={props.visibleData} allSeriesKeys={allSeriesKeys} isCapturing={props.isCapturing} animate={animate} isMobile={props.isMobile} onCtrlClick={onCtrlClick} />;
+    if (areaConfig.type === 'bar') return <ChartBar areaConfig={props.isMobile ? { ...areaConfig, maxBarSize: Math.min(areaConfig.maxBarSize ?? 10, 10) } : areaConfig} isDimmed={false} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} isCapturing={props.isCapturing} animate={animate} onCtrlClick={onCtrlClick} />;
     return <ChartArea areaConfig={areaConfig} isDimmed={false} onCtrlClick={onCtrlClick} />;
 }
 

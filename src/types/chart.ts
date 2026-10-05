@@ -205,6 +205,7 @@ export type ChartBarProps = {
     onSelectMonth: (month: string | null) => void;
     selectByMonth?: boolean;
     isCapturing?: boolean;
+    animate?: boolean;
     onCtrlClick: () => void;
 };
 
@@ -221,6 +222,7 @@ export type ChartLineProps = {
     chartData?: ChartDataRow[];
     allSeriesKeys?: string[];
     isCapturing?: boolean;
+    animate?: boolean;
     isMobile?: boolean;
     onCtrlClick: () => void;
 };

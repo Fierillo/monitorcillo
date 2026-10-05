@@ -70,7 +70,7 @@ function computeLabelOffsets(
     return { offsets, arrowUp };
 }
 
-export default function ChartLine({ areaConfig, isDimmed, data, chartData, allSeriesKeys, isCapturing = false, isMobile = false, onCtrlClick }: ChartLineProps) {
+export default function ChartLine({ areaConfig, isDimmed, data, chartData, allSeriesKeys, isCapturing = false, animate = true, isMobile = false, onCtrlClick }: ChartLineProps) {
     const color = areaConfig.color;
     const gradientId = `line-reveal-${areaConfig.key}`;
     const stroke = areaConfig.revealStrokeAfterPercent == null ? color : `url(#${gradientId})`;
@@ -177,7 +177,7 @@ export default function ChartLine({ areaConfig, isDimmed, data, chartData, allSe
             dot={dot}
             label={label}
             connectNulls={areaConfig.connectNulls}
-            isAnimationActive={!isDimmed && !isCapturing}
+            isAnimationActive={!isDimmed && !isCapturing && animate}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
             style={{ opacity: isDimmed ? 0.2 : 1 }}
@@ -191,7 +191,7 @@ export default function ChartLine({ areaConfig, isDimmed, data, chartData, allSe
             dot={false}
             activeDot={false}
             connectNulls={areaConfig.connectNulls}
-            isAnimationActive={!isDimmed && !isCapturing}
+            isAnimationActive={!isDimmed && !isCapturing && animate}
             name={areaConfig.name}
             yAxisId={areaConfig.yAxisId || 'left'}
             tooltipType="none"
