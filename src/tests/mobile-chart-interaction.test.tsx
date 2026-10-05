@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import CompositeChartCard from '../components/indicators/CompositeChartCard';
 
-const recharts = vi.hoisted(() => ({ barProps: null as Record<string, unknown> | null, chartProps: null as Record<string, unknown> | null }));
+const recharts = vi.hoisted(() => ({ barProps: null as Record<string, unknown> | null, chartProps: null as Record<string, unknown> | null, xAxisProps: null as Record<string, unknown> | null }));
 
 vi.mock('recharts', () => ({
     Area: () => null,
@@ -23,13 +23,111 @@ vi.mock('recharts', () => ({
     ReferenceDot: () => null,
     ReferenceLine: () => null,
     Tooltip: () => null,
-    XAxis: () => null,
+    XAxis: (props: Record<string, unknown>) => {
+        recharts.xAxisProps = props;
+        return null;
+    },
     YAxis: () => null,
 }));
 
 afterEach(cleanup);
 
 describe('mobile chart interaction', () => {
+    it('insets the x axis so the first and last labels are not clipped', () => {
+        const rows = Array.from({ length: 50 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-${String(index + 1).padStart(2, '0')}-01`, value: index }));
+        render(<CompositeChartCard
+            title="Indicador"
+            chartTitle="Gráfico"
+            captureRef={createRef<HTMLDivElement>()}
+            chartContainerRef={createRef<HTMLDivElement>()}
+            chartSize={{ width: 1000, height: 360 }}
+            visibleData={rows}
+            sortedData={rows}
+            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'bar' }]}
+            methodology={[]}
+            valueFormat="percent"
+            yAxisDecimals={1}
+            leftAxisDomain={[0, 20]}
+            xAxisKey="iso_fecha"
+            labelByXAxisValue={new Map([['2026-01-01', 'ENE 26']])}
+            highlightedAreas={new Set()}
+            selectedMonth={null}
+            selectByMonth={false}
+            showTooltipTotal={false}
+            referenceLines={[]}
+            rangePreview={null}
+            committedRange={[0, 49]}
+            crosshair={null}
+            captureTooltip={null}
+            isMobile
+            isCapturing={false}
+            onPrepareDownload={() => undefined}
+            onDownloadChart={() => undefined}
+            onSelectMonth={() => undefined}
+            onToggleHighlight={() => undefined}
+            onCrosshairClick={() => undefined}
+            onCrosshairUnlock={() => undefined}
+            onHoverTooltipChange={() => undefined}
+        />);
+
+        type TickProps = { index: number; visibleTicksCount: number; payload: { value: string }; tickFormatter?: (value: unknown, index: number) => string };
+        const axisProps = recharts.xAxisProps as Record<string, unknown> & { tickFormatter: (value: unknown, index: number) => string };
+        const tick = axisProps.tick as (props: TickProps) => { props: { textAnchor: string; children: string } };
+        const tickCount = (axisProps.ticks as string[]).length;
+        const renderTick = (index: number, value: string) => tick({ index, visibleTicksCount: tickCount, payload: { value }, tickFormatter: axisProps.tickFormatter });
+
+        const padding = axisProps.padding as { left: number; right: number };
+
+        expect(tickCount).toBeGreaterThan(2);
+        expect(padding.left).toBe(padding.right);
+        expect(padding.left).toBeGreaterThan(0);
+        expect(renderTick(0, '2026-01-01').props.children).toBe('ENE 26');
+        expect(renderTick(0, '2026-02-01').props.children).toBe('2026-02-01');
+        expect(axisProps.interval).toBe('preserveStartEnd');
+        expect(axisProps.minTickGap).toBeGreaterThan(0);
+    });
+
+    it('lets the axis drop labels that would overlap instead of forcing every tick', () => {
+        const rows = Array.from({ length: 200 }, (_, index) => ({ fecha: `Mes ${index}`, iso_fecha: `2020-${String((index % 12) + 1).padStart(2, '0')}-01`, value: index }));
+        render(<CompositeChartCard
+            title="Indicador"
+            chartTitle="Gráfico"
+            captureRef={createRef<HTMLDivElement>()}
+            chartContainerRef={createRef<HTMLDivElement>()}
+            chartSize={{ width: 320, height: 360 }}
+            visibleData={rows}
+            sortedData={rows}
+            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'bar' }]}
+            methodology={[]}
+            valueFormat="percent"
+            yAxisDecimals={1}
+            leftAxisDomain={[0, 20]}
+            xAxisKey="iso_fecha"
+            labelByXAxisValue={new Map()}
+            highlightedAreas={new Set()}
+            selectedMonth={null}
+            selectByMonth={false}
+            showTooltipTotal={false}
+            referenceLines={[]}
+            rangePreview={null}
+            committedRange={[0, 199]}
+            crosshair={null}
+            captureTooltip={null}
+            isMobile
+            isCapturing={false}
+            onPrepareDownload={() => undefined}
+            onDownloadChart={() => undefined}
+            onSelectMonth={() => undefined}
+            onToggleHighlight={() => undefined}
+            onCrosshairClick={() => undefined}
+            onCrosshairUnlock={() => undefined}
+            onHoverTooltipChange={() => undefined}
+        />);
+
+        expect(recharts.xAxisProps?.interval).toBe('preserveStartEnd');
+        expect(recharts.xAxisProps?.minTickGap).toBeGreaterThanOrEqual(8);
+    });
+
     it('fits the whole series in the mobile viewport without a pan slider', async () => {
         const rows = Array.from({ length: 50 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-${String(index + 1).padStart(2, '0')}-01`, value: index }));
         const chartContainerRef = createRef<HTMLDivElement>();

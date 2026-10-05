@@ -1,9 +1,10 @@
 import { ImageDown } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { MouseEvent } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { CartesianGrid, ComposedChart, Customized, ReferenceDot, ReferenceLine, XAxis, YAxis } from 'recharts';
+import type { XAxisTickContentProps } from 'recharts';
 import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, ChartMobileRangeSelection, ChartReferenceLine, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
 import ChartArea from '../chart/ChartArea';
 import ChartBar from '../chart/ChartBar';
@@ -13,7 +14,7 @@ import CustomLegend from '../chart/CustomLegend';
 import MobileRangePicker from '../chart/MobileRangePicker';
 import { createHoverTooltipStore, type HoverTooltipStore } from '../chart/hover-tooltip-store';
 import MethodologySection from '../chart/MethodologySection';
-import { calculateTooltipVerticalPosition, chartClickStateFromPointer, chartMargins, chartPlotArea, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount } from '../chart/utils';
+import { calculateTooltipVerticalPosition, chartClickStateFromPointer, chartMargins, chartPlotArea, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, MIN_X_TICK_GAP_PX, selectRoundTickDivisions, targetXTickCount, xAxisEdgePaddingPx, xTickSpacingPx } from '../chart/utils';
 
 type Props = {
     title: string;
@@ -116,7 +117,11 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
     const [isControlPressed, setIsControlPressed] = useState(false);
     const renderedAreas = activeAreas(props.areas, props.highlightedAreas);
     const hasBars = renderedAreas.some(area => area.type === 'bar');
-    const plotArea = chartPlotArea({ isMobile: Boolean(props.isMobile), valueFormat: props.valueFormat, hasSecondaryAxis: Boolean(props.secondaryYAxis) });
+    const xTickValues = props.visibleData.map(row => String(row[props.xAxisKey] ?? ''));
+    const xTickLabels = xTickValues.map(value => props.labelByXAxisValue.get(value) ?? value);
+    const xTickFontSize = props.isMobile ? 9 : 10;
+    const xAxisEdgePadding = xAxisEdgePaddingPx(xTickFontSize, xTickLabels);
+    const plotArea = chartPlotArea({ isMobile: Boolean(props.isMobile), valueFormat: props.valueFormat, hasSecondaryAxis: Boolean(props.secondaryYAxis), xAxisEdgePadding });
     const captureCanvasStyle = props.forceDesktopLayout ? { outline: 'none', height: 780 } : { outline: 'none' };
     const captureChartStyle = props.forceDesktopLayout
         ? { outline: 'none', width: 1240, height: 780 }
@@ -274,12 +279,27 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
     const leftMargin = margins.left;
     const rightMargin = margins.right;
     const xAxisHeight = props.isMobile ? 32 : 30;
-    const xTicks = props.xAxisKey === 'iso_fecha'
-        ? selectMonthAlignedXTicks(
-            props.visibleData.map(row => String(row.iso_fecha ?? '')),
-            targetXTickCount(props.chartSize.width, leftMargin + rightMargin),
-        )
-        : undefined;
+    const xTickFontSize = props.isMobile ? 9 : 10;
+    const xTickValues = useMemo(() => props.visibleData.map(row => String(row[props.xAxisKey] ?? '')), [props.visibleData, props.xAxisKey]);
+    const xTickLabels = useMemo(() => xTickValues.map(value => props.labelByXAxisValue.get(value) ?? value), [xTickValues, props.labelByXAxisValue]);
+    const xAxisEdgePadding = useMemo(() => xAxisEdgePaddingPx(xTickFontSize, xTickLabels), [xTickFontSize, xTickLabels]);
+    const xTickCount = targetXTickCount(props.chartSize.width, leftMargin + rightMargin, xTickSpacingPx(xTickFontSize, xTickLabels));
+    const xTicks = useMemo(() => props.xAxisKey === 'iso_fecha' ? selectMonthAlignedXTicks(xTickValues, xTickCount) : undefined, [props.xAxisKey, xTickValues, xTickCount]);
+
+    const xAxisPadding = useMemo(() => ({ left: xAxisEdgePadding, right: xAxisEdgePadding }), [xAxisEdgePadding]);
+    const renderXAxisTick = useCallback((tickProps: XAxisTickContentProps) => (
+        <text
+            className={tickProps.className}
+            x={tickProps.x}
+            y={tickProps.y}
+            dy={4}
+            fill="#FFD700"
+            fontSize={xTickFontSize}
+        >
+            {tickProps.tickFormatter?.(tickProps.payload.value, tickProps.index) ?? String(tickProps.payload.value ?? '')}
+        </text>
+    ), [xTickFontSize]);
+    const formatXAxisTick = useCallback((value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value), [props.labelByXAxisValue]);
 
     const visibleReferenceLines = props.referenceLines.filter(reference => reference.value >= 0);
     const renderReferenceLine = (reference: ChartReferenceLine, key: string, outline = false) => <ReferenceLine
@@ -501,10 +521,12 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
             <XAxis
                 dataKey={props.xAxisKey}
                 stroke="#FFD700"
-                tick={{ fill: '#FFD700', fontSize: props.isMobile ? 9 : 10 }}
-                tickFormatter={(value: string | number) => props.labelByXAxisValue.get(String(value)) ?? String(value)}
+                tick={renderXAxisTick}
+                tickFormatter={formatXAxisTick}
                 ticks={xTicks}
-                interval={0}
+                interval="preserveStartEnd"
+                minTickGap={MIN_X_TICK_GAP_PX}
+                padding={xAxisPadding}
                 height={xAxisHeight}
                 tickMargin={props.isMobile ? 6 : 4}
             />

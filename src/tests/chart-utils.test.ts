@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, parseActiveTooltipIndex, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount } from '../components/chart/utils';
+import { chartTickShapes } from './chart-tick-shapes';
+import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, parseActiveTooltipIndex, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount, xAxisEdgePaddingPx, xTickLabelWidthPx, xTickSpacingPx } from '../components/chart/utils';
 
 describe('collectAxisExtentValues', () => {
     it('uses positive and negative stack totals for mixed-sign columns', () => {
@@ -135,13 +136,32 @@ describe('selectMonthAlignedXTicks', () => {
         });
     }
 
-    it('keeps yearly ticks on the same calendar month', () => {
+    function monthStep(ticks: string[]): number {
+        const toIndex = (iso: string) => {
+            const [year, month] = iso.split('-').map(Number);
+            return year * 12 + month - 1;
+        };
+        return toIndex(ticks[1]) - toIndex(ticks[0]);
+    }
+
+    it('repeats the chosen month every year', () => {
         const dates = monthlyRange('2017-06-01', 12 * 8 + 1);
         const ticks = selectMonthAlignedXTicks(dates, 8);
+        const step = monthStep(ticks);
 
         expect(ticks.length).toBeGreaterThanOrEqual(2);
-        expect(ticks.every(tick => tick.slice(5, 7) === '06')).toBe(true);
-        expect(ticks.at(-1)).toBe('2025-06-01');
+        expect(12 % step).toBe(0);
+        expect(new Set(ticks.map(tick => tick.slice(5, 7))).size).toBe(1);
+    });
+
+    it('keeps a half year pattern on two fixed months when the width allows it', () => {
+        const dates = monthlyRange('2017-06-01', 12 * 8 + 1);
+        const ticks = selectMonthAlignedXTicks(dates, 17);
+        const months = new Set(ticks.map(tick => tick.slice(5, 7)));
+
+        expect(ticks.length).toBeGreaterThan(12);
+        expect(months.size).toBe(2);
+        expect(12 % monthStep(ticks)).toBe(0);
     });
 
     it('keeps ticks on a fixed month phase from the latest date', () => {
@@ -180,5 +200,60 @@ describe('selectMonthAlignedXTicks', () => {
 
         expect(ticks.every(tick => tick.slice(5, 7) === '06')).toBe(true);
         expect(ticks).not.toContain('2022-06-01');
+    });
+});
+
+describe('xAxisEdgePaddingPx', () => {
+    it('reserves half of the widest label plus a margin on each side', () => {
+        expect(xAxisEdgePaddingPx(10, ['ENE 26'])).toBe(Math.ceil(xTickLabelWidthPx(10, ['ENE 26']) / 2) + 8);
+    });
+});
+
+describe('xTickSpacingPx', () => {
+    it('keeps one full label plus a gap between neighbouring ticks', () => {
+        expect(xTickSpacingPx(10, ['ENE 26'])).toBe(Math.max(44, xTickLabelWidthPx(10, ['ENE 26']) + 8));
+    });
+
+    it('does not ask for a wider spacing than a very short label needs', () => {
+        expect(xTickSpacingPx(10, ['E'])).toBe(44);
+    });
+});
+
+function isoMonths(count: number): string[] {
+    return Array.from({ length: count }, (_, index) => {
+        const total = 2016 * 12 + index;
+        return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}-01`;
+    });
+}
+
+describe('x tick density on a wide chart', () => {
+    it('uses the available width instead of falling back to a coarser month step', () => {
+        const shape = chartTickShapes().find(item => item.name === 'desktop wide range')!;
+        const budget = targetXTickCount(shape.plotWidth, 0, xTickSpacingPx(shape.fontSize, shape.labels));
+        const ticks = selectMonthAlignedXTicks(isoMonths(shape.months), budget);
+
+        expect(ticks.length).toBeGreaterThanOrEqual(Math.floor(budget * 0.85));
+    });
+
+    it('keeps every tick on a month of the series', () => {
+        const shape = chartTickShapes().find(item => item.name === 'desktop wide range')!;
+        const months = isoMonths(shape.months);
+        const budget = targetXTickCount(shape.plotWidth, 0, xTickSpacingPx(shape.fontSize, shape.labels));
+
+        expect(selectMonthAlignedXTicks(months, budget).every(tick => months.includes(tick))).toBe(true);
+    });
+
+    it('keeps the pattern on fixed months instead of drifting through the year', () => {
+        const shape = chartTickShapes().find(item => item.name === 'desktop wide range')!;
+        const budget = targetXTickCount(shape.plotWidth, 0, xTickSpacingPx(shape.fontSize, shape.labels));
+        const ticks = selectMonthAlignedXTicks(isoMonths(shape.months), budget);
+        const step = (() => {
+            const toIndex = (iso: string) => Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7)) - 1;
+            return toIndex(ticks[1]) - toIndex(ticks[0]);
+        })();
+
+        expect(ticks.length).toBeGreaterThan(12);
+        expect(12 % step).toBe(0);
+        expect(new Set(ticks.map(tick => tick.slice(5, 7))).size).toBe(12 / step);
     });
 });

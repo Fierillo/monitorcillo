@@ -191,12 +191,13 @@ export function axisComponentWidth({ isMobile, valueFormat, hasSecondaryAxis }: 
     return { left, right: hasSecondaryAxis ? 60 : 0 };
 }
 
-export function chartPlotArea(options: { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean }): { left: number; right: number; top: number; bottom: number } {
+export function chartPlotArea(options: { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean; xAxisEdgePadding?: number }): { left: number; right: number; top: number; bottom: number } {
     const margins = chartMargins(options);
     const axes = axisComponentWidth(options);
+    const edgePadding = options.xAxisEdgePadding ?? 0;
     return {
-        left: margins.left + axes.left,
-        right: margins.right + axes.right,
+        left: margins.left + axes.left + edgePadding,
+        right: margins.right + axes.right + edgePadding,
         top: margins.top,
         bottom: margins.bottom,
     };
@@ -289,7 +290,7 @@ export function resolveChartHoverPoint(
 }
 
 const ISO_MONTH_PATTERN = /^(\d{4})-(\d{2})/;
-const MONTH_ALIGNED_STEPS = [1, 2, 3, 4, 6, 12, 24, 36, 48, 60, 120];
+const MONTH_REPEATING_STEPS = [1, 2, 3, 4, 6, 12, 24, 36, 48, 60, 120];
 
 function monthIndexFromIso(value: string): number | null {
     const match = value.match(ISO_MONTH_PATTERN);
@@ -314,30 +315,45 @@ export function selectMonthAlignedXTicks(values: string[], targetCount = 8): str
     if (span <= 0) return [dated[0].value];
 
     const maxTicks = Math.max(2, targetCount);
-    let bestStep = MONTH_ALIGNED_STEPS[MONTH_ALIGNED_STEPS.length - 1];
-    let bestCount = 0;
-    for (const step of MONTH_ALIGNED_STEPS) {
-        const count = Math.floor(span / step) + 1;
-        if (count < 2 || count > maxTicks) continue;
-        if (count > bestCount) {
-            bestCount = count;
-            bestStep = step;
+    const byMonth = new Map(dated.map(entry => [entry.monthIndex, entry.value]));
+    let best: string[] = [];
+
+    for (const step of MONTH_REPEATING_STEPS) {
+        if (step > span) continue;
+        for (let offset = 0; offset < step; offset++) {
+            const candidate: string[] = [];
+            for (let cursor = last - offset; cursor >= first; cursor -= step) {
+                const value = byMonth.get(cursor);
+                if (value) candidate.unshift(value);
+            }
+            if (candidate.length < 2 || candidate.length > maxTicks) continue;
+            if (candidate.length > best.length) best = candidate;
         }
     }
 
-    const byMonth = new Map(dated.map(entry => [entry.monthIndex, entry.value]));
-    const ticks: string[] = [];
-    for (let cursor = last; cursor >= first; cursor -= bestStep) {
-        const tick = byMonth.get(cursor);
-        if (tick) ticks.push(tick);
-    }
-
-    return ticks.reverse();
+    return best.length > 0 ? best : [dated[0].value];
 }
 
 export const MIN_X_TICK_SPACING_PX = 44;
+export const MIN_X_TICK_GAP_PX = 8;
 
-export function targetXTickCount(chartWidth: number, axisMargins = 0): number {
+const X_TICK_LABEL_GLYPH_RATIO = 0.75;
+const X_TICK_EDGE_MARGIN_PX = 8;
+
+export function xTickLabelWidthPx(fontSize: number, labels: string[]): number {
+    const widestLabel = labels.reduce((widest, label) => Math.max(widest, label.length), 0);
+    return Math.ceil(widestLabel * fontSize * X_TICK_LABEL_GLYPH_RATIO);
+}
+
+export function xAxisEdgePaddingPx(fontSize: number, labels: string[]): number {
+    return Math.ceil(xTickLabelWidthPx(fontSize, labels) / 2) + X_TICK_EDGE_MARGIN_PX;
+}
+
+export function xTickSpacingPx(fontSize: number, labels: string[]): number {
+    return Math.max(MIN_X_TICK_SPACING_PX, xTickLabelWidthPx(fontSize, labels) + MIN_X_TICK_GAP_PX);
+}
+
+export function targetXTickCount(chartWidth: number, axisMargins = 0, spacing = MIN_X_TICK_SPACING_PX): number {
     const availableWidth = Math.max(0, chartWidth - axisMargins);
-    return Math.max(2, Math.floor(availableWidth / MIN_X_TICK_SPACING_PX) || 2);
+    return Math.max(2, Math.floor(availableWidth / Math.max(1, spacing)) || 2);
 }
