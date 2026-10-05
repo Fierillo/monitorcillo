@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { PNG } from 'pngjs';
 
 export const UTDT_ICG_CALENDAR_URL = 'https://www.utdt.edu/ver_contenido.php?id_contenido=25418&id_item_menu=41666';
@@ -100,9 +101,12 @@ function cropRightHalfPng(buffer: Buffer): Buffer {
 }
 
 export async function readIcgCalendarImageText(buffer: Buffer): Promise<string> {
-    const { createWorker, PSM } = await import('tesseract.js');
+    const { createWorker, OEM, PSM } = await import('tesseract.js');
     const prepared = upscaleGrayscalePng(buffer, 3);
-    const worker = await createWorker('spa');
+    const worker = await createWorker('spa', OEM.LSTM_ONLY, {
+        langPath: join(process.cwd(), 'assets'),
+        cacheMethod: 'none',
+    });
     try {
         await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
         const full = await worker.recognize(prepared);

@@ -154,5 +154,5 @@ describe('ICG UTDT diffusion calendar', () => {
             { period: '2027-02-01', publishedOn: '2027-02-22' },
             { period: '2027-03-01', publishedOn: '2027-03-23' },
         ]);
-    });
+    }, 15_000);
 });
