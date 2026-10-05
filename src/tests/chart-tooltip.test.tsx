@@ -43,7 +43,7 @@ describe('ChartTooltip', () => {
         />);
 
         expect(markup).toContain('color:#2E2D2C');
-        expect(markup).toContain('-webkit-text-stroke:3px rgba(0, 20, 63, 0.85)');
+        expect(markup).toContain('-webkit-text-stroke:3px rgba(0, 0, 0, 0.85)');
         expect(markup).toContain('paint-order:stroke fill');
         expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
     });
@@ -143,7 +143,7 @@ describe('ChartTooltip', () => {
         expect(markup).toContain('height:22px');
         expect(markup).toContain('line-height:22px');
         expect(markup).toContain('align-items:center');
-        expect(markup).toContain('Primero</span><span style="color:#fff;-webkit-text-stroke:3px rgba(0, 20, 63, 0.85);paint-order:stroke fill">: 2,0%');
+        expect(markup).toContain('Primero</span><span style="color:#fff;-webkit-text-stroke:3px rgba(0, 0, 0, 0.85);paint-order:stroke fill">: 2,0%');
         expect(markup).toContain('Segundo</span><span style="color:#000;-webkit-text-stroke:3px rgba(255, 255, 255, 0.9);paint-order:stroke fill">: 3,0%');
         expect(markup).toContain('paint-order:stroke fill');
     });
@@ -157,7 +157,7 @@ describe('ChartTooltip', () => {
         />);
 
         expect(markup).toContain('color:#2E2D2C');
-        expect(markup).toContain('-webkit-text-stroke:3px rgba(0, 20, 63, 0.85)');
+        expect(markup).toContain('-webkit-text-stroke:3px rgba(0, 0, 0, 0.85)');
         expect(markup).not.toContain('-webkit-text-stroke:#FFFFFF');
         expect(markup).not.toContain('border-color:#FFFFFF');
     });
@@ -175,7 +175,7 @@ describe('ChartTooltip', () => {
 
         expect(markup).toContain('background-color:rgba(255, 255, 255, 0.9)');
         expect(markup).toContain('<span style="color:#000000;-webkit-text-stroke:3px rgba(255, 255, 255, 0.9);paint-order:stroke fill">Salario informal:');
-        expect(markup).toContain('<span style="color:#FFFFFF;-webkit-text-stroke:3px rgba(0, 20, 63, 0.85);paint-order:stroke fill">Salario formal:');
+        expect(markup).toContain('<span style="color:#FFFFFF;-webkit-text-stroke:3px rgba(0, 0, 0, 0.85);paint-order:stroke fill">Salario formal:');
     });
 
     it('omits every series without a value for the active month', () => {
@@ -223,7 +223,7 @@ describe('ChartTooltip', () => {
         expect(markup).toContain('Javier Milei');
         expect(markup).toContain('2,40');
         expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
-        expect(markup).toContain('-webkit-text-stroke:3px rgba(0, 20, 63, 0.85)');
+        expect(markup).toContain('-webkit-text-stroke:3px rgba(0, 0, 0, 0.85)');
         expect(markup).toContain('paint-order:stroke fill');
         expect(markup).toContain('backdrop-filter:blur(2px)');
     });

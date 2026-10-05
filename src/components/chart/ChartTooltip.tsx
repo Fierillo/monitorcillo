@@ -5,7 +5,7 @@ import { SPANISH_MONTHS, formatValueByType } from './utils';
 
 const TOOLTIP_BACKGROUND = 'rgba(0, 20, 63, 0.4)';
 const TOOLTIP_BLUR = 'blur(2px)';
-const TOOLTIP_OUTLINE_DARK = '3px rgba(0, 20, 63, 0.85)';
+const TOOLTIP_OUTLINE_DARK = '3px rgba(0, 0, 0, 0.85)';
 const TOOLTIP_OUTLINE_LIGHT = '3px rgba(255, 255, 255, 0.9)';
 
 function tooltipTextOutline(color = '#FFD700') {
