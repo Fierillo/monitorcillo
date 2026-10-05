@@ -1,32 +1,16 @@
-import https from 'https';
 import type { BcraApiResponse, BcraVariablePage, BcraVariableRow, EmisionRawRow } from '@/types';
+import { fetchJson } from '../protocols';
 
-function fetchBcraVariablePage(idVariable: number, from: string, to: string, offset: number): Promise<BcraVariablePage> {
+async function fetchBcraVariablePage(idVariable: number, from: string, to: string, offset: number): Promise<BcraVariablePage> {
     const url = `https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/${idVariable}?Desde=${from}&Hasta=${to}&limit=3000&offset=${offset}`;
+    const { content } = await fetchJson(url);
+    const parsed = content as BcraApiResponse;
 
-    return new Promise((resolve, reject) => {
-        https.get(url, (res) => {
-            let data = '';
-            res.on('data', (chunk) => { data += chunk; });
-            res.on('end', () => {
-                if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
-                    reject(new Error(`Failed to fetch BCRA variable ${idVariable}. API returned status ${res.statusCode ?? 'unknown'}. Retry the sync when the BCRA API is available.`));
-                    return;
-                }
-
-                try {
-                    const parsed = JSON.parse(data) as BcraApiResponse;
-                    resolve({
-                        detalle: parsed.results?.[0]?.detalle || [],
-                        count: parsed.metadata?.resultset?.count || 0,
-                        limit: parsed.metadata?.resultset?.limit || 3000,
-                    });
-                } catch {
-                    reject(new Error(`Failed to parse BCRA variable ${idVariable}. Verify the BCRA API response format before retrying the sync.`));
-                }
-            });
-        }).on('error', (error) => reject(new Error(`Failed to fetch BCRA variable ${idVariable}: ${error.message}. Retry the sync when the BCRA API is available.`)));
-    });
+    return {
+        detalle: parsed.results?.[0]?.detalle || [],
+        count: parsed.metadata?.resultset?.count || 0,
+        limit: parsed.metadata?.resultset?.limit || 3000,
+    };
 }
 
 export async function fetchBcraVariable(idVariable: number, from: string, to: string): Promise<BcraVariableRow[]> {

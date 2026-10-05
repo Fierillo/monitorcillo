@@ -1,4 +1,6 @@
 import { EventEmitter } from 'node:events';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
@@ -76,6 +78,22 @@ describe('sync HTTP client', () => {
 
         const request = mocks.get.mock.results[0].value;
         expect(request.setTimeout).toHaveBeenCalledWith(60_000, expect.any(Function));
+    });
+});
+
+describe('shared transport boundary', () => {
+    const syncRoot = join(process.cwd(), 'src/lib/sync');
+    const handRolledTransport = /https\.get\(|(?<![\w.$])fetch\(/;
+
+    it('is the only sync module allowed to open sockets itself', () => {
+        const entries = readdirSync(syncRoot).filter(entry => entry.endsWith('.ts'));
+
+        expect(entries).toContain('http-client.ts');
+        for (const entry of entries) {
+            if (entry === 'http-client.ts') continue;
+            const source = readFileSync(join(syncRoot, entry), 'utf8');
+            expect(handRolledTransport.test(source), `src/lib/sync/${entry} bypasses the shared client`).toBe(false);
+        }
     });
 });
 
