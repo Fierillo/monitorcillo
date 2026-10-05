@@ -36,3 +36,15 @@ export function extractFileLinks(html: string, options: ExtractFileLinksOptions 
 
     return links;
 }
+
+export function parseUtdtAssetDate(url: string): string | null {
+    const match = url.match(/_(\d{10})\d+/);
+    if (!match) return null;
+    const seconds = Number(match[1]);
+    if (!Number.isFinite(seconds)) return null;
+    const date = new Date(seconds * 1000);
+    if (Number.isNaN(date.getTime())) return null;
+    const year = date.getUTCFullYear();
+    if (year < 2001 || year > 2100) return null;
+    return date.toISOString().split('T')[0];
+}

@@ -1,5 +1,5 @@
 import type { PobrezaRawRow } from '@/types';
-import { extractFileLinks, fetchPdf } from './protocols';
+import { extractFileLinks, fetchPdf, parseUtdtAssetDate } from './protocols';
 import { fetchLastModifiedDate, fetchTextFromUrl } from './sync/http-client';
 import { fetchTimeSeries } from './sync/time-series-client';
 
@@ -84,6 +84,14 @@ export function parseUtdtPeriodPdfLinks(html: string): UtdtPeriodPdfLink[] {
     }
 
     return Array.from(byPeriod.values());
+}
+
+export function parseUtdtPublicationDate(html: string): string | null {
+    const dates = [
+        parseUtdtAssetDate(parseUtdtChartImageUrl(html) ?? ''),
+        ...parseUtdtPeriodPdfLinks(html).map(link => parseUtdtAssetDate(link.url)),
+    ];
+    return dates.reduce(latestDate, null);
 }
 
 export function parsePovertyRateFromPdfText(text: string): number | null {
@@ -414,12 +422,6 @@ export async function fetchIndecPobrezaRows(): Promise<PobrezaRawRow[]> {
         .sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
-async function fetchUtdtPublishedAt(imageUrl: string | null): Promise<string | null> {
-    const urls = imageUrl ? [UTDT_POBREZA_URL, imageUrl] : [UTDT_POBREZA_URL];
-    const dates = await Promise.all(urls.map(url => fetchLastModifiedDate(url)));
-    return dates.reduce(latestDate, null);
-}
-
 async function fetchUtdtPobrezaReport(): Promise<PobrezaSourceReport> {
     try {
         const shinyPromise = fetchUtdtRowsFromShiny().catch((error) => {
@@ -428,8 +430,7 @@ async function fetchUtdtPobrezaReport(): Promise<PobrezaSourceReport> {
         });
         const html = await fetchTextFromUrl(UTDT_POBREZA_URL);
         const periodLinks = parseUtdtPeriodPdfLinks(html);
-        const imageUrl = parseUtdtChartImageUrl(html);
-        const publishedAt = await fetchUtdtPublishedAt(imageUrl);
+        const publishedAt = parseUtdtPublicationDate(html);
         const latestPdfLinks = periodLinks.slice(0, 1);
 
         const [shinyRows, pdfRows] = await Promise.all([

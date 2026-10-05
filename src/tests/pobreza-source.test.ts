@@ -9,6 +9,7 @@ import {
     parseUcaPovertyPdfUrl,
     parseUtdtChartImageUrl,
     parseUtdtPeriodPdfLinks,
+    parseUtdtPublicationDate,
     parseUtdtShinyRows,
     parseUtdtShinyWorkerId,
     utdtShinyTracesIncludeProjection,
@@ -38,6 +39,15 @@ describe('pobreza UTDT source parsing', () => {
             { period: 'Dic25May26', url: 'https://www.utdt.edu/download.php?fname=_178163550204131300.pdf' },
             { period: 'Nov25Abr26', url: 'https://www.utdt.edu/download.php?fname=_177879604483823000.pdf' },
         ]);
+    });
+
+    it('reads the UTDT publication date from the newest asset id on the page', () => {
+        const html = `
+            <p>El siguiente gráfico describe la evolución</p><img src="/imagen/_178924366211783200.webp" class="">
+            <a href="/download.php?fname=_178423269927738400.pdf">Ene26Jun26</a>
+            <a href="/download.php?fname=_177879604483823000.pdf">Nov25Abr26</a>
+        `;
+        expect(parseUtdtPublicationDate(html)).toBe('2026-09-12');
     });
 
     it('extracts the poverty rate from UTDT PDF text', () => {
