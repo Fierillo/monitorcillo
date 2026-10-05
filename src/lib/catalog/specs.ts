@@ -250,7 +250,10 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: ['icg'],
         formatValue: value => `${formatDecimal(value)} puntos`,
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
-        getNextExpectedEvents: ({ rawRows, rawDate, publicationDate, today }) => futureMonthly(publicationDate ?? latestDateWithValue(rawRows, ['icg']) ?? rawDate, today, 'UTDT'),
+        getNextExpectedEvents: ({ sourcePublicationDates }) => {
+            const date = sourcePublicationDates?.['icg-next'];
+            return date ? [{ date, label: 'UTDT' }] : [];
+        },
     },
     sipa: {
         type: 'sipa',

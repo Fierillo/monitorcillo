@@ -183,9 +183,12 @@ export async function syncIcg(): Promise<SyncResult> {
     const type: IndicatorType = 'icg';
     await ensureIcgTables();
     const existingData = (await getRawData(type)) ?? [];
-    const { rows: rawData, publishedAt } = await fetchIcgRawReport();
+    const { rows: rawData, publishedAt, nextPublishedAt } = await fetchIcgRawReport();
     const result = await persistMergedRawAndNormalize(type, existingData, rawData, normalizeIcg);
-    if (publishedAt && rawData.length > 0) await saveIndicatorPublication('icg', publishedAt, rawData.at(-1)?.fecha ?? null);
+    if (rawData.length > 0) {
+        if (publishedAt) await saveIndicatorPublication('icg', publishedAt, rawData.at(-1)?.fecha ?? null);
+        if (nextPublishedAt) await saveIndicatorPublication('icg-next', nextPublishedAt, null);
+    }
     return result;
 }
 

@@ -89,6 +89,18 @@ describe('sync data preservation', () => {
         expect(db.saveIndicatorPublication).toHaveBeenCalledWith('icg', '2026-01-05', '2025-12-01');
     });
 
+    it('persists the next ICG cronograma date', async () => {
+        icgSource.fetchIcgRawReport.mockResolvedValue({
+            rows: STORED_ICG_HISTORY,
+            publishedAt: '2026-01-26',
+            nextPublishedAt: '2026-02-23',
+        });
+        const { syncIcg } = await import('@/lib/sync/tasks');
+
+        await syncIcg();
+        expect(db.saveIndicatorPublication).toHaveBeenCalledWith('icg-next', '2026-02-23', null);
+    });
+
     it('upserts only the new dates and rebuilds normalized data from the full stored history', async () => {
         const persistedAfterUpsert = [...STORED_ICG_HISTORY, { fecha: '2026-01-01', icg: 2.5 }];
         db.getRawData

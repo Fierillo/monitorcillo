@@ -1,6 +1,7 @@
 import type { IcgRawRow } from '@/types';
 import { extractFileLinks, readWorkbook, sheetRows } from './protocols';
-import { fetchBufferFromUrl, fetchLastModifiedDate, isoDateFromHttpDate } from './sync/http-client';
+import { fetchBufferFromUrl } from './sync/http-client';
+import { UTDT_ICG_CALENDAR_URL, decodeUtdtPageHtml, fetchIcgCalendarSchedule, icgNextPublicationFromSchedule, icgPublicationDateFromSchedule, readIcgCalendarImageText, type IcgDiffusionEntry } from './icg-schedule';
 
 const UTDT_ICG_DATA_PAGE_URL = 'https://www.utdt.edu/listado_contenidos.php?id_item_menu=28756';
 const UTDT_ORIGIN = 'https://www.utdt.edu';
@@ -22,6 +23,17 @@ const MONTHS: Record<string, number> = {
 type IcgSourceReport = {
     rows: IcgRawRow[];
     publishedAt: string | null;
+    nextPublishedAt: string | null;
+};
+
+type IcgRawReportIo = {
+    fetchDataPage?: () => Promise<string>;
+    fetchWorkbook?: (url: string) => Promise<Buffer>;
+    fetchCalendarSchedule?: () => Promise<IcgDiffusionEntry[]>;
+    fetchCalendarPage?: () => Promise<string>;
+    fetchCalendarImage?: (url: string) => Promise<Buffer>;
+    readCalendarImageText?: (buffer: Buffer) => Promise<string>;
+    today?: string;
 };
 
 function parseMonth(value: unknown): string | null {
@@ -61,15 +73,38 @@ export function parseIcgWorkbookUrl(html: string): string | null {
     return link?.href ?? null;
 }
 
-export async function fetchIcgRawReport(): Promise<IcgSourceReport> {
+async function fetchIcgCalendarPageHtml(): Promise<string> {
+    return decodeUtdtPageHtml(await fetchBufferFromUrl(UTDT_ICG_CALENDAR_URL));
+}
+
+async function fetchIcgDataPageHtml(): Promise<string> {
     const pageResponse = await fetch(UTDT_ICG_DATA_PAGE_URL);
     if (!pageResponse.ok) throw new Error(`Failed to download ${UTDT_ICG_DATA_PAGE_URL}. Status ${pageResponse.status}`);
-    const pagePublishedAt = isoDateFromHttpDate(pageResponse.headers.get('last-modified'));
-    const html = await pageResponse.text();
+    return pageResponse.text();
+}
+
+async function loadIcgCalendarSchedule(io: IcgRawReportIo): Promise<IcgDiffusionEntry[]> {
+    if (io.fetchCalendarSchedule) return io.fetchCalendarSchedule();
+    return fetchIcgCalendarSchedule({
+        fetchPage: io.fetchCalendarPage ?? fetchIcgCalendarPageHtml,
+        fetchImage: io.fetchCalendarImage ?? fetchBufferFromUrl,
+        readImageText: io.readCalendarImageText ?? readIcgCalendarImageText,
+    });
+}
+
+export async function fetchIcgRawReport(io: IcgRawReportIo = {}): Promise<IcgSourceReport> {
+    const html = await (io.fetchDataPage ?? fetchIcgDataPageHtml)();
     const workbookUrl = parseIcgWorkbookUrl(html);
     if (!workbookUrl) throw new Error(`Failed to find the UTDT ICG Excel download at ${UTDT_ICG_DATA_PAGE_URL}. Verify the page format.`);
-    const [buffer, publishedAt] = await Promise.all([fetchBufferFromUrl(workbookUrl), fetchLastModifiedDate(workbookUrl)]);
+    const buffer = await (io.fetchWorkbook ?? fetchBufferFromUrl)(workbookUrl);
     const rows = parseIcgWorkbook(buffer);
     if (rows.length === 0) throw new Error(`Failed to parse ICG observations from ${workbookUrl}. Verify the workbook format.`);
-    return { rows, publishedAt: publishedAt ?? pagePublishedAt };
+    const latestPeriod = rows.at(-1)?.fecha;
+    const schedule = await loadIcgCalendarSchedule(io);
+    const today = io.today ?? new Date().toISOString().split('T')[0];
+    return {
+        rows,
+        publishedAt: latestPeriod ? icgPublicationDateFromSchedule(schedule, latestPeriod) : null,
+        nextPublishedAt: icgNextPublicationFromSchedule(schedule, today),
+    };
 }

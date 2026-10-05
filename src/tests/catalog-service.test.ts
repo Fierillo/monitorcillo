@@ -207,6 +207,27 @@ describe('buildCurrentIndicatorsCatalog', () => {
             proxima_fecha_description: 'Nowcast UTDT',
         });
     });
+
+    it('uses ICG publication date and the persisted cronograma next date', async () => {
+        const result = await buildCurrentIndicatorsCatalog({
+            getCatalogRows: async () => [{ ...baseCatalogRow, id: 'icg' }],
+            getLatestNormalizedRow: async (type) => type === 'icg' ? { iso_fecha: '2026-08-01', icg: 2.4 } : null,
+            getLatestRawDate: async () => '2026-08-01',
+            getPublicationDate: async (id) => id === 'icg' ? '2026-08-24' : null,
+            getPublicationDates: async () => ({ 'icg-next': '2027-03-23' }),
+            getNormalizedRowByDate: async (type, date) => type === 'icg' && date === '2026-07-01' ? { iso_fecha: '2026-07-01', icg: 2.3 } : null,
+            getRawRowByDate: async () => null,
+            getNormalizedRows: async () => [],
+            getRawRows: async () => [{ fecha: '2026-08-01', icg: 2.4 }],
+        });
+
+        expect(result.find(row => row.id === 'icg')).toMatchObject({
+            fecha: '24 AGO 26',
+            dato: '2,4 puntos',
+            proxima_fecha: formatDay('2027-03-23'),
+            proxima_fecha_description: 'UTDT',
+        });
+    });
 });
 
 async function expectPublishedDate(id: string, type: IndicatorType, valueColumn: string, row: DataRow, publicationDate: string, expected: object, expectedFallbackColumns?: string[], referenceRow?: DataRow) {

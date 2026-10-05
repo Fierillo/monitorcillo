@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
-import { parseIcgWorkbook, parseIcgWorkbookUrl } from '../lib/icg-source';
+import { fetchIcgRawReport, parseIcgWorkbook, parseIcgWorkbookUrl } from '../lib/icg-source';
 
 describe('ICG UTDT source parsing', () => {
     it('finds the monthly Excel download', () => {
@@ -29,5 +29,78 @@ describe('ICG UTDT source parsing', () => {
             { fecha: '2023-01-01', icg: 1.27 },
             { fecha: '2023-02-01', icg: 1.17 },
         ]);
+    });
+
+    it('uses the cronograma date of the latest observation as publishedAt', async () => {
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+            ['Título'],
+            [null, null, 'Feb-27', 'Mar-27'],
+            [null, 'ICG ', 1.1, 1.2],
+        ]), 'Actual');
+
+        const report = await fetchIcgRawReport({
+            fetchDataPage: async () => '<a href="/download.php?fname=_123.xls">Evolución Mensual del ICG, 2001 - Presente (Excel)</a>',
+            fetchWorkbook: async (url) => {
+                expect(url).toBe('https://www.utdt.edu/download.php?fname=_123.xls');
+                return XLSX.write(workbook, { type: 'buffer', bookType: 'xls' });
+            },
+            fetchCalendarSchedule: async () => [
+                { period: '2027-02-01', publishedOn: '2027-02-22' },
+                { period: '2027-03-01', publishedOn: '2027-03-23' },
+            ],
+        });
+
+        expect(report.publishedAt).toBe('2027-03-23');
+        expect(report.rows.at(-1)).toEqual({ fecha: '2027-03-01', icg: 1.2 });
+    });
+
+    it('loads those dates from the UTDT cronograma page image', async () => {
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+            ['Título'],
+            [null, null, 'Feb-27', 'Mar-27'],
+            [null, 'ICG ', 1.1, 1.2],
+        ]), 'Actual');
+
+        const report = await fetchIcgRawReport({
+            fetchDataPage: async () => '<a href="/download.php?fname=_123.xls">Evolución Mensual del ICG, 2001 - Presente (Excel)</a>',
+            fetchWorkbook: async () => XLSX.write(workbook, { type: 'buffer', bookType: 'xls' }),
+            fetchCalendarPage: async () => `
+                <h2>Cronograma de difusión 2027</h2>
+                <img src="https://www.utdt.edu/imagen/_111.png">
+            `,
+            fetchCalendarImage: async (url) => {
+                expect(url).toBe('https://www.utdt.edu/imagen/_111.png');
+                return Buffer.from('image');
+            },
+            readCalendarImageText: async (buffer) => {
+                expect(buffer.toString()).toBe('image');
+                return 'Cronograma de difusión ICG 2027\nMARZO MARTES 23';
+            },
+        });
+
+        expect(report.publishedAt).toBe('2027-03-23');
+    });
+
+    it('includes the next cronograma date after today', async () => {
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+            ['Título'],
+            [null, null, 'Feb-27', 'Mar-27'],
+            [null, 'ICG ', 1.1, 1.2],
+        ]), 'Actual');
+
+        const report = await fetchIcgRawReport({
+            fetchDataPage: async () => '<a href="/download.php?fname=_123.xls">Evolución Mensual del ICG, 2001 - Presente (Excel)</a>',
+            fetchWorkbook: async () => XLSX.write(workbook, { type: 'buffer', bookType: 'xls' }),
+            fetchCalendarSchedule: async () => [
+                { period: '2027-02-01', publishedOn: '2027-02-22' },
+                { period: '2027-03-01', publishedOn: '2027-03-23' },
+            ],
+            today: '2027-02-10',
+        });
+
+        expect(report.nextPublishedAt).toBe('2027-02-22');
     });
 });
