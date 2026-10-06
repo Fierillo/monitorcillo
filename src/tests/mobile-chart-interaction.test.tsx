@@ -81,6 +81,9 @@ describe('mobile chart interaction', () => {
         expect(tickCount).toBeGreaterThan(2);
         expect(padding.left).toBe(padding.right);
         expect(padding.left).toBeGreaterThan(0);
+        for (const index of [0, Math.floor(tickCount / 2), tickCount - 1]) {
+            expect(renderTick(index, '2026-01-01').props.textAnchor).toBe('middle');
+        }
         expect(renderTick(0, '2026-01-01').props.children).toBe('ENE 26');
         expect(renderTick(0, '2026-02-01').props.children).toBe('2026-02-01');
         expect(axisProps.interval).toBe('preserveStartEnd');

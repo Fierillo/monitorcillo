@@ -301,6 +301,7 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
             className={tickProps.className}
             x={tickProps.x}
             y={tickProps.y}
+            textAnchor="middle"
             dy={4}
             fill="#FFD700"
             fontSize={xTickFontSize}
