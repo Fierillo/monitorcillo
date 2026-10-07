@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { chartTickShapes } from './chart-tick-shapes';
-import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, parseActiveTooltipIndex, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount, xAxisEdgePaddingPx, xTickLabelWidthPx, xTickSpacingPx } from '../components/chart/utils';
+import { calculateTooltipVerticalPosition, chartIndexForX, chartXForIndex, collectAxisExtentValues, createRoundTicks, parseActiveTooltipIndex, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount, xTickEdgeSpacingPx, xTickLabelWidthPx, xTickSpacingPx } from '../components/chart/utils';
 
 describe('collectAxisExtentValues', () => {
     it('uses positive and negative stack totals for mixed-sign columns', () => {
@@ -95,9 +95,9 @@ describe('resolveChartHoverPoint', () => {
 
 describe('targetXTickCount', () => {
     it('packs ticks using the minimum label spacing instead of a fixed wide gap', () => {
-        expect(targetXTickCount(320, 16)).toBe(6);
-        expect(targetXTickCount(600, 20)).toBe(13);
-        expect(targetXTickCount(900, 20)).toBe(20);
+        expect(targetXTickCount(320, 16)).toBe(7);
+        expect(targetXTickCount(600, 20)).toBe(14);
+        expect(targetXTickCount(900, 20)).toBe(21);
     });
 
     it('never proposes fewer than two ticks on a very narrow chart', () => {
@@ -117,15 +117,78 @@ describe('targetXTickCount', () => {
         };
 
         expect(ticks).toHaveLength(11);
-        const step = toIndex(ticks[1]) - toIndex(ticks[0]);
+        const interior = ticks.slice(1, -1);
+        const step = toIndex(interior[1]) - toIndex(interior[0]);
         expect(step).toBe(12);
-        for (let index = 1; index < ticks.length; index += 1) {
-            expect(toIndex(ticks[index]) - toIndex(ticks[index - 1])).toBe(step);
+        for (let index = 1; index < interior.length; index += 1) {
+            expect(toIndex(interior[index]) - toIndex(interior[index - 1])).toBe(step);
+        }
+    });
+});
+
+describe('chart point geometry', () => {
+    it('maps data and range selection to the full plot even with bar series', () => {
+        const geometry = { count: 4, left: 50, right: 10, width: 350 };
+        expect(chartXForIndex({ ...geometry, index: 0 })).toBe(geometry.left);
+        expect(chartXForIndex({ ...geometry, index: geometry.count - 1 })).toBe(geometry.width - geometry.right);
+        for (let index = 0; index < geometry.count; index++) {
+            const x = chartXForIndex({ ...geometry, index });
+            expect(chartIndexForX({ ...geometry, x })).toBe(index);
         }
     });
 });
 
 describe('selectMonthAlignedXTicks', () => {
+    it('fills a short daily range with ticks on a repeating weekday and keeps both endpoints', () => {
+        const dates = Array.from({ length: 28 }, (_, index) =>
+            new Date(Date.UTC(2026, 4, index + 1)).toISOString().slice(0, 10));
+        const ticks = selectMonthAlignedXTicks(dates, 6);
+        const interior = ticks.slice(1, -1);
+
+        expect(ticks[0]).toBe(dates[0]);
+        expect(ticks.at(-1)).toBe(dates.at(-1));
+        expect(ticks.length).toBeGreaterThanOrEqual(5);
+        expect(new Set(interior.map(date => new Date(date).getUTCDay())).size).toBe(1);
+        const indices = interior.map(date => dates.indexOf(date));
+        for (let index = 1; index < indices.length; index++) {
+            expect(indices[index] - indices[index - 1]).toBe(7);
+        }
+    });
+
+    it('always includes the first and last observation of the visible range', () => {
+        for (const dates of [monthlyRange('2017-03-01', 98), monthlyRange('2026-01-01', 3), ['Inicio', 'Medio', 'Fin']]) {
+            const ticks = selectMonthAlignedXTicks(dates, 8);
+            expect(ticks[0]).toBe(dates[0]);
+            expect(ticks.at(-1)).toBe(dates.at(-1));
+        }
+    });
+
+    it('keeps ticks separated when a daily series ends in a partial month', () => {
+        const dates = Array.from({ length: 275 }, (_, index) =>
+            new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10));
+        const budget = 12;
+        const ticks = selectMonthAlignedXTicks(dates, budget);
+        const indices = ticks.map(tick => dates.indexOf(tick));
+
+        expect(ticks.length).toBeGreaterThan(1);
+        for (let index = 1; index < indices.length; index++) {
+            expect(indices[index] - indices[index - 1]).toBeGreaterThanOrEqual(dates.length / budget);
+        }
+    });
+
+    it('uses a regular index step for labels without ISO dates', () => {
+        const labels = Array.from({ length: 25 }, (_, index) => `Periodo ${index}`);
+        const ticks = selectMonthAlignedXTicks(labels, 6);
+        const indices = ticks.slice(1, -1).map(tick => labels.indexOf(tick));
+
+        expect(ticks.length).toBeGreaterThan(1);
+        expect(ticks.length).toBeLessThanOrEqual(6);
+        const step = indices[1] - indices[0];
+        for (let index = 1; index < indices.length; index++) {
+            expect(indices[index] - indices[index - 1]).toBe(step);
+        }
+    });
+
     function monthlyRange(startIso: string, months: number): string[] {
         const [year, month] = startIso.split('-').map(Number);
         return Array.from({ length: months }, (_, index) => {
@@ -146,22 +209,24 @@ describe('selectMonthAlignedXTicks', () => {
 
     it('repeats the chosen month every year', () => {
         const dates = monthlyRange('2017-06-01', 12 * 8 + 1);
-        const ticks = selectMonthAlignedXTicks(dates, 8);
-        const step = monthStep(ticks);
+        const ticks = selectMonthAlignedXTicks(dates, 9);
+        const interior = ticks.slice(1, -1);
+        const step = monthStep(interior);
 
         expect(ticks.length).toBeGreaterThanOrEqual(2);
         expect(12 % step).toBe(0);
-        expect(new Set(ticks.map(tick => tick.slice(5, 7))).size).toBe(1);
+        expect(new Set(interior.map(tick => tick.slice(5, 7))).size).toBe(1);
     });
 
     it('keeps a half year pattern on two fixed months when the width allows it', () => {
         const dates = monthlyRange('2017-06-01', 12 * 8 + 1);
         const ticks = selectMonthAlignedXTicks(dates, 17);
-        const months = new Set(ticks.map(tick => tick.slice(5, 7)));
+        const interior = ticks.slice(1, -1);
+        const months = new Set(interior.map(tick => tick.slice(5, 7)));
 
         expect(ticks.length).toBeGreaterThan(12);
         expect(months.size).toBe(2);
-        expect(12 % monthStep(ticks)).toBe(0);
+        expect(12 % monthStep(interior)).toBe(0);
     });
 
     it('keeps ticks on a fixed month phase from the latest date', () => {
@@ -174,10 +239,11 @@ describe('selectMonthAlignedXTicks', () => {
 
         expect(ticks.at(-1)).toBe('2023-02-01');
         expect(ticks.length).toBeGreaterThanOrEqual(2);
-        const step = toIndex(ticks[1]) - toIndex(ticks[0]);
+        const interior = ticks.slice(1, -1);
+        const step = toIndex(interior[1]) - toIndex(interior[0]);
         expect(step).toBeGreaterThan(0);
-        for (let index = 1; index < ticks.length; index += 1) {
-            expect(toIndex(ticks[index]) - toIndex(ticks[index - 1])).toBe(step);
+        for (let index = 1; index < interior.length; index += 1) {
+            expect(toIndex(interior[index]) - toIndex(interior[index - 1])).toBe(step);
         }
     });
 
@@ -198,14 +264,15 @@ describe('selectMonthAlignedXTicks', () => {
         const dates = monthlyRange('2020-06-01', 61).filter(date => date !== '2022-06-01');
         const ticks = selectMonthAlignedXTicks(dates, 6);
 
-        expect(ticks.every(tick => tick.slice(5, 7) === '06')).toBe(true);
+        expect(new Set(ticks.slice(1, -1).map(tick => tick.slice(5, 7))).size).toBe(1);
+        expect(ticks.every(tick => dates.includes(tick))).toBe(true);
         expect(ticks).not.toContain('2022-06-01');
     });
 });
 
-describe('xAxisEdgePaddingPx', () => {
-    it('reserves half of the widest label plus a margin on each side', () => {
-        expect(xAxisEdgePaddingPx(10, ['ENE 26'])).toBe(Math.ceil(xTickLabelWidthPx(10, ['ENE 26']) / 2) + 8);
+describe('xTickEdgeSpacingPx', () => {
+    it('reserves half of the widest label in addition to the normal spacing at each endpoint', () => {
+        expect(xTickEdgeSpacingPx(10, ['ENE 26'])).toBe(xTickSpacingPx(10, ['ENE 26']) + Math.ceil(xTickLabelWidthPx(10, ['ENE 26']) / 2));
     });
 });
 

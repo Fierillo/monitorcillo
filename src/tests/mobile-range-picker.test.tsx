@@ -26,7 +26,6 @@ function renderPicker(current: RangeSelection, handlers: { onSelectionChange?: (
         chartWidth={320}
         plotLeft={8}
         plotRight={8}
-        hasBars={false}
         onSelectionChange={handlers.onSelectionChange ?? (() => undefined)}
         onCommit={handlers.onCommit ?? (() => undefined)}
         onCancel={handlers.onCancel ?? (() => undefined)}

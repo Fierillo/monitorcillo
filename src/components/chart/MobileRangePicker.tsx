@@ -16,7 +16,6 @@ export type MobileRangePickerProps = {
     chartWidth: number;
     plotLeft: number;
     plotRight: number;
-    hasBars: boolean;
     onSelectionChange: (selection: RangeSelection) => void;
     onCommit: (range: [number, number]) => void;
     onCancel: () => void;
@@ -39,7 +38,6 @@ export default function MobileRangePicker({
     chartWidth,
     plotLeft,
     plotRight,
-    hasBars,
     onSelectionChange,
     onCommit,
     onCancel,
@@ -50,7 +48,7 @@ export default function MobileRangePicker({
     const [visibleStart, visibleEnd] = visibleRange;
     const visibleCount = Math.max(1, visibleEnd - visibleStart + 1);
     const plotIndexFor = (fullIndex: number) => Math.min(visibleCount - 1, Math.max(0, fullIndex - visibleStart));
-    const geometry = { count: visibleCount, hasBars, left: plotLeft, right: plotRight, width: chartWidth };
+    const geometry = { count: visibleCount, left: plotLeft, right: plotRight, width: chartWidth };
     const guideX = chartXForIndex({ ...geometry, index: plotIndexFor(selection.index) });
     const startX = chartXForIndex({ ...geometry, index: plotIndexFor(selection.startIndex) });
     const endX = chartXForIndex({ ...geometry, index: plotIndexFor(selection.endIndex) });

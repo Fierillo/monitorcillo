@@ -191,13 +191,12 @@ export function axisComponentWidth({ isMobile, valueFormat, hasSecondaryAxis }: 
     return { left, right: hasSecondaryAxis ? 60 : 0 };
 }
 
-export function chartPlotArea(options: { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean; xAxisEdgePadding?: number }): { left: number; right: number; top: number; bottom: number } {
+export function chartPlotArea(options: { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean }): { left: number; right: number; top: number; bottom: number } {
     const margins = chartMargins(options);
     const axes = axisComponentWidth(options);
-    const edgePadding = options.xAxisEdgePadding ?? 0;
     return {
-        left: margins.left + axes.left + edgePadding,
-        right: margins.right + axes.right + edgePadding,
+        left: margins.left + axes.left,
+        right: margins.right + axes.right,
         top: margins.top,
         bottom: margins.bottom,
     };
@@ -205,28 +204,24 @@ export function chartPlotArea(options: { isMobile: boolean; valueFormat: ValueFo
 
 type ChartGeometry = {
     count: number;
-    hasBars: boolean;
     left: number;
     right: number;
     width: number;
 };
 
-export function chartIndexForX({ x, count, hasBars, left, right, width }: ChartGeometry & { x: number }): number {
+export function chartIndexForX({ x, count, left, right, width }: ChartGeometry & { x: number }): number {
     if (count <= 0 || width <= 0) return 0;
 
     const plotWidth = Math.max(1, width - left - right);
     const clampedX = Math.min(Math.max(x, left), left + plotWidth);
-    if (hasBars || count === 1) {
-        return Math.min(count - 1, Math.max(0, Math.floor((clampedX - left) / (plotWidth / count))));
-    }
     return Math.min(count - 1, Math.max(0, Math.round(((clampedX - left) / plotWidth) * (count - 1))));
 }
 
-export function chartXForIndex({ index, count, hasBars, left, right, width }: ChartGeometry & { index: number }): number {
+export function chartXForIndex({ index, count, left, right, width }: ChartGeometry & { index: number }): number {
     if (count <= 0) return left;
 
     const plotWidth = Math.max(1, width - left - right);
-    if (hasBars || count === 1) return left + (index + 0.5) * (plotWidth / count);
+    if (count === 1) return left + plotWidth / 2;
     return left + (index / (count - 1)) * plotWidth;
 }
 
@@ -236,7 +231,6 @@ export function chartClickStateFromPointer({
     width,
     height,
     count,
-    hasBars,
     left,
     right,
     top,
@@ -247,7 +241,6 @@ export function chartClickStateFromPointer({
     width: number;
     height: number;
     count: number;
-    hasBars: boolean;
     left: number;
     right: number;
     top: number;
@@ -257,7 +250,7 @@ export function chartClickStateFromPointer({
 
     const plotBottom = Math.max(top, height - bottom);
     const clampedY = Math.min(Math.max(y, top), plotBottom);
-    const geometry = { count, hasBars, left, right, width };
+    const geometry = { count, left, right, width };
     const index = chartIndexForX({ ...geometry, x });
 
     return { activeTooltipIndex: index, activeCoordinate: { x: chartXForIndex({ ...geometry, index }), y: clampedY } };
@@ -291,6 +284,7 @@ export function resolveChartHoverPoint(
 
 const ISO_MONTH_PATTERN = /^(\d{4})-(\d{2})/;
 const MONTH_REPEATING_STEPS = [1, 2, 3, 4, 6, 12, 24, 36, 48, 60, 120];
+const WEEK_REPEATING_STEPS = [7, 14, 21, 28, 42, 56, 84];
 
 function monthIndexFromIso(value: string): number | null {
     const match = value.match(ISO_MONTH_PATTERN);
@@ -298,47 +292,56 @@ function monthIndexFromIso(value: string): number | null {
     return Number(match[1]) * 12 + Number(match[2]) - 1;
 }
 
-export function selectMonthAlignedXTicks(values: string[], targetCount = 8): string[] {
+export function selectMonthAlignedXTicks(values: string[], targetCount = 8, minimumIndexGap = (values.length - 1) / Math.max(1, targetCount - 1), minimumEdgeIndexGap = minimumIndexGap): string[] {
     const dated = values
         .map(value => {
             const monthIndex = monthIndexFromIso(value);
-            return monthIndex == null ? null : { value, monthIndex };
+            return monthIndex == null ? null : { value, monthIndex, dayIndex: Date.parse(value) / 86_400_000 };
         })
-        .filter((entry): entry is { value: string; monthIndex: number } => entry != null);
+        .filter((entry): entry is { value: string; monthIndex: number; dayIndex: number } => entry != null);
 
-    if (dated.length === 0) return values;
+    if (dated.length === 0) {
+        const step = Math.max(1, Math.ceil(minimumIndexGap), Math.ceil((values.length - 1) / (Math.max(2, targetCount) - 1)));
+        return values.filter((_, index) => index === 0 || index === values.length - 1 || (index % step === 0 && index >= minimumEdgeIndexGap && index <= values.length - 1 - minimumEdgeIndexGap));
+    }
     if (dated.length <= 2) return dated.map(entry => entry.value);
 
-    const first = dated[0].monthIndex;
-    const last = dated.at(-1)!.monthIndex;
-    const span = last - first;
-    if (span <= 0) return [dated[0].value];
-
     const maxTicks = Math.max(2, targetCount);
-    const byMonth = new Map(dated.map(entry => [entry.monthIndex, entry.value]));
+    const daySpan = dated.at(-1)!.dayIndex - dated[0].dayIndex;
+    const useWeeks = daySpan / (maxTicks - 1) < 28 && dated.length > new Set(dated.map(entry => entry.monthIndex)).size;
+    const periodIndex = (entry: typeof dated[number]) => useWeeks ? entry.dayIndex : entry.monthIndex;
+    const first = periodIndex(dated[0]);
+    const last = periodIndex(dated.at(-1)!);
+    const span = last - first;
+    if (span <= 0) return [dated[0].value, dated.at(-1)!.value];
+
+    const byPeriod = new Map(dated.map(entry => [periodIndex(entry), entry.value]));
+    const indexByValue = new Map(values.map((value, index) => [value, index]));
     let best: string[] = [];
 
-    for (const step of MONTH_REPEATING_STEPS) {
+    for (const step of useWeeks ? WEEK_REPEATING_STEPS : MONTH_REPEATING_STEPS) {
         if (step > span) continue;
         for (let offset = 0; offset < step; offset++) {
             const candidate: string[] = [];
             for (let cursor = last - offset; cursor >= first; cursor -= step) {
-                const value = byMonth.get(cursor);
+                const value = byPeriod.get(cursor);
                 if (value) candidate.unshift(value);
             }
-            if (candidate.length < 2 || candidate.length > maxTicks) continue;
-            if (candidate.length > best.length) best = candidate;
+            const interior = candidate.filter(value => indexByValue.get(value)! >= minimumEdgeIndexGap && indexByValue.get(value)! <= values.length - 1 - minimumEdgeIndexGap);
+            const ticks = [values[0], ...interior, values.at(-1)!];
+            if (ticks.length > maxTicks) continue;
+            if (ticks.some((value, index) => index > 0 && indexByValue.get(value)! - indexByValue.get(ticks[index - 1])! < minimumIndexGap)) continue;
+            if (ticks.length > best.length) best = ticks;
         }
     }
 
-    return best.length > 0 ? best : [dated[0].value];
+    return best.length > 0 ? best : [values[0], values.at(-1)!];
 }
 
 export const MIN_X_TICK_SPACING_PX = 44;
 export const MIN_X_TICK_GAP_PX = 8;
 
 const X_TICK_LABEL_GLYPH_RATIO = 0.75;
-const X_TICK_EDGE_MARGIN_PX = 8;
 
 export function xTickLabelWidthPx(fontSize: number, labels: string[]): number {
     const context = typeof document !== 'undefined' && document.fonts ? document.createElement('canvas').getContext('2d') : null;
@@ -350,8 +353,8 @@ export function xTickLabelWidthPx(fontSize: number, labels: string[]): number {
     return Math.ceil(widestLabel * fontSize * X_TICK_LABEL_GLYPH_RATIO);
 }
 
-export function xAxisEdgePaddingPx(fontSize: number, labels: string[]): number {
-    return Math.ceil(xTickLabelWidthPx(fontSize, labels) / 2) + X_TICK_EDGE_MARGIN_PX;
+export function xTickEdgeSpacingPx(fontSize: number, labels: string[]): number {
+    return xTickSpacingPx(fontSize, labels) + Math.ceil(xTickLabelWidthPx(fontSize, labels) / 2);
 }
 
 export function xTickSpacingPx(fontSize: number, labels: string[]): number {
@@ -360,5 +363,5 @@ export function xTickSpacingPx(fontSize: number, labels: string[]): number {
 
 export function targetXTickCount(chartWidth: number, axisMargins = 0, spacing = MIN_X_TICK_SPACING_PX): number {
     const availableWidth = Math.max(0, chartWidth - axisMargins);
-    return Math.max(2, Math.floor(availableWidth / Math.max(1, spacing)) || 2);
+    return Math.max(2, Math.floor(availableWidth / Math.max(1, spacing)) + 1);
 }
