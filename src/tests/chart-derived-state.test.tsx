@@ -5,7 +5,7 @@ import IndicatorCompositeView from '../components/IndicatorCompositeView';
 import CompositeChartCard from '../components/indicators/CompositeChartCard';
 import type { ChartDataRow, ChartViewConfig } from '@/types';
 
-const received = vi.hoisted(() => [] as Array<{ selectedMonth: string | null; committedRange: [number, number]; visibleCount: number; chartTitle: string; rangeSelectControl: unknown; rangeResetControl: unknown; rangeSelection: unknown }>);
+const received = vi.hoisted(() => [] as Array<{ selectedMonth: string | null; committedRange: [number, number]; visibleCount: number; chartTitle: string; rangeSelectControl: unknown; rangeResetControl: unknown; rangeSelection: unknown; chartSize: { width: number; height: number } }>);
 
 vi.mock('../components/indicators/CompositeChartCard', () => ({
     default: (props: ComponentProps<typeof CompositeChartCard>) => {
@@ -17,9 +17,10 @@ vi.mock('../components/indicators/CompositeChartCard', () => ({
             rangeSelectControl: props.rangeSelectControl,
             rangeResetControl: props.rangeResetControl,
             rangeSelection: props.rangeSelection,
+            chartSize: props.chartSize,
         });
         return (
-            <div>
+            <div ref={props.chartContainerRef}>
                 {props.viewSelector}
                 {props.rangeSelectControl}
                 {props.rangeResetControl}
@@ -53,6 +54,34 @@ describe('chart derived state', () => {
         received.length = 0;
     });
     afterEach(cleanup);
+
+    it('waits for the chart font before sizing the chart and selecting ticks', async () => {
+        let resolveFonts!: () => void;
+        const fonts = { status: 'loading', ready: new Promise<void>(resolve => { resolveFonts = resolve; }) };
+        const originalFonts = Object.getOwnPropertyDescriptor(document, 'fonts');
+        Object.defineProperty(document, 'fonts', { value: fonts, configurable: true });
+        let frame: FrameRequestCallback = () => undefined;
+        vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frame = callback; return 1; });
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 640, height: 360 } as DOMRect);
+        try {
+            renderChart(monthlyRows(12));
+            act(() => frame(0));
+            expect(received.at(-1)?.chartSize.width).toBe(0);
+
+            await act(async () => {
+                fonts.status = 'loaded';
+                resolveFonts();
+                await fonts.ready;
+            });
+            expect(received.at(-1)?.chartSize).toEqual({ width: 640, height: 360 });
+        } finally {
+            cleanup();
+            if (originalFonts) Object.defineProperty(document, 'fonts', originalFonts);
+            else Reflect.deleteProperty(document, 'fonts');
+            vi.unstubAllGlobals();
+            vi.restoreAllMocks();
+        }
+    });
 
     it('never hands the chart a month that is no longer in the data', () => {
         const { rerender } = renderChart(monthlyRows(3));

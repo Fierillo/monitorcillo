@@ -285,6 +285,7 @@ export default function IndicatorCompositeView({
         if (!element) return;
 
         const updateSize = () => {
+            if (!element.isConnected || document.fonts?.status === 'loading') return;
             const rect = element.getBoundingClientRect();
             const width = Math.max(0, Math.floor(rect.width));
             const height = Math.max(0, Math.floor(rect.height));
@@ -292,6 +293,7 @@ export default function IndicatorCompositeView({
         };
 
         const frame = requestAnimationFrame(updateSize);
+        document.fonts?.ready.then(updateSize);
         const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateSize);
         observer?.observe(element);
         if (!observer) window.addEventListener('resize', updateSize);

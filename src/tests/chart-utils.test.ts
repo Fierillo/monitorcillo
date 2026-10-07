@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { chartTickShapes } from './chart-tick-shapes';
 import { calculateTooltipVerticalPosition, collectAxisExtentValues, createRoundTicks, parseActiveTooltipIndex, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount, xAxisEdgePaddingPx, xTickLabelWidthPx, xTickSpacingPx } from '../components/chart/utils';
 
@@ -206,6 +206,22 @@ describe('selectMonthAlignedXTicks', () => {
 describe('xAxisEdgePaddingPx', () => {
     it('reserves half of the widest label plus a margin on each side', () => {
         expect(xAxisEdgePaddingPx(10, ['ENE 26'])).toBe(Math.ceil(xTickLabelWidthPx(10, ['ENE 26']) / 2) + 8);
+    });
+});
+
+describe('xTickLabelWidthPx', () => {
+    it('measures glyphs with the chart font instead of guessing from character count', () => {
+        const context = { font: '', measureText: vi.fn((label: string) => ({ width: label === 'WWW' ? 47.2 : 12.1 })) };
+        vi.stubGlobal('document', { fonts: {}, body: {}, createElement: () => ({ getContext: () => context }) });
+        vi.stubGlobal('getComputedStyle', () => ({ fontFamily: 'Chart Font, serif' }));
+        try {
+            expect(xTickLabelWidthPx(10, ['III', 'WWW'])).toBe(48);
+            expect(context.font).toBe('10px Chart Font, serif');
+            expect(context.measureText).toHaveBeenCalledWith('III');
+            expect(context.measureText).toHaveBeenCalledWith('WWW');
+        } finally {
+            vi.unstubAllGlobals();
+        }
     });
 });
 

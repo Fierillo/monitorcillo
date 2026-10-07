@@ -341,6 +341,11 @@ const X_TICK_LABEL_GLYPH_RATIO = 0.75;
 const X_TICK_EDGE_MARGIN_PX = 8;
 
 export function xTickLabelWidthPx(fontSize: number, labels: string[]): number {
+    const context = typeof document !== 'undefined' && document.fonts ? document.createElement('canvas').getContext('2d') : null;
+    if (context) {
+        context.font = `${fontSize}px ${getComputedStyle(document.body).fontFamily}`;
+        return Math.ceil(labels.reduce((widest, label) => Math.max(widest, context.measureText(label).width), 0));
+    }
     const widestLabel = labels.reduce((widest, label) => Math.max(widest, label.length), 0);
     return Math.ceil(widestLabel * fontSize * X_TICK_LABEL_GLYPH_RATIO);
 }
