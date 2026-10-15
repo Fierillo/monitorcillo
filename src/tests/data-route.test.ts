@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetRateLimits } from '../lib/rate-limit';
 import type { EmisionRawRow } from '@/types';
+import { updateEmisionCell, withEmisionTotals } from '../app/admin/admin-utils';
+import { normalizeEmision } from '../lib/normalize/emision';
 
 const mocks = vi.hoisted(() => ({
     getIndicators: vi.fn(),
@@ -82,6 +84,22 @@ describe('GET /api/data', () => {
 });
 
 describe('POST /api/data with manual Emision rows', () => {
+    it('saves calculated maturities on new dates without rewriting loaded historical maturities', async () => {
+        const stored = [
+            storedEmision({ fecha: '2026-10-13', vencimientos: 5_555, licitado: 6_000, resultado_fiscal: 0 }),
+            storedEmision({ fecha: '2026-10-14', vencimientos: 0, licitado: 6_000, resultado_fiscal: 0 }),
+        ];
+        mocks.getRawData.mockResolvedValue(stored);
+        const rows = withEmisionTotals(normalizeEmision(stored).map(row => ({ ...row, TC: row.TC ?? 0 })));
+        const edited = updateEmisionCell(rows, 1, 'Rollover', '120');
+
+        const response = await POST(emisionRequest(edited));
+
+        expect(response.status).toBe(200);
+        expect(mocks.saveRawData).toHaveBeenCalledWith('emision', [expect.objectContaining({ fecha: '2026-10-14', vencimientos: 5_000 })]);
+        expect(mocks.saveRawData.mock.calls[0][1][0]).not.toHaveProperty('rollover');
+        expect(rows[0].Vencimientos).toBe(5_555);
+    });
     it('never rewrites the manual fields of a row the editor did not change', async () => {
         mocks.getRawData.mockResolvedValue([storedEmision({ vencimientos: 500, licitado: 300, resultado_fiscal: -100 })]);
 

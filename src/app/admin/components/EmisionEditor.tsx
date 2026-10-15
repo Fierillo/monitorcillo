@@ -1,5 +1,5 @@
 import type { EmisionAdminEditableField, EmisionAdminRow } from '@/types';
-import { formatNumber } from '../admin-utils';
+import { canEditRollover, formatNumber, formatRollover } from '../admin-utils';
 
 type Props = {
     data: EmisionAdminRow[];
@@ -16,8 +16,9 @@ const COLUMNS = [
     ['CompraDolares', false, 'text-white'],
     ['TC', false, 'text-white'],
     ['BCRA', true, 'text-imperial-cyan'],
-    ['Vencimientos', false, 'text-white'],
     ['Licitado', false, 'text-white'],
+    ['Rollover', false, 'text-white'],
+    ['Vencimientos', true, 'text-imperial-cyan'],
     ['Licitaciones', true, 'text-imperial-cyan'],
     ['Resultado fiscal', false, 'text-white'],
 ] as const;
@@ -29,14 +30,14 @@ export default function EmisionEditor({ data, msg, onAdd, onPop, onSave, onCellC
         <div className="mb-4 flex flex-col gap-4">
             <div>
                 <p className="text-imperial-cyan font-bold uppercase tracking-widest text-lg">Editor de Emisión / Absorción</p>
-                <p className="text-white/60 text-sm mt-1">Valores en millones de pesos</p>
+                <p className="text-white/60 text-sm mt-1">Valores en millones de pesos; rollover en %. Desde el 14/10/2026, vencimientos calculados a partir de licitado y rollover. Los vencimientos anteriores se conservan.</p>
             </div>
             {actions}
             <div className="overflow-x-auto border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50">
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-imperial-gold text-imperial-blue text-sm uppercase tracking-wider">
-                            {['Fecha', ...COLUMNS.map(([key]) => key)].map(label => (
+                            {['Fecha', ...COLUMNS.map(([key]) => key === 'Rollover' ? 'Rollover %' : key)].map(label => (
                                 <th key={label} className="p-2 border-r border-imperial-blue/20">{label}</th>
                             ))}
                         </tr>
@@ -78,7 +79,11 @@ function EmisionRow({ row, index, onCellChange }: { row: EmisionAdminRow; index:
     return (
         <tr className="border-t border-imperial-cyan/30">
             <td className="p-1 border-r border-imperial-cyan/30"><input type="text" value={row.fecha} onChange={e => onCellChange(index, 'fecha', e.target.value)} className="w-24 bg-transparent text-imperial-gold font-bold p-1 outline-none text-center" /></td>
-            {COLUMNS.map(([key, readOnly, color]) => <td key={key} className="p-1 border-r border-imperial-cyan/30 min-w-[90px]"><input type="text" value={formatNumber(row[key] || 0)} readOnly={readOnly} onChange={readOnly ? undefined : e => onCellChange(index, key, e.target.value)} className={`w-full bg-transparent ${color} font-bold p-1 outline-none text-right ${readOnly ? 'pointer-events-none' : 'hover:bg-white/5 focus:bg-white/10'}`} /></td>)}
+            {COLUMNS.map(([key, computed, color]) => {
+                const readOnly = computed || (key === 'Rollover' && !canEditRollover(row));
+                const label = key === 'Rollover' ? 'Rollover %' : key;
+                return <td key={key} className="p-1 border-r border-imperial-cyan/30 min-w-[90px]"><input type="text" aria-label={`${label} ${row.fecha}`} value={key === 'Rollover' ? formatRollover(row.Rollover) : formatNumber(row[key] || 0)} readOnly={readOnly} onChange={computed || readOnly ? undefined : e => onCellChange(index, key, e.target.value)} className={`w-full bg-transparent ${color} font-bold p-1 outline-none text-right ${readOnly ? 'pointer-events-none' : 'hover:bg-white/5 focus:bg-white/10'}`} /></td>;
+            })}
         </tr>
     );
 }

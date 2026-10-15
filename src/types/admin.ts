@@ -10,11 +10,12 @@ export type EmisionAdminRow = {
     BCRA: number;
     Vencimientos: EditableNumber;
     Licitado: EditableNumber;
+    Rollover?: number | string;
     Licitaciones: number;
     'Resultado fiscal': EditableNumber;
 };
 
-export type EmisionAdminEditableField = 'fecha' | 'CompraDolares' | 'TC' | 'Vencimientos' | 'Licitado' | 'Resultado fiscal';
+export type EmisionAdminEditableField = 'fecha' | 'CompraDolares' | 'TC' | 'Licitado' | 'Rollover' | 'Resultado fiscal';
 
 export type EmisionAdminNumericField = Exclude<EmisionAdminEditableField, 'fecha'>;
 

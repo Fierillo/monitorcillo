@@ -1,11 +1,21 @@
 import type { EmisionAdminEditableField, EmisionAdminNumericField, EmisionAdminRow, Indicator } from '@/types';
+import { fechaToISO } from '@/lib/normalize/dates';
 
 const MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
+
+export function canEditRollover(row: EmisionAdminRow) {
+    const date = row.iso_fecha ?? fechaToISO(row.fecha);
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= '2026-10-14';
+}
 
 export function formatNumber(val: number | string) {
     if (val === '-') return '-';
     if (val === 0 || !val) return '0';
     return Number(val).toLocaleString('es-AR');
+}
+
+export function formatRollover(value: number | string = 0) {
+    return typeof value === 'string' ? value : value.toLocaleString('es-AR', { useGrouping: false, maximumFractionDigits: 20 });
 }
 
 export function withEmisionTotals(rows: EmisionAdminRow[]): EmisionAdminRow[] {
@@ -19,6 +29,7 @@ export function withEmisionTotals(rows: EmisionAdminRow[]): EmisionAdminRow[] {
             TC: row.TC || 0,
             Vencimientos: row.Vencimientos || 0,
             Licitado: row.Licitado || 0,
+            Rollover: Number(row.Vencimientos) > 0 ? Number(row.Licitado) / Number(row.Vencimientos) * 100 : 0,
             TOTAL: total,
             ACUMULADO: runningSum,
         };
@@ -81,6 +92,7 @@ export function newEmisionRow(rows: EmisionAdminRow[]): EmisionAdminRow {
 }
 
 export function updateEmisionCell(rows: EmisionAdminRow[], index: number, field: EmisionAdminEditableField, value: string) {
+    if (field === 'Rollover' && !canEditRollover(rows[index])) return rows;
     const newData = [...rows];
     if (field === 'fecha') {
         newData[index] = { ...newData[index], [field]: value };
@@ -88,9 +100,17 @@ export function updateEmisionCell(rows: EmisionAdminRow[], index: number, field:
     }
 
     const numericField: EmisionAdminNumericField = field;
-    const cleaned = value.replace(/\./g, '');
+    const cleaned = field === 'Rollover' ? value.replace(',', '.') : value.replace(/\./g, '');
     const fieldValue = value === '-' ? '-' : Number.isNaN(Number(cleaned)) ? 0 : Number(cleaned);
     newData[index] = { ...newData[index], [numericField]: fieldValue };
+    if (field === 'Rollover' && /[,.]/.test(value)) newData[index].Rollover = value;
+    const rollover = Number(String(newData[index].Rollover).replace(',', '.'));
+    if (canEditRollover(newData[index]) && (field === 'Rollover' || field === 'Licitado') && Number.isFinite(rollover) && rollover > 0) {
+        newData[index].Vencimientos = Math.round((Number(newData[index].Licitado) || 0) * 100 / rollover);
+    }
+    if (field === 'Licitado' && !canEditRollover(newData[index])) {
+        newData[index].Rollover = Number(newData[index].Vencimientos) > 0 ? Number(newData[index].Licitado) / Number(newData[index].Vencimientos) * 100 : 0;
+    }
     newData[index].BCRA = (Number(newData[index].CompraDolares) || 0) * (Number(newData[index].TC) || 0);
     newData[index].Licitaciones = (Number(newData[index].Vencimientos) || 0) - (Number(newData[index].Licitado) || 0);
     newData[index].TOTAL = (Number(newData[index].BCRA) || 0) + (Number(newData[index].Licitaciones) || 0) + (Number(newData[index]['Resultado fiscal']) || 0);
