@@ -1,5 +1,6 @@
 import type { EmaeRawRow, PbiAnchorRow } from '@/types';
 import { readWorkbook, sheetRows } from './protocols';
+import { normalizeText } from './normalize/text';
 
 const INDEC_BASE_URL = 'https://www.indec.gob.ar';
 const PBI_DESEASONALIZED_SHEET = 'desestacionalizado n';
@@ -10,14 +11,6 @@ const QUARTER_RELEASE_MONTHS: Record<number, string> = {
     3: '12',
     4: '03',
 };
-
-function normalizeText(value: unknown): string {
-    return String(value ?? '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
-}
 
 function absoluteIndecUrl(url: string): string {
     return new URL(url, INDEC_BASE_URL).toString();

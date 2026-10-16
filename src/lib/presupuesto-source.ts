@@ -1,6 +1,7 @@
 import type { ChartDataRow } from '@/types';
 import { unstable_cache } from 'next/cache';
 import { extractFileLinks, readWorkbook, sheetRows } from './protocols';
+import { normalizeText } from './normalize/text';
 import {
     PRESUPUESTO_EXPENSE_KEYS,
     PRESUPUESTO_RESOURCE_KEYS,
@@ -164,13 +165,6 @@ export const PRESUPUESTO_PBI_BY_YEAR = new Map([
     [2027, 1_421_178_148],
 ]);
 
-function normalizeText(value: unknown): string {
-    return String(value ?? '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
-}
 
 function numericValue(value: unknown): number | null {
     if (value === null || value === undefined || value === '') return null;

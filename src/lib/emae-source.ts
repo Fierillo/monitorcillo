@@ -1,6 +1,7 @@
 import type { DatosGobSeriesRow, EmaeRawRow, NumericValue } from '@/types';
 import { readWorkbook, sheetRows } from './protocols';
 import { EMAE_SECTORS } from './emae/schema';
+import { normalizeText } from './normalize/text';
 
 const MONTHS_ES: Record<string, string> = {
     enero: '01',
@@ -18,13 +19,6 @@ const MONTHS_ES: Record<string, string> = {
     diciembre: '12',
 };
 
-function normalizeText(value: unknown): string {
-    return String(value ?? '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
-}
 
 function normalizedIncludes(value: unknown, expected: string): boolean {
     return normalizeText(value).includes(normalizeText(expected));

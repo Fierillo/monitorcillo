@@ -1,16 +1,13 @@
 import * as XLSX from 'xlsx';
 import type { DeudaRawRow } from '@/types';
 import { readWorkbook, sheetRows } from './protocols';
+import { normalizeText } from './normalize/text';
 
 const ARGENTINA_GOB_BASE_URL = 'https://www.argentina.gob.ar';
 const MONTHS: Record<string, string> = { jan: '01', ene: '01', feb: '02', mar: '03', apr: '04', abr: '04', may: '05', jun: '06', jul: '07', aug: '08', ago: '08', sep: '09', oct: '10', nov: '11', dec: '12', dic: '12' };
 
 function absoluteArgentinaGobUrl(url: string): string {
     return new URL(url.replace(/^blank:#/, ''), ARGENTINA_GOB_BASE_URL).toString();
-}
-
-function normalizeText(value: unknown): string {
-    return String(value ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 function parseNumber(value: unknown): number | null {

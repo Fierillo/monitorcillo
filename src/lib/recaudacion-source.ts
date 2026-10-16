@@ -1,5 +1,6 @@
 import type { RecaudacionOfficialReport, RecaudacionRawRow } from '@/types';
 import { readWorkbook, sheetRows } from './protocols';
+import { normalizeText } from './normalize/text';
 import { conceptToTaxField, RECAUDACION_TAX_RAW_KEYS } from './recaudacion/schema';
 
 const ARGENTINA_GOB_BASE_URL = 'https://www.argentina.gob.ar';
@@ -34,14 +35,6 @@ const MONTHS_EN: Record<string, string> = {
     nov: '11',
     dec: '12',
 };
-
-function normalizeText(value: unknown): string {
-    return String(value ?? '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
-}
 
 function absoluteArgentinaGobUrl(url: string): string {
     return new URL(url, ARGENTINA_GOB_BASE_URL).toString();

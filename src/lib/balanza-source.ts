@@ -1,5 +1,6 @@
 import type { BalanzaRawRow } from '@/types';
 import { readWorkbook, sheetRows } from './protocols';
+import { normalizeText } from './normalize/text';
 import type { BalanzaSeriesKey } from './balanza/schema';
 
 const MONTHS = new Map([
@@ -34,12 +35,8 @@ function numericValue(value: unknown): number | null {
     return Number.isFinite(numeric) ? numeric : null;
 }
 
-function normalizedText(value: unknown): string {
-    return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-}
-
 function monthNumber(value: unknown): number | null {
-    const normalized = normalizedText(value).replace(/[^a-z]/g, '');
+    const normalized = normalizeText(value).replace(/[^a-z]/g, '');
     for (const [name, month] of MONTHS) {
         if (normalized.startsWith(name)) return month;
     }
@@ -52,7 +49,7 @@ function toFecha(year: number, month: number): string {
 
 function headerColumns(rows: unknown[][], labels: Record<string, string>): { rowIndex: number; columns: Record<string, number> } {
     for (const [rowIndex, row] of rows.entries()) {
-        const cells = row.map(normalizedText);
+        const cells = row.map(normalizeText);
         const columns = Object.fromEntries(Object.entries(labels).map(([key, label]) => [
             key,
             cells.findIndex(cell => cell === label || cell.startsWith(`${label} (`)),
@@ -108,7 +105,7 @@ function latestBreakdownRow(buffer: Buffer, labels: Partial<Record<BalanzaSeries
         const end = starts.find(column => column > start) ?? rows[header.rowIndex].length;
         for (const row of rows.slice(header.rowIndex + 1, header.rowIndex + 8)) {
             for (let column = start; column < end; column += 1) {
-                if (normalizedText(row[column]).startsWith(`ano ${year}`)) return [key, column];
+                if (normalizeText(row[column]).startsWith(`ano ${year}`)) return [key, column];
             }
         }
         throw new Error(`Failed to parse ICA breakdown workbook. Column for ${labels[key as BalanzaSeriesKey]} in ${year} was not found. Verify whether INDEC changed the year layout.`);

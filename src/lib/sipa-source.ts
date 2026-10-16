@@ -1,6 +1,7 @@
 import type { SipaRawRow } from '@/types';
 import { SIPA_PAGE_URL, SIPA_VALUE_KEYS } from './sipa-schema';
 import { readWorkbook, sheetRows } from './protocols';
+import { normalizeText } from './normalize/text';
 import { fetchBufferFromUrl, fetchLastModifiedDate, isoDateFromHttpDate } from './sync/http-client';
 
 type SipaSourceReport = {
@@ -33,10 +34,6 @@ const MONTHS: Record<string, string> = {
 
 function absoluteArgentinaGobUrl(url: string): string {
     return new URL(url.replace(/^blank:#/, ''), ARGENTINA_GOB_BASE_URL).toString();
-}
-
-function normalizeText(value: unknown): string {
-    return String(value ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 function parsePeriod(value: unknown): { fecha: string; provisional: boolean } | null {
