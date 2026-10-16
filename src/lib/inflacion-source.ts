@@ -7,6 +7,7 @@ import { fetchTimeSeries } from './sync/time-series-client';
 
 const INDEC_GENERAL_SERIES_ID = '145.3_INGNACNAL_DICI_M_15';
 const INDEC_NUCLEO_SERIES_ID = '148.3_INUCLEONAL_DICI_M_19';
+const INDEC_IPIM_SERIES_ID = '448.1_NIVEL_GENERAL_0_0_13_46';
 const INDEC_IPC_WORKBOOK_BASE_URL = 'https://www.indec.gob.ar/ftp/cuadros/economia';
 const IPC_ONLINE_FEED_URL = 'https://ipconlinebb.wordpress.com/feed/';
 const REM_BCRA_API_URL = 'https://bcra-rem-api.facujallia.workers.dev/api/ipc_general';
@@ -450,9 +451,10 @@ export async function fetchRemExpectationsHistory(monthsBack: number = 6): Promi
 }
 
 export async function fetchInflacionRawReport(): Promise<InflacionSourceReport> {
-    const [indecGeneral, indecNucleo, indecWorkbookReport, equilibraReport, onlineReport, remReport] = await Promise.all([
+    const [indecGeneral, indecNucleo, indecIpim, indecWorkbookReport, equilibraReport, onlineReport, remReport] = await Promise.all([
         fetchIndecIpcRows(INDEC_GENERAL_SERIES_ID),
         fetchIndecIpcRows(INDEC_NUCLEO_SERIES_ID),
+        fetchIndecIpcRows(INDEC_IPIM_SERIES_ID),
         fetchIndecIpcWorkbookReport(),
         fetchEquilibraIpcReport(),
         fetchIpcOnlineReport(),
@@ -466,6 +468,9 @@ export async function fetchInflacionRawReport(): Promise<InflacionSourceReport> 
     }
     for (const row of indecNucleo) {
         byFecha.set(row.fecha, { ...byFecha.get(row.fecha), fecha: row.fecha, ipc_indec_nucleo: row.valor });
+    }
+    for (const row of indecIpim) {
+        byFecha.set(row.fecha, { ...byFecha.get(row.fecha), fecha: row.fecha, ipim: row.valor });
     }
     completeIndecIndexRows(byFecha, indecWorkbookReport.rows);
     for (const row of equilibraReport.rows) {

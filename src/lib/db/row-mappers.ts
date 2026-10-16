@@ -150,6 +150,7 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
             ipc_equilibra: toNullableNumber(row.ipc_equilibra),
             ipc_online: toNullableNumber(row.ipc_online),
             rem: toNullableNumber(row.rem),
+            ipim: toNullableNumber(row.ipim),
             ipc: toNullableNumber(row.ipc),
         } as NormalizedDataByType[T];
     }

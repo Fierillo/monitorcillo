@@ -754,11 +754,13 @@ async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
     const areas: AreaConfig[] = [
         { key: 'ipc_indec', name: 'IPC INDEC', color: '#FFD700', type: 'line', strokeWidth: 2, showValueLabels: true, labelOffsetY: -12, labelLeader: true },
         { key: 'ipc_nucleo_indec', name: 'IPC Núcleo INDEC', color: '#F59E0B', type: 'line', strokeWidth: 2, dash: [6, 3], showValueLabels: true, labelOffsetY: 20, labelLeader: true },
+        { key: 'ipim', name: 'IPIM', color: '#38BDF8', type: 'line', strokeWidth: 2, dash: [4, 3], showValueLabels: true, labelOffsetY: -48, labelLeader: true },
         { key: 'ipc_equilibra', name: 'IPC Equilibra', color: '#FF6B6B', type: 'line', strokeWidth: 2, showValueLabels: true, labelOffsetY: -30, labelLeader: true },
         { key: 'rem', name: 'REM BCRA', color: '#22C55E', type: 'line', strokeWidth: 2, showValueLabels: true, labelOffsetY: 34, labelLeader: true },
     ];
     const methodology = [
         { title: 'INDEC', description: 'Índice de Precios al Consumidor Nacional (IPC General y Núcleo) base diciembre 2016=100. La variación mensual se calcula como (índice actual - índice anterior) / índice anterior * 100.' },
+        { title: 'IPIM', description: 'Índice de precios internos al por mayor (nivel general) del SIPM de INDEC, base diciembre 2015=100. La variación mensual se calcula igual que el IPC.' },
         { title: 'Equilibra', description: 'Proyección mensual de inflación de Equilibra.ar basada en relevamientos de precios propios.' },
         { title: 'REM', description: 'Relevamiento de Expectativas de Mercado del Banco Central. En esta vista se muestra la mediana mensual de la última encuesta desde el último mes con IPC INDEC, para comparar, y los meses posteriores como proyección.' },
         { title: 'Serie principal', description: 'El dato destacado usa INDEC General como principal. Las consultoras se muestran superpuestas para comparabilidad.' },

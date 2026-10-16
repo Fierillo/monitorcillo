@@ -18,6 +18,18 @@ describe('normalizeInflacion', () => {
         expect(normalized[2].ipc_nucleo_indec).toBeCloseTo(1.98, 2);
     });
 
+    it('calculates monthly percentage change from IPIM indices', () => {
+        const raw = [
+            { fecha: '2026-01-01', ipim: 100 },
+            { fecha: '2026-02-01', ipim: 101.7 },
+            { fecha: '2026-03-01', ipim: 102.7184 },
+        ];
+        const normalized = normalizeInflacion(raw);
+        expect(normalized[0].ipim).toBeNull();
+        expect(normalized[1].ipim).toBeCloseTo(1.7, 2);
+        expect(normalized[2].ipim).toBeCloseTo(1, 2);
+    });
+
     it('passes through equilibra and rem values directly', () => {
         const raw = [
             { fecha: '2026-02-01', ipc_equilibra: 2.5, rem: 2.3 },
@@ -63,15 +75,18 @@ describe('normalizeInflacion', () => {
 });
 
 describe('toYearOverYearInflacion', () => {
-    it('compounds twelve consecutive monthly rates', () => {
+    it('compounds twelve consecutive monthly rates including IPIM', () => {
         const rows = Array.from({ length: 13 }, (_, index) => ({
             iso_fecha: new Date(Date.UTC(2025, index, 1)).toISOString().split('T')[0],
             ipc_indec: 2,
+            ipim: 1.5,
         }));
         const yearOverYear = toYearOverYearInflacion(rows);
         expect(yearOverYear[10].ipc_indec).toBeNull();
         expect(yearOverYear[11].ipc_indec).toBeCloseTo(26.82, 2);
         expect(yearOverYear[12].ipc_indec).toBeCloseTo(26.82, 2);
+        expect(yearOverYear[11].ipim).toBeCloseTo(19.56, 2);
+        expect(yearOverYear[12].ipim).toBeCloseTo(19.56, 2);
     });
 
     it('returns null when a month in the window is missing', () => {

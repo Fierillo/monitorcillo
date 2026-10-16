@@ -315,6 +315,7 @@ export type InflacionRawRow = {
     ipc_equilibra?: NumericValue;
     ipc_online?: NumericValue;
     rem?: NumericValue;
+    ipim?: NumericValue;
 };
 
 export type InflacionNormalizedRow = {
@@ -325,6 +326,7 @@ export type InflacionNormalizedRow = {
     ipc_equilibra: number | null;
     ipc_online: number | null;
     rem: number | null;
+    ipim: number | null;
     ipc: number | null;
 };
 
