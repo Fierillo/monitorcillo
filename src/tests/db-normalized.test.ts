@@ -8,11 +8,41 @@ const database = vi.hoisted(() => ({
 vi.mock('../lib/db/client', () => ({ sql: database }));
 
 import { replaceNormalizedData } from '../lib/db/normalized';
+import { ensureEmaeSectorTables } from '../lib/sync/emae';
+import { normalizeEmae } from '../lib/normalize/emae';
+import { EMAE_SECTOR_APORTE_KEYS, EMAE_SECTOR_KEYS, EMAE_SECTOR_MM12_KEYS } from '../lib/emae/schema';
 
 describe('replaceNormalizedData', () => {
     beforeEach(() => {
         database.query.mockClear();
         database.transaction.mockClear();
+    });
+
+    it('prepares each EMAE column only once across sync setup and normalized persistence', async () => {
+        await ensureEmaeSectorTables();
+        await replaceNormalizedData('emae', normalizeEmae([
+            { fecha: '2017-01-01', emae: 100, emae_desestacionalizado: 100, poblacion: 40_000_000 },
+        ]));
+
+        const queries = database.query.mock.calls.map(([text]) => text);
+        for (const column of ['poblacion', ...EMAE_SECTOR_KEYS]) {
+            expect(queries.filter(text => text === `ALTER TABLE emae_raw ADD COLUMN IF NOT EXISTS ${column} NUMERIC`)).toHaveLength(1);
+        }
+        for (const column of ['emae_per_capita', ...EMAE_SECTOR_MM12_KEYS, ...EMAE_SECTOR_APORTE_KEYS]) {
+            expect(queries.filter(text => text === `ALTER TABLE emae_normalized ADD COLUMN IF NOT EXISTS ${column} NUMERIC`)).toHaveLength(1);
+        }
+        expect(database.transaction).toHaveBeenCalledOnce();
+    });
+
+    it('prepares EMAE normalized columns without requiring sync setup', async () => {
+        await replaceNormalizedData('emae', normalizeEmae([
+            { fecha: '2017-01-01', emae: 100, emae_desestacionalizado: 100, poblacion: 40_000_000 },
+        ]));
+
+        const queries = database.query.mock.calls.map(([text]) => text);
+        expect(queries).toContain('ALTER TABLE emae_normalized ADD COLUMN IF NOT EXISTS emae_per_capita NUMERIC');
+        expect(queries.some(text => text.startsWith('ALTER TABLE emae_raw'))).toBe(false);
+        expect(database.transaction).toHaveBeenCalledOnce();
     });
 
     it('replaces normalized rows inside one locked transaction', async () => {

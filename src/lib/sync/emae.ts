@@ -1,5 +1,5 @@
 import type { EmaeRawRow } from '@/types';
-import { EMAE_SECTOR_APORTE_KEYS, EMAE_SECTOR_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
+import { EMAE_SECTOR_KEYS } from '../emae/schema';
 import { parseEmaeHistoricalCsv, parseEmaePublicationDate, prependHistoricalEmae } from '../emae-source';
 import { buildMonthlyPopulationSeries, parseWorldBankPopulation } from '../population-source';
 import { sql } from '../db/client';
@@ -45,9 +45,5 @@ export async function fetchEmaeRaw(): Promise<{ rows: EmaeRawRow[]; publishedAt:
 
 export async function ensureEmaeSectorTables(): Promise<void> {
     await sql.query('ALTER TABLE emae_raw ADD COLUMN IF NOT EXISTS poblacion NUMERIC', []);
-    await sql.query('ALTER TABLE emae_normalized ADD COLUMN IF NOT EXISTS emae_per_capita NUMERIC', []);
     for (const column of EMAE_SECTOR_KEYS) await sql.query(`ALTER TABLE emae_raw ADD COLUMN IF NOT EXISTS ${column} NUMERIC`, []);
-    for (const column of [...EMAE_SECTOR_MM12_KEYS, ...EMAE_SECTOR_APORTE_KEYS]) {
-        await sql.query(`ALTER TABLE emae_normalized ADD COLUMN IF NOT EXISTS ${column} NUMERIC`, []);
-    }
 }

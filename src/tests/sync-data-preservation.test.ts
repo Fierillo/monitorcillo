@@ -20,18 +20,34 @@ const sipaSource = vi.hoisted(() => ({
 }));
 
 const bmaSource = vi.hoisted(() => ({ fetchBmaRaw: vi.fn() }));
+const refreshSources = vi.hoisted(() => ({
+    fetchEmaeRaw: vi.fn(),
+    ensureEmaeSectorTables: vi.fn(),
+    fetchDepositosPrestamosRaw: vi.fn(),
+    ensureDepositosPrestamosTables: vi.fn(),
+    fetchPoderAdquisitivoRawReport: vi.fn(),
+}));
 
 vi.mock('@/lib/db/client', () => ({ sql: { query: vi.fn(), transaction: vi.fn() } }));
 vi.mock('@/lib/db', () => db);
 vi.mock('@/lib/sync/icg', () => icgSource);
 vi.mock('@/lib/sync/sipa', () => sipaSource);
 vi.mock('@/lib/sync/bma', () => bmaSource);
+vi.mock('@/lib/sync/emae', () => ({ fetchEmaeRaw: refreshSources.fetchEmaeRaw, ensureEmaeSectorTables: refreshSources.ensureEmaeSectorTables }));
+vi.mock('@/lib/sync/depositos-prestamos', () => ({ fetchDepositosPrestamosRaw: refreshSources.fetchDepositosPrestamosRaw, ensureDepositosPrestamosTables: refreshSources.ensureDepositosPrestamosTables }));
+vi.mock('@/lib/sync/poder-adquisitivo', () => ({ fetchPoderAdquisitivoRawReport: refreshSources.fetchPoderAdquisitivoRawReport }));
 
 const STORED_ICG_HISTORY = [
     { fecha: '2025-10-01', icg: 2.41 },
     { fecha: '2025-11-01', icg: 2.35 },
     { fecha: '2025-12-01', icg: 2.29 },
 ];
+
+const REFRESH_TASKS = [
+    ['syncEmae', 'emae', 'fetchEmaeRaw'],
+    ['syncDepositosPrestamos', 'depositos-prestamos', 'fetchDepositosPrestamosRaw'],
+    ['syncPoderAdquisitivo', 'poder', 'fetchPoderAdquisitivoRawReport'],
+] as const;
 
 const STORED_SIPA_HISTORY = [
     {
@@ -67,8 +83,47 @@ function expectNoSeriesWrites() {
 describe('sync data preservation', () => {
     beforeEach(() => {
         vi.resetModules();
-        [...Object.values(db), ...Object.values(icgSource), ...Object.values(sipaSource), ...Object.values(bmaSource)].forEach(mock => mock.mockReset());
+        [...Object.values(db), ...Object.values(icgSource), ...Object.values(sipaSource), ...Object.values(bmaSource), ...Object.values(refreshSources)].forEach(mock => mock.mockReset());
         db.getRawData.mockResolvedValue(STORED_ICG_HISTORY);
+    });
+
+    it.each(REFRESH_TASKS)('%s rebuilds normalized history only once when new observations arrive', async (task, type, source) => {
+        const stored = [{ fecha: '2017-01-01', emae: 100, ipc_nucleo: 100, salario_registrado: 100 }];
+        const incoming = [{ fecha: '2017-02-01', emae: 102, ipc_nucleo: 101, salario_registrado: 103 }];
+        const persisted = [...stored, ...incoming];
+        db.getRawData.mockResolvedValue(persisted).mockResolvedValueOnce(stored);
+        refreshSources[source].mockResolvedValue(source === 'fetchDepositosPrestamosRaw' ? incoming : { rows: incoming, publishedAt: null });
+        const tasks = await import('@/lib/sync/tasks');
+
+        await expect(tasks[task]()).resolves.toEqual({ appended: 1, total: 2 });
+        expect(db.replaceNormalizedData).toHaveBeenCalledOnce();
+        expect(db.replaceNormalizedData).toHaveBeenCalledWith(type, expect.arrayContaining([
+            expect.objectContaining({ iso_fecha: '2017-01-01' }),
+            expect.objectContaining({ iso_fecha: '2017-02-01' }),
+        ]));
+        expect(db.getRawData).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(REFRESH_TASKS)('%s still regenerates normalized history when raw data is unchanged', async (task, type, source) => {
+        const stored = [{ fecha: '2017-01-01', emae: 100, ipc_nucleo: 100, salario_registrado: 100 }];
+        db.getRawData.mockResolvedValue(stored);
+        refreshSources[source].mockResolvedValue(source === 'fetchDepositosPrestamosRaw' ? stored : { rows: stored, publishedAt: null });
+        const tasks = await import('@/lib/sync/tasks');
+
+        await expect(tasks[task]()).resolves.toEqual({ appended: 0, total: 1 });
+        expect(db.saveRawData).not.toHaveBeenCalled();
+        expect(db.replaceNormalizedData).toHaveBeenCalledExactlyOnceWith(type, [expect.objectContaining({ iso_fecha: '2017-01-01' })]);
+    });
+
+    it.each(REFRESH_TASKS)('%s preserves and regenerates stored history when the source returns no rows', async (task, type, source) => {
+        db.getRawData.mockResolvedValue([{ fecha: '2017-01-01', emae: 100, ipc_nucleo: 100, salario_registrado: 100 }]);
+        refreshSources[source].mockResolvedValue(source === 'fetchDepositosPrestamosRaw' ? [] : { rows: [], publishedAt: null });
+        const tasks = await import('@/lib/sync/tasks');
+
+        await expect(tasks[task]()).resolves.toEqual({ appended: 0, total: 1 });
+        expect(db.saveRawData).not.toHaveBeenCalled();
+        expect(db.replaceNormalizedData).toHaveBeenCalledExactlyOnceWith(type, [expect.objectContaining({ iso_fecha: '2017-01-01' })]);
+        expect(db.saveIndicatorPublication).not.toHaveBeenCalled();
     });
 
     it('writes nothing when the source returns no observations', async () => {

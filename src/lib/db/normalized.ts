@@ -149,7 +149,7 @@ async function ensureRecaudacionTaxColumns(table: string): Promise<void> {
 }
 
 async function ensureEmaeSectorColumns(table: string): Promise<void> {
-    for (const column of [...EMAE_SECTOR_MM12_KEYS, ...EMAE_SECTOR_APORTE_KEYS]) {
+    for (const column of ['emae_per_capita', ...EMAE_SECTOR_MM12_KEYS, ...EMAE_SECTOR_APORTE_KEYS]) {
         await sql.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} NUMERIC`, []);
     }
 }

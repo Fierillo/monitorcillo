@@ -34,15 +34,16 @@ async function persistMergedRawAndNormalize<T extends IndicatorType>(
     existingData: Array<RawDataByType[T]>,
     incoming: Array<RawDataByType[T]>,
     normalize: (rows: Array<RawDataByType[T]>) => NormalizedDataRow[],
+    refreshUnchanged = false,
 ): Promise<SyncResult> {
     const existingFechas = new Set(existingData.map((row) => row.fecha));
-    const { merged, upserts, emptyIncoming } = mergeRawSeries(existingData, incoming);
+    const { merged, upserts } = mergeRawSeries(existingData, incoming);
 
-    if (emptyIncoming || upserts.length === 0) {
+    if (upserts.length === 0 && !refreshUnchanged) {
         return { appended: 0, total: existingData.length };
     }
 
-    await saveRawData(type, upserts as Array<Partial<RawDataByType[T]>>);
+    if (upserts.length > 0) await saveRawData(type, upserts as Array<Partial<RawDataByType[T]>>);
 
     const persistedRaw = (await getRawData(type)) as Array<RawDataByType[T]>;
     const rawForNormalize = persistedRaw.length > 0 ? persistedRaw : merged;
@@ -84,9 +85,7 @@ export async function syncEmae(): Promise<SyncResult> {
     await ensureEmaeSectorTables();
     const existingData = (await getRawData(type)) ?? [];
     const { rows: rawRows, publishedAt } = await fetchEmaeRaw();
-    const result = await persistMergedRawAndNormalize(type, existingData, rawRows, normalizeEmae);
-    const persistedRaw = (await getRawData(type)) ?? [];
-    if (persistedRaw.length > 0) await replaceNormalizedData(type, normalizeEmae(persistedRaw));
+    const result = await persistMergedRawAndNormalize(type, existingData, rawRows, normalizeEmae, true);
     if (publishedAt && rawRows.length > 0) {
         await saveIndicatorPublication('emae', publishedAt, rawRows.at(-1)?.fecha ?? null);
     }
@@ -104,10 +103,7 @@ export async function syncDepositosPrestamos(): Promise<SyncResult> {
     await ensureDepositosPrestamosTables();
     const existingData = (await getRawData(type)) ?? [];
     const rawData = await fetchDepositosPrestamosRaw();
-    const result = await persistMergedRawAndNormalize(type, existingData, rawData, normalizeDepositosPrestamos);
-    const persistedRaw = (await getRawData(type)) ?? [];
-    if (persistedRaw.length > 0) await replaceNormalizedData(type, normalizeDepositosPrestamos(persistedRaw));
-    return result;
+    return persistMergedRawAndNormalize(type, existingData, rawData, normalizeDepositosPrestamos, true);
 }
 
 export async function syncIndicatorsCatalog(): Promise<SyncResult> {
@@ -132,9 +128,7 @@ export async function syncPoderAdquisitivo(): Promise<SyncResult> {
     const type: IndicatorType = 'poder';
     const existingData = (await getRawData(type)) ?? [];
     const { rows: rawData, publishedAt } = await fetchPoderAdquisitivoRawReport();
-    const result = await persistMergedRawAndNormalize(type, existingData, rawData, normalizePoderAdquisitivo);
-    const persistedRaw = (await getRawData(type)) ?? [];
-    if (persistedRaw.length > 0) await replaceNormalizedData(type, normalizePoderAdquisitivo(persistedRaw));
+    const result = await persistMergedRawAndNormalize(type, existingData, rawData, normalizePoderAdquisitivo, true);
     if (publishedAt && rawData.length > 0) {
         await saveIndicatorPublication('poder-adquisitivo', publishedAt, rawData.at(-1)?.fecha ?? null);
     }
