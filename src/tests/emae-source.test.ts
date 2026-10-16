@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
-import { parseEmaePublicationDate, parseEmaeSectorWorkbook, parseEmaeWorkbook, prependHistoricalEmae } from '../lib/emae-source';
+import { parseEmaeHistoricalCsv, parseEmaePublicationDate, parseEmaeSectorWorkbook, parseEmaeWorkbook, prependHistoricalEmae } from '../lib/emae-source';
 
 function workbookBuffer(rows: unknown[][], sheetName = 'EMAE'): Buffer {
     const workbook = XLSX.utils.book_new();
@@ -10,6 +10,34 @@ function workbookBuffer(rows: unknown[][], sheetName = 'EMAE'): Buffer {
 }
 
 describe('EMAE official source parsing', () => {
+    it('reads quoted CSV fields using the shared tabular reader', () => {
+        const csv = [
+            '"indice_tiempo","indice_serie_desestacionalizada","description"',
+            '"1993-01-01","98.25","Seasonally adjusted, historical"',
+            '"2004-01-01","114.4","Overlap"',
+        ].join('\n');
+
+        expect(parseEmaeHistoricalCsv(csv)).toEqual([
+            ['1993-01-01', 98.25],
+            ['2004-01-01', 114.4],
+        ]);
+    });
+
+    it('reads historical seasonally adjusted indices by CSV header without converting missing values to zero', () => {
+        const csv = [
+            'indice_tiempo,indice_serie_original_mensual,indice_serie_desestacionalizada',
+            '1993-01-01,87.5,98.25',
+            '1993-02-01,85,',
+            '1993-03-01,90,invalid',
+            '2004-01-01,100,114.4',
+        ].join('\r\n');
+
+        expect(parseEmaeHistoricalCsv(csv)).toEqual([
+            ['1993-01-01', 98.25],
+            ['2004-01-01', 114.4],
+        ]);
+    });
+
     it('parses EMAE rows from the INDEC workbook', () => {
         const rows = parseEmaeWorkbook(workbookBuffer([
             ['Período', null, 'Índice Serie Original', null, 'Índice Serie Desestacionalizada', null, 'Índice Serie Tendencia-Ciclo'],

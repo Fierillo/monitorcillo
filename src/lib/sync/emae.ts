@@ -1,12 +1,11 @@
 import type { EmaeRawRow } from '@/types';
 import { EMAE_SECTOR_APORTE_KEYS, EMAE_SECTOR_KEYS, EMAE_SECTOR_MM12_KEYS } from '../emae/schema';
-import { parseEmaePublicationDate, prependHistoricalEmae } from '../emae-source';
+import { parseEmaeHistoricalCsv, parseEmaePublicationDate, prependHistoricalEmae } from '../emae-source';
 import { buildMonthlyPopulationSeries, parseWorldBankPopulation } from '../population-source';
 import { sql } from '../db/client';
-import { EMAE_PUBLICATION_PAGE_URL } from './constants';
+import { EMAE_HISTORICAL_CSV_URL, EMAE_PUBLICATION_PAGE_URL } from './constants';
 import { fetchEmaeSectorWorkbookRows, fetchEmaeWorkbookRows } from './cache';
 import { fetchTextFromUrl } from './http-client';
-import { fetchTimeSeries } from './time-series-client';
 
 function mergeEmaeRows(rows: EmaeRawRow[], sectorRows: EmaeRawRow[]): EmaeRawRow[] {
     const byFecha = new Map<string, EmaeRawRow>();
@@ -16,11 +15,11 @@ function mergeEmaeRows(rows: EmaeRawRow[], sectorRows: EmaeRawRow[]): EmaeRawRow
 }
 
 export async function fetchEmaeRaw(): Promise<{ rows: EmaeRawRow[]; publishedAt: string | null }> {
-    const [rows, sectorRows, publicationHtml, historicalResponse, populationText] = await Promise.all([
+    const [rows, sectorRows, publicationHtml, historicalCsv, populationText] = await Promise.all([
         fetchEmaeWorkbookRows(),
         fetchEmaeSectorWorkbookRows(),
         fetchTextFromUrl(EMAE_PUBLICATION_PAGE_URL),
-        fetchTimeSeries({ ids: ['10.3_ISD_1993_M_31'] }),
+        fetchTextFromUrl(EMAE_HISTORICAL_CSV_URL),
         fetchTextFromUrl('https://api.worldbank.org/v2/country/ARG/indicator/SP.POP.TOTL?format=json&date=1992:2025&per_page=100'),
     ]);
 
@@ -29,9 +28,9 @@ export async function fetchEmaeRaw(): Promise<{ rows: EmaeRawRow[]; publishedAt:
         throw new Error('Failed to parse EMAE publication date. Verify INDEC publication page structure.');
     }
 
-    const extendedRows = prependHistoricalEmae(rows, historicalResponse.data ?? []);
+    const extendedRows = prependHistoricalEmae(rows, parseEmaeHistoricalCsv(historicalCsv));
     if (extendedRows[0]?.fecha !== '1993-01-01') {
-        throw new Error('Failed to extend EMAE history to 1993. Verify datos.gob.ar series 10.3_ISD_1993_M_31.');
+        throw new Error(`Failed to extend EMAE history to 1993. Verify dates and seasonally adjusted indices in ${EMAE_HISTORICAL_CSV_URL}, including overlap with the INDEC workbook.`);
     }
 
     const populationRows = parseWorldBankPopulation(JSON.parse(populationText));

@@ -19,7 +19,6 @@ const MONTHS_ES: Record<string, string> = {
     diciembre: '12',
 };
 
-
 function normalizedIncludes(value: unknown, expected: string): boolean {
     return normalizeText(value).includes(normalizeText(expected));
 }
@@ -62,6 +61,22 @@ export function parseEmaeWorkbook(buffer: Buffer): EmaeRawRow[] {
     }
 
     return parsedRows.sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+export function parseEmaeHistoricalCsv(csv: string): DatosGobSeriesRow[] {
+    const workbook = readWorkbook(Buffer.from(csv));
+    const [columns = [], ...dataRows] = sheetRows(workbook.Sheets[workbook.SheetNames[0]]);
+    const dateColumn = columns.indexOf('indice_tiempo');
+    const valueColumn = columns.indexOf('indice_serie_desestacionalizada');
+    const rows: DatosGobSeriesRow[] = [];
+
+    for (const cells of dataRows) {
+        const date = String(cells[dateColumn] ?? '');
+        const value = parseNumber(cells[valueColumn]);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date) && value != null) rows.push([date, Number(value)]);
+    }
+
+    return rows;
 }
 
 export function prependHistoricalEmae(currentRows: EmaeRawRow[], historicalRows: DatosGobSeriesRow[]): EmaeRawRow[] {
