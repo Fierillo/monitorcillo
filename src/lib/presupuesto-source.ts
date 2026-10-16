@@ -165,7 +165,6 @@ export const PRESUPUESTO_PBI_BY_YEAR = new Map([
     [2027, 1_421_178_148],
 ]);
 
-
 function numericValue(value: unknown): number | null {
     if (value === null || value === undefined || value === '') return null;
     if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -274,15 +273,12 @@ export function parsePresupuestoDatasetLinks(html: string, origin?: string): str
         .map(link => link.href);
 }
 
-function parseCsvLine(line: string): string[] {
-    return line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
-}
-
 export function parsePresupuestoSerieAnualCsv(csv: string): PresupuestoSerieAnual {
-    const lines = csv.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-    if (lines.length < 2) throw new Error('Failed to parse presupuesto serie anual CSV. Missing header or data rows.');
+    const workbook = readWorkbook(Buffer.from(csv));
+    const [header, ...rows] = sheetRows(workbook.Sheets[workbook.SheetNames[0]]);
+    if (!header || rows.length === 0) throw new Error('Failed to parse presupuesto serie anual CSV. Missing header or data rows.');
 
-    const headers = parseCsvLine(lines[0]).map(header => normalizeText(header));
+    const headers = header.map(normalizeText);
     const yearIndex = headers.findIndex(header => header.includes('ejercicio') || header === 'anio' || header === 'year');
     const ingresoIndex = headers.findIndex(header => header === 'ingreso' || header === 'recursos' || header === 'recurso');
     const gastoIndex = headers.findIndex(header => header === 'gasto' || header === 'gastos');
@@ -292,9 +288,8 @@ export function parsePresupuestoSerieAnualCsv(csv: string): PresupuestoSerieAnua
     }
 
     const series: PresupuestoSerieAnual = new Map();
-    for (const line of lines.slice(1)) {
-        const cells = parseCsvLine(line);
-        const yearRaw = cells[yearIndex] ?? '';
+    for (const cells of rows) {
+        const yearRaw = String(cells[yearIndex] ?? '');
         const yearMatch = yearRaw.match(/(\d{4})/);
         const year = yearMatch ? Number(yearMatch[1]) : Number(yearRaw);
         const ingreso = numericValue(cells[ingresoIndex]);

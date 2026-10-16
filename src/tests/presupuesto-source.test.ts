@@ -160,6 +160,19 @@ describe('presupuesto dataset discovery', () => {
 });
 
 describe('presupuesto serie anual datos.gob.ar', () => {
+    it('preserves quoted commas and localized amounts in the annual CSV', () => {
+        const csv = [
+            'ejercicio_presupuestario,nota,ingreso,gasto,PIB',
+            '2020-01-01,"dato, revisado","4.500.000,25","4.800.000,50",30000000',
+        ].join('\r\n');
+
+        expect(parsePresupuestoSerieAnualCsv(csv).get(2020)).toEqual({
+            ingreso: 4_500_000.25,
+            gasto: 4_800_000.5,
+            pbi: 30_000_000,
+        });
+    });
+
     it('parses the official annual income-expense-GDP csv format', () => {
         const csv = [
             'ejercicio_presupuestario,ingreso,gasto,PIB',

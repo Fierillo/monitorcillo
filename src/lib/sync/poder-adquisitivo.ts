@@ -1,5 +1,6 @@
 import type { PoderAdquisitivoRawRow } from '@/types';
 import { parseSalaryPublicationDate } from '../salary-source';
+import { readWorkbook, sheetRows } from '../protocols';
 import { SALARY_PUBLICATION_PAGE_URL } from './constants';
 import { fetchTextFromUrl } from './http-client';
 import { fetchTimeSeries } from './time-series-client';
@@ -21,9 +22,10 @@ function parseSalaryDate(value: string | undefined): string | null {
 }
 
 export function parseOfficialSalaryCsvRows(csv: string): Map<string, Pick<PoderAdquisitivoRawRow, 'salario_registrado' | 'salario_no_registrado' | 'salario_privado' | 'salario_publico'>> {
+    const workbook = readWorkbook(Buffer.from(csv));
     const rows = new Map<string, Pick<PoderAdquisitivoRawRow, 'salario_registrado' | 'salario_no_registrado' | 'salario_privado' | 'salario_publico'>>();
-    for (const line of csv.trim().split('\n').slice(1)) {
-        const [periodo, privado, publico, registrado, noRegistrado] = line.trim().split(';');
+    for (const cells of sheetRows(workbook.Sheets[workbook.SheetNames[0]]).slice(1)) {
+        const [periodo, privado, publico, registrado, noRegistrado] = cells.map(cell => String(cell ?? ''));
         const fecha = parseSalaryDate(periodo);
         if (!fecha) continue;
         rows.set(fecha, {
@@ -37,9 +39,10 @@ export function parseOfficialSalaryCsvRows(csv: string): Map<string, Pick<PoderA
 }
 
 export function parseRipteCsvRows(csv: string): Map<string, number> {
+    const workbook = readWorkbook(Buffer.from(csv));
     const rows = new Map<string, number>();
-    for (const line of csv.trim().split('\n').slice(1)) {
-        const [fecha, value] = line.trim().split(',');
+    for (const cells of sheetRows(workbook.Sheets[workbook.SheetNames[0]]).slice(1)) {
+        const [fecha, value] = cells.map(cell => String(cell ?? ''));
         if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha ?? '')) continue;
         const parsed = Number(value);
         if (value && Number.isFinite(parsed)) rows.set(fecha, parsed);
