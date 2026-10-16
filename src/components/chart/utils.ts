@@ -179,26 +179,58 @@ export function calculateYAxisDomain(params: ChartAxisDomainParams): [number, nu
     ];
 }
 
-export function chartMargins({ isMobile, valueFormat, hasSecondaryAxis }: { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean }): { left: number; right: number; top: number; bottom: number } {
+type ChartFrameOptions = { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean };
+type HorizontalInsets = { left: number; right: number };
+
+export type ChartLayout = {
+    margins: HorizontalInsets & { top: number; bottom: number };
+    axisWidths: HorizontalInsets;
+    xAxisPadding: HorizontalInsets;
+    dataArea: HorizontalInsets;
+    barSize?: number;
+};
+
+const DESKTOP_MAX_BAR_GROUP_WIDTH_PX = 20;
+const MOBILE_MAX_BAR_GROUP_WIDTH_PX = 16;
+const MOBILE_MAX_BAR_WIDTH_PX = 10;
+const BAR_GROUP_STEP_RATIO = 0.9;
+
+function chartMargins({ isMobile, valueFormat, hasSecondaryAxis }: ChartFrameOptions): ChartLayout['margins'] {
     if (isMobile) return { left: 8, right: 8, top: 5, bottom: 40 };
     const yAxisWidth = valueFormat === 'currency' ? 90 : valueFormat === 'millions' ? 76 : 52;
     return { left: yAxisWidth - 50, right: hasSecondaryAxis ? 15 : 10, top: 5, bottom: 5 };
 }
 
-export function axisComponentWidth({ isMobile, valueFormat, hasSecondaryAxis }: { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean }): { left: number; right: number } {
+function axisComponentWidth({ isMobile, valueFormat, hasSecondaryAxis }: ChartFrameOptions): HorizontalInsets {
     if (isMobile) return { left: 0, right: 0 };
     const left = valueFormat === 'currency' ? 90 : valueFormat === 'millions' ? 80 : 60;
     return { left, right: hasSecondaryAxis ? 60 : 0 };
 }
 
-export function chartPlotArea(options: { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean }): { left: number; right: number; top: number; bottom: number } {
-    const margins = chartMargins(options);
-    const axes = axisComponentWidth(options);
+function barGroupWidth({ areas, count, plotWidth, isMobile }: { areas: AreaConfig[]; count: number; plotWidth: number; isMobile: boolean }): { groupWidth: number; groupCount: number } {
+    const barAreas = areas.filter(area => area.type === 'bar');
+    const groupCount = new Set(barAreas.map(area => `${area.yAxisId ?? 'left'}:${area.stackId ?? area.key}`)).size;
+    if (groupCount === 0) return { groupWidth: 0, groupCount };
+
+    const maxBarWidth = Math.min(isMobile ? MOBILE_MAX_BAR_WIDTH_PX : Infinity, ...barAreas.map(area => area.maxBarSize ?? Infinity));
+    const maxGroupWidth = isMobile ? MOBILE_MAX_BAR_GROUP_WIDTH_PX : DESKTOP_MAX_BAR_GROUP_WIDTH_PX;
+    const widthFittingEveryStep = BAR_GROUP_STEP_RATIO * plotWidth / Math.max(BAR_GROUP_STEP_RATIO, count - 1 + BAR_GROUP_STEP_RATIO);
+    return { groupWidth: Math.max(0, Math.min(maxGroupWidth, maxBarWidth * groupCount, widthFittingEveryStep)), groupCount };
+}
+
+export function chartLayout({ areas, count, width, ...frame }: ChartFrameOptions & { areas: AreaConfig[]; count: number; width: number }): ChartLayout {
+    const margins = chartMargins(frame);
+    const axisWidths = axisComponentWidth(frame);
+    const plotLeft = margins.left + axisWidths.left;
+    const plotRight = margins.right + axisWidths.right;
+    const { groupWidth, groupCount } = barGroupWidth({ areas, count, plotWidth: width - plotLeft - plotRight, isMobile: frame.isMobile });
+    const edgeInset = groupWidth / 2;
     return {
-        left: margins.left + axes.left,
-        right: margins.right + axes.right,
-        top: margins.top,
-        bottom: margins.bottom,
+        margins,
+        axisWidths,
+        xAxisPadding: { left: edgeInset, right: edgeInset },
+        dataArea: { left: plotLeft + edgeInset, right: plotRight + edgeInset },
+        barSize: groupCount === 0 ? undefined : groupWidth / groupCount,
     };
 }
 

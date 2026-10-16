@@ -109,7 +109,7 @@ describe('mobile chart interaction', () => {
         expect(recharts.chartProps?.barGap).toBe(0);
     });
 
-    it('uses the whole x axis for data and keeps endpoint labels inside it', () => {
+    it('keeps endpoint labels inside the x axis', () => {
         const rows = Array.from({ length: 50 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-${String(index + 1).padStart(2, '0')}-01`, value: index }));
         render(<CompositeChartCard
             title="Indicador"
@@ -152,10 +152,7 @@ describe('mobile chart interaction', () => {
         const tickCount = (axisProps.ticks as string[]).length;
         const renderTick = (index: number, value: string) => tick({ index, visibleTicksCount: tickCount, payload: { value }, tickFormatter: axisProps.tickFormatter });
 
-        const padding = (axisProps.padding ?? { left: 0, right: 0 }) as { left: number; right: number };
-
         expect(tickCount).toBeGreaterThan(2);
-        expect(padding).toEqual({ left: 0, right: 0 });
         expect(axisProps.scale).toBe('point');
         expect(renderTick(0, '2026-01-01').props.textAnchor).toBe('start');
         expect(renderTick(Math.floor(tickCount / 2), '2026-01-01').props.textAnchor).toBe('middle');
@@ -255,7 +252,6 @@ describe('mobile chart interaction', () => {
         expect(screen.queryByTestId('chart-pan-slider')).toBeNull();
         expect(chartContainerRef.current?.style.minWidth).toBe('');
         expect(chartContainerRef.current?.style.touchAction).toBe('none');
-        expect(recharts.chartProps?.barSize).toBe(10);
         expect(recharts.chartProps).not.toHaveProperty('onTouchStart');
         expect(recharts.chartProps).not.toHaveProperty('onTouchMove');
         expect(recharts.chartProps).not.toHaveProperty('onTouchEnd');

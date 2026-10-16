@@ -14,7 +14,8 @@ import CustomLegend from '../chart/CustomLegend';
 import MobileRangePicker from '../chart/MobileRangePicker';
 import { createHoverTooltipStore, type HoverTooltipStore } from '../chart/hover-tooltip-store';
 import MethodologySection from '../chart/MethodologySection';
-import { calculateTooltipVerticalPosition, chartClickStateFromPointer, chartMargins, chartPlotArea, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount, xTickEdgeSpacingPx, xTickSpacingPx } from '../chart/utils';
+import { calculateTooltipVerticalPosition, chartClickStateFromPointer, chartLayout, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount, xTickEdgeSpacingPx, xTickSpacingPx } from '../chart/utils';
+import type { ChartLayout } from '../chart/utils';
 
 type Props = {
     title: string;
@@ -115,8 +116,15 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
     const pointerPositionRef = useRef<{ left: number; top: number } | null>(null);
     const [hoverTooltipStore] = useState(createHoverTooltipStore);
     const [isControlPressed, setIsControlPressed] = useState(false);
-    const renderedAreas = activeAreas(props.areas, props.highlightedAreas);
-    const plotArea = chartPlotArea({ isMobile: Boolean(props.isMobile), valueFormat: props.valueFormat, hasSecondaryAxis: Boolean(props.secondaryYAxis) });
+    const renderedAreas = useMemo(() => activeAreas(props.areas, props.highlightedAreas), [props.areas, props.highlightedAreas]);
+    const layout = useMemo(() => chartLayout({
+        areas: renderedAreas,
+        count: props.visibleData.length,
+        width: props.chartSize.width,
+        isMobile: Boolean(props.isMobile),
+        valueFormat: props.valueFormat,
+        hasSecondaryAxis: Boolean(props.secondaryYAxis),
+    }), [renderedAreas, props.visibleData.length, props.chartSize.width, props.isMobile, props.valueFormat, props.secondaryYAxis]);
     const captureCanvasStyle = props.forceDesktopLayout ? { outline: 'none', height: 780 } : { outline: 'none' };
     const captureChartStyle = props.forceDesktopLayout
         ? { outline: 'none', width: 1240, height: 780 }
@@ -189,13 +197,13 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
                         maxIndex={props.rangeSelection.maxIndex}
                         visibleRange={props.committedRange}
                         chartWidth={props.chartSize.width}
-                        plotLeft={plotArea.left}
-                        plotRight={plotArea.right}
+                        plotLeft={layout.dataArea.left}
+                        plotRight={layout.dataArea.right}
                         onSelectionChange={props.rangeSelection.onSelectionChange}
                         onCommit={props.rangeSelection.onCommit}
                         onCancel={props.rangeSelection.onCancel}
                     /> : null}
-                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} chartContainerRef={chartContainerRef} scrollViewportRef={scrollViewportRef} isControlPressed={isControlPressed} hoverTooltipStore={hoverTooltipStore} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
+                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} layout={layout} chartContainerRef={chartContainerRef} scrollViewportRef={scrollViewportRef} isControlPressed={isControlPressed} hoverTooltipStore={hoverTooltipStore} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
                     {!props.isCapturing && !props.crosshair?.locked && !isControlPressed ? (
                         <HoverTooltipOverlay
                             store={hoverTooltipStore}
@@ -235,8 +243,8 @@ function AxisLabel({ label, color, right = false, control }: { label: string; co
     return <div className={`flex ${control ? 'w-14' : 'w-5'} shrink-0 items-center justify-center`}><div className={`${right ? 'rotate-90' : '-rotate-90'} flex flex-col items-center gap-1 whitespace-nowrap ${color ? '' : 'text-imperial-gold'} font-bold text-xs uppercase tracking-widest`} style={{ color }}><span>{label}</span>{control}</div></div>;
 }
 
-function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: RefObject<HTMLDivElement | null>; scrollViewportRef: RefObject<HTMLDivElement | null>; isControlPressed: boolean; hoverTooltipStore: HoverTooltipStore }) {
-    const { chartContainerRef, chartSize, crosshair, isCapturing, isControlPressed, isMobile, onCrosshairClick, onCrosshairUnlock, onHoverTooltipChange, hoverTooltipStore, scrollViewportRef, visibleData } = props;
+function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout; chartContainerRef: RefObject<HTMLDivElement | null>; scrollViewportRef: RefObject<HTMLDivElement | null>; isControlPressed: boolean; hoverTooltipStore: HoverTooltipStore }) {
+    const { chartContainerRef, chartSize, crosshair, isCapturing, isControlPressed, isMobile, layout, onCrosshairClick, onCrosshairUnlock, onHoverTooltipChange, hoverTooltipStore, scrollViewportRef, visibleData } = props;
     const hoverVerticalRef = useRef<SVGLineElement | null>(null);
     const hoverHorizontalRef = useRef<SVGLineElement | null>(null);
     const rafRef = useRef<number | null>(null);
@@ -277,26 +285,18 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
     const leftDomain = useMemo<[number, number]>(() => [leftTicks[0], leftTicks.at(-1) ?? 0], [leftTicks]);
     const rightDomain = useMemo<[number, number]>(() => [rightTicks[0], rightTicks.at(-1) ?? 0], [rightTicks]);
 
-    const margins = useMemo(() => chartMargins({ isMobile: Boolean(props.isMobile), valueFormat: props.valueFormat, hasSecondaryAxis: Boolean(props.secondaryYAxis) }), [props.isMobile, props.valueFormat, props.secondaryYAxis]);
-    const leftMargin = margins.left;
-    const rightMargin = margins.right;
-    const barAreas = renderedAreas.filter(area => area.type === 'bar');
-    const barGroupCount = new Set(barAreas.map(area => `${area.yAxisId ?? 'left'}:${area.stackId ?? area.key}`)).size;
-    const barSize = barGroupCount === 0 ? undefined : Math.min(rightMargin * 2 / barGroupCount, props.isMobile ? 10 : Infinity, ...barAreas.map(area => area.maxBarSize ?? Infinity));
     const xAxisHeight = props.isMobile ? 32 : 30;
     const xTickFontSize = props.isMobile ? 9 : 10;
     const xTickValues = useMemo(() => props.visibleData.map(row => String(row[props.xAxisKey] ?? '')), [props.visibleData, props.xAxisKey]);
     const xTickLabels = useMemo(() => xTickValues.map(value => props.labelByXAxisValue.get(value) ?? value), [xTickValues, props.labelByXAxisValue]);
-    const plotArea = chartPlotArea({ isMobile: Boolean(props.isMobile), valueFormat: props.valueFormat, hasSecondaryAxis: Boolean(props.secondaryYAxis) });
     const xTickSpacing = useMemo(() => xTickSpacingPx(xTickFontSize, xTickLabels), [xTickFontSize, xTickLabels]);
     const xTickEdgeSpacing = useMemo(() => xTickEdgeSpacingPx(xTickFontSize, xTickLabels), [xTickFontSize, xTickLabels]);
-    const xTickCount = targetXTickCount(props.chartSize.width, plotArea.left + plotArea.right, xTickSpacing);
-    const indicesPerPixel = Math.max(0, xTickValues.length - 1) / Math.max(1, props.chartSize.width - plotArea.left - plotArea.right);
+    const xTickCount = targetXTickCount(props.chartSize.width, layout.dataArea.left + layout.dataArea.right, xTickSpacing);
+    const indicesPerPixel = Math.max(0, xTickValues.length - 1) / Math.max(1, props.chartSize.width - layout.dataArea.left - layout.dataArea.right);
     const minimumIndexGap = indicesPerPixel * xTickSpacing;
     const minimumEdgeIndexGap = indicesPerPixel * xTickEdgeSpacing;
     const xTicks = useMemo(() => selectMonthAlignedXTicks(xTickValues, xTickCount, minimumIndexGap, minimumEdgeIndexGap), [xTickValues, xTickCount, minimumIndexGap, minimumEdgeIndexGap]);
 
-    const chartMargin = useMemo(() => ({ top: 5, right: rightMargin, bottom: props.isMobile ? xAxisHeight + 8 : 5, left: leftMargin }), [rightMargin, props.isMobile, xAxisHeight, leftMargin]);
     const renderXAxisTick = useCallback((tickProps: XAxisTickContentProps) => (
         <text
             className={tickProps.className}
@@ -416,10 +416,10 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
                 width: latest().chartSize.width,
                 height: latest().chartSize.height,
                 count: latest().visibleData.length,
-                left: leftMargin,
-                right: rightMargin,
-                top: 5,
-                bottom: xAxisHeight + 8,
+                left: layout.dataArea.left,
+                right: layout.dataArea.right,
+                top: layout.margins.top,
+                bottom: layout.margins.bottom,
             });
         };
         const clearHover = () => {
@@ -506,15 +506,15 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
             element.removeEventListener('pointercancel', onPointerUp);
             element.removeEventListener('click', onClickCapture, true);
         };
-    }, [chartContainerRef, hideHoverCrosshair, hoverTooltipStore, isCapturing, isMobile, leftMargin, rightMargin, scrollViewportRef, xAxisHeight]);
+    }, [chartContainerRef, hideHoverCrosshair, hoverTooltipStore, isCapturing, isMobile, layout, scrollViewportRef]);
 
     return (
         <ComposedChart
             width={props.chartSize.width}
             height={props.chartSize.height}
             data={props.visibleData}
-            margin={chartMargin}
-            barSize={barSize}
+            margin={layout.margins}
+            barSize={layout.barSize}
             barGap={0}
             stackOffset="sign"
             style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }}
@@ -542,11 +542,12 @@ function ResponsiveComposedChart(props: ChartRenderProps & { chartContainerRef: 
                 ticks={xTicks}
                 interval={0}
                 scale="point"
+                padding={layout.xAxisPadding}
                 height={xAxisHeight}
                 tickMargin={props.isMobile ? 6 : 4}
             />
-            <YAxis orientation="left" stroke="#FFD700" tick={leftTickStyle} tickFormatter={formatLeftTick} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions' && props.valueFormat !== 'currency'} allowDataOverflow yAxisId="left" width={props.isMobile ? 0 : (props.valueFormat === 'currency' ? 90 : props.valueFormat === 'millions' ? 80 : 60)} hide={props.isMobile} />
-            {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={rightTickStyle} tickFormatter={formatRightTick} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={props.isMobile ? 0 : 60} hide={props.isMobile} />}
+            <YAxis orientation="left" stroke="#FFD700" tick={leftTickStyle} tickFormatter={formatLeftTick} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions' && props.valueFormat !== 'currency'} allowDataOverflow yAxisId="left" width={layout.axisWidths.left} hide={props.isMobile} />
+            {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={rightTickStyle} tickFormatter={formatRightTick} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={layout.axisWidths.right} hide={props.isMobile} />}
             {props.secondaryYAxis ? leftTicks.map(tick => <ReferenceLine key={`tick-grid-${tick}`} y={tick} yAxisId="left" stroke="#FFFFFF" strokeOpacity={0.35} strokeWidth={0.5} />) : null}
             {backgroundReferenceLines.map((reference, index) => renderReferenceLine(reference, reference.label ?? `${reference.value}-${index}`))}
             {renderedAreas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} animate={areaConfig.type === 'bar' ? animateBars : animateLines} />)}
