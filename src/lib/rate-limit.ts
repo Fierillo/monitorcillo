@@ -93,14 +93,6 @@ export async function checkRequestRateLimit(req: Request, scope: string, options
     return checkRateLimit(`${getClientIP(req)}:${req.method}:${scope}`, options);
 }
 
-export function getRateLimitRemaining(key: string, options: RateLimitOptions = STRICT_RATE_LIMIT): number {
-    const record = rateLimitMap.get(key);
-    if (!record || Date.now() > record.resetTime) {
-        return options.maxAttempts;
-    }
-    return Math.max(0, options.maxAttempts - record.count);
-}
-
 export function resetRateLimits(): void {
     rateLimitMap.clear();
 }

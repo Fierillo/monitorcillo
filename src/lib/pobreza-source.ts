@@ -489,10 +489,6 @@ async function fetchUcaPobrezaReport(): Promise<PobrezaSourceReport> {
     }
 }
 
-export async function fetchPobrezaRaw(): Promise<PobrezaRawRow[]> {
-    return (await fetchPobrezaRawReport()).rows;
-}
-
 export async function fetchPobrezaRawReport(): Promise<PobrezaSourceReport> {
     const [indecRows, utdtReport, ucaReport] = await Promise.all([
         fetchIndecPobrezaRows(),

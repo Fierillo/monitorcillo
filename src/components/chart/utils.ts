@@ -1,4 +1,4 @@
-import type { AreaConfig, ChartAxisDomainParams, ChartClickState, ChartDataRow, ValueFormat } from '@/types/chart';
+import type { AreaConfig, ChartClickState, ChartDataRow, ValueFormat } from '@/types/chart';
 
 
 export const SPANISH_MONTHS: Record<string, string> = {
@@ -154,29 +154,6 @@ export function formatAxisValueByType(value: number, format?: ValueFormat, decim
     const roundedValue = Math.round(value / step) * step;
 
     return `$${roundedValue.toLocaleString('es-AR')}M`;
-}
-
-export function calculateYAxisDomain(params: ChartAxisDomainParams): [number, number] {
-    const { chartData, areaKeys } = params;
-    
-    if (areaKeys.length === 0) return [0, 10];
-
-    const values = chartData.flatMap((row) =>
-        areaKeys
-            .map(key => row[key])
-            .filter((value): value is number => typeof value === 'number' && !Number.isNaN(value))
-    );
-
-    if (values.length === 0) return [0, 10];
-
-    const minValue = Math.min(...values);
-    const maxValue = Math.max(...values);
-    const padding = (maxValue - minValue) * 0.05;
-
-    return [
-        Math.floor(minValue - padding),
-        Math.ceil(maxValue + padding)
-    ];
 }
 
 type ChartFrameOptions = { isMobile: boolean; valueFormat: ValueFormat; hasSecondaryAxis: boolean };

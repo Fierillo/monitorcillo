@@ -11,38 +11,3 @@ export * from './normalize/inflacion';
 export * from './normalize/icg';
 export * from './normalize/balanza';
 export * from './normalize/sipa';
-
-import { fechaToISO, fechaToTimestamp, isoToFecha, isoToMonthLabel } from './normalize/dates';
-import { normalizeEmision } from './normalize/emision';
-import { normalizeEmae } from './normalize/emae';
-import { normalizeBma } from './normalize/bma';
-import { normalizeDepositosPrestamos } from './normalize/depositos-prestamos';
-import { normalizeRecaudacion } from './normalize/recaudacion';
-import { normalizePoderAdquisitivo } from './normalize/poder';
-import { normalizeDeuda } from './normalize/deuda';
-import { normalizePobreza } from './normalize/pobreza';
-import { normalizeInflacion } from './normalize/inflacion';
-import { normalizeIcg } from './normalize/icg';
-import { normalizeBalanza } from './normalize/balanza';
-import { normalizeSipa } from './normalize/sipa';
-
-const normalize = {
-    isoToFecha,
-    isoToMonthLabel,
-    fechaToTimestamp,
-    fechaToISO,
-    normalizeEmision,
-    normalizeEmae,
-    normalizeBma,
-    normalizeDepositosPrestamos,
-    normalizeRecaudacion,
-    normalizePoderAdquisitivo,
-    normalizeDeuda,
-    normalizePobreza,
-    normalizeInflacion,
-    normalizeIcg,
-    normalizeBalanza,
-    normalizeSipa,
-};
-
-export default normalize;

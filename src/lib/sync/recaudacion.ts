@@ -117,7 +117,3 @@ export async function fetchRecaudacionRawReport(): Promise<{ rows: RecaudacionRa
         publishedAt: officialReport.publishedAt,
     };
 }
-
-export async function fetchRecaudacionRaw(): Promise<RecaudacionRawRow[]> {
-    return (await fetchRecaudacionRawReport()).rows;
-}

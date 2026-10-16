@@ -239,10 +239,4 @@ export type MethodologySectionProps = {
     forceOpen?: boolean;
 };
 
-export type ChartAxisDomainParams = {
-    chartData: ChartDataRow[];
-    areaKeys: string[];
-    yAxisId?: 'left' | 'right';
-};
-
 export type ChartRenderer = ReactElement | null;

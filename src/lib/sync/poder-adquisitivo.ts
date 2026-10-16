@@ -91,7 +91,3 @@ export async function fetchPoderAdquisitivoRawReport(): Promise<{ rows: PoderAdq
         publishedAt: parseSalaryPublicationDate(publicationHtml),
     };
 }
-
-export async function fetchPoderAdquisitivoRaw(): Promise<PoderAdquisitivoRawRow[]> {
-    return (await fetchPoderAdquisitivoRawReport()).rows;
-}
