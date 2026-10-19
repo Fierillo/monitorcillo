@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import MethodologySection from '@/components/chart/MethodologySection';
 import FeedbackButton from '@/components/FeedbackButton';
 import geometryAsset from '@/lib/rutas/geometry.json';
 import {
     CONCESSION_COLORS,
+    CONCESSION_LABELS,
     CONCESSION_SOURCE_NOTE,
     PAVEMENT_COLORS,
     PAVEMENT_LABELS,
@@ -23,7 +24,9 @@ import {
 } from '@/lib/rutas/status';
 
 const STORED_GEOMETRY = geometryAsset as RutasGeometry;
-type ShieldFilter = 'rutas' | 'constructoras';
+const CONCESSION_LEGEND = ['concesionado', 'en-licitacion', 'sin-concesionar', 'sin-dato'] as const;
+const SIN_DATO_OPACITY = 0.2;
+type ShieldFilter = 'ninguno' | 'ruta' | 'constructora';
 
 const TOOLTIP_BACKGROUND = 'rgba(0, 20, 63, 0.4)';
 const TOOLTIP_BLUR = 'blur(2px)';
@@ -37,7 +40,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
     const [mode, setMode] = useState<ColorMode>('concesion');
     const [hover, setHover] = useState<PointerTip | null>(null);
     const [pinned, setPinned] = useState<PointerTip | null>(null);
-    const [filterBy, setFilterBy] = useState<ShieldFilter>('rutas');
+    const [filterBy, setFilterBy] = useState<ShieldFilter>('ninguno');
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const toggleSelected = (id: string) => {
         setSelected(current => {
@@ -56,9 +59,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
     const projected = projectMap(geometry.outline, painted, canvas.width, canvas.height);
     const activeTip = hover ?? pinned;
     const active = painted.find(route => route.code === activeTip?.code) ?? null;
-    const legend = mode === 'concesion'
-        ? [{ status: 'sin-dato', color: CONCESSION_COLORS['sin-dato'], label: 'Sin dato' }]
-        : (['bueno', 'regular', 'malo', 'sin-dato'] as const).map(status => ({ status, color: PAVEMENT_COLORS[status], label: PAVEMENT_LABELS[status] }));
+    const legend = legendFor(filterBy, mode, selected, projected.routes, tramos);
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-2 sm:p-6 lg:p-10">
@@ -75,14 +76,26 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
 
             <div data-testid="rutas-map" className="w-full sm:w-[96%] max-w-[1320px] border-2 border-imperial-gold bg-imperial-blue p-3 sm:p-5">
                 <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div role="group" aria-label="Modo de color" className="flex gap-2">
-                        <ModeButton active={mode === 'concesion'} onClick={() => setMode('concesion')}>Concesión</ModeButton>
-                        <ModeButton active={mode === 'pavimento'} onClick={() => setMode('pavimento')}>Pavimento</ModeButton>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div role="group" aria-label="Modo de color" className="flex gap-2">
+                            <ModeButton active={mode === 'concesion'} onClick={() => setMode('concesion')}>Concesión</ModeButton>
+                            <ModeButton active={mode === 'pavimento'} onClick={() => setMode('pavimento')}>Pavimento</ModeButton>
+                        </div>
+                        <select
+                            aria-label="Filtrar por"
+                            value={filterBy}
+                            onChange={(event) => changeFilter(event.target.value as ShieldFilter)}
+                            className="border border-imperial-gold bg-imperial-blue px-2 py-1 text-xs font-bold uppercase text-imperial-gold"
+                        >
+                            <option value="ninguno">Ninguno</option>
+                            <option value="ruta">Ruta</option>
+                            <option value="constructora">Constructora</option>
+                        </select>
                     </div>
                     <ul aria-label="Referencias" className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-white">
                         {legend.map(item => (
-                            <li key={item.status} className="flex items-center gap-1.5">
-                                <span className="inline-block h-2.5 w-6" style={{ backgroundColor: item.color }} />
+                            <li key={item.key} className="flex items-center gap-1.5">
+                                <span data-company-color={item.color} className="inline-block h-2.5 w-6" style={{ backgroundColor: item.color }} />
                                 {item.label}
                             </li>
                         ))}
@@ -96,7 +109,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                         <path key={`outline-${index}`} d={path} fill="#0B2A66" stroke="#FFD700" strokeWidth={1} />
                     ))}
                     {projected.routes.map(route => {
-                        const routeDimmed = filterBy === 'rutas' && selected.size > 0 && !selected.has(route.code);
+                        const routeDimmed = filterBy === 'ruta' && selected.size > 0 && !selected.has(route.code);
                         return (
                         <g
                             key={route.code}
@@ -104,7 +117,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                             tabIndex={0}
                             aria-label={route.label}
                             stroke={route.color}
-                            opacity={routeDimmed ? 0.16 : 1}
+                            opacity={routeDimmed ? 0.14 : 1}
                             className="cursor-pointer"
                             onPointerEnter={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
                             onPointerMove={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
@@ -118,11 +131,13 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                         >
                             <path d={route.paths.join('')} stroke="transparent" strokeWidth={18} fill="none" pointerEvents="stroke" />
                             {route.segments.map((segment, index) => {
-                                const companyDimmed = filterBy === 'constructoras' && selected.size > 0 && !selected.has(segment.concesionaria);
+                                const missing = segment.concesionaria === 'Sin dato';
+                                const companyDimmed = filterBy === 'constructora' && selected.size > 0 && !selected.has(segment.concesionaria);
+                                const stroke = filterBy === 'ninguno' && !missing ? route.color : segment.color;
                                 return (
-                                    <g key={`${route.code}-${segment.tramoId ?? 'sin-dato'}-${index}`} data-company={segment.concesionaria} opacity={companyDimmed ? 0.16 : 1}>
-                                        <path d={segment.paths.join('')} stroke={ROUTE_GAP} strokeWidth={7} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
-                                        <path d={segment.paths.join('')} stroke={segment.color} strokeWidth={3.2} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+                                    <g key={`${route.code}-${segment.tramoId ?? 'sin-dato'}-${index}`} data-company={segment.concesionaria} opacity={companyDimmed ? 0.12 : missing ? SIN_DATO_OPACITY : 1}>
+                                        <path d={segment.paths.join('')} stroke={ROUTE_GAP} strokeWidth={missing ? 3 : 7} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+                                        <path d={segment.paths.join('')} stroke={stroke} strokeWidth={missing ? 1.5 : 3.2} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
                                     </g>
                                 );
                             })}
@@ -132,7 +147,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                 </svg>
                 {active && activeTip ? <RouteTooltip route={active} x={activeTip.x} y={activeTip.y} /> : null}
                 </div>
-                <RouteShields tramos={tramos} routes={projected.routes} filterBy={filterBy} selected={selected} onFilter={changeFilter} onToggle={toggleSelected} />
+                {filterBy === 'ninguno' ? null : <RouteBars tramos={tramos} routes={projected.routes} filterBy={filterBy} selected={selected} onToggle={toggleSelected} />}
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-foreground/80">{mode === 'pavimento' ? PAVEMENT_SOURCE_NOTE : CONCESSION_SOURCE_NOTE}</p>
                 <MethodologySection methodology={RUTAS_METHODOLOGY} />
@@ -154,64 +169,74 @@ function ModeButton({ active, onClick, children }: { active: boolean; onClick: (
     );
 }
 
-function RouteShields({ tramos, routes, filterBy, selected, onFilter, onToggle }: { tramos: RutaTramo[]; routes: { code: string; segments: { tramoId: string | null; concesionaria: string; color: string }[] }[]; filterBy: ShieldFilter; selected: Set<string>; onFilter: (next: ShieldFilter) => void; onToggle: (id: string) => void }) {
+type MapRoute = { code: string; segments: { tramoId: string | null; concesionaria: string; color: string }[] };
+type LegendItem = { key: string; color: string; label: string };
+
+function legendFor(filterBy: ShieldFilter, mode: 'concesion' | 'pavimento', selected: Set<string>, routes: MapRoute[], tramos: RutaTramo[]): LegendItem[] {
+    if (filterBy === 'ninguno') {
+        if (mode === 'pavimento') return (['bueno', 'regular', 'malo', 'sin-dato'] as const).map(status => ({ key: status, color: PAVEMENT_COLORS[status], label: PAVEMENT_LABELS[status] }));
+        return CONCESSION_LEGEND.map(status => ({ key: status, color: CONCESSION_COLORS[status], label: CONCESSION_LABELS[status] }));
+    }
+    const companies = companiesOf(tramos, routes);
+    const quiet = { key: 'sin-dato', color: CONCESSION_COLORS['sin-dato'], label: 'Sin dato' };
+    if (filterBy === 'ruta') {
+        const picked = routes.filter(route => selected.has(route.code));
+        return [...uniqueCompanies(picked.flatMap(route => companiesOnRoute(route.segments))), quiet];
+    }
+    const routesOfCompanies = companies.filter(company => selected.has(company.name)).flatMap(company => company.rutas.map(code => ({
+        key: `${company.name}-${code}`,
+        color: company.color,
+        label: `RN ${code}`,
+    })));
+    return [...routesOfCompanies, quiet];
+}
+
+function uniqueCompanies(companies: { name: string; color: string }[]): LegendItem[] {
+    const items: LegendItem[] = [];
+    for (const company of companies) {
+        if (items.some(item => item.label === company.name)) continue;
+        items.push({ key: company.name, color: company.color, label: company.name });
+    }
+    return items;
+}
+
+function RouteBars({ tramos, routes, filterBy, selected, onToggle }: { tramos: RutaTramo[]; routes: MapRoute[]; filterBy: Exclude<ShieldFilter, 'ninguno'>; selected: Set<string>; onToggle: (id: string) => void }) {
     const dimOthers = selected.size > 0;
     const companies = companiesOf(tramos, routes);
     return (
-        <aside aria-label="Rutas" className="flex w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-80 lg:overflow-y-auto">
-            <div role="group" aria-label="Filtrar por" className="flex flex-col gap-2">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-imperial-gold">Filtrar por</p>
-                <div className="flex gap-2">
-                    <ModeButton active={filterBy === 'rutas'} onClick={() => onFilter('rutas')}>Rutas</ModeButton>
-                    <ModeButton active={filterBy === 'constructoras'} onClick={() => onFilter('constructoras')}>Constructoras</ModeButton>
-                </div>
-            </div>
-            {filterBy === 'rutas' ? routeCodes(tramos).map(code => {
+        <aside aria-label="Rutas" className="flex w-full shrink-0 flex-col gap-1 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-40 lg:overflow-y-auto">
+            {filterBy === 'ruta' ? routeCodes(tramos).map(code => {
                 const pressed = selected.has(code);
-                const operators = companiesOnRoute(routes.find(route => route.code === code)?.segments ?? []);
                 return (
-                    <div key={code} className={`border-b border-imperial-gold/30 pb-3 ${dimOthers && !pressed ? 'opacity-40' : 'opacity-100'}`}>
-                        <button type="button" aria-label={`Escudo RN ${code}`} aria-pressed={pressed} onClick={() => onToggle(code)} className="cursor-pointer border-0 bg-transparent p-0">
-                            <SignFace code={code} sign={routeSign(code)} pressed={pressed} />
-                        </button>
-                        {pressed ? <CompanyRows companies={operators} /> : null}
-                    </div>
+                    <GoldBar key={code} label={`Escudo RN ${code}`} pressed={pressed} dimmed={dimOthers && !pressed} onClick={() => onToggle(code)}>
+                        <SignFace code={code} sign={routeSign(code)} compact />
+                    </GoldBar>
                 );
             }) : companies.map(company => {
                 const pressed = selected.has(company.name);
                 return (
-                    <div key={company.name} className={`border-b border-imperial-gold/30 pb-3 ${dimOthers && !pressed ? 'opacity-40' : 'opacity-100'}`}>
-                        <button type="button" aria-label={`Constructora ${company.name}`} aria-pressed={pressed} onClick={() => onToggle(company.name)} className={`flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left text-xs font-bold text-white ${pressed ? 'text-imperial-gold' : ''}`}>
-                            <ColorSwatch color={company.color} />
-                            {company.name}
-                        </button>
-                        {pressed ? (
-                            <div className="mt-2 flex flex-col gap-2">
-                                {company.rutas.map(code => <SignFace key={code} code={code} sign={routeSign(code)} pressed />)}
-                            </div>
-                        ) : null}
-                    </div>
+                    <GoldBar key={company.name} label={`Constructora ${company.name}`} pressed={pressed} dimmed={dimOthers && !pressed} onClick={() => onToggle(company.name)}>
+                        <span data-company-color={company.color} className="h-3 w-1 shrink-0" style={{ backgroundColor: company.color }} />
+                        <span className="truncate" title={company.name}>{company.name}</span>
+                    </GoldBar>
                 );
             })}
         </aside>
     );
 }
 
-function CompanyRows({ companies }: { companies: { name: string; color: string }[] }) {
+function GoldBar({ label, pressed, dimmed, onClick, children }: { label: string; pressed: boolean; dimmed: boolean; onClick: () => void; children: ReactNode }) {
     return (
-        <ul className="mt-1 flex flex-col gap-1">
-            {companies.map(company => (
-                <li key={company.name} className="flex items-center gap-2 text-[11px] leading-tight text-white">
-                    <ColorSwatch color={company.color} />
-                    {company.name}
-                </li>
-            ))}
-        </ul>
+        <button
+            type="button"
+            aria-label={label}
+            aria-pressed={pressed}
+            onClick={onClick}
+            className={`flex h-7 w-full items-center gap-1.5 border px-1.5 text-left text-[11px] font-bold uppercase tracking-wide ${pressed ? 'border-imperial-gold bg-imperial-gold text-imperial-blue' : 'border-imperial-gold/80 text-imperial-gold'} ${dimmed ? 'opacity-40' : 'opacity-100'}`}
+        >
+            {children}
+        </button>
     );
-}
-
-function ColorSwatch({ color }: { color: string }) {
-    return <span data-company-color={color} className="inline-block h-2.5 w-6 shrink-0" style={{ backgroundColor: color }} />;
 }
 
 function routeCodes(tramos: RutaTramo[]): string[] {
@@ -262,21 +287,19 @@ function colorOf(name: string, routes: { segments: { concesionaria: string; colo
     return '#94A3B8';
 }
 
-function SignFace({ code, sign, pressed }: { code: string; sign: 'nacional' | 'provincial'; pressed: boolean }) {
-    const stroke = pressed ? '#FFD700' : '#111827';
-    const strokeWidth = pressed ? 2.5 : 1.4;
+function SignFace({ code, sign, compact = false }: { code: string; sign: 'nacional' | 'provincial'; compact?: boolean }) {
     const fontSize = code.length >= 4 ? 8 : code.length === 3 ? 11 : 14;
     if (sign === 'provincial') {
         return (
-            <svg data-sign="provincial" viewBox="0 0 48 48" className="h-11 w-11">
-                <circle cx="24" cy="24" r="20" fill="#FFFFFF" stroke={stroke} strokeWidth={strokeWidth} />
+            <svg data-sign="provincial" viewBox="0 0 48 48" className={compact ? 'h-5 w-5 shrink-0' : 'h-11 w-11'}>
+                <circle cx="24" cy="24" r="20" fill="#FFFFFF" stroke="#111827" strokeWidth={1.4} />
                 <text x="24" y="25" textAnchor="middle" dominantBaseline="middle" fill="#111827" fontSize={fontSize} fontWeight="700" fontFamily="Arial, Helvetica, sans-serif">{code}</text>
             </svg>
         );
     }
     return (
-        <svg data-sign="nacional" viewBox="0 0 48 54" className="h-12 w-10">
-            <path d="M7 4h34v24c0 8-8 16-17 22C15 44 7 36 7 28V4z" fill="#FFFFFF" stroke={stroke} strokeWidth={strokeWidth} />
+        <svg data-sign="nacional" viewBox="0 0 48 54" className={compact ? 'h-5 w-4 shrink-0' : 'h-12 w-10'}>
+            <path d="M7 4h34v24c0 8-8 16-17 22C15 44 7 36 7 28V4z" fill="#FFFFFF" stroke="#111827" strokeWidth={1.4} />
             <text x="24" y="24" textAnchor="middle" dominantBaseline="middle" fill="#111827" fontSize={fontSize} fontWeight="700" fontFamily="Arial, Helvetica, sans-serif">{code}</text>
         </svg>
     );

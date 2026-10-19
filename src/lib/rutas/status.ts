@@ -58,7 +58,7 @@ export const RUTAS_METHODOLOGY = [
     },
     {
         title: 'Detalle',
-        description: 'Al pasar el cursor o tocar una ruta se muestran el número y cada tramo que la incluye, con su concesionaria, kilómetros y estado. A la derecha se filtra por rutas o por constructoras. En rutas, cada escudo es una ruta: al elegirla queda marcada solo esa, partida por el color de cada constructora. En constructoras, al elegir una empresa se ven las rutas en las que opera y en el mapa solo el tramo de kilómetros que le corresponde. Cada constructora tiene un color propio. Sin ninguna elegida se ve la red completa. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
+        description: 'Al pasar el cursor o tocar una ruta se muestran el número y cada tramo que la incluye, con su concesionaria, kilómetros y estado. El filtro tiene tres opciones. En Ninguno manda la leyenda de concesión o pavimento. En Ruta, la leyenda pasa a las constructoras de la ruta elegida y el mapa marca solo esa ruta, partida por color. En Constructora, la leyenda pasa a las rutas de la empresa y el mapa marca solo los kilómetros que opera. Cada constructora tiene un color propio. Lo que no tiene dato se dibuja más tenue. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
     },
 ];
 
