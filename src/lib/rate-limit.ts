@@ -46,22 +46,25 @@ async function ensureRateLimitTable(database: NeonQueryFunction<false, false>): 
     tableReady = true;
 }
 
-function checkMemoryRateLimit(key: string, options: RateLimitOptions): boolean {
-    const now = Date.now();
-    const record = rateLimitMap.get(key);
+export type MemoryRateLimitRecord = { count: number; resetTime: number };
+
+export function decideMemoryRateLimit(
+    record: MemoryRateLimitRecord | undefined,
+    now: number,
+    options: RateLimitOptions,
+): { allowed: boolean; record: MemoryRateLimitRecord } {
     const windowMs = options.windowMs ?? WINDOW_MS;
-
     if (!record || now > record.resetTime) {
-        rateLimitMap.set(key, { count: 1, resetTime: now + windowMs });
-        return true;
+        return { allowed: true, record: { count: 1, resetTime: now + windowMs } };
     }
+    if (record.count >= options.maxAttempts) return { allowed: false, record };
+    return { allowed: true, record: { count: record.count + 1, resetTime: record.resetTime } };
+}
 
-    if (record.count >= options.maxAttempts) {
-        return false;
-    }
-
-    record.count++;
-    return true;
+function checkMemoryRateLimit(key: string, options: RateLimitOptions): boolean {
+    const decision = decideMemoryRateLimit(rateLimitMap.get(key), Date.now(), options);
+    rateLimitMap.set(key, decision.record);
+    return decision.allowed;
 }
 
 export async function checkRateLimit(key: string, options: RateLimitOptions = STRICT_RATE_LIMIT): Promise<boolean> {

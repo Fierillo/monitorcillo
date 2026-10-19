@@ -23,6 +23,7 @@ export default defineConfig({
       include: ['src/lib/**/*.{ts,tsx}'],
       exclude: [
         'src/lib/**/*.d.ts',
+        'src/lib/**/*.test.ts',
         'src/lib/chart-og-image.tsx',
         'src/lib/chart-og-preview.ts',
       ],
@@ -40,7 +41,7 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: ['src/tests/**/*.test.ts'],
+          include: ['src/tests/**/*.test.ts', 'src/lib/**/*.test.ts'],
         },
       },
       {
