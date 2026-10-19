@@ -4,41 +4,40 @@ import Link from 'next/link';
 import { toPng } from 'html-to-image';
 import { MoveHorizontal, RotateCcw } from 'lucide-react';
 import { startTransition, useRef, useState, useEffect, useSyncExternalStore } from 'react';
-import type { ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, ChartReferenceLine, IndicatorCompositeViewProps } from '@/types/chart';
+import type { ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartReferenceLine, IndicatorCompositeViewProps } from '@/types/chart';
 import CompositeChartCard from './indicators/CompositeChartCard';
 import FeedbackButton from './FeedbackButton';
 import LoadingModal from './LoadingModal';
 import { collectAxisExtentValues, resolveChartHoverPoint } from './chart/utils';
 import { beginRangeSelection } from '@/lib/chart-range-selection';
 import type { RangeSelection } from '@/lib/chart-range-selection';
+import {
+    clampChartRange,
+    formatBaseDate,
+    paddedAxisDomain,
+    parsePersistedChartConfig,
+    pickViewId,
+    pickBaseRow,
+    rebaseChartRows,
+    restoreBaseDateByView,
+    restoreHighlightedAreasByView,
+    rowsEligibleForBase,
+    sortChartRows,
+    type PersistedChartConfig,
+} from '@/lib/chart-view-state';
 
-type PersistedChartConfig = {
-    selectedViewId?: string;
-    highlightedAreasByView?: Record<string, string[]>;
-    rangeByView?: Record<string, [number, number]>;
-    baseDateByView?: Record<string, string>;
-};
+export { restoreHighlightedAreasByView };
 
 type ChartConfigCache = { raw: string | null; value: PersistedChartConfig | null };
 
 const chartConfigCache = new Map<string, ChartConfigCache>();
 const chartConfigListeners = new Map<string, Set<() => void>>();
 
-function parseChartConfig(raw: string | null): PersistedChartConfig | null {
-    if (!raw) return null;
-    try {
-        const parsed = JSON.parse(raw) as unknown;
-        return parsed && typeof parsed === 'object' ? parsed as PersistedChartConfig : null;
-    } catch {
-        return null;
-    }
-}
-
 function readChartConfig(key: string): PersistedChartConfig | null {
     const raw = window.localStorage.getItem(key);
     const cached = chartConfigCache.get(key);
     if (cached && cached.raw === raw) return cached.value;
-    const value = parseChartConfig(raw);
+    const value = parsePersistedChartConfig(raw);
     chartConfigCache.set(key, { raw, value });
     return value;
 }
@@ -63,46 +62,6 @@ function writeChartConfig(key: string, config: PersistedChartConfig): void {
     chartConfigListeners.get(key)?.forEach(listener => listener());
 }
 
-function pickViewId(views: IndicatorCompositeViewProps['views'], initialViewId: string | undefined, persistedViewId: string | undefined): string {
-    if (views?.some(view => view.id === initialViewId)) return initialViewId!;
-    if (persistedViewId && (views?.some(view => view.id === persistedViewId) || (!views?.length && persistedViewId === 'default'))) return persistedViewId;
-    return views?.[0]?.id ?? 'default';
-}
-
-function restoreBaseDateByView(config: Record<string, string> | undefined, views: IndicatorCompositeViewProps['views']): Record<string, string> {
-    if (!config) return {};
-    return Object.fromEntries((views?.length ? views : [{ id: 'default', modes: [] }]).flatMap(view => {
-        const defaultModeId = view.modes?.[0]?.id ?? 'default';
-        const date = config[view.id] ?? config[`${view.id}:${defaultModeId}`];
-        return date ? [[view.id, date]] : [];
-    }));
-}
-
-function clampChartRange(range: [number, number] | undefined, maxIndex: number): [number, number] {
-    if (!range) return [0, maxIndex];
-    const start = Math.min(Math.max(0, range[0]), maxIndex);
-    const end = Math.min(Math.max(range[1], start), maxIndex);
-    return [start, end];
-}
-
-export function restoreHighlightedAreasByView(config: Record<string, string[]>, views: IndicatorCompositeViewProps['views']): Record<string, Set<string>> {
-    if (!views?.length) {
-        const keys = config.default ?? config['default:default'];
-        return keys ? { default: new Set(keys) } : {};
-    }
-    return Object.fromEntries(views.flatMap(view => {
-        const defaultModeId = view.modes?.[0]?.id ?? 'default';
-        const keys = config[view.id] ?? config[`${view.id}:${defaultModeId}`];
-        return keys ? [[view.id, new Set(keys)] as const] : [];
-    }));
-}
-
-function formatBaseDate(date: string): string {
-    const [year, month] = date.split('-');
-    const labels = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-    return `${labels[Number(month) - 1]}-${year.slice(-2)}`;
-}
-
 const EMPTY_REFERENCE_LINES: ChartReferenceLine[] = [];
 
 async function addImagePadding(dataUrl: string, horizontalPadding: number, verticalPadding: number, backgroundColor: string) {
@@ -125,32 +84,6 @@ async function addImagePadding(dataUrl: string, horizontalPadding: number, verti
     context.drawImage(image, horizontalPadding, verticalPadding);
 
     return canvas.toDataURL('image/png');
-}
-
-function paddedAxisDomain(mode: 'auto' | 'auto-pad' | undefined, values: number[]): ChartAxisDomain {
-    if (values.length === 0) return [0, 10];
-
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min;
-
-    if (mode === 'auto-pad') {
-        const pad = range === 0 ? Math.max(Math.abs(min) * 0.1, 1) : range * 0.1;
-        return [min - pad, max + pad];
-    }
-
-    if (!mode || mode === 'auto') {
-        const pad = range === 0 ? 1 : range * 0.05;
-        return [min < 0 ? min - pad : 0, max + pad];
-    }
-
-    return [min, max];
-}
-
-function chartRowSortKey(row: ChartDataRow): string {
-    if (typeof row?.iso_fecha === 'string' && row.iso_fecha) return row.iso_fecha;
-    if (typeof row?.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.fecha)) return row.fecha;
-    return '';
 }
 
 export default function IndicatorCompositeView({
@@ -201,31 +134,16 @@ export default function IndicatorCompositeView({
     const configuredReferenceLines = selectedView?.referenceLines ?? EMPTY_REFERENCE_LINES;
     const activeShowTooltipTotal = selectedMode?.showTooltipTotal ?? selectedView?.showTooltipTotal ?? showTooltipTotal;
     const memoryKey = activeViewId;
-    const validBaseRows = selectedView?.rebaseable
-        ? sourceData.filter(row => typeof row.iso_fecha === 'string' && activeAreas.every(area => {
-            const value = row[area.key];
-            return typeof value === 'number' && Number.isFinite(value) && value !== 0;
-        }))
-        : [];
-    const effectiveBaseRow = validBaseRows.find(row => row.iso_fecha === baseDateByView[memoryKey])
-        ?? validBaseRows.find(row => row.iso_fecha === selectedView?.defaultBaseDate)
-        ?? validBaseRows[0];
+    const areaKeys = activeAreas.map(area => area.key);
+    const validBaseRows = selectedView?.rebaseable ? rowsEligibleForBase(sourceData, areaKeys) : [];
+    const effectiveBaseRow = pickBaseRow(validBaseRows, baseDateByView[memoryKey], selectedView?.defaultBaseDate);
     const effectiveBaseDate = typeof effectiveBaseRow?.iso_fecha === 'string' ? effectiveBaseRow.iso_fecha : null;
-    const activeData = selectedView?.rebaseable && effectiveBaseRow
-        ? sourceData.map(row => ({
-            ...row,
-            ...Object.fromEntries(activeAreas.map(area => {
-                const value = row[area.key];
-                const baseValue = effectiveBaseRow[area.key];
-                return [area.key, typeof value === 'number' && typeof baseValue === 'number' && baseValue !== 0 ? value / baseValue * 100 : null];
-            })),
-        }))
-        : sourceData;
+    const activeData = effectiveBaseRow ? rebaseChartRows(sourceData, effectiveBaseRow, areaKeys) : sourceData;
     const activeYAxisLabel = selectedView?.rebaseable && effectiveBaseDate ? `Base 100 = ${formatBaseDate(effectiveBaseDate)}` : configuredYAxisLabel;
     const activeReferenceLines = selectedView?.rebaseable && effectiveBaseDate
         ? [...configuredReferenceLines, { value: 100, color: '#FFD700', dash: [6, 4], foreground: true, outlineColor: '#000000' }]
         : configuredReferenceLines;
-    const sortedData = [...activeData].sort((a, b) => chartRowSortKey(a).localeCompare(chartRowSortKey(b)));
+    const sortedData = sortChartRows(activeData);
 
     const xAxisKey = sortedData.every((row) => typeof row?.iso_fecha === 'string' && row.iso_fecha) ? 'iso_fecha' : 'fecha';
 
