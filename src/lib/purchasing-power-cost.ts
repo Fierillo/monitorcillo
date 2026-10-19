@@ -1,5 +1,6 @@
 import type { ChartDataRow, DatosGobSeriesRow, PoderAdquisitivoRawRow } from '@/types';
 import { unstable_cache } from 'next/cache';
+import { valueAtOrBefore } from './sync/series';
 import { fetchTimeSeries } from './sync/time-series-client';
 
 export const COST_OF_LIVING_MODEL = {
@@ -70,15 +71,6 @@ export const fetchCostOfLivingIndices = unstable_cache(
     ['cost-of-living-indices'],
     { revalidate: 21600 },
 );
-
-function valueAtOrBefore<T>(values: Map<string, T>, date: string): T | null {
-    let result: T | null = null;
-    for (const [candidateDate, value] of [...values].sort(([first], [second]) => first.localeCompare(second))) {
-        if (candidateDate > date) break;
-        result = value;
-    }
-    return result;
-}
 
 function positiveNumber(value: unknown): number | null {
     const number = Number(value);
