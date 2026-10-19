@@ -1,7 +1,7 @@
-import type { EmisionRawRow, IndicatorType, NormalizedDataRow, RawDataByType, SyncResult, SyncRunReport } from '@/types';
+import type { IndicatorType, NormalizedDataRow, RawDataByType, SyncResult, SyncRunReport } from '@/types';
 import { getRawData, replaceNormalizedData, saveIndicatorPublication, saveIndicatorsCatalog, saveRawData } from '../db';
 import { buildCurrentIndicatorsCatalog } from '../catalog-service';
-import { fechaToISO, normalizeBalanza, normalizeBma, normalizeDepositosPrestamos, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion, normalizeSipa } from '../normalize';
+import { normalizeBalanza, normalizeBma, normalizeDepositosPrestamos, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion, normalizeSipa } from '../normalize';
 import { runSyncTasks } from '../sync-runner';
 import { buildEmissionRows, fetchEmisionRaw } from './bcra';
 import { fetchBmaRaw } from './bma';
@@ -15,19 +15,8 @@ import { ensureInflacionTables, fetchInflacionRawReport } from './inflacion';
 import { ensureIcgTables, fetchIcgRawReport } from './icg';
 import { ensureBalanzaTables, fetchBalanzaRawReport } from './balanza';
 import { ensureSipaTables, fetchSipaRawReport } from './sipa';
+import { normalizeEmisionStoredRow, planEmisionRawUpserts } from './emision-plan';
 import { mergeRawSeries } from './merge-raw';
-
-function normalizeEmisionRawRow(row: EmisionRawRow): EmisionRawRow {
-    return {
-        fecha: typeof row.fecha === 'string' && row.fecha.includes('-') ? row.fecha : fechaToISO(row.fecha),
-        compra_dolares: Number(row.compra_dolares ?? 0),
-        tc: row.tc === null || row.tc === undefined || row.tc === '' ? undefined : Number(row.tc),
-        bcra: Number(row.bcra ?? 0),
-        vencimientos: Number(row.vencimientos ?? 0),
-        licitado: Number(row.licitado ?? 0),
-        resultado_fiscal: Number(row.resultado_fiscal ?? 0),
-    };
-}
 
 async function persistMergedRawAndNormalize<T extends IndicatorType>(
     type: T,
@@ -60,24 +49,17 @@ async function persistMergedRawAndNormalize<T extends IndicatorType>(
 
 export async function syncEmision(): Promise<SyncResult> {
     const type: IndicatorType = 'emision';
-    const existingData = ((await getRawData(type)) ?? []).map(normalizeEmisionRawRow);
-    const existingFechas = new Set(existingData.map((row) => row.fecha));
+    const existingData = (await getRawData(type)) ?? [];
     const { compraData, tcData } = await fetchEmisionRaw('2026-01-01', new Date().toISOString().split('T')[0]);
     const apiRows = buildEmissionRows(compraData, tcData);
-    const existingByFecha = new Map(existingData.map((row) => [row.fecha, row]));
-    const rowsToUpsert = apiRows.map((row): Partial<EmisionRawRow> | null => {
-        const existing = existingByFecha.get(row.fecha);
-        if (!existing) return { ...row, vencimientos: 0, licitado: 0, resultado_fiscal: 0 };
-        const apiChanged = existing.compra_dolares !== row.compra_dolares || existing.tc !== row.tc || existing.bcra !== row.bcra;
-        return apiChanged ? { fecha: row.fecha, compra_dolares: row.compra_dolares, tc: row.tc, bcra: row.bcra } : null;
-    }).filter((row): row is Partial<EmisionRawRow> => row !== null);
+    const { upserts, appended } = planEmisionRawUpserts(existingData, apiRows);
 
-    if (rowsToUpsert.length > 0) await saveRawData(type, rowsToUpsert);
-    const persistedRaw = ((await getRawData(type)) ?? []).map(normalizeEmisionRawRow).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+    if (upserts.length > 0) await saveRawData(type, upserts);
+    const persistedRaw = ((await getRawData(type)) ?? []).map(normalizeEmisionStoredRow).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
     if (persistedRaw.length > 0) {
         await replaceNormalizedData(type, normalizeEmision(persistedRaw));
     }
-    return { appended: apiRows.filter((row) => !existingFechas.has(row.fecha)).length, total: persistedRaw.length };
+    return { appended, total: persistedRaw.length };
 }
 
 export async function syncEmae(): Promise<SyncResult> {
