@@ -1,0 +1,69 @@
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, it } from 'vitest';
+import RutasMap from '../components/rutas/RutasMap';
+import type { RutaTramo, RutasGeometry } from '@/lib/rutas/status';
+
+afterEach(cleanup);
+
+const geometry: RutasGeometry = {
+    source: {
+        routes: 'https://datos.transporte.gob.ar/dataset/rutas-nacionales',
+        outline: 'https://apis.datos.gob.ar/georef/api/v2.0/provincias.geojson',
+        retrieved: '2026-10-19',
+    },
+    outline: [[[-70, -50], [-55, -50], [-55, -25], [-70, -25], [-70, -50]]],
+    routes: [
+        { code: '9', label: 'RN 9', km: 1975.46, lines: [[[-64, -31], [-62, -34]]] },
+        { code: '12', label: 'RN 12', km: 1641.76, lines: [[[-58, -27], [-57, -29]]] },
+    ],
+};
+
+const tramos: RutaTramo[] = [{
+    id: 'oriental',
+    nombre: 'Tramo Oriental',
+    rutas: ['9'],
+    km: 320,
+    concesionaria: 'Corredores Viales',
+    fechaTomaPosesion: '2025-04-01',
+    obrasInicialesPct: 15,
+    fechaHabilitacionTarifa: null,
+    etapa: 'concesionado',
+    pavimento: 'regular',
+}];
+
+it('switches color mode and shows route, km, concessionaire and status on hover and tap', () => {
+    render(<RutasMap tramos={tramos} geometry={geometry} />);
+
+    const route9 = screen.getByRole('button', { name: 'RN 9' });
+    const route12 = screen.getByRole('button', { name: 'RN 12' });
+    expect(route9.getAttribute('stroke')).toBe('#4ADE80');
+    expect(route12.getAttribute('stroke')).toBe('#94A3B8');
+    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('En licitación');
+    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).not.toContain('Malo');
+    expect(screen.getByText(/Boletín Oficial/)).toBeDefined();
+
+    fireEvent.pointerEnter(route9);
+    const status = screen.getByRole('status');
+    expect(status.textContent).toContain('RN 9');
+    expect(status.textContent).toContain('320 km');
+    expect(status.textContent).toContain('Corredores Viales');
+    expect(status.textContent).toContain('Concesionado');
+    expect(status.textContent).toContain('Tramo Oriental');
+
+    fireEvent.pointerLeave(route9);
+    expect(status.textContent).not.toContain('Corredores Viales');
+
+    fireEvent.click(route9);
+    fireEvent.pointerLeave(route9);
+    expect(status.textContent).toContain('Corredores Viales');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pavimento' }));
+    expect(route9.getAttribute('stroke')).toBe('#FBBF24');
+    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('Malo');
+    expect(screen.getByText(/2023-2024/)).toBeDefined();
+    expect(status.textContent).toContain('Regular');
+
+    fireEvent.click(screen.getByRole('button', { name: /Fuentes y metodología/ }));
+    expect(document.body.textContent).toContain('https://datos.transporte.gob.ar/dataset/rutas-nacionales');
+    expect(document.body.textContent).toContain('https://sigvial.vialidad.gob.ar/geoserver/dnv/ows');
+});
