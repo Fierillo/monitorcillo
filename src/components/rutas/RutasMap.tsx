@@ -33,7 +33,7 @@ const TOOLTIP_BLUR = 'blur(2px)';
 const TOOLTIP_OUTLINE = '3px rgba(0, 0, 0, 0.85)';
 const ROUTE_GAP = '#020617';
 
-type PointerTip = { code: string; x: number; y: number };
+type PointerTip = { code: string; segmentIndex: number | null; x: number; y: number };
 
 export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = 'Rutas nacionales' }: { tramos: RutaTramo[]; geometry?: RutasGeometry; title?: string }) {
     const mapRef = useRef<HTMLDivElement>(null);
@@ -107,23 +107,23 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                             stroke={route.color}
                             opacity={routeDimmed ? 0.14 : 1}
                             className="cursor-pointer"
-                            onPointerEnter={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
-                            onPointerMove={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
+                            onPointerEnter={(event) => setHover({ code: route.code, segmentIndex: segmentIndexFrom(event.target), ...tipAt(event, mapRef.current) })}
+                            onPointerMove={(event) => setHover({ code: route.code, segmentIndex: segmentIndexFrom(event.target), ...tipAt(event, mapRef.current) })}
                             onPointerLeave={() => setHover(current => current?.code === route.code ? null : current)}
-                            onClick={(event) => setPinned({ code: route.code, ...tipAt(event, mapRef.current) })}
+                            onClick={(event) => setPinned({ code: route.code, segmentIndex: segmentIndexFrom(event.target), ...tipAt(event, mapRef.current) })}
                             onKeyDown={(event) => {
                                 if (event.key !== 'Enter' && event.key !== ' ') return;
                                 event.preventDefault();
-                                setPinned({ code: route.code, x: 24, y: 24 });
+                                setPinned({ code: route.code, segmentIndex: null, x: 24, y: 24 });
                             }}
                         >
-                            <path d={route.paths.join('')} stroke="transparent" strokeWidth={18} fill="none" pointerEvents="stroke" />
                             {route.segments.map((segment, index) => {
                                 const missing = segment.concesionaria === 'Sin dato';
                                 const companyDimmed = filterBy === 'constructora' && selected.size > 0 && !selected.has(segment.concesionaria);
                                 const stroke = filterBy === 'ninguno' && mode === 'pavimento' && !missing ? route.color : segment.color;
                                 return (
-                                    <g key={`${route.code}-${segment.tramoId ?? 'sin-dato'}-${index}`} data-company={segment.concesionaria} opacity={companyDimmed ? 0.12 : missing ? SIN_DATO_OPACITY : 1}>
+                                    <g key={`${route.code}-${segment.tramoId ?? 'sin-dato'}-${index}`} data-company={segment.concesionaria} data-segment-index={index} opacity={companyDimmed ? 0.12 : missing ? SIN_DATO_OPACITY : 1}>
+                                        <path d={segment.paths.join('')} stroke="transparent" strokeWidth={18} fill="none" pointerEvents="stroke" />
                                         <path d={segment.paths.join('')} stroke={ROUTE_GAP} strokeWidth={ROUTE_CASING_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
                                         <path d={segment.paths.join('')} stroke={stroke} strokeWidth={ROUTE_STROKE_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
                                     </g>
@@ -133,7 +133,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                         );
                     })}
                 </svg>
-                {active && activeTip ? <RouteTooltip route={active} x={activeTip.x} y={activeTip.y} /> : null}
+                {active && activeTip ? <RouteTooltip route={active} segmentIndex={activeTip.segmentIndex} x={activeTip.x} y={activeTip.y} /> : null}
                 </div>
                 <RouteBars tramos={tramos} routes={projected.routes} filterBy={filterBy} selected={selected} onFilter={changeFilter} onToggle={toggleSelected} />
                 </div>
@@ -208,19 +208,43 @@ function RouteBars({ tramos, routes, filterBy, selected, onFilter, onToggle }: {
             </label>
             {filterBy === 'ruta' ? routeCodes(tramos).map(code => {
                 const pressed = selected.has(code);
+                const companiesOnThisRoute = companiesOnRoute(routes.find(route => route.code === code)?.segments ?? []);
                 return (
-                    <GoldBar key={code} label={`Escudo RN ${code}`} pressed={pressed} dimmed={dimOthers && !pressed} tall onClick={() => onToggle(code)}>
-                        <SignFace code={code} sign={routeSign(code)} />
-                    </GoldBar>
+                    <div key={code} className="flex flex-col gap-1">
+                        <GoldBar label={`Escudo RN ${code}`} pressed={pressed} dimmed={dimOthers && !pressed} tall onClick={() => onToggle(code)}>
+                            <SignFace code={code} sign={routeSign(code)} />
+                        </GoldBar>
+                        {pressed ? (
+                            <ul aria-label={`Concesionarias de RN ${code}`} className="flex flex-col gap-1">
+                                {companiesOnThisRoute.map(company => (
+                                    <li key={company.name} className="flex items-center gap-1.5 border border-imperial-gold/60 px-1.5 py-1 text-[10px] font-bold uppercase text-imperial-gold">
+                                        <span data-company-color={company.color} className="h-3 w-1 shrink-0" style={{ backgroundColor: company.color }} />
+                                        <span className="truncate" title={company.name}>{company.name}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : null}
+                    </div>
                 );
             }) : null}
             {filterBy === 'constructora' ? companies.map(company => {
                 const pressed = selected.has(company.name);
                 return (
-                    <GoldBar key={company.name} label={`Concesionaria ${company.name}`} pressed={pressed} dimmed={dimOthers && !pressed} onClick={() => onToggle(company.name)}>
-                        <span data-company-color={company.color} className="h-3 w-1 shrink-0" style={{ backgroundColor: company.color }} />
-                        <span className="truncate" title={company.name}>{company.name}</span>
-                    </GoldBar>
+                    <div key={company.name} className="flex flex-col gap-1">
+                        <GoldBar label={`Concesionaria ${company.name}`} pressed={pressed} dimmed={dimOthers && !pressed} onClick={() => onToggle(company.name)}>
+                            <span data-company-color={company.color} className="h-3 w-1 shrink-0" style={{ backgroundColor: company.color }} />
+                            <span className="truncate" title={company.name}>{company.name}</span>
+                        </GoldBar>
+                        {pressed ? (
+                            <ul aria-label={`Rutas de ${company.name}`} className="flex flex-col items-center gap-1">
+                                {company.rutas.map(code => (
+                                    <li key={code}>
+                                        <SignFace code={code} sign={routeSign(code)} />
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : null}
+                    </div>
                 );
             }) : null}
         </aside>
@@ -234,7 +258,7 @@ function GoldBar({ label, pressed, dimmed, tall = false, onClick, children }: { 
             aria-label={label}
             aria-pressed={pressed}
             onClick={onClick}
-            className={`flex w-full items-center gap-1.5 border px-1.5 text-left text-[11px] font-bold uppercase tracking-wide ${tall ? 'py-1.5' : 'h-8'} ${pressed ? 'border-imperial-gold bg-imperial-gold text-imperial-blue' : 'border-imperial-gold/80 text-imperial-gold'} ${dimmed ? 'opacity-40' : 'opacity-100'}`}
+            className={`flex w-full items-center gap-1.5 border px-1.5 text-[11px] font-bold uppercase tracking-wide ${tall ? 'justify-center py-1.5' : 'h-8 text-left'} ${pressed ? 'border-imperial-gold bg-imperial-gold text-imperial-blue' : 'border-imperial-gold/80 text-imperial-gold'} ${dimmed ? 'opacity-40' : 'opacity-100'}`}
         >
             {children}
         </button>
@@ -321,13 +345,16 @@ function tipAt(event: { clientX?: number; clientY?: number }, map: HTMLDivElemen
     };
 }
 
-function RouteTooltip({ route, x, y }: { route: PaintedRoute; x: number; y: number }) {
-    const rows = route.assignments.length > 0 ? route.assignments : [{
-        tramo: route.tramo ?? 'Sin dato',
-        concesionaria: route.concesionaria,
-        statusLabel: route.statusLabel,
-        kmLabel: route.kmLabel,
-    }];
+function segmentIndexFrom(target: EventTarget | null): number | null {
+    const node = target instanceof Element ? target.closest('[data-segment-index]') : null;
+    const value = node?.getAttribute('data-segment-index');
+    return value == null ? null : Number(value);
+}
+
+const TIP_KM = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
+
+function RouteTooltip({ route, segmentIndex, x, y }: { route: PaintedRoute; segmentIndex: number | null; x: number; y: number }) {
+    const row = tipRow(route, segmentIndex);
     return (
         <div
             role="status"
@@ -336,16 +363,34 @@ function RouteTooltip({ route, x, y }: { route: PaintedRoute; x: number; y: numb
             style={{ left: x, top: y, backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: '10px', color: '#FFF', maxWidth: 300, maxHeight: '46vh', overflow: 'hidden', fontSize: '14px', lineHeight: 1.35, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}
         >
             <div style={{ color: '#FFD700', fontWeight: 'bold', marginBottom: '4px', WebkitTextStroke: TOOLTIP_OUTLINE, paintOrder: 'stroke fill' }}>{route.label}</div>
-            {rows.map((row, index) => (
-                <div key={`${row.tramo}-${index}`} style={index > 0 ? { marginTop: 6, paddingTop: 6, borderTop: '1px solid #666' } : undefined}>
-                    <TipRow color={route.color} name="Tramo" value={row.tramo} />
-                    <TipRow color={route.color} name="Concesionaria" value={row.concesionaria} />
-                    <TipRow color={route.color} name="Estado" value={row.statusLabel} />
-                    <TipRow color={route.color} name="Km" value={row.kmLabel} />
-                </div>
-            ))}
+            <TipRow color={row.color} name="Tramo" value={row.tramo} />
+            <TipRow color={row.color} name="Concesionaria" value={row.concesionaria} />
+            <TipRow color={row.color} name="Estado" value={row.statusLabel} />
+            <TipRow color={row.color} name="Km" value={row.kmLabel} />
         </div>
     );
+}
+
+function tipRow(route: PaintedRoute, segmentIndex: number | null): { tramo: string; concesionaria: string; statusLabel: string; kmLabel: string; color: string } {
+    const segment = (segmentIndex == null ? null : route.segments[segmentIndex]) ?? route.segments.find(item => item.tramoId) ?? route.segments[0];
+    const assignment = segment ? route.assignments.find(item => item.concesionaria === segment.concesionaria && item.tramo === segment.tramo) : undefined;
+    if (segment && assignment) return { ...assignment, color: segment.color };
+    if (segment) {
+        return {
+            tramo: segment.tramo ?? 'Sin dato',
+            concesionaria: segment.concesionaria,
+            statusLabel: segment.concesionaria === 'Sin dato' ? 'Sin dato' : route.statusLabel,
+            kmLabel: segment.km == null ? 'Sin dato' : `${TIP_KM.format(segment.km)} km`,
+            color: segment.color,
+        };
+    }
+    return {
+        tramo: route.tramo ?? 'Sin dato',
+        concesionaria: route.concesionaria,
+        statusLabel: route.statusLabel,
+        kmLabel: route.kmLabel,
+        color: route.color,
+    };
 }
 
 function TipRow({ color, name, value }: { color: string; name: string; value: string }) {

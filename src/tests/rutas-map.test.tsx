@@ -156,6 +156,10 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(creditechOnMap).toBeTruthy();
     expect(cpcOnMap).toBeTruthy();
     expect(creditechOnMap).not.toBe(cpcOnMap);
+    fireEvent.pointerMove(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."]')!);
+    expect(screen.getByRole('status').textContent).toContain('CREDITECH S.A. - PLANTEL S.A.');
+    expect(screen.getByRole('status').textContent).not.toContain('CPC S.A.');
+    fireEvent.pointerLeave(map9);
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('CREDITECH S.A. - PLANTEL S.A.');
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('CPC S.A.');
     expect(Number(map9.querySelector('[data-company="Sin dato"]')?.getAttribute('opacity'))).toBeLessThan(0.5);
@@ -164,13 +168,19 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).not.toContain('Concesionado');
     const shield9 = screen.getByRole('button', { name: 'Escudo RN 9' });
     const shield12 = screen.getByRole('button', { name: 'Escudo RN 12' });
+    expect(shield9.className).toContain('justify-center');
     expect(shield9.querySelector('[data-sign="nacional"]')?.getAttribute('class')).toContain('h-16');
     expect(shield9.querySelector('[data-sign="nacional"] path')).toBeTruthy();
     expect(screen.queryByText('CREDITECH S.A. - PLANTEL S.A.')).toBeNull();
 
     fireEvent.click(shield9);
-    const creditechColor = screen.getByText('CREDITECH S.A. - PLANTEL S.A.').closest('li')?.querySelector('[data-company-color]')?.getAttribute('data-company-color');
-    const cpcColor = screen.getByText('CPC S.A.').closest('li')?.querySelector('[data-company-color]')?.getAttribute('data-company-color');
+    const routeCompanies = screen.getByRole('list', { name: 'Concesionarias de RN 9' });
+    expect(routesAside.contains(routeCompanies)).toBe(true);
+    expect(routeCompanies.textContent).toContain('CREDITECH S.A. - PLANTEL S.A.');
+    expect(routeCompanies.textContent).toContain('CPC S.A.');
+    expect(screen.queryByRole('list', { name: 'Concesionarias de RN 12' })).toBeNull();
+    const creditechColor = routeCompanies.querySelector('[data-company-color]')?.getAttribute('data-company-color');
+    const cpcColor = [...routeCompanies.querySelectorAll('li')].find(item => item.textContent?.includes('CPC S.A.'))?.querySelector('[data-company-color]')?.getAttribute('data-company-color');
     expect(creditechColor).toBeTruthy();
     expect(cpcColor).toBeTruthy();
     expect(creditechColor).not.toBe(cpcColor);
@@ -183,7 +193,7 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(map12.getAttribute('opacity')).toBe('1');
     fireEvent.click(shield9);
     fireEvent.click(shield12);
-    expect(screen.queryByText('CREDITECH S.A. - PLANTEL S.A.')).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Concesionarias de RN 9' })).toBeNull();
     expect(map9.getAttribute('opacity')).toBe('1');
     expect(map12.getAttribute('opacity')).toBe('1');
 
@@ -195,6 +205,10 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(screen.queryByText('RN 9')).toBeNull();
 
     fireEvent.click(creditechButton);
+    const companyRoutes = screen.getByRole('list', { name: 'Rutas de CREDITECH S.A. - PLANTEL S.A.' });
+    expect(routesAside.contains(companyRoutes)).toBe(true);
+    expect(companyRoutes.textContent).toContain('9');
+    expect(companyRoutes.textContent).not.toContain('12');
     const routeLegend = screen.getByText('RN 9').closest('li');
     expect(routeLegend?.querySelector('[data-company-color]')?.getAttribute('data-company-color')).toBe(creditechColor);
     expect(screen.queryByText('RN 12')).toBeNull();
@@ -203,7 +217,7 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(Number(map12.querySelector('[data-company="CPC S.A."]')?.getAttribute('opacity'))).toBeLessThan(0.5);
 
     fireEvent.click(creditechButton);
-    expect(screen.queryByText('RN 9')).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Rutas de CREDITECH S.A. - PLANTEL S.A.' })).toBeNull();
     expect(map9.querySelector('[data-company="CPC S.A."]')?.getAttribute('opacity')).toBe('1');
     expect(map12.querySelector('[data-company="CPC S.A."]')?.getAttribute('opacity')).toBe('1');
 });
