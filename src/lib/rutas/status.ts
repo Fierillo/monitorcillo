@@ -50,7 +50,7 @@ export const RUTAS_METHODOLOGY = [
     },
     {
         title: 'Concesión',
-        description: 'La etapa de la Red Federal de Concesiones (concesionado, en licitación o sin concesionar) no sale de una API. Si todavía no hay tramos guardados, el mapa usa la carga inicial oficial de Vialidad Nacional y el Boletín Oficial. El administrador puede editarla y, al guardar, esa versión reemplaza a la carga inicial. Una ruta sin tramo queda en gris, como sin dato, y no se asume sin concesionar. Si una ruta figura en más de un tramo, cada constructora pinta solo los kilómetros que publicó Vialidad en la página de su etapa. El resto de esa traza queda en gris.',
+        description: 'La etapa de la Red Federal de Concesiones (concesionado, en licitación o sin concesionar) no sale de una API. Si todavía no hay tramos guardados, el mapa usa la carga inicial oficial de Vialidad Nacional y el Boletín Oficial. El administrador puede editarla y, al guardar, esa versión reemplaza a la carga inicial. Una ruta sin tramo queda en gris, como sin dato, y no se asume sin concesionar. Si una ruta figura en más de un tramo, cada concesionaria pinta solo los kilómetros que publicó Vialidad en la página de su etapa. El resto de esa traza queda en gris.',
     },
     {
         title: 'Pavimento',
@@ -58,7 +58,7 @@ export const RUTAS_METHODOLOGY = [
     },
     {
         title: 'Detalle',
-        description: 'Al pasar el cursor o tocar una ruta se muestran el número y cada tramo que la incluye, con su concesionaria, kilómetros y estado. El filtro tiene tres opciones. En Ninguno manda la leyenda de concesión o pavimento. En Ruta, la leyenda pasa a las constructoras de la ruta elegida y el mapa marca solo esa ruta, partida por color. En Constructora, la leyenda pasa a las rutas de la empresa y el mapa marca solo los kilómetros que opera. Cada constructora tiene un color propio. Lo que no tiene dato se dibuja más tenue. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
+        description: 'Al pasar el cursor o tocar una ruta se muestran el número y cada tramo que la incluye, con su concesionaria, kilómetros y estado. El filtro tiene tres opciones. En Ninguno, la concesión se pinta por concesionaria y la leyenda las nombra; el pavimento sigue la leyenda de estado. En Ruta, la leyenda pasa a las concesionarias de la ruta elegida y el mapa marca solo esa ruta, partida por color. En Concesionaria, la leyenda pasa a las rutas de la empresa y el mapa marca solo los kilómetros que opera. Cada concesionaria tiene un color propio. Lo que no tiene dato se dibuja más tenue. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
     },
 ];
 

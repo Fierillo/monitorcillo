@@ -7,7 +7,6 @@ import FeedbackButton from '@/components/FeedbackButton';
 import geometryAsset from '@/lib/rutas/geometry.json';
 import {
     CONCESSION_COLORS,
-    CONCESSION_LABELS,
     CONCESSION_SOURCE_NOTE,
     PAVEMENT_COLORS,
     PAVEMENT_LABELS,
@@ -24,7 +23,6 @@ import {
 } from '@/lib/rutas/status';
 
 const STORED_GEOMETRY = geometryAsset as RutasGeometry;
-const CONCESSION_LEGEND = ['concesionado', 'en-licitacion', 'sin-concesionar', 'sin-dato'] as const;
 const SIN_DATO_OPACITY = 0.2;
 const ROUTE_CASING_WIDTH = 3;
 const ROUTE_STROKE_WIDTH = 1.5;
@@ -123,7 +121,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                             {route.segments.map((segment, index) => {
                                 const missing = segment.concesionaria === 'Sin dato';
                                 const companyDimmed = filterBy === 'constructora' && selected.size > 0 && !selected.has(segment.concesionaria);
-                                const stroke = filterBy === 'ninguno' && !missing ? route.color : segment.color;
+                                const stroke = filterBy === 'ninguno' && mode === 'pavimento' && !missing ? route.color : segment.color;
                                 return (
                                     <g key={`${route.code}-${segment.tramoId ?? 'sin-dato'}-${index}`} data-company={segment.concesionaria} opacity={companyDimmed ? 0.12 : missing ? SIN_DATO_OPACITY : 1}>
                                         <path d={segment.paths.join('')} stroke={ROUTE_GAP} strokeWidth={ROUTE_CASING_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
@@ -163,12 +161,12 @@ type MapRoute = { code: string; segments: { tramoId: string | null; concesionari
 type LegendItem = { key: string; color: string; label: string };
 
 function legendFor(filterBy: ShieldFilter, mode: 'concesion' | 'pavimento', selected: Set<string>, routes: MapRoute[], tramos: RutaTramo[]): LegendItem[] {
+    const quiet = { key: 'sin-dato', color: CONCESSION_COLORS['sin-dato'], label: 'Sin dato' };
     if (filterBy === 'ninguno') {
         if (mode === 'pavimento') return (['bueno', 'regular', 'malo', 'sin-dato'] as const).map(status => ({ key: status, color: PAVEMENT_COLORS[status], label: PAVEMENT_LABELS[status] }));
-        return CONCESSION_LEGEND.map(status => ({ key: status, color: CONCESSION_COLORS[status], label: CONCESSION_LABELS[status] }));
+        return [...uniqueCompanies(routes.flatMap(route => companiesOnRoute(route.segments))), quiet];
     }
     const companies = companiesOf(tramos, routes);
-    const quiet = { key: 'sin-dato', color: CONCESSION_COLORS['sin-dato'], label: 'Sin dato' };
     if (filterBy === 'ruta') {
         const picked = routes.filter(route => selected.has(route.code));
         return [...uniqueCompanies(picked.flatMap(route => companiesOnRoute(route.segments))), quiet];
@@ -205,7 +203,7 @@ function RouteBars({ tramos, routes, filterBy, selected, onFilter, onToggle }: {
                 >
                     <option value="ninguno">Ninguno</option>
                     <option value="ruta">Ruta</option>
-                    <option value="constructora">Constructora</option>
+                    <option value="constructora">Concesionaria</option>
                 </select>
             </label>
             {filterBy === 'ruta' ? routeCodes(tramos).map(code => {
@@ -219,7 +217,7 @@ function RouteBars({ tramos, routes, filterBy, selected, onFilter, onToggle }: {
             {filterBy === 'constructora' ? companies.map(company => {
                 const pressed = selected.has(company.name);
                 return (
-                    <GoldBar key={company.name} label={`Constructora ${company.name}`} pressed={pressed} dimmed={dimOthers && !pressed} onClick={() => onToggle(company.name)}>
+                    <GoldBar key={company.name} label={`Concesionaria ${company.name}`} pressed={pressed} dimmed={dimOthers && !pressed} onClick={() => onToggle(company.name)}>
                         <span data-company-color={company.color} className="h-3 w-1 shrink-0" style={{ backgroundColor: company.color }} />
                         <span className="truncate" title={company.name}>{company.name}</span>
                     </GoldBar>

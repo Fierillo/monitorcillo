@@ -148,10 +148,16 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(screen.getByRole('group', { name: 'Modo de color' }).contains(filter)).toBe(false);
     expect(filter.value).toBe('ninguno');
     expect(screen.queryByRole('button', { name: 'Escudo RN 9' })).toBeNull();
-    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('Concesionado');
+    expect(screen.getByRole('option', { name: 'Concesionaria' })).toBeTruthy();
     const map9 = screen.getByRole('button', { name: 'RN 9' });
     const map12 = screen.getByRole('button', { name: 'RN 12' });
-    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke')).toBe('#4ADE80');
+    const creditechOnMap = map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke');
+    const cpcOnMap = map9.querySelector('[data-company="CPC S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke');
+    expect(creditechOnMap).toBeTruthy();
+    expect(cpcOnMap).toBeTruthy();
+    expect(creditechOnMap).not.toBe(cpcOnMap);
+    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('CREDITECH S.A. - PLANTEL S.A.');
+    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('CPC S.A.');
     expect(Number(map9.querySelector('[data-company="Sin dato"]')?.getAttribute('opacity'))).toBeLessThan(0.5);
 
     fireEvent.change(filter, { target: { value: 'ruta' } });
@@ -183,7 +189,7 @@ it('lists one shield per route and colors only the stretch each company operates
 
     fireEvent.change(filter, { target: { value: 'constructora' } });
     expect(screen.queryByRole('button', { name: 'Escudo RN 9' })).toBeNull();
-    const creditechButton = screen.getByRole('button', { name: 'Constructora CREDITECH S.A. - PLANTEL S.A.' });
+    const creditechButton = screen.getByRole('button', { name: 'Concesionaria CREDITECH S.A. - PLANTEL S.A.' });
     expect(creditechButton.className).toContain('h-8');
     expect(creditechButton.querySelector('[data-company-color]')?.getAttribute('data-company-color')).toBe(creditechColor);
     expect(screen.queryByText('RN 9')).toBeNull();
