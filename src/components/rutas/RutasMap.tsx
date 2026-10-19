@@ -192,7 +192,7 @@ function RouteBars({ tramos, routes, filterBy, selected, onFilter, onToggle }: {
     const dimOthers = selected.size > 0;
     const companies = companiesOf(tramos, routes);
     return (
-        <aside aria-label="Rutas" className="flex w-full shrink-0 flex-col gap-1.5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-52 lg:overflow-y-auto">
+        <aside aria-label="Rutas" className="route-scroll flex w-full shrink-0 flex-col gap-1.5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-52 lg:overflow-y-auto">
             <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wide text-imperial-gold">
                 Filtrar por
                 <select

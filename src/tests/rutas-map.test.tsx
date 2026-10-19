@@ -137,7 +137,9 @@ it('lists one shield per route and colors only the stretch each company operates
     render(<RutasMap tramos={rows} geometry={shared} />);
 
     const filter = screen.getByRole('combobox', { name: 'Filtrar por' }) as HTMLSelectElement;
-    expect(screen.getByRole('complementary', { name: 'Rutas' }).contains(filter)).toBe(true);
+    const routesAside = screen.getByRole('complementary', { name: 'Rutas' });
+    expect(routesAside.contains(filter)).toBe(true);
+    expect(routesAside.className).toContain('route-scroll');
     expect(screen.getByRole('group', { name: 'Modo de color' }).contains(filter)).toBe(false);
     expect(filter.value).toBe('ninguno');
     expect(screen.queryByRole('button', { name: 'Escudo RN 9' })).toBeNull();
