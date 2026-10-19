@@ -44,7 +44,7 @@ export const RUTAS_METHODOLOGY = [
     },
     {
         title: 'Contorno',
-        description: 'Límites provinciales del Instituto Geográfico Nacional vía la API Georef: https://apis.datos.gob.ar/georef/api/v2.0/provincias.geojson. Se excluyen los polígonos al sur de 56° S (sector antártico) para que la red sea legible. El contorno fueguino insular permanece.',
+        description: 'Límites provinciales del Instituto Geográfico Nacional vía la API Georef: https://apis.datos.gob.ar/georef/api/v2.0/provincias.geojson. Se excluyen los polígonos al sur de 56° S (sector antártico) y las islas al este de las Malvinas, para que el continente ocupe el mapa. El contorno fueguino insular y las Malvinas permanecen.',
     },
     {
         title: 'Concesión',
@@ -185,14 +185,30 @@ export function paintRoutes(routes: RouteGeometry[], tramos: RutaTramo[], mode: 
     });
 }
 
+const MAP_PADDING = 12;
+const PAST_MALVINAS_LON = -50;
+
+export function frameMapSize(outline: number[][][], routes: { lines: number[][][] }[], height: number): { width: number; height: number } {
+    const bounds = boundsOf(outlineUpToMalvinas(outline), routes);
+    if (!bounds) return { width: height, height };
+    const { xSpan, ySpan } = spanOf(bounds);
+    const scale = (height - MAP_PADDING * 2) / ySpan;
+    return { width: Math.max(1, Math.round(xSpan * scale + MAP_PADDING * 2)), height };
+}
+
 export function projectMap(outline: number[][][], routes: PaintedRoute[], width: number, height: number): ProjectedMap {
-    const bounds = boundsOf(outline, routes);
+    const framed = outlineUpToMalvinas(outline);
+    const bounds = boundsOf(framed, routes);
     const project = bounds ? projector(bounds, width, height) : null;
     return {
         viewBox: `0 0 ${width} ${height}`,
-        outlinePaths: project ? outline.map(ring => toPath(ring, project)) : [],
+        outlinePaths: project ? framed.map(ring => toPath(ring, project)) : [],
         routes: routes.map(route => ({ ...route, paths: project ? route.lines.map(line => toPath(line, project)) : [] })),
     };
+}
+
+function outlineUpToMalvinas(outline: number[][][]): number[][][] {
+    return outline.filter(ring => ring.some(([lon]) => lon <= PAST_MALVINAS_LON));
 }
 
 function statusFor(tramo: RutaTramo | null, mode: ColorMode): ConcessionStage | PavementCondition | 'sin-dato' {
@@ -262,7 +278,7 @@ function parseDate(value: unknown, label: string, nombre: string): string | null
     return text;
 }
 
-function boundsOf(outline: number[][][], routes: PaintedRoute[]): { minLon: number; minLat: number; maxLon: number; maxLat: number } | null {
+function boundsOf(outline: number[][][], routes: { lines: number[][][] }[]): { minLon: number; minLat: number; maxLon: number; maxLat: number } | null {
     let minLon = Infinity;
     let minLat = Infinity;
     let maxLon = -Infinity;
@@ -279,15 +295,17 @@ function boundsOf(outline: number[][][], routes: PaintedRoute[]): { minLon: numb
     return { minLon, minLat, maxLon, maxLat };
 }
 
-function projector(bounds: { minLon: number; minLat: number; maxLon: number; maxLat: number }, width: number, height: number) {
-    const padding = 12;
+function spanOf(bounds: { minLon: number; minLat: number; maxLon: number; maxLat: number }) {
     const midLat = (bounds.minLat + bounds.maxLat) / 2;
     const lonFactor = Math.cos(midLat * Math.PI / 180);
-    const xSpan = (bounds.maxLon - bounds.minLon) * lonFactor;
-    const ySpan = bounds.maxLat - bounds.minLat;
-    const scale = Math.min((width - padding * 2) / xSpan, (height - padding * 2) / ySpan);
-    const offsetX = padding + (width - padding * 2 - xSpan * scale) / 2;
-    const offsetY = padding + (height - padding * 2 - ySpan * scale) / 2;
+    return { lonFactor, xSpan: (bounds.maxLon - bounds.minLon) * lonFactor, ySpan: bounds.maxLat - bounds.minLat };
+}
+
+function projector(bounds: { minLon: number; minLat: number; maxLon: number; maxLat: number }, width: number, height: number) {
+    const { lonFactor, xSpan, ySpan } = spanOf(bounds);
+    const scale = Math.min((width - MAP_PADDING * 2) / xSpan, (height - MAP_PADDING * 2) / ySpan);
+    const offsetX = MAP_PADDING + (width - MAP_PADDING * 2 - xSpan * scale) / 2;
+    const offsetY = MAP_PADDING + (height - MAP_PADDING * 2 - ySpan * scale) / 2;
     return (lon: number, lat: number): [number, number] => [
         offsetX + (lon - bounds.minLon) * lonFactor * scale,
         offsetY + (bounds.maxLat - lat) * scale,

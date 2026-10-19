@@ -43,8 +43,19 @@ it('switches color mode and shows route, km, concessionaire and status on hover 
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).not.toContain('Malo');
     expect(screen.getByText(/Boletín Oficial/)).toBeDefined();
 
+    const svg = screen.getByRole('group', { name: 'Mapa de rutas nacionales de Argentina' });
+    const [, , viewWidth, viewHeight] = (svg.getAttribute('viewBox') ?? '').split(' ').map(Number);
+    expect(viewWidth).toBeLessThan(600);
+    expect(viewHeight).toBe(1000);
+    expect(svg.getAttribute('class') ?? '').not.toContain('min-w-');
+
     fireEvent.pointerEnter(route9);
     const status = screen.getByRole('status');
+    expect(screen.getByTestId('rutas-map').contains(status)).toBe(true);
+    expect(status.className).not.toContain('fixed');
+    expect(status.getAttribute('style')).toContain('rgba(0, 20, 63, 0.4)');
+    expect(status.getAttribute('style')).toContain('rgb(255, 215, 0)');
+    expect(status.getAttribute('style')).toContain('blur(2px)');
     expect(status.textContent).toContain('RN 9');
     expect(status.textContent).toContain('320 km');
     expect(status.textContent).toContain('Corredores Viales');
@@ -52,17 +63,17 @@ it('switches color mode and shows route, km, concessionaire and status on hover 
     expect(status.textContent).toContain('Tramo Oriental');
 
     fireEvent.pointerLeave(route9);
-    expect(status.textContent).not.toContain('Corredores Viales');
+    expect(screen.queryByRole('status')).toBeNull();
 
     fireEvent.click(route9);
     fireEvent.pointerLeave(route9);
-    expect(status.textContent).toContain('Corredores Viales');
+    expect(screen.getByRole('status').textContent).toContain('Corredores Viales');
 
     fireEvent.click(screen.getByRole('button', { name: 'Pavimento' }));
     expect(route9.getAttribute('stroke')).toBe('#FBBF24');
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('Malo');
     expect(screen.getByText(/2023-2024/)).toBeDefined();
-    expect(status.textContent).toContain('Regular');
+    expect(screen.getByRole('status').textContent).toContain('Regular');
 
     fireEvent.click(screen.getByRole('button', { name: /Fuentes y metodología/ }));
     expect(document.body.textContent).toContain('https://datos.transporte.gob.ar/dataset/rutas-nacionales');
@@ -81,15 +92,20 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
 
     const frame = screen.getByTestId('rutas-map');
     const route5 = screen.getByRole('button', { name: 'RN 5' });
-    const hit = route5.querySelector('path');
+    const [hit, casing, visible] = route5.querySelectorAll('path');
     expect(hit?.getAttribute('pointer-events')).toBe('stroke');
     expect(Number(hit?.getAttribute('stroke-width'))).toBeGreaterThanOrEqual(16);
     expect(hit?.getAttribute('stroke')).toBe('transparent');
+    expect(casing?.getAttribute('stroke')).toBe('#020617');
+    expect(Number(casing?.getAttribute('stroke-width'))).toBeGreaterThan(Number(visible?.getAttribute('stroke-width')));
+    expect(visible?.getAttribute('pointer-events')).toBe('none');
 
     fireEvent.pointerEnter(route5);
     const tooltip = screen.getByRole('status');
     expect(frame.contains(tooltip)).toBe(true);
-    expect(tooltip.className).toMatch(/fixed/);
+    expect(tooltip.className).not.toContain('fixed');
+    expect(tooltip.getAttribute('style')).toContain('rgba(0, 20, 63, 0.4)');
+    expect(tooltip.getAttribute('style')).toContain('rgb(255, 215, 0)');
     expect(tooltip.textContent).toContain('RN 5');
     expect(tooltip.textContent).toContain('Pampa');
     expect(tooltip.textContent).toContain('CORREDOR VIAL 5 S.A.U.');

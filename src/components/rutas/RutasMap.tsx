@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import MethodologySection from '@/components/chart/MethodologySection';
 import FeedbackButton from '@/components/FeedbackButton';
 import geometryAsset from '@/lib/rutas/geometry.json';
@@ -13,6 +13,7 @@ import {
     PAVEMENT_LABELS,
     PAVEMENT_SOURCE_NOTE,
     RUTAS_METHODOLOGY,
+    frameMapSize,
     paintRoutes,
     projectMap,
     type ColorMode,
@@ -22,14 +23,23 @@ import {
 
 const STORED_GEOMETRY = geometryAsset as RutasGeometry;
 const CONCESSION_LEGEND = ['concesionado', 'en-licitacion', 'sin-concesionar', 'sin-dato'] as const;
+const TOOLTIP_BACKGROUND = 'rgba(0, 20, 63, 0.4)';
+const TOOLTIP_BLUR = 'blur(2px)';
+const TOOLTIP_OUTLINE = '3px rgba(0, 0, 0, 0.85)';
+const ROUTE_GAP = '#020617';
+
+type PointerTip = { code: string; x: number; y: number };
 
 export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = 'Rutas nacionales' }: { tramos: RutaTramo[]; geometry?: RutasGeometry; title?: string }) {
+    const mapRef = useRef<HTMLDivElement>(null);
     const [mode, setMode] = useState<ColorMode>('concesion');
-    const [hovered, setHovered] = useState<string | null>(null);
-    const [pinned, setPinned] = useState<string | null>(null);
+    const [hover, setHover] = useState<PointerTip | null>(null);
+    const [pinned, setPinned] = useState<PointerTip | null>(null);
     const painted = paintRoutes(geometry.routes, tramos, mode);
-    const projected = projectMap(geometry.outline, painted, 800, 1000);
-    const active = painted.find(route => route.code === (hovered ?? pinned)) ?? null;
+    const canvas = frameMapSize(geometry.outline, painted, 1000);
+    const projected = projectMap(geometry.outline, painted, canvas.width, canvas.height);
+    const activeTip = hover ?? pinned;
+    const active = painted.find(route => route.code === activeTip?.code) ?? null;
     const legend = mode === 'concesion'
         ? CONCESSION_LEGEND.map(status => ({ status, color: CONCESSION_COLORS[status], label: CONCESSION_LABELS[status] }))
         : (['bueno', 'regular', 'malo', 'sin-dato'] as const).map(status => ({ status, color: PAVEMENT_COLORS[status], label: PAVEMENT_LABELS[status] }));
@@ -63,8 +73,8 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                     </ul>
                 </div>
 
-                <div className="overflow-x-auto">
-                <svg viewBox={projected.viewBox} role="group" aria-label="Mapa de rutas nacionales de Argentina" className="h-auto w-full min-w-[760px] bg-background">
+                <div ref={mapRef} className="relative">
+                <svg viewBox={projected.viewBox} role="group" aria-label="Mapa de rutas nacionales de Argentina" className="block h-auto w-full bg-background">
                     {projected.outlinePaths.map((path, index) => (
                         <path key={`outline-${index}`} d={path} fill="#0B2A66" stroke="#FFD700" strokeWidth={1} />
                     ))}
@@ -76,24 +86,23 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                             aria-label={route.label}
                             stroke={route.color}
                             className="cursor-pointer"
-                            onPointerEnter={() => setHovered(route.code)}
-                            onPointerLeave={() => setHovered(current => current === route.code ? null : current)}
-                            onClick={() => setPinned(route.code)}
+                            onPointerEnter={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
+                            onPointerMove={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
+                            onPointerLeave={() => setHover(current => current?.code === route.code ? null : current)}
+                            onClick={(event) => setPinned({ code: route.code, ...tipAt(event, mapRef.current) })}
                             onKeyDown={(event) => {
                                 if (event.key !== 'Enter' && event.key !== ' ') return;
                                 event.preventDefault();
-                                setPinned(route.code);
+                                setPinned({ code: route.code, x: 24, y: 24 });
                             }}
                         >
-                            <path d={route.paths.join('')} stroke="transparent" strokeWidth={28} fill="none" pointerEvents="stroke" />
+                            <path d={route.paths.join('')} stroke="transparent" strokeWidth={18} fill="none" pointerEvents="stroke" />
+                            <path d={route.paths.join('')} stroke={ROUTE_GAP} strokeWidth={7} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
                             <path d={route.paths.join('')} strokeWidth={3.2} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
                         </g>
                     ))}
                 </svg>
-                </div>
-
-                <div role="status" aria-live="polite" className="pointer-events-none fixed bottom-4 left-1/2 z-30 min-h-16 w-[min(42rem,calc(100%-1.5rem))] -translate-x-1/2 border border-imperial-gold/40 bg-imperial-blue px-3 py-2 text-sm text-white shadow-lg">
-                    {active ? <RouteDetail route={active} /> : <p>Pasá el cursor o tocá una ruta para ver el número, los kilómetros, la concesionaria y el estado.</p>}
+                {active && activeTip ? <RouteTooltip route={active} x={activeTip.x} y={activeTip.y} /> : null}
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-foreground/80">{mode === 'pavimento' ? PAVEMENT_SOURCE_NOTE : CONCESSION_SOURCE_NOTE}</p>
                 <MethodologySection methodology={RUTAS_METHODOLOGY} />
@@ -115,14 +124,43 @@ function ModeButton({ active, onClick, children }: { active: boolean; onClick: (
     );
 }
 
-function RouteDetail({ route }: { route: { label: string; kmLabel: string; concesionaria: string; statusLabel: string; tramo: string | null } }) {
+function tipAt(event: { clientX?: number; clientY?: number }, map: HTMLDivElement | null) {
+    const rect = map?.getBoundingClientRect();
+    const x = rect && event.clientX != null ? event.clientX - rect.left : 16;
+    const y = rect && event.clientY != null ? event.clientY - rect.top : 16;
+    const width = 280;
+    const height = 132;
+    const gap = 14;
+    if (!rect || rect.width === 0) return { x: x + gap, y: y + gap };
+    return {
+        x: x + gap + width > rect.width ? Math.max(8, x - width - gap) : x + gap,
+        y: y + gap + height > rect.height ? Math.max(8, y - height - gap) : y + gap,
+    };
+}
+
+function RouteTooltip({ route, x, y }: { route: { label: string; kmLabel: string; concesionaria: string; statusLabel: string; tramo: string | null; color: string }; x: number; y: number }) {
     return (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
-            <div><dt className="text-[10px] uppercase text-imperial-gold">Ruta</dt><dd>{route.label}</dd></div>
-            <div><dt className="text-[10px] uppercase text-imperial-gold">Km</dt><dd>{route.kmLabel}</dd></div>
-            <div><dt className="text-[10px] uppercase text-imperial-gold">Concesionaria</dt><dd>{route.concesionaria}</dd></div>
-            <div><dt className="text-[10px] uppercase text-imperial-gold">Estado</dt><dd>{route.statusLabel}</dd></div>
-            <div className="col-span-2 sm:col-span-4"><dt className="text-[10px] uppercase text-imperial-gold">Tramo</dt><dd>{route.tramo ?? 'Sin dato'}</dd></div>
-        </dl>
+        <div
+            role="status"
+            aria-live="polite"
+            className="pointer-events-none absolute z-10"
+            style={{ left: x, top: y, backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: '10px', color: '#FFF', maxWidth: 280, fontSize: '14px', lineHeight: 1.35, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}
+        >
+            <div style={{ color: '#FFD700', fontWeight: 'bold', marginBottom: '4px', WebkitTextStroke: TOOLTIP_OUTLINE, paintOrder: 'stroke fill' }}>{route.label}</div>
+            <TipRow color={route.color} name="Tramo" value={route.tramo ?? 'Sin dato'} />
+            <TipRow color={route.color} name="Concesionaria" value={route.concesionaria} />
+            <TipRow color={route.color} name="Estado" value={route.statusLabel} />
+            <TipRow color={route.color} name="Km" value={route.kmLabel} />
+        </div>
+    );
+}
+
+function TipRow({ color, name, value }: { color: string; name: string; value: string }) {
+    const outline = { WebkitTextStroke: TOOLTIP_OUTLINE, paintOrder: 'stroke fill' as const };
+    return (
+        <div style={{ fontWeight: 'bold' }}>
+            <span style={{ color, ...outline }}>{name}: </span>
+            <span style={{ color, ...outline }}>{value}</span>
+        </div>
     );
 }

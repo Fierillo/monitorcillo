@@ -8,10 +8,12 @@ import {
     paintRoutes,
     parseRouteList,
     parseRutasPayload,
+    frameMapSize,
     projectMap,
     type RouteGeometry,
     type RutaTramo,
 } from '@/lib/rutas/status';
+import geometryAsset from '@/lib/rutas/geometry.json';
 
 const routes: RouteGeometry[] = [
     { code: '9', label: 'RN 9', km: 1975.46, lines: [[[-64, -31], [-63, -32], [-62, -33]]] },
@@ -158,6 +160,26 @@ describe('map projection', () => {
         const latPixels = Math.abs(numbers[5] - numbers[1]);
         expect(latPixels).toBeGreaterThan(lonPixels);
     });
+
+    it('stops the frame at the Malvinas and drops the islands farther east', () => {
+        const continent = [[[-73, -55], [-54, -55], [-54, -22], [-72, -22], [-73, -55]]];
+        const malvinas = [[[-61, -52.3], [-57.7, -52.3], [-57.7, -51.2], [-61, -51.2], [-61, -52.3]]];
+        const georgias = [[[-38, -54.9], [-35.8, -54.9], [-35.8, -54], [-38, -54], [-38, -54.9]]];
+        const fitted = frameMapSize([...continent, ...malvinas], [], 1000);
+        const withGeorgias = frameMapSize([...continent, ...malvinas, ...georgias], [], 1000);
+        expect(withGeorgias).toEqual(fitted);
+        expect(fitted.width).toBeLessThan(fitted.height);
+
+        const projected = projectMap([...continent, ...malvinas, ...georgias], [], fitted.width, fitted.height);
+        expect(projected.outlinePaths).toHaveLength(2);
+        const xs = projected.outlinePaths[0]?.match(/-?\d+\.?\d*/g)?.map(Number).filter((_, index) => index % 2 === 0) ?? [];
+        expect(Math.max(...xs)).toBeGreaterThan(fitted.width - 40);
+
+        const stored = frameMapSize(geometryAsset.outline, geometryAsset.routes, 1000);
+        expect(stored.width).toBeGreaterThan(430);
+        expect(stored.width).toBeLessThan(560);
+        expect(projectMap(geometryAsset.outline, [], stored.width, stored.height).outlinePaths).toHaveLength(geometryAsset.outline.length - 2);
+    });
 });
 
 describe('sources', () => {
@@ -169,6 +191,7 @@ describe('sources', () => {
         expect(text).toContain('Informe Anual de Evaluación de Estado de Pavimentos 2023-2024');
         expect(text).toContain('Boletín Oficial');
         expect(text).toContain('sin dato');
+        expect(text).toContain('Malvinas');
         expect(PAVEMENT_SOURCE_NOTE).toContain('2023-2024');
         expect(PAVEMENT_SOURCE_NOTE).toContain('Dirección Nacional de Vialidad');
     });
