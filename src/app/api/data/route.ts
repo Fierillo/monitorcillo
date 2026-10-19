@@ -4,13 +4,22 @@ import { getIndicators, saveIndicators } from '@/lib/indicators';
 import { isAuthenticated } from '@/lib/auth';
 import db from '@/lib/db';
 import { applyManualEmisionRows } from '@/lib/emision-manual-entry';
+import { parseRutasPayload } from '@/lib/rutas/status';
 import { checkRequestRateLimit, READ_RATE_LIMIT } from '@/lib/rate-limit';
-import type { EmisionPostBody, IndicatorsPostBody } from '@/types';
+import type { EmisionPostBody, IndicatorsPostBody, RutasPostBody } from '@/types';
 
-function isEmisionPostBody(body: unknown): body is EmisionPostBody {
+function isTypedPostBody(body: unknown, type: 'emision' | 'rutas'): boolean {
     if (!body || typeof body !== 'object') return false;
     const candidate = body as { type?: unknown; data?: unknown };
-    return candidate.type === 'emision' && Array.isArray(candidate.data);
+    return candidate.type === type && Array.isArray(candidate.data);
+}
+
+function isEmisionPostBody(body: unknown): body is EmisionPostBody {
+    return isTypedPostBody(body, 'emision');
+}
+
+function isRutasPostBody(body: unknown): body is RutasPostBody {
+    return isTypedPostBody(body, 'rutas');
 }
 
 async function readJsonBody(request: Request): Promise<unknown> {
@@ -40,6 +49,10 @@ export async function GET(request: Request) {
             return NextResponse.json({ data: data || [] });
         }
 
+        if (type === 'rutas') {
+            return NextResponse.json({ data: await db.getRutasTramos() });
+        }
+
         return NextResponse.json(await getIndicators());
     } catch (error) {
         console.error('[api/data] read failed:', error);
@@ -53,6 +66,25 @@ async function saveEmision(body: EmisionPostBody): Promise<NextResponse> {
         revalidatePath('/');
         revalidatePath('/indicador/emision');
         return NextResponse.json({ success: true, ...result });
+    } catch (error) {
+        return databaseUnavailable(error);
+    }
+}
+
+async function saveRutas(body: RutasPostBody): Promise<NextResponse> {
+    let tramos;
+    try {
+        tramos = parseRutasPayload(body.data);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Los tramos no se pudieron leer. Revisá nombre, rutas y etapa.';
+        return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    try {
+        await db.replaceRutasTramos(tramos);
+        revalidatePath('/');
+        revalidatePath('/indicador/rutas-nacionales');
+        return NextResponse.json({ success: true, saved: tramos.length });
     } catch (error) {
         return databaseUnavailable(error);
     }
@@ -79,7 +111,8 @@ export async function POST(req: Request) {
 
     const body = await readJsonBody(req);
     if (isEmisionPostBody(body)) return saveEmision(body);
+    if (isRutasPostBody(body)) return saveRutas(body);
     if (Array.isArray(body)) return saveCatalog(body as IndicatorsPostBody);
 
-    return NextResponse.json({ error: 'Invalid payload. Send an array of indicators, or { "type": "emision", "data": [...] }.' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid payload. Send an array of indicators, or { "type": "emision" | "rutas", "data": [...] }.' }, { status: 400 });
 }

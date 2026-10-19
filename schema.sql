@@ -502,3 +502,20 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 );
 
 CREATE INDEX IF NOT EXISTS idx_rate_limits_reset_time ON rate_limits(reset_time);
+
+-- ============================================
+-- RUTAS NACIONALES (tramos cargados a mano)
+-- ============================================
+CREATE TABLE IF NOT EXISTS rutas_tramos (
+    id VARCHAR(64) PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    rutas TEXT NOT NULL,
+    km DECIMAL,
+    concesionaria VARCHAR(255) NOT NULL DEFAULT '',
+    fecha_toma_posesion DATE,
+    obras_iniciales_pct DECIMAL,
+    fecha_habilitacion_tarifa DATE,
+    etapa VARCHAR(32) NOT NULL,
+    pavimento VARCHAR(32) NOT NULL DEFAULT 'sin-dato',
+    updated_at TIMESTAMP DEFAULT NOW()
+);

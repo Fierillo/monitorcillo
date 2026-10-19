@@ -36,4 +36,9 @@ export type EmisionPostBody = {
     data: EmisionAdminRow[];
 };
 
+export type RutasPostBody = {
+    type: 'rutas';
+    data: unknown[];
+};
+
 export type IndicatorsPostBody = Indicator[];
