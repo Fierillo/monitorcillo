@@ -1,3 +1,5 @@
+import { companyColors, sectorsForTramo, sliceRouteByKm, type SectorRange } from '@/lib/rutas/sectors';
+
 export type ConcessionStage = 'concesionado' | 'en-licitacion' | 'sin-concesionar';
 export type PavementCondition = 'bueno' | 'regular' | 'malo' | 'sin-dato';
 export type ColorMode = 'concesion' | 'pavimento';
@@ -48,7 +50,7 @@ export const RUTAS_METHODOLOGY = [
     },
     {
         title: 'Concesión',
-        description: 'La etapa de la Red Federal de Concesiones (concesionado, en licitación o sin concesionar) no sale de una API. Si todavía no hay tramos guardados, el mapa usa la carga inicial oficial de Vialidad Nacional y el Boletín Oficial. El administrador puede editarla y, al guardar, esa versión reemplaza a la carga inicial. Una ruta sin tramo queda en gris, como sin dato, y no se asume sin concesionar. Si una ruta figura en más de un tramo, vale el último de la lista.',
+        description: 'La etapa de la Red Federal de Concesiones (concesionado, en licitación o sin concesionar) no sale de una API. Si todavía no hay tramos guardados, el mapa usa la carga inicial oficial de Vialidad Nacional y el Boletín Oficial. El administrador puede editarla y, al guardar, esa versión reemplaza a la carga inicial. Una ruta sin tramo queda en gris, como sin dato, y no se asume sin concesionar. Si una ruta figura en más de un tramo, cada constructora pinta solo los kilómetros que publicó Vialidad en la página de su etapa. El resto de esa traza queda en gris.',
     },
     {
         title: 'Pavimento',
@@ -56,7 +58,7 @@ export const RUTAS_METHODOLOGY = [
     },
     {
         title: 'Detalle',
-        description: 'Al pasar el cursor o tocar una ruta se muestran el número y cada tramo que la incluye, con su concesionaria, kilómetros y estado. A la derecha se elige ver tramos o constructoras. En tramos, la lista son los escudos y al elegir uno se ve su constructora. En constructoras es al revés: la lista son las empresas y al elegir una se ven sus tramos. Sin ninguna elegida se ve la red completa. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
+        description: 'Al pasar el cursor o tocar una ruta se muestran el número y cada tramo que la incluye, con su concesionaria, kilómetros y estado. A la derecha se filtra por rutas o por constructoras. En rutas, cada escudo es una ruta: al elegirla queda marcada solo esa, partida por el color de cada constructora. En constructoras, al elegir una empresa se ven las rutas en las que opera y en el mapa solo el tramo de kilómetros que le corresponde. Cada constructora tiene un color propio. Sin ninguna elegida se ve la red completa. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
     },
 ];
 
@@ -84,6 +86,16 @@ export type RutaTramo = {
     fechaHabilitacionTarifa: string | null;
     etapa: ConcessionStage;
     pavimento: PavementCondition;
+    sectores?: SectorRange[];
+};
+
+export type PaintedSegment = {
+    tramoId: string | null;
+    tramo: string | null;
+    concesionaria: string;
+    color: string;
+    km: number | null;
+    lines: number[][][];
 };
 
 export type RouteGeometry = {
@@ -120,9 +132,12 @@ export type PaintedRoute = {
     statusLabel: string;
     color: string;
     lines: number[][][];
+    segments: PaintedSegment[];
 };
 
-export type ProjectedRoute = PaintedRoute & { paths: string[] };
+export type ProjectedSegment = PaintedSegment & { paths: string[] };
+
+export type ProjectedRoute = Omit<PaintedRoute, 'segments'> & { paths: string[]; segments: ProjectedSegment[] };
 
 export type ProjectedMap = {
     viewBox: string;
@@ -176,12 +191,18 @@ export function routeSign(code: string): RouteSign {
 }
 
 export function paintRoutes(routes: RouteGeometry[], tramos: RutaTramo[], mode: ColorMode): PaintedRoute[] {
+    const palette = companyColors(tramos.map(tramo => tramo.concesionaria));
     return routes.map(route => {
         const matches = tramos.filter(tramo => tramo.rutas.includes(route.code));
         const tramo = matches.at(-1) ?? null;
         const status = statusFor(tramo, mode);
         const km = tramo?.km ?? route.km;
-        const assignments = matches.map(match => assignmentFor(match, route.km, mode));
+        const color = mode === 'concesion' ? CONCESSION_COLORS[status as ConcessionStage | 'sin-dato'] : PAVEMENT_COLORS[status as PavementCondition];
+        const ranged = route.km !== null && matches.some(match => sectorsForTramo(match.id, route.code, match.sectores).length > 0);
+        const segments = segmentsFor(route, matches, mode, palette, color);
+        const assignments = ranged
+            ? assignmentsFromSegments(segments, matches, mode)
+            : matches.map(match => assignmentFor(match, route.km, mode));
         return {
             code: route.code,
             label: route.label,
@@ -192,10 +213,79 @@ export function paintRoutes(routes: RouteGeometry[], tramos: RutaTramo[], mode: 
             assignments,
             status,
             statusLabel: labelFor(status, mode),
-            color: mode === 'concesion' ? CONCESSION_COLORS[status as ConcessionStage | 'sin-dato'] : PAVEMENT_COLORS[status as PavementCondition],
+            color,
             lines: route.lines,
+            segments,
         };
     });
+}
+
+function segmentsFor(route: RouteGeometry, matches: RutaTramo[], mode: ColorMode, palette: Map<string, string>, fallbackColor: string): PaintedSegment[] {
+    const pieces = matches.flatMap(tramo => sectorsForTramo(tramo.id, route.code, tramo.sectores).map(range => ({ tramo, range })));
+    if (pieces.length === 0 || route.km === null) {
+        return [segmentFrom(matches.at(-1) ?? null, fallbackColor, route.km, route.lines)];
+    }
+    const originKm = pieces.find(piece => piece.range.originKm !== undefined)?.range.originKm ?? 0;
+    const painted = pieces.flatMap(piece => {
+        const lines = sliceRouteByKm(route.lines, route.km ?? 0, piece.range.desdeKm, piece.range.hastaKm, piece.range.originKm ?? originKm);
+        if (lines.length === 0) return [];
+        const color = mode === 'concesion' ? palette.get(companyKey(piece.tramo)) ?? fallbackColor : fallbackColorOf(piece.tramo, mode);
+        return [segmentFrom(piece.tramo, color, piece.range.km ?? piece.range.hastaKm - piece.range.desdeKm, lines)];
+    });
+    const gaps = gapSegments(route, pieces.map(piece => piece.range), originKm);
+    return [...painted, ...gaps];
+}
+
+function gapSegments(route: RouteGeometry, ranges: SectorRange[], originKm: number): PaintedSegment[] {
+    if (route.km === null) return [];
+    const sorted = ranges.map(range => [range.desdeKm, range.hastaKm] as const).sort((left, right) => left[0] - right[0]);
+    const gaps: Array<[number, number]> = [];
+    let cursor = originKm;
+    for (const [desdeKm, hastaKm] of sorted) {
+        if (desdeKm > cursor + 1) gaps.push([cursor, desdeKm]);
+        cursor = Math.max(cursor, hastaKm);
+    }
+    if (route.km > cursor + 1) gaps.push([cursor, route.km]);
+    return gaps.flatMap(([desdeKm, hastaKm]) => {
+        const lines = sliceRouteByKm(route.lines, route.km ?? 0, desdeKm, hastaKm, originKm);
+        return lines.length === 0 ? [] : [segmentFrom(null, CONCESSION_COLORS['sin-dato'], hastaKm - desdeKm, lines)];
+    });
+}
+
+function assignmentsFromSegments(segments: PaintedSegment[], matches: RutaTramo[], mode: ColorMode): RouteAssignment[] {
+    const rows: RouteAssignment[] = [];
+    for (const tramo of matches) {
+        const owned = segments.filter(segment => segment.tramoId === tramo.id);
+        if (owned.length === 0) continue;
+        const km = owned.reduce((sum, segment) => sum + (segment.km ?? 0), 0);
+        rows.push({
+            tramo: tramo.nombre,
+            concesionaria: companyKey(tramo),
+            kmLabel: `${KM_FORMAT.format(km)} km`,
+            statusLabel: labelFor(statusFor(tramo, mode), mode),
+        });
+    }
+    return rows;
+}
+
+function segmentFrom(tramo: RutaTramo | null, color: string, km: number | null, lines: number[][][]): PaintedSegment {
+    return {
+        tramoId: tramo?.id ?? null,
+        tramo: tramo?.nombre ?? null,
+        concesionaria: tramo ? companyKey(tramo) : 'Sin dato',
+        color,
+        km,
+        lines,
+    };
+}
+
+function companyKey(tramo: RutaTramo): string {
+    return tramo.concesionaria.trim() || 'Sin dato';
+}
+
+function fallbackColorOf(tramo: RutaTramo, mode: ColorMode): string {
+    const status = statusFor(tramo, mode);
+    return mode === 'concesion' ? CONCESSION_COLORS[status as ConcessionStage | 'sin-dato'] : PAVEMENT_COLORS[status as PavementCondition];
 }
 
 function assignmentFor(tramo: RutaTramo, routeKm: number | null, mode: ColorMode): RouteAssignment {
@@ -231,7 +321,14 @@ export function projectMap(outline: number[][][], routes: PaintedRoute[], width:
     return {
         viewBox: `0 0 ${width} ${height}`,
         outlinePaths: project ? framed.map(ring => toPath(ring, project)) : [],
-        routes: routes.map(route => ({ ...route, paths: project ? route.lines.map(line => toPath(line, project)) : [] })),
+        routes: routes.map(route => ({
+            ...route,
+            paths: project ? route.lines.map(line => toPath(line, project)) : [],
+            segments: route.segments.map(segment => ({
+                ...segment,
+                paths: project ? segment.lines.map(line => toPath(line, project)) : [],
+            })),
+        })),
     };
 }
 

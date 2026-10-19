@@ -39,7 +39,7 @@ it('switches color mode and shows route, km, concessionaire and status on hover 
     const route12 = screen.getByRole('button', { name: 'RN 12' });
     expect(route9.getAttribute('stroke')).toBe('#4ADE80');
     expect(route12.getAttribute('stroke')).toBe('#94A3B8');
-    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('En licitación');
+    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('Sin dato');
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).not.toContain('Malo');
     expect(screen.getByText(/Boletín Oficial/)).toBeDefined();
 
@@ -122,71 +122,63 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
     expect(tooltip.textContent).not.toContain('Concesionado');
 });
 
-it('shows constructoras when a tramo shield is chosen and tramos when a constructora is chosen', () => {
+it('lists one shield per route and colors only the stretch each company operates', () => {
     const shared: RutasGeometry = {
         ...geometry,
         routes: [
-            { code: '9', label: 'RN 9', km: 1975.46, lines: [[[-64, -31], [-62, -34]]] },
-            { code: '12', label: 'RN 12', km: 1641.76, lines: [[[-58, -27], [-57, -29]]] },
-            { code: 'P8', label: 'RP 8', km: 40, lines: [[[-60, -35], [-59, -36]]] },
+            { code: '9', label: 'RN 9', km: 1000, lines: [[[-64, -40], [-64, -20]]] },
+            { code: '12', label: 'RN 12', km: 1000, lines: [[[-58, -30], [-57, -28]]] },
         ],
     };
     const rows: RutaTramo[] = [
-        { ...tramos[0], rutas: ['9', 'P8'] },
-        { ...tramos[0], id: 'cuyo', nombre: 'Cuyo', rutas: ['12'], concesionaria: 'Caminos del Aconcagua' },
+        { ...tramos[0], id: 'sur', rutas: ['9'], concesionaria: 'CREDITECH S.A. - PLANTEL S.A.', sectores: [{ ruta: '9', desdeKm: 0, hastaKm: 200, km: 200 }] },
+        { ...tramos[0], id: 'norte', rutas: ['9', '12'], concesionaria: 'CPC S.A.', sectores: [{ ruta: '9', desdeKm: 800, hastaKm: 1000, km: 200 }, { ruta: '12', desdeKm: 0, hastaKm: 1000, km: 1000 }] },
     ];
     render(<RutasMap tramos={rows} geometry={shared} />);
 
     expect(screen.getByRole('group', { name: 'Filtrar por' }).textContent).toContain('Filtrar por');
-    const oriental = screen.getByRole('button', { name: 'Tramo Oriental' });
-    const cuyo = screen.getByRole('button', { name: 'Cuyo' });
-    expect(oriental.querySelector('[data-sign="nacional"] path')).toBeTruthy();
-    expect(oriental.querySelector('[data-sign="provincial"] circle')).toBeTruthy();
-    expect(screen.queryByText('Corredores Viales')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Constructora Corredores Viales' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rutas' }).getAttribute('aria-pressed')).toBe('true');
+    const shield9 = screen.getByRole('button', { name: 'Escudo RN 9' });
+    const shield12 = screen.getByRole('button', { name: 'Escudo RN 12' });
+    expect(shield9.querySelector('[data-sign="nacional"] path')).toBeTruthy();
+    expect(shield9.textContent).not.toContain('12');
+    expect(screen.queryByText('CREDITECH S.A. - PLANTEL S.A.')).toBeNull();
 
     const map9 = screen.getByRole('button', { name: 'RN 9' });
     const map12 = screen.getByRole('button', { name: 'RN 12' });
-    fireEvent.click(oriental);
-    expect(oriental.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText('Corredores Viales')).toBeTruthy();
-    expect(screen.queryByText('Caminos del Aconcagua')).toBeNull();
+    fireEvent.click(shield9);
+    const creditechColor = screen.getByText('CREDITECH S.A. - PLANTEL S.A.').closest('li')?.querySelector('[data-company-color]')?.getAttribute('data-company-color');
+    const cpcColor = screen.getByText('CPC S.A.').closest('li')?.querySelector('[data-company-color]')?.getAttribute('data-company-color');
+    expect(creditechColor).toBeTruthy();
+    expect(cpcColor).toBeTruthy();
+    expect(creditechColor).not.toBe(cpcColor);
+    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke-width="3.2"]')?.getAttribute('stroke')).toBe(creditechColor);
+    expect(map9.querySelector('[data-company="CPC S.A."] path[stroke-width="3.2"]')?.getAttribute('stroke')).toBe(cpcColor);
     expect(map9.getAttribute('opacity')).toBe('1');
     expect(Number(map12.getAttribute('opacity'))).toBeLessThan(0.5);
 
-    fireEvent.click(cuyo);
-    expect(cuyo.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText('Caminos del Aconcagua')).toBeTruthy();
-    expect(map9.getAttribute('opacity')).toBe('1');
+    fireEvent.click(shield12);
     expect(map12.getAttribute('opacity')).toBe('1');
-
-    fireEvent.click(oriental);
-    fireEvent.click(cuyo);
-    expect(oriental.getAttribute('aria-pressed')).toBe('false');
-    expect(screen.queryByText('Corredores Viales')).toBeNull();
+    fireEvent.click(shield9);
+    fireEvent.click(shield12);
+    expect(screen.queryByText('CREDITECH S.A. - PLANTEL S.A.')).toBeNull();
     expect(map9.getAttribute('opacity')).toBe('1');
     expect(map12.getAttribute('opacity')).toBe('1');
 
     fireEvent.click(screen.getByRole('button', { name: 'Constructoras' }));
-    expect(screen.queryByRole('button', { name: 'Tramo Oriental' })).toBeNull();
-    const corredores = screen.getByRole('button', { name: 'Constructora Corredores Viales' });
-    const caminos = screen.getByRole('button', { name: 'Constructora Caminos del Aconcagua' });
-    expect(screen.queryByText('Tramo Oriental')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Escudo RN 9' })).toBeNull();
+    const creditechButton = screen.getByRole('button', { name: 'Constructora CREDITECH S.A. - PLANTEL S.A.' });
+    expect(creditechButton.querySelector('[data-company-color]')?.getAttribute('data-company-color')).toBe(creditechColor);
+    expect(creditechButton.parentElement?.querySelector('[data-sign="nacional"]')).toBeNull();
 
-    fireEvent.click(corredores);
-    expect(corredores.getAttribute('aria-pressed')).toBe('true');
-    const orientalName = screen.getByText('Tramo Oriental');
-    expect(orientalName.parentElement?.querySelector('[data-sign="nacional"]')).toBeTruthy();
-    expect(map9.getAttribute('opacity')).toBe('1');
-    expect(Number(map12.getAttribute('opacity'))).toBeLessThan(0.5);
+    fireEvent.click(creditechButton);
+    expect(creditechButton.parentElement?.querySelector('[data-sign="nacional"]')).toBeTruthy();
+    expect(creditechButton.parentElement?.textContent).not.toContain('12');
+    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."]')?.getAttribute('opacity')).toBe('1');
+    expect(Number(map9.querySelector('[data-company="CPC S.A."]')?.getAttribute('opacity'))).toBeLessThan(0.5);
+    expect(Number(map12.querySelector('[data-company="CPC S.A."]')?.getAttribute('opacity'))).toBeLessThan(0.5);
 
-    fireEvent.click(caminos);
-    expect(screen.getByText('Cuyo')).toBeTruthy();
-    expect(map12.getAttribute('opacity')).toBe('1');
-
-    fireEvent.click(corredores);
-    fireEvent.click(caminos);
-    expect(screen.queryByText('Tramo Oriental')).toBeNull();
-    expect(map9.getAttribute('opacity')).toBe('1');
-    expect(map12.getAttribute('opacity')).toBe('1');
+    fireEvent.click(creditechButton);
+    expect(map9.querySelector('[data-company="CPC S.A."]')?.getAttribute('opacity')).toBe('1');
+    expect(map12.querySelector('[data-company="CPC S.A."]')?.getAttribute('opacity')).toBe('1');
 });

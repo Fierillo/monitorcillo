@@ -7,7 +7,6 @@ import FeedbackButton from '@/components/FeedbackButton';
 import geometryAsset from '@/lib/rutas/geometry.json';
 import {
     CONCESSION_COLORS,
-    CONCESSION_LABELS,
     CONCESSION_SOURCE_NOTE,
     PAVEMENT_COLORS,
     PAVEMENT_LABELS,
@@ -24,8 +23,7 @@ import {
 } from '@/lib/rutas/status';
 
 const STORED_GEOMETRY = geometryAsset as RutasGeometry;
-const CONCESSION_LEGEND = ['concesionado', 'en-licitacion', 'sin-concesionar', 'sin-dato'] as const;
-type ShieldFilter = 'tramos' | 'constructoras';
+type ShieldFilter = 'rutas' | 'constructoras';
 
 const TOOLTIP_BACKGROUND = 'rgba(0, 20, 63, 0.4)';
 const TOOLTIP_BLUR = 'blur(2px)';
@@ -39,9 +37,8 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
     const [mode, setMode] = useState<ColorMode>('concesion');
     const [hover, setHover] = useState<PointerTip | null>(null);
     const [pinned, setPinned] = useState<PointerTip | null>(null);
-    const [filterBy, setFilterBy] = useState<ShieldFilter>('tramos');
+    const [filterBy, setFilterBy] = useState<ShieldFilter>('rutas');
     const [selected, setSelected] = useState<Set<string>>(new Set());
-    const highlighted = highlightedRouteCodes(tramos, filterBy, selected);
     const toggleSelected = (id: string) => {
         setSelected(current => {
             const next = new Set(current);
@@ -60,7 +57,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
     const activeTip = hover ?? pinned;
     const active = painted.find(route => route.code === activeTip?.code) ?? null;
     const legend = mode === 'concesion'
-        ? CONCESSION_LEGEND.map(status => ({ status, color: CONCESSION_COLORS[status], label: CONCESSION_LABELS[status] }))
+        ? [{ status: 'sin-dato', color: CONCESSION_COLORS['sin-dato'], label: 'Sin dato' }]
         : (['bueno', 'regular', 'malo', 'sin-dato'] as const).map(status => ({ status, color: PAVEMENT_COLORS[status], label: PAVEMENT_LABELS[status] }));
 
     return (
@@ -98,14 +95,16 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                     {projected.outlinePaths.map((path, index) => (
                         <path key={`outline-${index}`} d={path} fill="#0B2A66" stroke="#FFD700" strokeWidth={1} />
                     ))}
-                    {projected.routes.map(route => (
+                    {projected.routes.map(route => {
+                        const routeDimmed = filterBy === 'rutas' && selected.size > 0 && !selected.has(route.code);
+                        return (
                         <g
                             key={route.code}
                             role="button"
                             tabIndex={0}
                             aria-label={route.label}
                             stroke={route.color}
-                            opacity={highlighted && !highlighted.has(route.code) ? 0.22 : 1}
+                            opacity={routeDimmed ? 0.16 : 1}
                             className="cursor-pointer"
                             onPointerEnter={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
                             onPointerMove={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
@@ -118,14 +117,22 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                             }}
                         >
                             <path d={route.paths.join('')} stroke="transparent" strokeWidth={18} fill="none" pointerEvents="stroke" />
-                            <path d={route.paths.join('')} stroke={ROUTE_GAP} strokeWidth={7} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
-                            <path d={route.paths.join('')} strokeWidth={3.2} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+                            {route.segments.map((segment, index) => {
+                                const companyDimmed = filterBy === 'constructoras' && selected.size > 0 && !selected.has(segment.concesionaria);
+                                return (
+                                    <g key={`${route.code}-${segment.tramoId ?? 'sin-dato'}-${index}`} data-company={segment.concesionaria} opacity={companyDimmed ? 0.16 : 1}>
+                                        <path d={segment.paths.join('')} stroke={ROUTE_GAP} strokeWidth={7} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+                                        <path d={segment.paths.join('')} stroke={segment.color} strokeWidth={3.2} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+                                    </g>
+                                );
+                            })}
                         </g>
-                    ))}
+                        );
+                    })}
                 </svg>
                 {active && activeTip ? <RouteTooltip route={active} x={activeTip.x} y={activeTip.y} /> : null}
                 </div>
-                <TramoShields tramos={tramos} filterBy={filterBy} selected={selected} onFilter={changeFilter} onToggle={toggleSelected} />
+                <RouteShields tramos={tramos} routes={projected.routes} filterBy={filterBy} selected={selected} onFilter={changeFilter} onToggle={toggleSelected} />
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-foreground/80">{mode === 'pavimento' ? PAVEMENT_SOURCE_NOTE : CONCESSION_SOURCE_NOTE}</p>
                 <MethodologySection methodology={RUTAS_METHODOLOGY} />
@@ -147,73 +154,112 @@ function ModeButton({ active, onClick, children }: { active: boolean; onClick: (
     );
 }
 
-function highlightedRouteCodes(tramos: RutaTramo[], filterBy: ShieldFilter, selected: Set<string>): Set<string> | null {
-    if (selected.size === 0) return null;
-    const codes = new Set<string>();
-    for (const tramo of tramos) {
-        const key = filterBy === 'tramos' ? tramo.id : companyName(tramo);
-        if (!selected.has(key)) continue;
-        for (const code of tramo.rutas) codes.add(code);
-    }
-    return codes;
-}
-
-function companyName(tramo: RutaTramo): string {
-    return tramo.concesionaria.trim() || 'Sin dato';
-}
-
-function companiesOf(tramos: RutaTramo[]): { name: string; tramos: RutaTramo[] }[] {
-    const groups = new Map<string, RutaTramo[]>();
-    for (const tramo of tramos) {
-        const name = companyName(tramo);
-        const current = groups.get(name) ?? [];
-        current.push(tramo);
-        groups.set(name, current);
-    }
-    return [...groups.entries()].map(([name, rows]) => ({ name, tramos: rows }));
-}
-
-function TramoShields({ tramos, filterBy, selected, onFilter, onToggle }: { tramos: RutaTramo[]; filterBy: ShieldFilter; selected: Set<string>; onFilter: (next: ShieldFilter) => void; onToggle: (id: string) => void }) {
+function RouteShields({ tramos, routes, filterBy, selected, onFilter, onToggle }: { tramos: RutaTramo[]; routes: { code: string; segments: { tramoId: string | null; concesionaria: string; color: string }[] }[]; filterBy: ShieldFilter; selected: Set<string>; onFilter: (next: ShieldFilter) => void; onToggle: (id: string) => void }) {
     const dimOthers = selected.size > 0;
+    const companies = companiesOf(tramos, routes);
     return (
-        <aside aria-label="Tramos" className="flex w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-72 lg:overflow-y-auto">
+        <aside aria-label="Rutas" className="flex w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-80 lg:overflow-y-auto">
             <div role="group" aria-label="Filtrar por" className="flex flex-col gap-2">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-imperial-gold">Filtrar por</p>
                 <div className="flex gap-2">
-                    <ModeButton active={filterBy === 'tramos'} onClick={() => onFilter('tramos')}>Tramos</ModeButton>
+                    <ModeButton active={filterBy === 'rutas'} onClick={() => onFilter('rutas')}>Rutas</ModeButton>
                     <ModeButton active={filterBy === 'constructoras'} onClick={() => onFilter('constructoras')}>Constructoras</ModeButton>
                 </div>
             </div>
-            {filterBy === 'tramos' ? tramos.map(tramo => {
-                const pressed = selected.has(tramo.id);
+            {filterBy === 'rutas' ? routeCodes(tramos).map(code => {
+                const pressed = selected.has(code);
+                const operators = companiesOnRoute(routes.find(route => route.code === code)?.segments ?? []);
                 return (
-                    <div key={tramo.id} className={`border-b border-imperial-gold/30 pb-3 ${dimOthers && !pressed ? 'opacity-40' : 'opacity-100'}`}>
-                        <button type="button" aria-label={tramo.nombre} aria-pressed={pressed} onClick={() => onToggle(tramo.id)} className="flex cursor-pointer flex-wrap gap-1 border-0 bg-transparent p-0">
-                            {tramo.rutas.map(code => <SignFace key={code} code={code} sign={routeSign(code)} pressed={pressed} />)}
+                    <div key={code} className={`border-b border-imperial-gold/30 pb-3 ${dimOthers && !pressed ? 'opacity-40' : 'opacity-100'}`}>
+                        <button type="button" aria-label={`Escudo RN ${code}`} aria-pressed={pressed} onClick={() => onToggle(code)} className="cursor-pointer border-0 bg-transparent p-0">
+                            <SignFace code={code} sign={routeSign(code)} pressed={pressed} />
                         </button>
-                        {pressed ? <p className="mt-1 text-[11px] leading-tight text-white">{companyName(tramo)}</p> : null}
+                        {pressed ? <CompanyRows companies={operators} /> : null}
                     </div>
                 );
-            }) : companiesOf(tramos).map(company => {
+            }) : companies.map(company => {
                 const pressed = selected.has(company.name);
                 return (
                     <div key={company.name} className={`border-b border-imperial-gold/30 pb-3 ${dimOthers && !pressed ? 'opacity-40' : 'opacity-100'}`}>
-                        <button type="button" aria-label={`Constructora ${company.name}`} aria-pressed={pressed} onClick={() => onToggle(company.name)} className={`cursor-pointer border-0 bg-transparent p-0 text-left text-xs font-bold text-white ${pressed ? 'text-imperial-gold' : ''}`}>
+                        <button type="button" aria-label={`Constructora ${company.name}`} aria-pressed={pressed} onClick={() => onToggle(company.name)} className={`flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-left text-xs font-bold text-white ${pressed ? 'text-imperial-gold' : ''}`}>
+                            <ColorSwatch color={company.color} />
                             {company.name}
                         </button>
-                        {pressed ? company.tramos.map(tramo => (
-                            <div key={tramo.id} className="mt-2">
-                                <p className="text-[11px] font-bold uppercase text-imperial-gold">{tramo.nombre}</p>
-                                <div className="mt-1 flex flex-wrap gap-1">
-                                    {tramo.rutas.map(code => <SignFace key={code} code={code} sign={routeSign(code)} pressed />)}
-                                </div>
+                        {pressed ? (
+                            <div className="mt-2 flex flex-col gap-2">
+                                {company.rutas.map(code => <SignFace key={code} code={code} sign={routeSign(code)} pressed />)}
                             </div>
-                        )) : null}
+                        ) : null}
                     </div>
                 );
             })}
         </aside>
     );
+}
+
+function CompanyRows({ companies }: { companies: { name: string; color: string }[] }) {
+    return (
+        <ul className="mt-1 flex flex-col gap-1">
+            {companies.map(company => (
+                <li key={company.name} className="flex items-center gap-2 text-[11px] leading-tight text-white">
+                    <ColorSwatch color={company.color} />
+                    {company.name}
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+function ColorSwatch({ color }: { color: string }) {
+    return <span data-company-color={color} className="inline-block h-2.5 w-6 shrink-0" style={{ backgroundColor: color }} />;
+}
+
+function routeCodes(tramos: RutaTramo[]): string[] {
+    const codes = new Set<string>();
+    for (const tramo of tramos) for (const code of tramo.rutas) codes.add(code);
+    return [...codes].sort(compareRoutes);
+}
+
+function compareRoutes(left: string, right: string): number {
+    const leftRank = routeRank(left);
+    const rightRank = routeRank(right);
+    if (leftRank[0] !== rightRank[0]) return leftRank[0] - rightRank[0];
+    if (leftRank[1] !== rightRank[1]) return leftRank[1] - rightRank[1];
+    return left.localeCompare(right);
+}
+
+function routeRank(code: string): [number, number] {
+    const number = Number(code.match(/\d+/)?.[0] ?? 9999);
+    const kind = code.startsWith('A') ? 1 : /^\d+V/.test(code) ? 2 : 0;
+    return [number, kind];
+}
+
+function companiesOnRoute(segments: { tramoId: string | null; concesionaria: string; color: string }[]): { name: string; color: string }[] {
+    const rows: { name: string; color: string }[] = [];
+    for (const segment of segments) {
+        if (!segment.tramoId || rows.some(row => row.name === segment.concesionaria)) continue;
+        rows.push({ name: segment.concesionaria, color: segment.color });
+    }
+    return rows;
+}
+
+function companiesOf(tramos: RutaTramo[], routes: { segments: { tramoId: string | null; concesionaria: string; color: string }[] }[]): { name: string; color: string; rutas: string[] }[] {
+    const groups = new Map<string, { name: string; color: string; rutas: Set<string> }>();
+    for (const tramo of tramos) {
+        const name = tramo.concesionaria.trim() || 'Sin dato';
+        const current = groups.get(name) ?? { name, color: colorOf(name, routes), rutas: new Set<string>() };
+        for (const code of tramo.rutas) current.rutas.add(code);
+        groups.set(name, current);
+    }
+    return [...groups.values()].map(company => ({ name: company.name, color: company.color, rutas: [...company.rutas].sort(compareRoutes) }));
+}
+
+function colorOf(name: string, routes: { segments: { concesionaria: string; color: string }[] }[]): string {
+    for (const route of routes) {
+        const segment = route.segments.find(item => item.concesionaria === name);
+        if (segment) return segment.color;
+    }
+    return '#94A3B8';
 }
 
 function SignFace({ code, sign, pressed }: { code: string; sign: 'nacional' | 'provincial'; pressed: boolean }) {
