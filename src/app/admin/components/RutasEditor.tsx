@@ -26,7 +26,7 @@ export default function RutasEditor({ data, msg, onAdd, onDelete, onSave, onCell
         <div className="mb-4 flex flex-col gap-4">
             <div>
                 <p className="text-imperial-cyan font-bold uppercase tracking-widest text-lg">Editor de rutas nacionales</p>
-                <p className="text-white/60 text-sm mt-1">Cargá a mano cada tramo. La etapa sale de novedades de Vialidad Nacional y del Boletín Oficial. El pavimento, del Informe Anual 2023-2024 o de una fuente posterior. Rutas: 9, 12, A012. Fechas: AAAA-MM-DD. Dejá vacío lo que no esté publicado.</p>
+                <p className="text-white/60 text-sm mt-1">Si la base todavía no tiene tramos, esta tabla muestra la carga inicial oficial. Guardar la persiste y, desde ahí, manda lo guardado. El pavimento queda en sin dato hasta que lo completes. Rutas: 9, 12, A012. Fechas: AAAA-MM-DD.</p>
             </div>
             <div className="flex items-center justify-between gap-4">
                 <button type="button" onClick={onAdd} className="bg-imperial-blue border border-imperial-cyan text-imperial-cyan font-bold py-2 px-4 cursor-pointer hover:bg-imperial-cyan hover:text-imperial-blue transition-colors">+ Agregar tramo</button>

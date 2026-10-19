@@ -8,6 +8,7 @@ const database = vi.hoisted(() => ({
 vi.mock('../lib/db/client', () => ({ sql: database }));
 
 import { getRutasTramos, replaceRutasTramos } from '../lib/db/rutas';
+import { seedTramos } from '../lib/rutas/seed';
 
 beforeEach(() => {
     database.query.mockReset();
@@ -76,5 +77,34 @@ describe('rutas tramos database', () => {
         expect(database.transaction).toHaveBeenCalledOnce();
         expect(cleared.some(query => query.includes('DELETE FROM rutas_tramos'))).toBe(true);
         expect(cleared.some(query => query.includes('INSERT INTO rutas_tramos'))).toBe(false);
+    });
+
+    it('returns the official seed when the table has no rows and does not write it', async () => {
+        await expect(getRutasTramos()).resolves.toEqual(seedTramos());
+        const statements = database.query.mock.calls.map(([query]) => String(query));
+        expect(statements.some(query => query.includes('SELECT * FROM rutas_tramos'))).toBe(true);
+        expect(statements.some(query => query.includes('INSERT INTO rutas_tramos'))).toBe(false);
+        expect(statements.some(query => query.includes('DELETE FROM rutas_tramos'))).toBe(false);
+    });
+
+    it('keeps stored rows and ignores the seed once the table has data', async () => {
+        database.query.mockResolvedValueOnce([]);
+        database.query.mockResolvedValueOnce([{
+            id: 'manual',
+            nombre: 'Tramo manual',
+            rutas: '40',
+            km: null,
+            concesionaria: 'Carga manual',
+            fecha_toma_posesion: null,
+            obras_iniciales_pct: null,
+            fecha_habilitacion_tarifa: null,
+            etapa: 'sin-concesionar',
+            pavimento: 'bueno',
+        }]);
+
+        const rows = await getRutasTramos();
+        expect(rows.map(row => row.id)).toEqual(['manual']);
+        expect(rows[0]?.pavimento).toBe('bueno');
+        expect(rows.some(row => row.id === 'oriental')).toBe(false);
     });
 });

@@ -35,7 +35,7 @@ export const PAVEMENT_LABELS: Record<PavementCondition, string> = {
 
 export const PAVEMENT_SOURCE_NOTE = 'Estado de pavimento según carga manual. Referencia: Informe Anual de Evaluación de Estado de Pavimentos 2023-2024 de la Dirección Nacional de Vialidad. Los tramos sin medición figuran en gris (sin dato).';
 
-export const CONCESSION_SOURCE_NOTE = 'Etapa de la Red Federal de Concesiones según carga manual, a partir de novedades de Vialidad Nacional y del Boletín Oficial. Las rutas sin tramo cargado figuran en gris (sin dato).';
+export const CONCESSION_SOURCE_NOTE = 'Etapa inicial de la Red Federal de Concesiones tomada de Vialidad Nacional y del Boletín Oficial. Los cambios posteriores se cargan a mano. Las rutas sin tramo cargado figuran en gris (sin dato).';
 
 export const RUTAS_METHODOLOGY = [
     {
@@ -48,7 +48,7 @@ export const RUTAS_METHODOLOGY = [
     },
     {
         title: 'Concesión',
-        description: 'La etapa de la Red Federal de Concesiones (concesionado, en licitación o sin concesionar) no sale de una API. Se carga a mano en el administrador con novedades de Vialidad Nacional y el Boletín Oficial. Una ruta sin tramo queda en gris, como sin dato, y no se asume sin concesionar. Si una ruta figura en más de un tramo, vale el último de la lista.',
+        description: 'La etapa de la Red Federal de Concesiones (concesionado, en licitación o sin concesionar) no sale de una API. Si todavía no hay tramos guardados, el mapa usa la carga inicial oficial de Vialidad Nacional y el Boletín Oficial. El administrador puede editarla y, al guardar, esa versión reemplaza a la carga inicial. Una ruta sin tramo queda en gris, como sin dato, y no se asume sin concesionar. Si una ruta figura en más de un tramo, vale el último de la lista.',
     },
     {
         title: 'Pavimento',
@@ -56,7 +56,7 @@ export const RUTAS_METHODOLOGY = [
     },
     {
         title: 'Detalle',
-        description: 'Al pasar el cursor o tocar una ruta se muestran el número, los kilómetros, la concesionaria y el estado del modo activo. No hay tramos precargados: hasta que se carguen en el administrador, toda la red queda en sin dato.',
+        description: 'Al pasar el cursor o tocar una ruta se muestran el número, los kilómetros, la concesionaria y el estado del modo activo. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
     },
 ];
 

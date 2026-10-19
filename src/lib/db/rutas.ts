@@ -1,6 +1,7 @@
 import type { DbRow, DbValue } from '@/types';
 import type { ConcessionStage, PavementCondition, RutaTramo } from '@/lib/rutas/status';
 import { CONCESSION_STAGES, PAVEMENT_CONDITIONS } from '@/lib/rutas/status';
+import { seedTramos } from '@/lib/rutas/seed';
 import { sql } from './client';
 import { formatDbDate } from './tables';
 
@@ -27,6 +28,7 @@ async function ensureRutasTable(): Promise<void> {
 export async function getRutasTramos(): Promise<RutaTramo[]> {
     await ensureRutasTable();
     const rows = await sql.query('SELECT * FROM rutas_tramos ORDER BY nombre', []) as DbRow[];
+    if (rows.length === 0) return seedTramos();
     return rows.map(mapRutaTramo);
 }
 
