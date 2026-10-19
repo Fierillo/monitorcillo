@@ -16,7 +16,9 @@ import {
     frameMapSize,
     paintRoutes,
     projectMap,
+    routeSign,
     type ColorMode,
+    type PaintedRoute,
     type RutaTramo,
     type RutasGeometry,
 } from '@/lib/rutas/status';
@@ -35,6 +37,15 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
     const [mode, setMode] = useState<ColorMode>('concesion');
     const [hover, setHover] = useState<PointerTip | null>(null);
     const [pinned, setPinned] = useState<PointerTip | null>(null);
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const toggleSelected = (code: string) => {
+        setSelected(current => {
+            const next = new Set(current);
+            if (next.has(code)) next.delete(code);
+            else next.add(code);
+            return next;
+        });
+    };
     const painted = paintRoutes(geometry.routes, tramos, mode);
     const canvas = frameMapSize(geometry.outline, painted, 1000);
     const projected = projectMap(geometry.outline, painted, canvas.width, canvas.height);
@@ -46,7 +57,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
 
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-2 sm:p-6 lg:p-10">
-            <header className="w-full sm:w-[96%] max-w-[1100px] mb-4 border-b-2 border-imperial-gold pb-4 mt-2 flex flex-col items-start gap-3 sm:flex-row-reverse sm:items-center sm:justify-between">
+            <header className="w-full sm:w-[96%] max-w-[1320px] mb-4 border-b-2 border-imperial-gold pb-4 mt-2 flex flex-col items-start gap-3 sm:flex-row-reverse sm:items-center sm:justify-between">
                 <div className="flex w-full items-stretch justify-end gap-2 sm:w-auto">
                     <FeedbackButton context={{ surface: 'chart', path: '/indicador/rutas-nacionales', metricId: 'rutas-nacionales', metricTitle: title, modeId: mode, modeTitle: mode === 'concesion' ? 'Concesión' : 'Pavimento' }} />
                     <Link href="/" className="flex shrink-0 items-center justify-center border-2 border-imperial-gold px-3 py-1 text-xs font-bold uppercase text-imperial-gold transition-colors hover:bg-imperial-gold hover:text-imperial-blue sm:px-4 sm:py-2 sm:text-base">Volver</Link>
@@ -57,7 +68,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                 </div>
             </header>
 
-            <div data-testid="rutas-map" className="w-full sm:w-[96%] max-w-[1100px] border-2 border-imperial-gold bg-imperial-blue p-3 sm:p-5">
+            <div data-testid="rutas-map" className="w-full sm:w-[96%] max-w-[1320px] border-2 border-imperial-gold bg-imperial-blue p-3 sm:p-5">
                 <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div role="group" aria-label="Modo de color" className="flex gap-2">
                         <ModeButton active={mode === 'concesion'} onClick={() => setMode('concesion')}>Concesión</ModeButton>
@@ -73,7 +84,8 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                     </ul>
                 </div>
 
-                <div ref={mapRef} className="relative">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                <div ref={mapRef} className="relative min-w-0 flex-1">
                 <svg viewBox={projected.viewBox} role="group" aria-label="Mapa de rutas nacionales de Argentina" className="block h-auto w-full bg-background">
                     {projected.outlinePaths.map((path, index) => (
                         <path key={`outline-${index}`} d={path} fill="#0B2A66" stroke="#FFD700" strokeWidth={1} />
@@ -85,6 +97,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                             tabIndex={0}
                             aria-label={route.label}
                             stroke={route.color}
+                            opacity={selected.size > 0 && !selected.has(route.code) ? 0.22 : 1}
                             className="cursor-pointer"
                             onPointerEnter={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
                             onPointerMove={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
@@ -103,6 +116,8 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                     ))}
                 </svg>
                 {active && activeTip ? <RouteTooltip route={active} x={activeTip.x} y={activeTip.y} /> : null}
+                </div>
+                <TramoShields tramos={tramos} selected={selected} onToggle={toggleSelected} />
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-foreground/80">{mode === 'pavimento' ? PAVEMENT_SOURCE_NOTE : CONCESSION_SOURCE_NOTE}</p>
                 <MethodologySection methodology={RUTAS_METHODOLOGY} />
@@ -124,6 +139,55 @@ function ModeButton({ active, onClick, children }: { active: boolean; onClick: (
     );
 }
 
+function TramoShields({ tramos, selected, onToggle }: { tramos: RutaTramo[]; selected: Set<string>; onToggle: (code: string) => void }) {
+    const dimOthers = selected.size > 0;
+    return (
+        <aside aria-label="Tramos" className="flex w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-64 lg:overflow-y-auto">
+            {tramos.map(tramo => (
+                <section key={tramo.id} className="border-b border-imperial-gold/30 pb-3">
+                    <h2 className="text-xs font-bold uppercase tracking-wide text-imperial-gold">{tramo.nombre}</h2>
+                    <p className="mb-2 text-[10px] leading-tight text-white/80">{tramo.concesionaria.trim() || 'Sin dato'}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                        {tramo.rutas.map(code => (
+                            <RouteShield key={code} code={code} pressed={selected.has(code)} dimmed={dimOthers && !selected.has(code)} onClick={() => onToggle(code)} />
+                        ))}
+                    </div>
+                </section>
+            ))}
+        </aside>
+    );
+}
+
+function RouteShield({ code, pressed, dimmed, onClick }: { code: string; pressed: boolean; dimmed: boolean; onClick: () => void }) {
+    const sign = routeSign(code);
+    const label = sign === 'provincial' ? `Ruta provincial ${code}` : `Ruta nacional ${code}`;
+    return (
+        <button type="button" aria-label={label} aria-pressed={pressed} onClick={onClick} className={`cursor-pointer border-0 bg-transparent p-0 ${dimmed ? 'opacity-40' : 'opacity-100'}`}>
+            <SignFace code={code} sign={sign} pressed={pressed} />
+        </button>
+    );
+}
+
+function SignFace({ code, sign, pressed }: { code: string; sign: 'nacional' | 'provincial'; pressed: boolean }) {
+    const stroke = pressed ? '#FFD700' : '#111827';
+    const strokeWidth = pressed ? 2.5 : 1.4;
+    const fontSize = code.length >= 4 ? 8 : code.length === 3 ? 11 : 14;
+    if (sign === 'provincial') {
+        return (
+            <svg data-sign="provincial" viewBox="0 0 48 48" className="h-11 w-11">
+                <circle cx="24" cy="24" r="20" fill="#FFFFFF" stroke={stroke} strokeWidth={strokeWidth} />
+                <text x="24" y="25" textAnchor="middle" dominantBaseline="middle" fill="#111827" fontSize={fontSize} fontWeight="700" fontFamily="Arial, Helvetica, sans-serif">{code}</text>
+            </svg>
+        );
+    }
+    return (
+        <svg data-sign="nacional" viewBox="0 0 48 54" className="h-12 w-10">
+            <path d="M7 4h34v24c0 8-8 16-17 22C15 44 7 36 7 28V4z" fill="#FFFFFF" stroke={stroke} strokeWidth={strokeWidth} />
+            <text x="24" y="24" textAnchor="middle" dominantBaseline="middle" fill="#111827" fontSize={fontSize} fontWeight="700" fontFamily="Arial, Helvetica, sans-serif">{code}</text>
+        </svg>
+    );
+}
+
 function tipAt(event: { clientX?: number; clientY?: number }, map: HTMLDivElement | null) {
     const rect = map?.getBoundingClientRect();
     const x = rect && event.clientX != null ? event.clientX - rect.left : 16;
@@ -138,19 +202,29 @@ function tipAt(event: { clientX?: number; clientY?: number }, map: HTMLDivElemen
     };
 }
 
-function RouteTooltip({ route, x, y }: { route: { label: string; kmLabel: string; concesionaria: string; statusLabel: string; tramo: string | null; color: string }; x: number; y: number }) {
+function RouteTooltip({ route, x, y }: { route: PaintedRoute; x: number; y: number }) {
+    const rows = route.assignments.length > 0 ? route.assignments : [{
+        tramo: route.tramo ?? 'Sin dato',
+        concesionaria: route.concesionaria,
+        statusLabel: route.statusLabel,
+        kmLabel: route.kmLabel,
+    }];
     return (
         <div
             role="status"
             aria-live="polite"
             className="pointer-events-none absolute z-10"
-            style={{ left: x, top: y, backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: '10px', color: '#FFF', maxWidth: 280, fontSize: '14px', lineHeight: 1.35, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}
+            style={{ left: x, top: y, backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: '10px', color: '#FFF', maxWidth: 300, maxHeight: '46vh', overflow: 'hidden', fontSize: '14px', lineHeight: 1.35, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}
         >
             <div style={{ color: '#FFD700', fontWeight: 'bold', marginBottom: '4px', WebkitTextStroke: TOOLTIP_OUTLINE, paintOrder: 'stroke fill' }}>{route.label}</div>
-            <TipRow color={route.color} name="Tramo" value={route.tramo ?? 'Sin dato'} />
-            <TipRow color={route.color} name="Concesionaria" value={route.concesionaria} />
-            <TipRow color={route.color} name="Estado" value={route.statusLabel} />
-            <TipRow color={route.color} name="Km" value={route.kmLabel} />
+            {rows.map((row, index) => (
+                <div key={`${row.tramo}-${index}`} style={index > 0 ? { marginTop: 6, paddingTop: 6, borderTop: '1px solid #666' } : undefined}>
+                    <TipRow color={route.color} name="Tramo" value={row.tramo} />
+                    <TipRow color={route.color} name="Concesionaria" value={row.concesionaria} />
+                    <TipRow color={route.color} name="Estado" value={row.statusLabel} />
+                    <TipRow color={route.color} name="Km" value={row.kmLabel} />
+                </div>
+            ))}
         </div>
     );
 }

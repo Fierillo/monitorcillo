@@ -56,7 +56,7 @@ export const RUTAS_METHODOLOGY = [
     },
     {
         title: 'Detalle',
-        description: 'Al pasar el cursor o tocar una ruta se muestran el número, los kilómetros, la concesionaria y el estado del modo activo. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
+        description: 'Al pasar el cursor o tocar una ruta se muestran el número y cada tramo que la incluye, con su concesionaria, kilómetros y estado. A la derecha, los escudos de cada tramo resaltan una o más rutas; sin ninguna elegida se ve la red completa. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
     },
 ];
 
@@ -99,6 +99,15 @@ export type RutasGeometry = {
     outline: number[][][];
 };
 
+export type RouteAssignment = {
+    tramo: string;
+    concesionaria: string;
+    kmLabel: string;
+    statusLabel: string;
+};
+
+export type RouteSign = 'nacional' | 'provincial';
+
 export type PaintedRoute = {
     code: string;
     label: string;
@@ -106,6 +115,7 @@ export type PaintedRoute = {
     kmLabel: string;
     concesionaria: string;
     tramo: string | null;
+    assignments: RouteAssignment[];
     status: ConcessionStage | PavementCondition | 'sin-dato';
     statusLabel: string;
     color: string;
@@ -160,16 +170,18 @@ export function parseRutasPayload(data: unknown): RutaTramo[] {
     return tramos;
 }
 
-export function paintRoutes(routes: RouteGeometry[], tramos: RutaTramo[], mode: ColorMode): PaintedRoute[] {
-    const byCode = new Map<string, RutaTramo>();
-    for (const tramo of tramos) {
-        for (const code of tramo.rutas) byCode.set(code, tramo);
-    }
+export function routeSign(code: string): RouteSign {
+    const cleaned = code.trim().toUpperCase().replace(/\s+/g, '');
+    return /^(?:RP|P)\d/.test(cleaned) ? 'provincial' : 'nacional';
+}
 
+export function paintRoutes(routes: RouteGeometry[], tramos: RutaTramo[], mode: ColorMode): PaintedRoute[] {
     return routes.map(route => {
-        const tramo = byCode.get(route.code) ?? null;
+        const matches = tramos.filter(tramo => tramo.rutas.includes(route.code));
+        const tramo = matches.at(-1) ?? null;
         const status = statusFor(tramo, mode);
         const km = tramo?.km ?? route.km;
+        const assignments = matches.map(match => assignmentFor(match, route.km, mode));
         return {
             code: route.code,
             label: route.label,
@@ -177,12 +189,28 @@ export function paintRoutes(routes: RouteGeometry[], tramos: RutaTramo[], mode: 
             kmLabel: km === null ? 'Sin dato' : `${KM_FORMAT.format(km)} km`,
             concesionaria: tramo?.concesionaria?.trim() || 'Sin dato',
             tramo: tramo?.nombre ?? null,
+            assignments,
             status,
-            statusLabel: mode === 'concesion' ? CONCESSION_LABELS[status as ConcessionStage | 'sin-dato'] : PAVEMENT_LABELS[status as PavementCondition],
+            statusLabel: labelFor(status, mode),
             color: mode === 'concesion' ? CONCESSION_COLORS[status as ConcessionStage | 'sin-dato'] : PAVEMENT_COLORS[status as PavementCondition],
             lines: route.lines,
         };
     });
+}
+
+function assignmentFor(tramo: RutaTramo, routeKm: number | null, mode: ColorMode): RouteAssignment {
+    const status = statusFor(tramo, mode);
+    const km = tramo.km ?? routeKm;
+    return {
+        tramo: tramo.nombre,
+        concesionaria: tramo.concesionaria?.trim() || 'Sin dato',
+        kmLabel: km === null ? 'Sin dato' : `${KM_FORMAT.format(km)} km`,
+        statusLabel: labelFor(status, mode),
+    };
+}
+
+function labelFor(status: ConcessionStage | PavementCondition | 'sin-dato', mode: ColorMode): string {
+    return mode === 'concesion' ? CONCESSION_LABELS[status as ConcessionStage | 'sin-dato'] : PAVEMENT_LABELS[status as PavementCondition];
 }
 
 const MAP_PADDING = 12;

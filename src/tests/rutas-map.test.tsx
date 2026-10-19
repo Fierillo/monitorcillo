@@ -121,3 +121,57 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
     expect(tooltip.textContent).toContain('Sin dato');
     expect(tooltip.textContent).not.toContain('Concesionado');
 });
+
+it('lists every company on a shared route and highlights shields like chart series', () => {
+    const shared: RutasGeometry = {
+        ...geometry,
+        routes: [
+            { code: '9', label: 'RN 9', km: 1975.46, lines: [[[-64, -31], [-62, -34]]] },
+            { code: '12', label: 'RN 12', km: 1641.76, lines: [[[-58, -27], [-57, -29]]] },
+            { code: 'P8', label: 'RP 8', km: 40, lines: [[[-60, -35], [-59, -36]]] },
+        ],
+    };
+    const rows: RutaTramo[] = [
+        { ...tramos[0], rutas: ['9', 'P8'] },
+        { ...tramos[0], id: 'cuyo', nombre: 'Cuyo', rutas: ['12'], concesionaria: 'Caminos del Aconcagua' },
+    ];
+    render(<RutasMap tramos={[...seedTramos(), ...rows]} geometry={shared} />);
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'RN 9' }));
+    const tooltip = screen.getByRole('status');
+    expect(tooltip.textContent).toContain('CREDITECH S.A. - PLANTEL S.A.');
+    expect(tooltip.textContent).toContain('CPC S.A.');
+    expect(tooltip.textContent).toContain('COVICEN S.A.');
+    expect(tooltip.textContent).toContain('AUTOVIA DEL NOA S.A.');
+    expect(tooltip.textContent).toContain('Corredores Viales');
+
+    const national = screen.getAllByRole('button', { name: 'Ruta nacional 9' })[0];
+    const provincial = screen.getByRole('button', { name: 'Ruta provincial P8' });
+    const route12 = screen.getAllByRole('button', { name: 'Ruta nacional 12' })[0];
+    expect(national.querySelector('svg')?.getAttribute('data-sign')).toBe('nacional');
+    expect(national.querySelector('path')).toBeTruthy();
+    expect(provincial.querySelector('svg')?.getAttribute('data-sign')).toBe('provincial');
+    expect(provincial.querySelector('circle')).toBeTruthy();
+
+    const map9 = screen.getByRole('button', { name: 'RN 9' });
+    const map12 = screen.getByRole('button', { name: 'RN 12' });
+    expect(map9.getAttribute('opacity')).toBe('1');
+    expect(map12.getAttribute('opacity')).toBe('1');
+
+    fireEvent.click(national);
+    expect(national.getAttribute('aria-pressed')).toBe('true');
+    expect(map9.getAttribute('opacity')).toBe('1');
+    expect(Number(map12.getAttribute('opacity'))).toBeLessThan(0.5);
+
+    fireEvent.click(route12);
+    expect(route12.getAttribute('aria-pressed')).toBe('true');
+    expect(map9.getAttribute('opacity')).toBe('1');
+    expect(map12.getAttribute('opacity')).toBe('1');
+
+    fireEvent.click(national);
+    fireEvent.click(route12);
+    expect(national.getAttribute('aria-pressed')).toBe('false');
+    expect(route12.getAttribute('aria-pressed')).toBe('false');
+    expect(map9.getAttribute('opacity')).toBe('1');
+    expect(map12.getAttribute('opacity')).toBe('1');
+});

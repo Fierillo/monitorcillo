@@ -10,6 +10,7 @@ import {
     parseRutasPayload,
     frameMapSize,
     projectMap,
+    routeSign,
     type RouteGeometry,
     type RutaTramo,
 } from '@/lib/rutas/status';
@@ -84,6 +85,7 @@ describe('route color modes', () => {
             km: 1641.76,
         });
         expect(route12?.kmLabel).toBe('1.641,76 km');
+        expect(route9?.assignments.map(item => item.concesionaria)).toEqual(['Primera', 'Corredores Viales']);
     });
 
     it('uses pavement ratings independently and keeps unmeasured segments gray', () => {
@@ -141,6 +143,16 @@ describe('manual tramo payload', () => {
             /ninguna ruta reconocible/,
         );
         expect(() => parseRutasPayload([{ nombre: '', rutas: '9', etapa: 'concesionado' }])).toThrow(/nombre/);
+    });
+});
+
+describe('route signs', () => {
+    it('uses the national shield for RN and accesos, and a circle for provincial routes', () => {
+        expect(routeSign('9')).toBe('nacional');
+        expect(routeSign('A15')).toBe('nacional');
+        expect(routeSign('1V66')).toBe('nacional');
+        expect(routeSign('P8')).toBe('provincial');
+        expect(routeSign('RP11')).toBe('provincial');
     });
 });
 
