@@ -122,7 +122,7 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
     expect(tooltip.textContent).not.toContain('Concesionado');
 });
 
-it('lists every company on a shared route and highlights shields like chart series', () => {
+it('shows constructoras when a tramo shield is chosen and tramos when a constructora is chosen', () => {
     const shared: RutasGeometry = {
         ...geometry,
         routes: [
@@ -135,43 +135,58 @@ it('lists every company on a shared route and highlights shields like chart seri
         { ...tramos[0], rutas: ['9', 'P8'] },
         { ...tramos[0], id: 'cuyo', nombre: 'Cuyo', rutas: ['12'], concesionaria: 'Caminos del Aconcagua' },
     ];
-    render(<RutasMap tramos={[...seedTramos(), ...rows]} geometry={shared} />);
+    render(<RutasMap tramos={rows} geometry={shared} />);
 
-    fireEvent.pointerEnter(screen.getByRole('button', { name: 'RN 9' }));
-    const tooltip = screen.getByRole('status');
-    expect(tooltip.textContent).toContain('CREDITECH S.A. - PLANTEL S.A.');
-    expect(tooltip.textContent).toContain('CPC S.A.');
-    expect(tooltip.textContent).toContain('COVICEN S.A.');
-    expect(tooltip.textContent).toContain('AUTOVIA DEL NOA S.A.');
-    expect(tooltip.textContent).toContain('Corredores Viales');
-
-    const national = screen.getAllByRole('button', { name: 'Ruta nacional 9' })[0];
-    const provincial = screen.getByRole('button', { name: 'Ruta provincial P8' });
-    const route12 = screen.getAllByRole('button', { name: 'Ruta nacional 12' })[0];
-    expect(national.querySelector('svg')?.getAttribute('data-sign')).toBe('nacional');
-    expect(national.querySelector('path')).toBeTruthy();
-    expect(provincial.querySelector('svg')?.getAttribute('data-sign')).toBe('provincial');
-    expect(provincial.querySelector('circle')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Filtrar por' }).textContent).toContain('Filtrar por');
+    const oriental = screen.getByRole('button', { name: 'Tramo Oriental' });
+    const cuyo = screen.getByRole('button', { name: 'Cuyo' });
+    expect(oriental.querySelector('[data-sign="nacional"] path')).toBeTruthy();
+    expect(oriental.querySelector('[data-sign="provincial"] circle')).toBeTruthy();
+    expect(screen.queryByText('Corredores Viales')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Constructora Corredores Viales' })).toBeNull();
 
     const map9 = screen.getByRole('button', { name: 'RN 9' });
     const map12 = screen.getByRole('button', { name: 'RN 12' });
-    expect(map9.getAttribute('opacity')).toBe('1');
-    expect(map12.getAttribute('opacity')).toBe('1');
-
-    fireEvent.click(national);
-    expect(national.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(oriental);
+    expect(oriental.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Corredores Viales')).toBeTruthy();
+    expect(screen.queryByText('Caminos del Aconcagua')).toBeNull();
     expect(map9.getAttribute('opacity')).toBe('1');
     expect(Number(map12.getAttribute('opacity'))).toBeLessThan(0.5);
 
-    fireEvent.click(route12);
-    expect(route12.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(cuyo);
+    expect(cuyo.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Caminos del Aconcagua')).toBeTruthy();
     expect(map9.getAttribute('opacity')).toBe('1');
     expect(map12.getAttribute('opacity')).toBe('1');
 
-    fireEvent.click(national);
-    fireEvent.click(route12);
-    expect(national.getAttribute('aria-pressed')).toBe('false');
-    expect(route12.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(oriental);
+    fireEvent.click(cuyo);
+    expect(oriental.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.queryByText('Corredores Viales')).toBeNull();
+    expect(map9.getAttribute('opacity')).toBe('1');
+    expect(map12.getAttribute('opacity')).toBe('1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Constructoras' }));
+    expect(screen.queryByRole('button', { name: 'Tramo Oriental' })).toBeNull();
+    const corredores = screen.getByRole('button', { name: 'Constructora Corredores Viales' });
+    const caminos = screen.getByRole('button', { name: 'Constructora Caminos del Aconcagua' });
+    expect(screen.queryByText('Tramo Oriental')).toBeNull();
+
+    fireEvent.click(corredores);
+    expect(corredores.getAttribute('aria-pressed')).toBe('true');
+    const orientalName = screen.getByText('Tramo Oriental');
+    expect(orientalName.parentElement?.querySelector('[data-sign="nacional"]')).toBeTruthy();
+    expect(map9.getAttribute('opacity')).toBe('1');
+    expect(Number(map12.getAttribute('opacity'))).toBeLessThan(0.5);
+
+    fireEvent.click(caminos);
+    expect(screen.getByText('Cuyo')).toBeTruthy();
+    expect(map12.getAttribute('opacity')).toBe('1');
+
+    fireEvent.click(corredores);
+    fireEvent.click(caminos);
+    expect(screen.queryByText('Tramo Oriental')).toBeNull();
     expect(map9.getAttribute('opacity')).toBe('1');
     expect(map12.getAttribute('opacity')).toBe('1');
 });

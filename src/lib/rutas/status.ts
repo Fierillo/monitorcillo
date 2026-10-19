@@ -56,7 +56,7 @@ export const RUTAS_METHODOLOGY = [
     },
     {
         title: 'Detalle',
-        description: 'Al pasar el cursor o tocar una ruta se muestran el número y cada tramo que la incluye, con su concesionaria, kilómetros y estado. A la derecha, los escudos de cada tramo resaltan una o más rutas; sin ninguna elegida se ve la red completa. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
+        description: 'Al pasar el cursor o tocar una ruta se muestran el número y cada tramo que la incluye, con su concesionaria, kilómetros y estado. A la derecha se elige ver tramos o constructoras. En tramos, la lista son los escudos y al elegir uno se ve su constructora. En constructoras es al revés: la lista son las empresas y al elegir una se ven sus tramos. Sin ninguna elegida se ve la red completa. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
     },
 ];
 

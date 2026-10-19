@@ -25,6 +25,8 @@ import {
 
 const STORED_GEOMETRY = geometryAsset as RutasGeometry;
 const CONCESSION_LEGEND = ['concesionado', 'en-licitacion', 'sin-concesionar', 'sin-dato'] as const;
+type ShieldFilter = 'tramos' | 'constructoras';
+
 const TOOLTIP_BACKGROUND = 'rgba(0, 20, 63, 0.4)';
 const TOOLTIP_BLUR = 'blur(2px)';
 const TOOLTIP_OUTLINE = '3px rgba(0, 0, 0, 0.85)';
@@ -37,14 +39,20 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
     const [mode, setMode] = useState<ColorMode>('concesion');
     const [hover, setHover] = useState<PointerTip | null>(null);
     const [pinned, setPinned] = useState<PointerTip | null>(null);
+    const [filterBy, setFilterBy] = useState<ShieldFilter>('tramos');
     const [selected, setSelected] = useState<Set<string>>(new Set());
-    const toggleSelected = (code: string) => {
+    const highlighted = highlightedRouteCodes(tramos, filterBy, selected);
+    const toggleSelected = (id: string) => {
         setSelected(current => {
             const next = new Set(current);
-            if (next.has(code)) next.delete(code);
-            else next.add(code);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
             return next;
         });
+    };
+    const changeFilter = (next: ShieldFilter) => {
+        setFilterBy(next);
+        setSelected(new Set());
     };
     const painted = paintRoutes(geometry.routes, tramos, mode);
     const canvas = frameMapSize(geometry.outline, painted, 1000);
@@ -97,7 +105,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                             tabIndex={0}
                             aria-label={route.label}
                             stroke={route.color}
-                            opacity={selected.size > 0 && !selected.has(route.code) ? 0.22 : 1}
+                            opacity={highlighted && !highlighted.has(route.code) ? 0.22 : 1}
                             className="cursor-pointer"
                             onPointerEnter={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
                             onPointerMove={(event) => setHover({ code: route.code, ...tipAt(event, mapRef.current) })}
@@ -117,7 +125,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                 </svg>
                 {active && activeTip ? <RouteTooltip route={active} x={activeTip.x} y={activeTip.y} /> : null}
                 </div>
-                <TramoShields tramos={tramos} selected={selected} onToggle={toggleSelected} />
+                <TramoShields tramos={tramos} filterBy={filterBy} selected={selected} onFilter={changeFilter} onToggle={toggleSelected} />
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-foreground/80">{mode === 'pavimento' ? PAVEMENT_SOURCE_NOTE : CONCESSION_SOURCE_NOTE}</p>
                 <MethodologySection methodology={RUTAS_METHODOLOGY} />
@@ -139,32 +147,72 @@ function ModeButton({ active, onClick, children }: { active: boolean; onClick: (
     );
 }
 
-function TramoShields({ tramos, selected, onToggle }: { tramos: RutaTramo[]; selected: Set<string>; onToggle: (code: string) => void }) {
-    const dimOthers = selected.size > 0;
-    return (
-        <aside aria-label="Tramos" className="flex w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-64 lg:overflow-y-auto">
-            {tramos.map(tramo => (
-                <section key={tramo.id} className="border-b border-imperial-gold/30 pb-3">
-                    <h2 className="text-xs font-bold uppercase tracking-wide text-imperial-gold">{tramo.nombre}</h2>
-                    <p className="mb-2 text-[10px] leading-tight text-white/80">{tramo.concesionaria.trim() || 'Sin dato'}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                        {tramo.rutas.map(code => (
-                            <RouteShield key={code} code={code} pressed={selected.has(code)} dimmed={dimOthers && !selected.has(code)} onClick={() => onToggle(code)} />
-                        ))}
-                    </div>
-                </section>
-            ))}
-        </aside>
-    );
+function highlightedRouteCodes(tramos: RutaTramo[], filterBy: ShieldFilter, selected: Set<string>): Set<string> | null {
+    if (selected.size === 0) return null;
+    const codes = new Set<string>();
+    for (const tramo of tramos) {
+        const key = filterBy === 'tramos' ? tramo.id : companyName(tramo);
+        if (!selected.has(key)) continue;
+        for (const code of tramo.rutas) codes.add(code);
+    }
+    return codes;
 }
 
-function RouteShield({ code, pressed, dimmed, onClick }: { code: string; pressed: boolean; dimmed: boolean; onClick: () => void }) {
-    const sign = routeSign(code);
-    const label = sign === 'provincial' ? `Ruta provincial ${code}` : `Ruta nacional ${code}`;
+function companyName(tramo: RutaTramo): string {
+    return tramo.concesionaria.trim() || 'Sin dato';
+}
+
+function companiesOf(tramos: RutaTramo[]): { name: string; tramos: RutaTramo[] }[] {
+    const groups = new Map<string, RutaTramo[]>();
+    for (const tramo of tramos) {
+        const name = companyName(tramo);
+        const current = groups.get(name) ?? [];
+        current.push(tramo);
+        groups.set(name, current);
+    }
+    return [...groups.entries()].map(([name, rows]) => ({ name, tramos: rows }));
+}
+
+function TramoShields({ tramos, filterBy, selected, onFilter, onToggle }: { tramos: RutaTramo[]; filterBy: ShieldFilter; selected: Set<string>; onFilter: (next: ShieldFilter) => void; onToggle: (id: string) => void }) {
+    const dimOthers = selected.size > 0;
     return (
-        <button type="button" aria-label={label} aria-pressed={pressed} onClick={onClick} className={`cursor-pointer border-0 bg-transparent p-0 ${dimmed ? 'opacity-40' : 'opacity-100'}`}>
-            <SignFace code={code} sign={sign} pressed={pressed} />
-        </button>
+        <aside aria-label="Tramos" className="flex w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-72 lg:overflow-y-auto">
+            <div role="group" aria-label="Filtrar por" className="flex flex-col gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-imperial-gold">Filtrar por</p>
+                <div className="flex gap-2">
+                    <ModeButton active={filterBy === 'tramos'} onClick={() => onFilter('tramos')}>Tramos</ModeButton>
+                    <ModeButton active={filterBy === 'constructoras'} onClick={() => onFilter('constructoras')}>Constructoras</ModeButton>
+                </div>
+            </div>
+            {filterBy === 'tramos' ? tramos.map(tramo => {
+                const pressed = selected.has(tramo.id);
+                return (
+                    <div key={tramo.id} className={`border-b border-imperial-gold/30 pb-3 ${dimOthers && !pressed ? 'opacity-40' : 'opacity-100'}`}>
+                        <button type="button" aria-label={tramo.nombre} aria-pressed={pressed} onClick={() => onToggle(tramo.id)} className="flex cursor-pointer flex-wrap gap-1 border-0 bg-transparent p-0">
+                            {tramo.rutas.map(code => <SignFace key={code} code={code} sign={routeSign(code)} pressed={pressed} />)}
+                        </button>
+                        {pressed ? <p className="mt-1 text-[11px] leading-tight text-white">{companyName(tramo)}</p> : null}
+                    </div>
+                );
+            }) : companiesOf(tramos).map(company => {
+                const pressed = selected.has(company.name);
+                return (
+                    <div key={company.name} className={`border-b border-imperial-gold/30 pb-3 ${dimOthers && !pressed ? 'opacity-40' : 'opacity-100'}`}>
+                        <button type="button" aria-label={`Constructora ${company.name}`} aria-pressed={pressed} onClick={() => onToggle(company.name)} className={`cursor-pointer border-0 bg-transparent p-0 text-left text-xs font-bold text-white ${pressed ? 'text-imperial-gold' : ''}`}>
+                            {company.name}
+                        </button>
+                        {pressed ? company.tramos.map(tramo => (
+                            <div key={tramo.id} className="mt-2">
+                                <p className="text-[11px] font-bold uppercase text-imperial-gold">{tramo.nombre}</p>
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                    {tramo.rutas.map(code => <SignFace key={code} code={code} sign={routeSign(code)} pressed />)}
+                                </div>
+                            </div>
+                        )) : null}
+                    </div>
+                );
+            })}
+        </aside>
     );
 }
 
