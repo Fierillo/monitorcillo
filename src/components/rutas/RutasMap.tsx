@@ -76,21 +76,9 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
 
             <div data-testid="rutas-map" className="w-full sm:w-[96%] max-w-[1320px] border-2 border-imperial-gold bg-imperial-blue p-3 sm:p-5">
                 <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <div role="group" aria-label="Modo de color" className="flex gap-2">
-                            <ModeButton active={mode === 'concesion'} onClick={() => setMode('concesion')}>Concesión</ModeButton>
-                            <ModeButton active={mode === 'pavimento'} onClick={() => setMode('pavimento')}>Pavimento</ModeButton>
-                        </div>
-                        <select
-                            aria-label="Filtrar por"
-                            value={filterBy}
-                            onChange={(event) => changeFilter(event.target.value as ShieldFilter)}
-                            className="border border-imperial-gold bg-imperial-blue px-2 py-1 text-xs font-bold uppercase text-imperial-gold"
-                        >
-                            <option value="ninguno">Ninguno</option>
-                            <option value="ruta">Ruta</option>
-                            <option value="constructora">Constructora</option>
-                        </select>
+                    <div role="group" aria-label="Modo de color" className="flex gap-2">
+                        <ModeButton active={mode === 'concesion'} onClick={() => setMode('concesion')}>Concesión</ModeButton>
+                        <ModeButton active={mode === 'pavimento'} onClick={() => setMode('pavimento')}>Pavimento</ModeButton>
                     </div>
                     <ul aria-label="Referencias" className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-white">
                         {legend.map(item => (
@@ -147,7 +135,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                 </svg>
                 {active && activeTip ? <RouteTooltip route={active} x={activeTip.x} y={activeTip.y} /> : null}
                 </div>
-                {filterBy === 'ninguno' ? null : <RouteBars tramos={tramos} routes={projected.routes} filterBy={filterBy} selected={selected} onToggle={toggleSelected} />}
+                <RouteBars tramos={tramos} routes={projected.routes} filterBy={filterBy} selected={selected} onFilter={changeFilter} onToggle={toggleSelected} />
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-foreground/80">{mode === 'pavimento' ? PAVEMENT_SOURCE_NOTE : CONCESSION_SOURCE_NOTE}</p>
                 <MethodologySection methodology={RUTAS_METHODOLOGY} />
@@ -200,19 +188,33 @@ function uniqueCompanies(companies: { name: string; color: string }[]): LegendIt
     return items;
 }
 
-function RouteBars({ tramos, routes, filterBy, selected, onToggle }: { tramos: RutaTramo[]; routes: MapRoute[]; filterBy: Exclude<ShieldFilter, 'ninguno'>; selected: Set<string>; onToggle: (id: string) => void }) {
+function RouteBars({ tramos, routes, filterBy, selected, onFilter, onToggle }: { tramos: RutaTramo[]; routes: MapRoute[]; filterBy: ShieldFilter; selected: Set<string>; onFilter: (filter: ShieldFilter) => void; onToggle: (id: string) => void }) {
     const dimOthers = selected.size > 0;
     const companies = companiesOf(tramos, routes);
     return (
-        <aside aria-label="Rutas" className="flex w-full shrink-0 flex-col gap-1 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-40 lg:overflow-y-auto">
+        <aside aria-label="Rutas" className="flex w-full shrink-0 flex-col gap-1.5 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-52 lg:overflow-y-auto">
+            <label className="flex flex-col gap-1 text-[11px] font-bold uppercase tracking-wide text-imperial-gold">
+                Filtrar por
+                <select
+                    aria-label="Filtrar por"
+                    value={filterBy}
+                    onChange={(event) => onFilter(event.target.value as ShieldFilter)}
+                    className="w-full border border-imperial-gold bg-imperial-blue px-2 py-1.5 text-xs font-bold uppercase text-imperial-gold"
+                >
+                    <option value="ninguno">Ninguno</option>
+                    <option value="ruta">Ruta</option>
+                    <option value="constructora">Constructora</option>
+                </select>
+            </label>
             {filterBy === 'ruta' ? routeCodes(tramos).map(code => {
                 const pressed = selected.has(code);
                 return (
-                    <GoldBar key={code} label={`Escudo RN ${code}`} pressed={pressed} dimmed={dimOthers && !pressed} onClick={() => onToggle(code)}>
-                        <SignFace code={code} sign={routeSign(code)} compact />
+                    <GoldBar key={code} label={`Escudo RN ${code}`} pressed={pressed} dimmed={dimOthers && !pressed} tall onClick={() => onToggle(code)}>
+                        <SignFace code={code} sign={routeSign(code)} />
                     </GoldBar>
                 );
-            }) : companies.map(company => {
+            }) : null}
+            {filterBy === 'constructora' ? companies.map(company => {
                 const pressed = selected.has(company.name);
                 return (
                     <GoldBar key={company.name} label={`Constructora ${company.name}`} pressed={pressed} dimmed={dimOthers && !pressed} onClick={() => onToggle(company.name)}>
@@ -220,19 +222,19 @@ function RouteBars({ tramos, routes, filterBy, selected, onToggle }: { tramos: R
                         <span className="truncate" title={company.name}>{company.name}</span>
                     </GoldBar>
                 );
-            })}
+            }) : null}
         </aside>
     );
 }
 
-function GoldBar({ label, pressed, dimmed, onClick, children }: { label: string; pressed: boolean; dimmed: boolean; onClick: () => void; children: ReactNode }) {
+function GoldBar({ label, pressed, dimmed, tall = false, onClick, children }: { label: string; pressed: boolean; dimmed: boolean; tall?: boolean; onClick: () => void; children: ReactNode }) {
     return (
         <button
             type="button"
             aria-label={label}
             aria-pressed={pressed}
             onClick={onClick}
-            className={`flex h-7 w-full items-center gap-1.5 border px-1.5 text-left text-[11px] font-bold uppercase tracking-wide ${pressed ? 'border-imperial-gold bg-imperial-gold text-imperial-blue' : 'border-imperial-gold/80 text-imperial-gold'} ${dimmed ? 'opacity-40' : 'opacity-100'}`}
+            className={`flex w-full items-center gap-1.5 border px-1.5 text-left text-[11px] font-bold uppercase tracking-wide ${tall ? 'py-1.5' : 'h-8'} ${pressed ? 'border-imperial-gold bg-imperial-gold text-imperial-blue' : 'border-imperial-gold/80 text-imperial-gold'} ${dimmed ? 'opacity-40' : 'opacity-100'}`}
         >
             {children}
         </button>
@@ -287,18 +289,18 @@ function colorOf(name: string, routes: { segments: { concesionaria: string; colo
     return '#94A3B8';
 }
 
-function SignFace({ code, sign, compact = false }: { code: string; sign: 'nacional' | 'provincial'; compact?: boolean }) {
+function SignFace({ code, sign }: { code: string; sign: 'nacional' | 'provincial' }) {
     const fontSize = code.length >= 4 ? 8 : code.length === 3 ? 11 : 14;
     if (sign === 'provincial') {
         return (
-            <svg data-sign="provincial" viewBox="0 0 48 48" className={compact ? 'h-5 w-5 shrink-0' : 'h-11 w-11'}>
+            <svg data-sign="provincial" viewBox="0 0 48 48" className="h-16 w-16 shrink-0">
                 <circle cx="24" cy="24" r="20" fill="#FFFFFF" stroke="#111827" strokeWidth={1.4} />
                 <text x="24" y="25" textAnchor="middle" dominantBaseline="middle" fill="#111827" fontSize={fontSize} fontWeight="700" fontFamily="Arial, Helvetica, sans-serif">{code}</text>
             </svg>
         );
     }
     return (
-        <svg data-sign="nacional" viewBox="0 0 48 54" className={compact ? 'h-5 w-4 shrink-0' : 'h-12 w-10'}>
+        <svg data-sign="nacional" viewBox="0 0 48 54" className="h-16 w-14 shrink-0">
             <path d="M7 4h34v24c0 8-8 16-17 22C15 44 7 36 7 28V4z" fill="#FFFFFF" stroke="#111827" strokeWidth={1.4} />
             <text x="24" y="24" textAnchor="middle" dominantBaseline="middle" fill="#111827" fontSize={fontSize} fontWeight="700" fontFamily="Arial, Helvetica, sans-serif">{code}</text>
         </svg>

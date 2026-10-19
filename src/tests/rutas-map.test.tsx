@@ -137,6 +137,8 @@ it('lists one shield per route and colors only the stretch each company operates
     render(<RutasMap tramos={rows} geometry={shared} />);
 
     const filter = screen.getByRole('combobox', { name: 'Filtrar por' }) as HTMLSelectElement;
+    expect(screen.getByRole('complementary', { name: 'Rutas' }).contains(filter)).toBe(true);
+    expect(screen.getByRole('group', { name: 'Modo de color' }).contains(filter)).toBe(false);
     expect(filter.value).toBe('ninguno');
     expect(screen.queryByRole('button', { name: 'Escudo RN 9' })).toBeNull();
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('Concesionado');
@@ -149,7 +151,7 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).not.toContain('Concesionado');
     const shield9 = screen.getByRole('button', { name: 'Escudo RN 9' });
     const shield12 = screen.getByRole('button', { name: 'Escudo RN 12' });
-    expect(shield9.className).toContain('h-7');
+    expect(shield9.querySelector('[data-sign="nacional"]')?.getAttribute('class')).toContain('h-16');
     expect(shield9.querySelector('[data-sign="nacional"] path')).toBeTruthy();
     expect(screen.queryByText('CREDITECH S.A. - PLANTEL S.A.')).toBeNull();
 
@@ -175,7 +177,7 @@ it('lists one shield per route and colors only the stretch each company operates
     fireEvent.change(filter, { target: { value: 'constructora' } });
     expect(screen.queryByRole('button', { name: 'Escudo RN 9' })).toBeNull();
     const creditechButton = screen.getByRole('button', { name: 'Constructora CREDITECH S.A. - PLANTEL S.A.' });
-    expect(creditechButton.className).toContain('h-7');
+    expect(creditechButton.className).toContain('h-8');
     expect(creditechButton.querySelector('[data-company-color]')?.getAttribute('data-company-color')).toBe(creditechColor);
     expect(screen.queryByText('RN 9')).toBeNull();
 
