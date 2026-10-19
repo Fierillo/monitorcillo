@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
 import RutasMap from '../components/rutas/RutasMap';
 import type { RutaTramo, RutasGeometry } from '@/lib/rutas/status';
+import { seedTramos } from '@/lib/rutas/seed';
 
 afterEach(cleanup);
 
@@ -66,4 +67,41 @@ it('switches color mode and shows route, km, concessionaire and status on hover 
     fireEvent.click(screen.getByRole('button', { name: /Fuentes y metodología/ }));
     expect(document.body.textContent).toContain('https://datos.transporte.gob.ar/dataset/rutas-nacionales');
     expect(document.body.textContent).toContain('https://sigvial.vialidad.gob.ar/geoserver/dnv/ows');
+});
+
+it('shows a visible tooltip for a seed route and for a route without a tramo', () => {
+    const seeded: RutasGeometry = {
+        ...geometry,
+        routes: [
+            { code: '5', label: 'RN 5', km: 606.65, lines: [[[-65, -36], [-63, -37]]] },
+            { code: '40', label: 'RN 40', km: 5080.16, lines: [[[-68, -30], [-67, -40]]] },
+        ],
+    };
+    render(<RutasMap tramos={seedTramos()} geometry={seeded} />);
+
+    const frame = screen.getByTestId('rutas-map');
+    const route5 = screen.getByRole('button', { name: 'RN 5' });
+    const hit = route5.querySelector('path');
+    expect(hit?.getAttribute('pointer-events')).toBe('stroke');
+    expect(Number(hit?.getAttribute('stroke-width'))).toBeGreaterThanOrEqual(16);
+    expect(hit?.getAttribute('stroke')).toBe('transparent');
+
+    fireEvent.pointerEnter(route5);
+    const tooltip = screen.getByRole('status');
+    expect(frame.contains(tooltip)).toBe(true);
+    expect(tooltip.className).toMatch(/fixed/);
+    expect(tooltip.textContent).toContain('RN 5');
+    expect(tooltip.textContent).toContain('Pampa');
+    expect(tooltip.textContent).toContain('CORREDOR VIAL 5 S.A.U.');
+    expect(tooltip.textContent).toContain('Concesionado');
+    expect(tooltip.textContent).toContain('546,65 km');
+
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'RN 40' }));
+    expect(tooltip.textContent).toContain('RN 40');
+    expect(tooltip.textContent).toContain('Sin dato');
+    expect(tooltip.textContent).toContain('5.080,16 km');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pavimento' }));
+    expect(tooltip.textContent).toContain('Sin dato');
+    expect(tooltip.textContent).not.toContain('Concesionado');
 });

@@ -47,7 +47,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                 </div>
             </header>
 
-            <div className="w-full sm:w-[96%] max-w-[1100px] border-2 border-imperial-gold bg-imperial-blue p-3 sm:p-5">
+            <div data-testid="rutas-map" className="w-full sm:w-[96%] max-w-[1100px] border-2 border-imperial-gold bg-imperial-blue p-3 sm:p-5">
                 <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div role="group" aria-label="Modo de color" className="flex gap-2">
                         <ModeButton active={mode === 'concesion'} onClick={() => setMode('concesion')}>Concesión</ModeButton>
@@ -85,14 +85,14 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                                 setPinned(route.code);
                             }}
                         >
-                            <path d={route.paths.join('')} stroke="transparent" strokeWidth={18} fill="none" />
-                            <path d={route.paths.join('')} strokeWidth={3.2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d={route.paths.join('')} stroke="transparent" strokeWidth={28} fill="none" pointerEvents="stroke" />
+                            <path d={route.paths.join('')} strokeWidth={3.2} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
                         </g>
                     ))}
                 </svg>
                 </div>
 
-                <div role="status" aria-live="polite" className="mt-3 min-h-16 border border-imperial-gold/40 px-3 py-2 text-sm text-white">
+                <div role="status" aria-live="polite" className="pointer-events-none fixed bottom-4 left-1/2 z-30 min-h-16 w-[min(42rem,calc(100%-1.5rem))] -translate-x-1/2 border border-imperial-gold/40 bg-imperial-blue px-3 py-2 text-sm text-white shadow-lg">
                     {active ? <RouteDetail route={active} /> : <p>Pasá el cursor o tocá una ruta para ver el número, los kilómetros, la concesionaria y el estado.</p>}
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-foreground/80">{mode === 'pavimento' ? PAVEMENT_SOURCE_NOTE : CONCESSION_SOURCE_NOTE}</p>
@@ -122,7 +122,7 @@ function RouteDetail({ route }: { route: { label: string; kmLabel: string; conce
             <div><dt className="text-[10px] uppercase text-imperial-gold">Km</dt><dd>{route.kmLabel}</dd></div>
             <div><dt className="text-[10px] uppercase text-imperial-gold">Concesionaria</dt><dd>{route.concesionaria}</dd></div>
             <div><dt className="text-[10px] uppercase text-imperial-gold">Estado</dt><dd>{route.statusLabel}</dd></div>
-            {route.tramo ? <div className="col-span-2 sm:col-span-4"><dt className="text-[10px] uppercase text-imperial-gold">Tramo</dt><dd>{route.tramo}</dd></div> : null}
+            <div className="col-span-2 sm:col-span-4"><dt className="text-[10px] uppercase text-imperial-gold">Tramo</dt><dd>{route.tramo ?? 'Sin dato'}</dd></div>
         </dl>
     );
 }
