@@ -99,6 +99,11 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
     expect(casing?.getAttribute('stroke')).toBe('#020617');
     expect(Number(casing?.getAttribute('stroke-width'))).toBeGreaterThan(Number(visible?.getAttribute('stroke-width')));
     expect(visible?.getAttribute('pointer-events')).toBe('none');
+    const route40 = screen.getByRole('button', { name: 'RN 40' });
+    const [, casing40, visible40] = route40.querySelectorAll('path');
+    expect(visible?.getAttribute('stroke-width')).toBe('1.5');
+    expect(visible40?.getAttribute('stroke-width')).toBe(visible?.getAttribute('stroke-width'));
+    expect(casing?.getAttribute('stroke-width')).toBe(casing40?.getAttribute('stroke-width'));
 
     fireEvent.pointerEnter(route5);
     const tooltip = screen.getByRole('status');
@@ -146,7 +151,7 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('Concesionado');
     const map9 = screen.getByRole('button', { name: 'RN 9' });
     const map12 = screen.getByRole('button', { name: 'RN 12' });
-    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke-width="3.2"]')?.getAttribute('stroke')).toBe('#4ADE80');
+    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke')).toBe('#4ADE80');
     expect(Number(map9.querySelector('[data-company="Sin dato"]')?.getAttribute('opacity'))).toBeLessThan(0.5);
 
     fireEvent.change(filter, { target: { value: 'ruta' } });
@@ -163,8 +168,8 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(creditechColor).toBeTruthy();
     expect(cpcColor).toBeTruthy();
     expect(creditechColor).not.toBe(cpcColor);
-    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke-width="3.2"]')?.getAttribute('stroke')).toBe(creditechColor);
-    expect(map9.querySelector('[data-company="CPC S.A."] path[stroke-width="3.2"]')?.getAttribute('stroke')).toBe(cpcColor);
+    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke')).toBe(creditechColor);
+    expect(map9.querySelector('[data-company="CPC S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke')).toBe(cpcColor);
     expect(map9.getAttribute('opacity')).toBe('1');
     expect(Number(map12.getAttribute('opacity'))).toBeLessThan(0.5);
 

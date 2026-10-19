@@ -26,6 +26,8 @@ import {
 const STORED_GEOMETRY = geometryAsset as RutasGeometry;
 const CONCESSION_LEGEND = ['concesionado', 'en-licitacion', 'sin-concesionar', 'sin-dato'] as const;
 const SIN_DATO_OPACITY = 0.2;
+const ROUTE_CASING_WIDTH = 3;
+const ROUTE_STROKE_WIDTH = 1.5;
 type ShieldFilter = 'ninguno' | 'ruta' | 'constructora';
 
 const TOOLTIP_BACKGROUND = 'rgba(0, 20, 63, 0.4)';
@@ -124,8 +126,8 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                                 const stroke = filterBy === 'ninguno' && !missing ? route.color : segment.color;
                                 return (
                                     <g key={`${route.code}-${segment.tramoId ?? 'sin-dato'}-${index}`} data-company={segment.concesionaria} opacity={companyDimmed ? 0.12 : missing ? SIN_DATO_OPACITY : 1}>
-                                        <path d={segment.paths.join('')} stroke={ROUTE_GAP} strokeWidth={missing ? 3 : 7} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
-                                        <path d={segment.paths.join('')} stroke={stroke} strokeWidth={missing ? 1.5 : 3.2} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+                                        <path d={segment.paths.join('')} stroke={ROUTE_GAP} strokeWidth={ROUTE_CASING_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+                                        <path d={segment.paths.join('')} stroke={stroke} strokeWidth={ROUTE_STROKE_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
                                     </g>
                                 );
                             })}
