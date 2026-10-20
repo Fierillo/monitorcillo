@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import geometry from '@/lib/rutas/geometry.json';
-import { COMPANY_PALETTE, ROUTE_SECTORS, companyColors, sliceRouteByKm } from '@/lib/rutas/sectors';
+import { COMPANY_PALETTE, companyColors, sectorsForTramo, sliceRouteByKm } from '@/lib/rutas/sectors';
 import { paintRoutes } from '@/lib/rutas/status';
-import { RUTAS_SEED, seedTramos } from '@/lib/rutas/seed';
+import { RUTAS_SECTORES as ROUTE_SECTORS, RUTAS_SEED, seedTramos } from './fixtures/rutas';
 
 const AUTOPISTAS_SIN_TRAZA = 30.39 + 13.86 + 6.05;
 
@@ -63,3 +63,9 @@ function meanLat(lines: number[][][]): number {
     const points = lines.flat();
     return points.reduce((sum, point) => sum + point[1], 0) / points.length;
 }
+
+it('sectorsForTramo uses only the tramo own stored sectors, none when missing', () => {
+    const own = [{ ruta: '9', desdeKm: 0, hastaKm: 10 }, { ruta: '5', desdeKm: 0, hastaKm: 3 }];
+    expect(sectorsForTramo('9', own)).toEqual([own[0]]);
+    expect(sectorsForTramo('9')).toEqual([]);
+});

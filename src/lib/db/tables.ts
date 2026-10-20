@@ -1,4 +1,4 @@
-import type { DbValue, IndicatorType } from '@/types';
+import type { DbRow, DbValue, IndicatorType } from '@/types';
 
 const TABLES: Record<IndicatorType, { raw: string; normalized: string }> = {
     emision: { raw: 'emision_raw', normalized: 'emision_normalized' },
@@ -47,4 +47,14 @@ export function isMissingTableError(error: unknown): boolean {
 
 export function isMissingColumnError(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'code' in error && error.code === '42703';
+}
+
+/** Rows of a SELECT, or none when its table was never created (the import scripts create it). */
+export async function rowsOrEmpty(query: Promise<unknown>): Promise<DbRow[]> {
+    try {
+        return await query as DbRow[];
+    } catch (error) {
+        if (!isMissingTableError(error)) throw error;
+        return [];
+    }
 }

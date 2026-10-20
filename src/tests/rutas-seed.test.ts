@@ -1,22 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import geometry from '@/lib/rutas/geometry.json';
 import { CONCESSION_COLORS, CONCESSION_STAGES, PAVEMENT_CONDITIONS, RUTAS_METHODOLOGY, paintRoutes } from '@/lib/rutas/status';
-import { RUTAS_SEED, seedTramos } from '@/lib/rutas/seed';
+import { RUTAS_SEED, seedTramos } from './fixtures/rutas';
 
 const geometryCodes = new Set(geometry.routes.map(route => route.code));
 
-describe('official route concession seed', () => {
+describe('official route concession import data', () => {
     it('keeps unique ids, valid stages and routes that exist in the geometry', () => {
         const ids = RUTAS_SEED.map(tramo => tramo.id);
         expect(new Set(ids).size).toBe(ids.length);
-        expect(ids).toHaveLength(16);
         for (const tramo of RUTAS_SEED) {
             expect(CONCESSION_STAGES).toContain(tramo.etapa);
-            expect(tramo.pavimento).toBe('sin-dato');
             expect(PAVEMENT_CONDITIONS).toContain(tramo.pavimento);
             expect(tramo.rutas.length).toBeGreaterThan(0);
-            expect(tramo.obrasInicialesPct).toBeNull();
-            expect(tramo.fechaHabilitacionTarifa).toBeNull();
             for (const code of tramo.rutas) expect(geometryCodes.has(code)).toBe(true);
             expect(tramo.sources.length).toBeGreaterThan(0);
             for (const source of tramo.sources) {
@@ -28,50 +24,19 @@ describe('official route concession seed', () => {
         expect(seedTramos()[0]).not.toHaveProperty('sources');
     });
 
-    it('records possession companies and leaves unverified concession fields empty', () => {
-        const byId = Object.fromEntries(RUTAS_SEED.map(tramo => [tramo.id, tramo]));
-        expect(byId.oriental).toMatchObject({
-            nombre: 'Oriental',
-            rutas: ['12', '14', '135', 'A15', '117'],
-            km: 682.28,
-            concesionaria: 'Autovía Construcciones y Servicios S.A.',
-            fechaTomaPosesion: '2026-01-07',
-            etapa: 'concesionado',
-        });
-        expect(byId.conexion).toMatchObject({
-            nombre: 'Conexión',
-            rutas: ['174'],
-            km: 59.34,
-            concesionaria: 'Conexión Alto Delta S.A.',
-            fechaTomaPosesion: '2026-01-07',
-            etapa: 'concesionado',
-        });
-        expect(byId['sur-atlantico-acceso-sur']).toMatchObject({
-            rutas: ['3', '205', '226'],
-            km: 1325.17,
-            concesionaria: 'RUTAS SUR ATLANTICO S.A.',
-            fechaTomaPosesion: '2026-07-01',
-        });
-        expect(byId.pampa).toMatchObject({
-            rutas: ['5'],
-            km: 546.65,
-            concesionaria: 'CORREDOR VIAL 5 S.A.U.',
-            fechaTomaPosesion: '2026-07-01',
-        });
-        expect(byId.mediterraneo.concesionaria).toBe('CREDITECH S.A. - PLANTEL S.A.');
-        expect(byId.mediterraneo.fechaTomaPosesion).toBeNull();
-        expect(byId.puntano.concesionaria).toBe('BASAA S.A. - CECOSA S.A.');
-        expect(byId['portuario-sur'].concesionaria).toBe('CREDITECH S.A. - PLANTEL S.A.');
-        expect(byId['portuario-norte'].concesionaria).toBe('CPC S.A.');
-        expect(byId.centro).toMatchObject({ concesionaria: 'COVICEN S.A.', fechaTomaPosesion: '2026-10-07', km: 681.92 });
-        expect(byId['centro-norte'].concesionaria).toBe('AUTOVÍA AL NORTE S.A.U.');
-        expect(byId.noroeste.concesionaria).toBe('AUTOVIA DEL NOA S.A.');
-        expect(byId.cuyo.concesionaria).toBe('CAMINOS DEL ACONCAGUA');
-        expect(byId['chaco-santa-fe'].concesionaria).toBe('VÍAS DEL PARANÁ MEDIO S.A.');
+    it('gives every concessioned tramo a company and ISO dates', () => {
+        const isoOrNull = (value: string | null) => value === null || /^\d{4}-\d{2}-\d{2}$/.test(value);
+        for (const tramo of RUTAS_SEED) {
+            if (tramo.etapa === 'concesionado') expect(tramo.concesionaria.trim()).not.toBe('');
+            expect(isoOrNull(tramo.fechaTomaPosesion)).toBe(true);
+            expect(isoOrNull(tramo.fechaHabilitacionTarifa)).toBe(true);
+        }
         const methodology = RUTAS_METHODOLOGY.map(item => item.description).join('\n');
-        expect(methodology).toContain('carga inicial');
+        expect(methodology).not.toContain('carga inicial');
         const painted = paintRoutes(geometry.routes, seedTramos(), 'concesion');
-        expect(painted.find(route => route.code === '5')?.color).toBe(CONCESSION_COLORS.concesionado);
-        expect(painted.find(route => route.code === '40')?.status).toBe('sin-dato');
+        const concessioned = new Set(RUTAS_SEED.filter(tramo => tramo.etapa === 'concesionado').flatMap(tramo => tramo.rutas));
+        const untouched = painted.filter(route => !RUTAS_SEED.some(tramo => tramo.rutas.includes(route.code)));
+        expect(painted.some(route => concessioned.has(route.code) && route.color === CONCESSION_COLORS.concesionado)).toBe(concessioned.size > 0);
+        expect(untouched.every(route => route.status === 'sin-dato')).toBe(true);
     });
 });
