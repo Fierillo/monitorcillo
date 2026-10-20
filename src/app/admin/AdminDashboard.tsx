@@ -38,6 +38,7 @@ export default function AdminDashboard({ initialData, initialFeedback }: { initi
     const [emisionData, setEmisionData] = useState<EmisionAdminRow[]>([]);
     const [emisionMsg, setEmisionMsg] = useState('');
     const [rutasData, setRutasData] = useState<RutaTramoDraft[]>([]);
+    const [rutasStored, setRutasStored] = useState<RutaTramoDraft[]>([]);
     const [rutasMsg, setRutasMsg] = useState('');
     const [activeTab, setActiveTab] = useState<AdminTab>('indicadores');
 
@@ -51,7 +52,10 @@ export default function AdminDashboard({ initialData, initialFeedback }: { initi
         fetch('/api/data?type=rutas')
             .then(res => res.json())
             .then((response: { data?: RutaTramo[] }) => {
-                if (response?.data) setRutasData(response.data.map(toRutaDraft));
+                if (!response?.data) return;
+                const drafts = response.data.map(toRutaDraft);
+                setRutasData(drafts);
+                setRutasStored(drafts);
             })
             .catch(err => console.error('Error cargando rutas:', err));
     }, []);
@@ -97,6 +101,7 @@ export default function AdminDashboard({ initialData, initialFeedback }: { initi
             const res = await fetch('/api/data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rutas', data: rutasData }) });
             const body = await res.json().catch(() => null) as { error?: string } | null;
             if (!res.ok) throw new Error(body?.error || 'Error al guardar rutas');
+            setRutasStored(rutasData);
             setRutasMsg('Tramos guardados');
             setTimeout(() => setRutasMsg(''), 3000);
         } catch (error) {
@@ -117,7 +122,7 @@ export default function AdminDashboard({ initialData, initialFeedback }: { initi
             ) : activeTab === 'emision' ? (
                 <EmisionEditor data={emisionData} msg={emisionMsg} onAdd={() => setEmisionData(prev => [...prev, newEmisionRow(prev)])} onPop={() => setEmisionData(prev => prev.slice(0, -1))} onSave={handleSaveEmision} onCellChange={handleEmisionCellChange} />
             ) : activeTab === 'rutas' ? (
-                <RutasEditor data={rutasData} msg={rutasMsg} onAdd={() => setRutasData(prev => [...prev, emptyRutaDraft()])} onDelete={index => setRutasData(prev => prev.filter((_, rowIndex) => rowIndex !== index))} onSave={handleSaveRutas} onCellChange={(index, field, value) => setRutasData(prev => prev.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row))} />
+                <RutasEditor data={rutasData} stored={rutasStored} msg={rutasMsg} onAdd={() => setRutasData(prev => [...prev, emptyRutaDraft()])} onDelete={index => setRutasData(prev => prev.filter((_, rowIndex) => rowIndex !== index))} onSave={handleSaveRutas} onCellChange={(index, field, value) => setRutasData(prev => prev.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row))} />
             ) : <FeedbackList data={initialFeedback} />}
         </div>
     );

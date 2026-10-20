@@ -49,3 +49,51 @@ it('edits a concession section and removes that row', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Eliminar Tramo Oriental' }));
     expect(screen.queryByRole('textbox', { name: 'Rutas Tramo Oriental' })).toBeNull();
 });
+
+function EditorWithStored({ onSave, stored = [initial] }: { onSave: () => void; stored?: RutaTramoDraft[] }) {
+    const [rows, setRows] = useState([initial, { ...initial, id: 'sur', nombre: 'Tramo Sur' }]);
+    return (
+        <RutasEditor
+            data={rows}
+            stored={[...stored, { ...initial, id: 'sur', nombre: 'Tramo Sur' }]}
+            msg=""
+            onAdd={() => undefined}
+            onDelete={index => setRows(current => current.filter((_, rowIndex) => rowIndex !== index))}
+            onSave={onSave}
+            onCellChange={() => undefined}
+        />
+    );
+}
+
+it('asks to confirm an irreversible save that deletes stored tramos, and cancel saves nothing', () => {
+    const onSave = vi.fn();
+    render(<EditorWithStored onSave={onSave} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar Tramo Oriental' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    const dialog = screen.getByRole('alertdialog', { name: 'Eliminar tramos' });
+    expect(dialog.textContent).toContain('irreversible');
+    expect(dialog.textContent).toContain('Tramo Oriental');
+    expect(dialog.textContent).toContain('sectores de km');
+    expect(dialog.textContent).toContain('ofertas');
+    expect(dialog.textContent).not.toContain('Tramo Sur');
+    expect(onSave).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(onSave).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar y guardar' }));
+    expect(onSave).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+});
+
+it('saves without asking when no stored tramo is removed', () => {
+    const onSave = vi.fn();
+    render(<EditorWithStored onSave={onSave} stored={[]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar Tramo Oriental' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(onSave).toHaveBeenCalledOnce();
+});
