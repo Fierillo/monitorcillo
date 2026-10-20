@@ -1,0 +1,50 @@
+[
+  {
+    "observedAt": "2025-01-03",
+    "approvedProjects": 1,
+    "approvedAmountUsdMillions": 211,
+    "evaluationProjects": 7,
+    "evaluationAmountUsdMillions": 8655,
+    "source": "https://www.bloomberglinea.com/latinoamerica/argentina/inversiones-rigi-los-ocho-proyectos-presentados-el-aprobado-y-los-que-estan-en-evaluacion/"
+  },
+  {
+    "observedAt": "2025-04-29",
+    "approvedProjects": 2,
+    "approvedAmountUsdMillions": 2697,
+    "evaluationProjects": 9,
+    "evaluationAmountUsdMillions": 12503,
+    "source": "https://www.infobae.com/economia/2025/04/29/en-ocho-meses-del-rigi-ya-se-aprobaron-dos-proyectos-y-hay-inversiones-por-usd-15200-millones-en-carpeta/"
+  },
+  {
+    "observedAt": "2025-10-22",
+    "approvedProjects": 8,
+    "approvedAmountUsdMillions": 15729,
+    "evaluationProjects": null,
+    "evaluationAmountUsdMillions": 19834,
+    "source": "https://www.infobae.com/economia/2025/10/22/a-un-ano-del-rigi-ingresaron-22-proyectos-por-mas-de-usd-35500-millones/"
+  },
+  {
+    "observedAt": "2026-04-24",
+    "approvedProjects": 13,
+    "approvedAmountUsdMillions": 27210,
+    "evaluationProjects": 22,
+    "evaluationAmountUsdMillions": 67755,
+    "source": "https://www.infobae.com/economia/2026/04/24/los-proyectos-presentados-en-el-rigi-ya-suman-usd-95000-millones-uno-por-uno-cuales-son/"
+  },
+  {
+    "observedAt": "2026-06-11",
+    "approvedProjects": 16,
+    "approvedAmountUsdMillions": 29892,
+    "evaluationProjects": 25,
+    "evaluationAmountUsdMillions": 111037,
+    "source": "https://www.argentina.gob.ar/noticias/el-ministerio-de-economia-lanzo-una-web-oficial-con-la-informacion-de-los-proyectos-del"
+  },
+  {
+    "observedAt": "2026-07-31",
+    "approvedProjects": 21,
+    "approvedAmountUsdMillions": 46708,
+    "evaluationProjects": 22,
+    "evaluationAmountUsdMillions": 101241,
+    "source": "https://www.argentina.gob.ar/economia/rigi"
+  }
+]

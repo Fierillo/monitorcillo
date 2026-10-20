@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { NON_RIGI_INVESTMENTS, RIGI_EVALUATION_OBSERVATIONS, RIGI_INVESTMENT_CHART_DATA, RIGI_INVESTMENTS } from '@/lib/investments-source';
+import { buildRigiChartData, rigiTotals } from '@/lib/investments-source';
+import { INVERSIONES } from './fixtures/inversiones';
+
+const RIGI_INVESTMENT_CHART_DATA = buildRigiChartData(INVERSIONES);
+const RIGI_INVESTMENTS = rigiTotals(INVERSIONES.observations);
+const RIGI_EVALUATION_OBSERVATIONS = INVERSIONES.observations;
+const NON_RIGI_INVESTMENTS = INVERSIONES.nonRigi;
 
 describe('RIGI investments source', () => {
     it('builds a continuous monthly series from January 2017', () => {
@@ -67,5 +73,12 @@ describe('non-RIGI investments source', () => {
 
         expect(Number(july2024?.confirmadas) - Number(june2024?.confirmadas)).toBe(870);
         expect(Number(july2024?.anunciadas) - Number(june2024?.anunciadas)).toBe(-400);
+    });
+});
+
+describe('investments without stored data', () => {
+    it('builds no chart rows and no totals', () => {
+        expect(buildRigiChartData({ approvals: [], observations: [], nonRigi: [] })).toEqual([]);
+        expect(rigiTotals([])).toBeNull();
     });
 });

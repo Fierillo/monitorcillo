@@ -1,0 +1,80 @@
+[
+  {
+    "month": "2025-01-01",
+    "amountUsdMillions": 211
+  },
+  {
+    "month": "2025-02-01",
+    "amountUsdMillions": 0
+  },
+  {
+    "month": "2025-03-01",
+    "amountUsdMillions": 2900
+  },
+  {
+    "month": "2025-04-01",
+    "amountUsdMillions": 15156
+  },
+  {
+    "month": "2025-05-01",
+    "amountUsdMillions": 2744
+  },
+  {
+    "month": "2025-06-01",
+    "amountUsdMillions": 0
+  },
+  {
+    "month": "2025-07-01",
+    "amountUsdMillions": 286
+  },
+  {
+    "month": "2025-08-01",
+    "amountUsdMillions": 568
+  },
+  {
+    "month": "2025-09-01",
+    "amountUsdMillions": 0
+  },
+  {
+    "month": "2025-10-01",
+    "amountUsdMillions": 2672
+  },
+  {
+    "month": "2025-11-01",
+    "amountUsdMillions": 277
+  },
+  {
+    "month": "2025-12-01",
+    "amountUsdMillions": 0
+  },
+  {
+    "month": "2026-01-01",
+    "amountUsdMillions": 665
+  },
+  {
+    "month": "2026-02-01",
+    "amountUsdMillions": 0
+  },
+  {
+    "month": "2026-03-01",
+    "amountUsdMillions": 967
+  },
+  {
+    "month": "2026-04-01",
+    "amountUsdMillions": 0
+  },
+  {
+    "month": "2026-05-01",
+    "amountUsdMillions": 1314
+  },
+  {
+    "month": "2026-06-01",
+    "amountUsdMillions": 3432,
+    "note": "PSJ Cobre Mendocino"
+  },
+  {
+    "month": "2026-07-01",
+    "amountUsdMillions": 15516,
+    "note": "Sal de Oro II"
+  }
+]

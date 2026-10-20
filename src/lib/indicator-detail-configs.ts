@@ -12,7 +12,8 @@ import { getIndicatorData } from './storage';
 
 import { getRawData } from './db';
 import { COST_OF_LIVING_MODEL, calculateCostOfLivingBurden, fetchCostOfLivingIndices } from './purchasing-power-cost';
-import { RIGI_INVESTMENT_CHART_DATA, RIGI_INVESTMENTS } from './investments-source';
+import { buildRigiChartData, rigiTotals, type RigiApproval } from './investments-source';
+import { getInversiones } from './db/inversiones';
 import { fetchPublicSpendingChartData } from './public-spending-source';
 import { PRESUPUESTO_EXPENSE_SERIES, PRESUPUESTO_RESOURCE_SERIES } from './presupuesto/schema';
 import { fetchPresupuestoRubrosChartData } from './presupuesto-source';
@@ -144,7 +145,10 @@ async function presupuestoNacionalConfig(indicator: Indicator): Promise<DetailCo
     };
 }
 
-function investmentsConfig(indicator: Indicator): DetailConfig {
+async function investmentsConfig(indicator: Indicator): Promise<DetailConfig> {
+    const stored = await getInversiones();
+    const totals = rigiTotals(stored.observations);
+    const updatedAt = totals ? fechaLarga(totals.updatedAt) : 'sin datos';
     const areas: AreaConfig[] = [
         { key: 'aprobadas', name: 'Aprobadas acumuladas', color: '#FFD700', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
         { key: 'en_evaluacion', name: 'En evaluación', color: '#00BFFF', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
@@ -153,22 +157,22 @@ function investmentsConfig(indicator: Indicator): DetailConfig {
     ];
     const methodology = [
         { title: 'Lectura', description: 'Cada barra mensual apila la inversión aprobada acumulada y la inversión en evaluación. Si durante un mes no se publica ninguna novedad, se repite el valor del mes anterior.' },
-        { title: 'Aprobadas', description: `El tramo amarillo acumula los proyectos en el mes de sanción de cada resolución. Al 31 de julio de 2026 comprende ${RIGI_INVESTMENTS.approved.projects} proyectos por USD 46.708 millones.` },
-        { title: 'En evaluación', description: `El tramo celeste se actualiza cuando existe una nueva cifra publicada y se mantiene sin cambios hasta la siguiente. El último dato registra ${RIGI_INVESTMENTS.underEvaluation.projects} proyectos por USD 101.241 millones.` },
-        { title: 'Fechas sin resolución enlazada', description: 'PSJ Cobre Mendocino y Sal de Oro II se asignan a junio y julio de 2026, respectivamente, por ser su primera aparición comprobable en los totales oficiales.' },
+        { title: 'Aprobadas', description: `El tramo amarillo acumula los proyectos en el mes de sanción de cada resolución.${totals ? ` Al ${updatedAt} comprende ${totals.approved.projects} proyectos por USD ${MILLONES.format(totals.approved.amountUsdMillions)} millones.` : ''}` },
+        { title: 'En evaluación', description: `El tramo celeste se actualiza cuando existe una nueva cifra publicada y se mantiene sin cambios hasta la siguiente.${totals ? ` El último dato registra ${totals.underEvaluation.projects ?? 'sin dato de'} proyectos por USD ${MILLONES.format(totals.underEvaluation.amountUsdMillions)} millones.` : ''}` },
+        ...unlinkedDatesNote(stored.approvals),
         { title: 'Variación', description: 'La diferencia entre barras muestra el cambio neto conocido: puede incluir nuevas presentaciones, aprobaciones, rechazos, retiros y revisiones de montos.' },
         { title: 'Otras anunciadas', description: 'Proyectos fuera del RIGI con empresa, ubicación, monto y anuncio formal publicados. Se excluyen rumores, memorandos de entendimiento, planes generales y proyectos sin monto atribuible.' },
         { title: 'Otras confirmadas', description: 'Proyectos fuera del RIGI que alcanzaron financiamiento cerrado, contrato vinculante, adjudicación formal o inicio documentado de construcción. Al confirmarse, el monto pasa desde anunciadas sin duplicarse.' },
         { title: 'Cobertura no RIGI', description: 'Cobertura conservadora desde enero de 2017 de energía, minería, industria, agroindustria, logística e infraestructura. Los montos con la expresión “más de” se registran por su mínimo publicado.' },
         { title: 'Comparabilidad', description: 'Las observaciones anteriores a junio de 2026 provienen de Bloomberg Línea e Infobae sobre datos oficiales e inventarios de proyectos. Los montos pueden incorporar revisiones de alcance mientras los expedientes estaban en evaluación.' },
         { title: 'Proyectos compartidos', description: 'Los proyectos informados en más de una provincia se contabilizan una sola vez en el total aprobado.' },
-        { title: 'Cobertura', description: 'Montos publicados por el Ministerio de Economía para el Régimen de Incentivo para Grandes Inversiones (RIGI), actualizados al 31 de julio de 2026.' },
+        { title: 'Cobertura', description: `Montos publicados por el Ministerio de Economía para el Régimen de Incentivo para Grandes Inversiones (RIGI), actualizados al ${updatedAt}.` },
     ];
 
     return {
         subtitle: `Fuente: ${indicator.fuente} | Inversión en millones de USD`,
         chartTitle: 'Evolución mensual de inversiones RIGI por estado',
-        data: RIGI_INVESTMENT_CHART_DATA,
+        data: buildRigiChartData(stored),
         areas,
         methodology,
         valueFormat: 'millions',
@@ -177,6 +181,27 @@ function investmentsConfig(indicator: Indicator): DetailConfig {
         showTooltipTotal: true,
         indicatorId: indicator.id,
     };
+}
+
+const MILLONES = new Intl.NumberFormat('es-AR');
+/** Methodology entry listing approvals dated by first appearance instead of a resolution; none without notes. */
+function unlinkedDatesNote(approvals: RigiApproval[]) {
+    const noted = approvals.filter(approval => approval.note).map(approval => `${approval.note} (${mesLargo(approval.month)})`);
+    if (noted.length === 0) return [];
+    const names = noted.length === 1 ? noted[0] : `${noted.slice(0, -1).join(', ')} y ${noted[noted.length - 1]}`;
+    return [{ title: 'Fechas sin resolución enlazada', description: `${names} se asigna${noted.length === 1 ? '' : 'n'} al mes de su primera aparición comprobable en los totales oficiales.` }];
+}
+
+function mesLargo(iso: string): string {
+    const [year, month] = iso.split('-').map(Number);
+    return `${MESES_LARGOS[month - 1]} de ${year}`;
+}
+
+const MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+function fechaLarga(iso: string): string {
+    const [year, month, day] = iso.split('-').map(Number);
+    return `${day} de ${MESES_LARGOS[month - 1]} de ${year}`;
 }
 
 async function bmaConfig(indicator: Indicator): Promise<DetailConfig> {
