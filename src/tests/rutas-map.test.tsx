@@ -162,7 +162,9 @@ it('lists one shield per route and colors only the stretch each company operates
     fireEvent.pointerLeave(map9);
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('CREDITECH S.A. - PLANTEL S.A.');
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('CPC S.A.');
-    expect(Number(map9.querySelector('[data-company="Sin dato"]')?.getAttribute('opacity'))).toBeLessThan(0.5);
+    const gap9 = document.querySelector('[data-route="9"][data-company="Sin dato"]');
+    expect(Number(gap9?.getAttribute('opacity'))).toBeLessThan(0.5);
+    expect(map9.compareDocumentPosition(gap9 as Node) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
 
     fireEvent.change(filter, { target: { value: 'ruta' } });
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).not.toContain('Concesionado');

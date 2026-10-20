@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import MethodologySection from '@/components/chart/MethodologySection';
 import FeedbackButton from '@/components/FeedbackButton';
 import geometryAsset from '@/lib/rutas/geometry.json';
@@ -59,6 +59,12 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
     const projected = projectMap(geometry.outline, painted, canvas.width, canvas.height);
     const activeTip = hover ?? pinned;
     const active = painted.find(route => route.code === activeTip?.code) ?? null;
+    const trackRoute = (code: string) => ({
+        onPointerEnter: (event: PointerEvent) => setHover({ code, segmentIndex: segmentIndexFrom(event.target), ...tipAt(event, mapRef.current) }),
+        onPointerMove: (event: PointerEvent) => setHover({ code, segmentIndex: segmentIndexFrom(event.target), ...tipAt(event, mapRef.current) }),
+        onPointerLeave: () => setHover(current => current?.code === code ? null : current),
+        onClick: (event: PointerEvent) => setPinned({ code, segmentIndex: segmentIndexFrom(event.target), ...tipAt(event, mapRef.current) }),
+    });
     const legend = legendFor(filterBy, mode, selected, projected.routes, tramos);
 
     return (
@@ -97,39 +103,53 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                         <path key={`outline-${index}`} d={path} fill="#0B2A66" stroke="#FFD700" strokeWidth={1} />
                     ))}
                     {projected.routes.map(route => {
-                        const routeDimmed = filterBy === 'ruta' && selected.size > 0 && !selected.has(route.code);
+                        const missing = indexedSegments(route).filter(entry => entry.segment.concesionaria === 'Sin dato');
+                        const known = indexedSegments(route).filter(entry => entry.segment.concesionaria !== 'Sin dato');
+                        if (missing.length === 0) return null;
+                        const onlyMissing = known.length === 0;
                         return (
-                        <g
-                            key={route.code}
-                            role="button"
-                            tabIndex={0}
-                            aria-label={route.label}
-                            stroke={route.color}
-                            opacity={routeDimmed ? 0.14 : 1}
-                            className="cursor-pointer"
-                            onPointerEnter={(event) => setHover({ code: route.code, segmentIndex: segmentIndexFrom(event.target), ...tipAt(event, mapRef.current) })}
-                            onPointerMove={(event) => setHover({ code: route.code, segmentIndex: segmentIndexFrom(event.target), ...tipAt(event, mapRef.current) })}
-                            onPointerLeave={() => setHover(current => current?.code === route.code ? null : current)}
-                            onClick={(event) => setPinned({ code: route.code, segmentIndex: segmentIndexFrom(event.target), ...tipAt(event, mapRef.current) })}
-                            onKeyDown={(event) => {
-                                if (event.key !== 'Enter' && event.key !== ' ') return;
-                                event.preventDefault();
-                                setPinned({ code: route.code, segmentIndex: null, x: 24, y: 24 });
-                            }}
-                        >
-                            {route.segments.map((segment, index) => {
-                                const missing = segment.concesionaria === 'Sin dato';
-                                const companyDimmed = filterBy === 'constructora' && selected.size > 0 && !selected.has(segment.concesionaria);
-                                const stroke = filterBy === 'ninguno' && mode === 'pavimento' && !missing ? route.color : segment.color;
-                                return (
-                                    <g key={`${route.code}-${segment.tramoId ?? 'sin-dato'}-${index}`} data-company={segment.concesionaria} data-segment-index={index} opacity={companyDimmed ? 0.12 : missing ? SIN_DATO_OPACITY : 1}>
-                                        <path d={segment.paths.join('')} stroke="transparent" strokeWidth={18} fill="none" pointerEvents="stroke" />
-                                        <path d={segment.paths.join('')} stroke={ROUTE_GAP} strokeWidth={ROUTE_CASING_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
-                                        <path d={segment.paths.join('')} stroke={stroke} strokeWidth={ROUTE_STROKE_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
-                                    </g>
-                                );
-                            })}
-                        </g>
+                            <g
+                                key={onlyMissing ? route.code : `${route.code}-sin-dato`}
+                                role={onlyMissing ? 'button' : undefined}
+                                tabIndex={onlyMissing ? 0 : undefined}
+                                aria-label={onlyMissing ? route.label : undefined}
+                                data-route={route.code}
+                                stroke={route.color}
+                                opacity={routeDimmed(route.code, filterBy, selected) ? 0.14 : 1}
+                                className={onlyMissing ? 'cursor-pointer' : undefined}
+                                {...trackRoute(route.code)}
+                                onKeyDown={onlyMissing ? (event) => {
+                                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                                    event.preventDefault();
+                                    setPinned({ code: route.code, segmentIndex: null, x: 24, y: 24 });
+                                } : undefined}
+                            >
+                                {missing.map(entry => drawSegment(route.code, entry, mode, filterBy, selected))}
+                            </g>
+                        );
+                    })}
+                    {projected.routes.map(route => {
+                        const known = indexedSegments(route).filter(entry => entry.segment.concesionaria !== 'Sin dato');
+                        if (known.length === 0) return null;
+                        return (
+                            <g
+                                key={route.code}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={route.label}
+                                data-route={route.code}
+                                stroke={route.color}
+                                opacity={routeDimmed(route.code, filterBy, selected) ? 0.14 : 1}
+                                className="cursor-pointer"
+                                {...trackRoute(route.code)}
+                                onKeyDown={(event) => {
+                                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                                    event.preventDefault();
+                                    setPinned({ code: route.code, segmentIndex: null, x: 24, y: 24 });
+                                }}
+                            >
+                                {known.map(entry => drawSegment(route.code, entry, mode, filterBy, selected))}
+                            </g>
                         );
                     })}
                 </svg>
@@ -154,6 +174,31 @@ function ModeButton({ active, onClick, children }: { active: boolean; onClick: (
         >
             {children}
         </button>
+    );
+}
+
+type DrawnSegment = { tramoId: string | null; concesionaria: string; color: string; paths: string[] };
+type IndexedSegment = { segment: DrawnSegment; index: number };
+
+function indexedSegments(route: { segments: DrawnSegment[] }): IndexedSegment[] {
+    return route.segments.map((segment, index) => ({ segment, index }));
+}
+
+function routeDimmed(code: string, filterBy: ShieldFilter, selected: Set<string>): boolean {
+    return filterBy === 'ruta' && selected.size > 0 && !selected.has(code);
+}
+
+function drawSegment(code: string, entry: IndexedSegment, mode: ColorMode, filterBy: ShieldFilter, selected: Set<string>) {
+    const { segment, index } = entry;
+    const missing = segment.concesionaria === 'Sin dato';
+    const companyDimmed = filterBy === 'constructora' && selected.size > 0 && !selected.has(segment.concesionaria);
+    const stroke = filterBy === 'ninguno' && mode === 'pavimento' && !missing ? undefined : segment.color;
+    return (
+        <g key={`${code}-${segment.tramoId ?? 'sin-dato'}-${index}`} data-route={code} data-company={segment.concesionaria} data-segment-index={index} opacity={companyDimmed ? 0.12 : missing ? SIN_DATO_OPACITY : 1}>
+            <path d={segment.paths.join('')} stroke="transparent" strokeWidth={18} fill="none" pointerEvents="stroke" />
+            <path d={segment.paths.join('')} stroke={ROUTE_GAP} strokeWidth={ROUTE_CASING_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+            <path d={segment.paths.join('')} stroke={stroke} strokeWidth={ROUTE_STROKE_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+        </g>
     );
 }
 
