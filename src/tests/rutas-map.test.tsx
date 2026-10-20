@@ -1,10 +1,12 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { StrictMode } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RutasMap from '../components/rutas/RutasMap';
 import type { RutaTramo, RutasGeometry } from '@/lib/rutas/status';
-import { seedTramos } from '@/lib/rutas/seed';
+import { RUTAS_OFERTAS, seedTramos } from './fixtures/rutas';
 
 afterEach(cleanup);
+beforeEach(() => window.localStorage.clear());
 
 const geometry: RutasGeometry = {
     source: {
@@ -49,7 +51,7 @@ it('switches color mode and shows route, km, concessionaire and status on hover 
     expect(viewHeight).toBe(1000);
     expect(svg.getAttribute('class') ?? '').not.toContain('min-w-');
 
-    fireEvent.pointerEnter(route9);
+    fireEvent.pointerMove(route9);
     const status = screen.getByRole('status');
     expect(screen.getByTestId('rutas-map').contains(status)).toBe(true);
     expect(status.className).not.toContain('fixed');
@@ -88,7 +90,7 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
             { code: '40', label: 'RN 40', km: 5080.16, lines: [[[-68, -30], [-67, -40]]] },
         ],
     };
-    render(<RutasMap tramos={seedTramos()} geometry={seeded} />);
+    render(<RutasMap tramos={seedTramos()} ofertas={RUTAS_OFERTAS} geometry={seeded} />);
 
     const frame = screen.getByTestId('rutas-map');
     const route5 = screen.getByRole('button', { name: 'RN 5' });
@@ -106,7 +108,7 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
     expect(visible40?.getAttribute('stroke-width')).toBe(visible?.getAttribute('stroke-width'));
     expect(casing?.getAttribute('stroke-width')).toBe(casing40?.getAttribute('stroke-width'));
 
-    fireEvent.pointerEnter(route5);
+    fireEvent.pointerMove(route5);
     const tooltip = screen.getByRole('status');
     expect(frame.contains(tooltip)).toBe(true);
     expect(tooltip.className).not.toContain('fixed');
@@ -117,8 +119,14 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
     expect(tooltip.textContent).toContain('CORREDOR VIAL 5 S.A.U.');
     expect(tooltip.textContent).toContain('Concesionado');
     expect(tooltip.textContent).toContain('546,65 km');
+    expect(tooltip.textContent).toContain('Tarifa ofertada: $2.355,37 sin IVA');
+    expect(tooltip.textContent).toContain('Ofertas: 6 ($2.355,37 – $3.354)');
+    for (const name of ['Tarifa ofertada: ', 'Ofertas: ']) {
+        const line = [...tooltip.children].find(child => child.textContent?.startsWith(name))!;
+        expect([...line.querySelectorAll('span')].map(span => span.style.color)).toEqual(['var(--color-imperial-gold)', 'var(--color-imperial-gold)']);
+    }
 
-    fireEvent.pointerEnter(screen.getByRole('button', { name: 'RN 40' }));
+    fireEvent.pointerMove(screen.getByRole('button', { name: 'RN 40' }));
     expect(tooltip.textContent).toContain('RN 40');
     expect(tooltip.textContent).toContain('Sin dato');
     expect(tooltip.textContent).toContain('5.080,16 km');
@@ -154,21 +162,23 @@ it('lists one shield per route and colors only the stretch each company operates
     const map12 = screen.getByRole('button', { name: 'RN 12' });
     const creditechOnMap = map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke');
     const cpcOnMap = map9.querySelector('[data-company="CPC S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke');
-    expect(creditechOnMap).toBeTruthy();
-    expect(cpcOnMap).toBeTruthy();
-    expect(creditechOnMap).not.toBe(cpcOnMap);
+    expect(creditechOnMap).toBe('#4ADE80');
+    expect(cpcOnMap).toBe('#4ADE80');
     fireEvent.pointerMove(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."]')!);
     expect(screen.getByRole('status').textContent).toContain('CREDITECH S.A. - PLANTEL S.A.');
     expect(screen.getByRole('status').textContent).not.toContain('CPC S.A.');
     expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."]')?.getAttribute('data-marked')).toBe('true');
-    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke="#FFD700"]')).toBeTruthy();
+    const hovered = map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."]') as SVGGElement;
+    expect(hovered.style.filter).toBe('');
+    expect((hovered.querySelector('path[data-fill]') as SVGPathElement).style.filter).toBe('brightness(1.6)');
+    expect(hovered.querySelector('path[data-fill]')?.getAttribute('stroke-width')).toBe(hovered.parentElement!.querySelector('[data-company]:not([data-marked]) path[data-fill]')?.getAttribute('stroke-width') ?? '1.5');
     expect(map9.querySelector('[data-company="CPC S.A."]')?.hasAttribute('data-marked')).toBe(false);
     fireEvent.pointerLeave(map9);
     expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."]')?.hasAttribute('data-marked')).toBe(false);
-    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('CREDITECH S.A. - PLANTEL S.A.');
-    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('CPC S.A.');
+    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('Concesionado');
+    expect(screen.getByRole('list', { name: 'Referencias' }).textContent).not.toContain('CPC S.A.');
     const gap9 = document.querySelector('[data-route="9"][data-company="Sin dato"]');
-    expect(Number(gap9?.getAttribute('opacity'))).toBeLessThan(0.5);
+    expect(gap9?.getAttribute('opacity')).toBe('0.5');
     expect(map9.compareDocumentPosition(gap9 as Node) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
 
     fireEvent.change(filter, { target: { value: 'ruta' } });
@@ -191,8 +201,8 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(creditechColor).toBeTruthy();
     expect(cpcColor).toBeTruthy();
     expect(creditechColor).not.toBe(cpcColor);
-    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke')).toBe(creditechColor);
-    expect(map9.querySelector('[data-company="CPC S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke')).toBe(cpcColor);
+    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke')).toBe(map9.querySelector('[data-company="CPC S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke'));
+    expect(map9.querySelector('[data-company="CPC S.A."] path[stroke-width="1.5"]')?.getAttribute('stroke')).not.toBe(cpcColor);
     expect(map9.getAttribute('opacity')).toBe('1');
     expect(Number(map12.getAttribute('opacity'))).toBeLessThan(0.5);
 
@@ -204,7 +214,7 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(map9.getAttribute('opacity')).toBe('1');
     expect(map12.getAttribute('opacity')).toBe('1');
 
-    fireEvent.change(filter, { target: { value: 'constructora' } });
+    fireEvent.change(filter, { target: { value: 'concesionaria' } });
     expect(screen.queryByRole('button', { name: 'Escudo RN 9' })).toBeNull();
     const creditechButton = screen.getByRole('button', { name: 'Concesionaria CREDITECH S.A. - PLANTEL S.A.' });
     expect(creditechButton.className).toContain('h-8');
@@ -227,4 +237,308 @@ it('lists one shield per route and colors only the stretch each company operates
     expect(screen.queryByRole('list', { name: 'Rutas de CREDITECH S.A. - PLANTEL S.A.' })).toBeNull();
     expect(map9.querySelector('[data-company="CPC S.A."]')?.getAttribute('opacity')).toBe('1');
     expect(map12.querySelector('[data-company="CPC S.A."]')?.getAttribute('opacity')).toBe('1');
+});
+
+it('shares one tramo selection between map clicks and the sidebar', () => {
+    const shared: RutasGeometry = {
+        ...geometry,
+        routes: [
+            { code: '9', label: 'RN 9', km: 1000, lines: [[[-64, -40], [-64, -20]]] },
+            { code: '12', label: 'RN 12', km: 1000, lines: [[[-58, -30], [-57, -28]]] },
+        ],
+    };
+    const rows: RutaTramo[] = [
+        { ...tramos[0], id: 'sur', rutas: ['9'], concesionaria: 'CREDITECH', sectores: [{ ruta: '9', desdeKm: 0, hastaKm: 200, km: 200 }] },
+        { ...tramos[0], id: 'norte', rutas: ['9', '12'], concesionaria: 'CPC', sectores: [{ ruta: '9', desdeKm: 800, hastaKm: 1000, km: 200 }, { ruta: '12', desdeKm: 0, hastaKm: 1000, km: 1000 }] },
+    ];
+    render(<RutasMap tramos={rows} geometry={shared} />);
+    const map9 = screen.getByRole('button', { name: 'RN 9' });
+    const map12 = screen.getByRole('button', { name: 'RN 12' });
+    const seg = (route: HTMLElement, company: string) => route.querySelector(`[data-company="${company}"]`)!;
+    const filter = screen.getByRole('combobox', { name: 'Filtrar por' });
+
+    fireEvent.click(seg(map9, 'CREDITECH'));
+    expect(seg(map9, 'CREDITECH').getAttribute('data-picked')).toBe('true');
+    expect(seg(map9, 'CREDITECH').querySelector('path[data-outline]')).toBeNull();
+    expect((seg(map9, 'CREDITECH') as SVGGElement).style.filter).toBe('');
+    expect((seg(map9, 'CREDITECH').querySelector('path[data-fill]') as SVGPathElement).style.filter).toBe('brightness(1.6) drop-shadow(0 0 1.5px #ffffff)');
+    expect(seg(map9, 'CPC').hasAttribute('data-picked')).toBe(false);
+    expect(screen.queryByRole('list', { name: 'Concesionarias de RN 9' })).toBeNull();
+
+    fireEvent.change(filter, { target: { value: 'ruta' } });
+    const fill = (company: string) => seg(map9, company).querySelector('path[data-fill]')!.getAttribute('stroke');
+    expect(fill('CREDITECH')).toBe(fill('CPC'));
+    expect(fill('CREDITECH')).not.toBe(seg(map12, 'CPC').querySelector('path[data-fill]')!.getAttribute('stroke'));
+    fireEvent.click(seg(map9, 'CREDITECH'));
+    expect(screen.getByRole('button', { name: 'Escudo RN 9' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Seleccionar CREDITECH en RN 9' }).getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Seleccionar CPC en RN 9' }));
+    expect(seg(map9, 'CPC').getAttribute('data-picked')).toBe('true');
+    expect(seg(map9, 'CPC').getAttribute('opacity')).toBe('1');
+    expect(Number(seg(map9, 'CREDITECH').getAttribute('opacity'))).toBeLessThan(0.5);
+    expect(Number(seg(map12, 'CPC').getAttribute('opacity'))).toBeLessThan(0.5);
+
+    fireEvent.change(filter, { target: { value: 'concesionaria' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Concesionaria CPC' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Seleccionar RN 12 de CPC' }));
+    expect(seg(map12, 'CPC').getAttribute('data-picked')).toBe('true');
+    expect(Number(seg(map9, 'CPC').getAttribute('opacity'))).toBeLessThan(0.5);
+
+    fireEvent.click(seg(map9, 'CREDITECH'));
+    expect(screen.getByRole('button', { name: 'Concesionaria CREDITECH' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Seleccionar RN 9 de CREDITECH' }).getAttribute('aria-pressed')).toBe('true');
+});
+
+it('a second click on the same tramo clears the selection and leaves no gold halo', () => {
+    const { container } = render(<RutasMap tramos={tramos} geometry={geometry} />);
+    const picked = () => container.querySelectorAll('[data-picked="true"]');
+    const halos = () => [...container.querySelectorAll('path')].filter(path => path.getAttribute('stroke') === '#FFD700' && !path.getAttribute('fill'));
+    const segment = container.querySelector('[data-company]:not([data-company="Sin dato"])')!;
+    fireEvent.click(segment);
+    expect(picked()).toHaveLength(1);
+    expect(halos()).toHaveLength(0);
+    fireEvent.click(segment);
+    expect(picked()).toHaveLength(0);
+    expect(container.querySelector('[data-marked="true"]')).toBeNull();
+});
+
+it('shows the concession stage legend when the filter is Ninguno', () => {
+    render(<RutasMap tramos={tramos} geometry={geometry} />);
+    const legend = screen.getByRole('list', { name: 'Referencias' });
+    expect(legend.textContent).toContain('Concesionado');
+    expect(legend.textContent).toContain('En licitación');
+    expect(legend.textContent).toContain('Sin concesionar');
+    expect(legend.textContent).toContain('Sin dato');
+});
+
+it('remembers mode, filter and selection in localStorage like the other indicators', () => {
+    window.localStorage.clear();
+    const first = render(<RutasMap tramos={tramos} geometry={geometry} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Pavimento' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filtrar por' }), { target: { value: 'ruta' } });
+    first.unmount();
+    render(<RutasMap tramos={tramos} geometry={geometry} />);
+    expect((screen.getByRole('combobox', { name: 'Filtrar por' }) as HTMLSelectElement).value).toBe('ruta');
+    expect(screen.getByRole('button', { name: 'Pavimento' }).className).toContain('bg-imperial-gold');
+    window.localStorage.clear();
+});
+
+it('with the Ruta filter, stretches without a concession stay dashed in the route color', () => {
+    const { container } = render(<RutasMap tramos={tramos} geometry={geometry} />);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filtrar por' }), { target: { value: 'ruta' } });
+    const gap = container.querySelector('[data-company="Sin dato"]') as SVGGElement;
+    const known = container.querySelector(`[data-route="${gap.getAttribute('data-route')}"][data-company]:not([data-company="Sin dato"])`) as SVGGElement | null;
+    expect(gap.querySelector('path[data-fill]')?.getAttribute('stroke-dasharray')).toBeTruthy();
+    if (known) {
+        expect(known.querySelector('path[data-fill]')?.hasAttribute('stroke-dasharray')).toBe(false);
+        expect(gap.querySelector('path[data-fill]')?.getAttribute('stroke')).toBe(known.querySelector('path[data-fill]')?.getAttribute('stroke'));
+    }
+});
+
+it('restores a picked tramo after a reload, also under StrictMode', () => {
+    const first = render(<RutasMap tramos={tramos} geometry={geometry} />);
+    const segment = first.container.querySelector('[data-company]:not([data-company="Sin dato"])')!;
+    const company = segment.getAttribute('data-company');
+    fireEvent.click(segment);
+    first.unmount();
+    const { container } = render(<StrictMode><RutasMap tramos={tramos} geometry={geometry} /></StrictMode>);
+    expect(container.querySelector('[data-picked="true"]')?.getAttribute('data-company')).toBe(company);
+});
+
+describe('selection tooltip', () => {
+    const pickSegment = (container: HTMLElement) => container.querySelector('[data-company="Corredores Viales"]')!;
+
+    it('on desktop shows the tooltip of the persisted pick, also after a reload, and hides it once deselected', () => {
+        const first = render(<RutasMap tramos={tramos} geometry={geometry} />);
+        fireEvent.click(pickSegment(first.container));
+        fireEvent.pointerLeave(pickSegment(first.container));
+        expect(screen.getByRole('status').textContent).toContain('Corredores Viales');
+        first.unmount();
+
+        const { container } = render(<RutasMap tramos={tramos} geometry={geometry} />);
+        expect(screen.getByRole('status').textContent).toContain('Corredores Viales');
+        fireEvent.click(pickSegment(container));
+        expect(screen.queryByRole('status')).toBeNull();
+    });
+
+    it('a sidebar pick shows its tooltip on desktop', () => {
+        render(<RutasMap tramos={tramos} geometry={geometry} />);
+        fireEvent.change(screen.getByRole('combobox', { name: 'Filtrar por' }), { target: { value: 'ruta' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Escudo RN 9' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Seleccionar Corredores Viales en RN 9' }));
+        expect(screen.getByRole('status').textContent).toContain('Corredores Viales');
+    });
+
+    it('Enter on a route selects its tramo and shows the tooltip', () => {
+        const { container } = render(<RutasMap tramos={tramos} geometry={geometry} />);
+        fireEvent.keyDown(screen.getByRole('button', { name: 'RN 9' }), { key: 'Enter' });
+        expect(container.querySelector('[data-picked="true"]')?.getAttribute('data-company')).toBe('Corredores Viales');
+        expect(screen.getByRole('status').textContent).toContain('Corredores Viales');
+    });
+
+    it('never pins the tooltip on touch, even with a persisted pick', () => {
+        window.localStorage.setItem('monitorcillo:chart:rutas-nacionales', JSON.stringify({ mode: 'concesion', filterBy: 'ninguno', selected: [], pick: { code: '9', company: 'Corredores Viales' } }));
+        const { container } = render(<RutasMap tramos={tramos} geometry={geometry} />);
+        const svg = screen.getByRole('group', { name: 'Mapa de rutas nacionales de Argentina' });
+        fireEvent.pointerDown(svg, { pointerType: 'touch', clientX: 1, clientY: 1, pointerId: 1 });
+        fireEvent.pointerUp(svg, { pointerType: 'touch', clientX: 1, clientY: 1, pointerId: 1 });
+        expect(container.querySelector('[data-picked="true"]')).not.toBeNull();
+        expect(screen.queryByRole('status')).toBeNull();
+    });
+});
+
+it('tooltip text is white except the concesionaria and the concession state values, in their legend colors', () => {
+    const { container } = render(<RutasMap tramos={tramos} geometry={geometry} />);
+    const segment = container.querySelector('[data-company]:not([data-company="Sin dato"])')!;
+    fireEvent.pointerMove(segment.closest('[data-route]') ?? segment);
+    const spans = [...screen.getByRole('status').querySelectorAll('span')];
+    const valueOf = (name: string) => spans[spans.findIndex(span => span.textContent === `${name}: `) + 1];
+    for (const span of spans.filter(span => span.textContent?.endsWith(': '))) expect(span.style.color).toBe('rgb(255, 255, 255)');
+    expect(valueOf('Tramo').style.color).toBe('rgb(255, 255, 255)');
+    expect(valueOf('Km').style.color).toBe('rgb(255, 255, 255)');
+    expect(valueOf('Concesionaria').style.color).not.toBe('rgb(255, 255, 255)');
+    expect(valueOf('Estado').textContent).toBe('Concesionado');
+    expect(valueOf('Estado').style.color).not.toBe('rgb(255, 255, 255)');
+});
+
+it('in the Ruta view, unconcessioned dashed sections are slightly transparent', () => {
+    const { container } = render(<RutasMap tramos={tramos} geometry={geometry} />);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filtrar por' }), { target: { value: 'ruta' } });
+    const gap = container.querySelector('[data-company="Sin dato"]') as SVGGElement;
+    expect(gap.getAttribute('opacity')).toBe('0.5');
+    expect((gap.querySelector('path[data-fill]') as SVGPathElement).style.filter).toBe('');
+});
+
+it('shows a big concessioned-share figure only in the unfiltered concession view', () => {
+    render(<RutasMap tramos={tramos} geometry={geometry} />);
+    expect(screen.getByTestId('concession-share').textContent).toMatch(/\d+(,\d)?\s?%/);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filtrar por' }), { target: { value: 'ruta' } });
+    expect(screen.queryByTestId('concession-share')).toBeNull();
+});
+
+it('places the concessioned share over the map with a thin black outline', () => {
+    render(<RutasMap tramos={tramos} geometry={geometry} />);
+    const share = screen.getByTestId('concession-share');
+    expect(share.parentElement?.querySelector('svg[aria-label="Mapa de rutas nacionales de Argentina"]')).not.toBeNull();
+    expect(share.className).toContain('absolute');
+    expect(share.getAttribute('style')).toContain('1px #000');
+});
+
+it('puts the concessioned share top-left on mobile and top-right from sm up', () => {
+    render(<RutasMap tramos={tramos} geometry={geometry} />);
+    const classes = screen.getByTestId('concession-share').className.split(' ');
+    expect(classes).toEqual(expect.arrayContaining(['left-2', 'top-2', 'sm:left-auto', 'sm:right-4']));
+    expect(classes).not.toContain('right-2');
+});
+
+describe('touch crosshair', () => {
+    beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }));
+    afterEach(() => vi.useRealTimers());
+    const touchSetup = () => {
+        const utils = render(<RutasMap tramos={tramos} geometry={geometry} />);
+        const svg = screen.getByRole('group', { name: 'Mapa de rutas nacionales de Argentina' }) as unknown as SVGSVGElement;
+        Object.assign(svg, { getScreenCTM: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }) });
+        const segment = utils.container.querySelector('[data-company]:not([data-company="Sin dato"]) path') as SVGPathElement;
+        const [x, y] = segment.getAttribute('d')!.match(/-?[\d.]+/g)!.map(Number);
+        return { ...utils, svg, x, y };
+    };
+    const touch = (type: 'pointerDown' | 'pointerMove' | 'pointerUp', target: Element, clientX: number, clientY: number) => fireEvent[type](target, { pointerType: 'touch', clientX, clientY, pointerId: 1 });
+    const longPress = (target: Element, clientX: number, clientY: number) => {
+        touch('pointerDown', target, clientX, clientY);
+        act(() => { vi.advanceTimersByTime(500); });
+        touch('pointerUp', target, clientX, clientY);
+    };
+
+    it('a long press shows a dotted crosshair and hovers the tramo under it, without pinning or selecting', () => {
+        const { container, svg, x, y } = touchSetup();
+        longPress(svg, x, y);
+        fireEvent.click(svg);
+        const lines = container.querySelectorAll('[data-crosshair] line');
+        expect(lines).toHaveLength(2);
+        expect(lines[0].getAttribute('stroke-dasharray')).toBe('2 3');
+        expect(screen.getByRole('status')).toBeDefined();
+        expect(container.querySelector('[data-marked="true"]')).not.toBeNull();
+        expect(container.querySelector('[data-picked="true"]')).toBeNull();
+    });
+
+    it('a short tap does nothing; a long press off the continent also activates it', () => {
+        const { container, svg } = touchSetup();
+        touch('pointerDown', svg, 1, 1);
+        touch('pointerUp', svg, 1, 1);
+        act(() => { vi.advanceTimersByTime(600); });
+        expect(container.querySelector('[data-crosshair]')).toBeNull();
+        longPress(svg, 1, 1);
+        expect(container.querySelector('[data-crosshair]')).not.toBeNull();
+    });
+
+    it('while active, sliding moves it by the finger delta; a simple tap anywhere hides it', () => {
+        const { container, svg, x, y } = touchSetup();
+        longPress(svg, x, y);
+        touch('pointerDown', svg, x, y);
+        touch('pointerMove', svg, x + 30, y + 40);
+        const vertical = container.querySelector('[data-crosshair] line')!;
+        expect(Number(vertical.getAttribute('x1'))).toBeCloseTo(x + 30);
+        touch('pointerUp', svg, x + 30, y + 40);
+        expect(container.querySelector('[data-crosshair]')).not.toBeNull();
+        touch('pointerDown', svg, x, y);
+        touch('pointerUp', svg, x, y);
+        expect(container.querySelector('[data-crosshair]')).toBeNull();
+        longPress(svg, x, y);
+        touch('pointerDown', document.body, 5, 5);
+        touch('pointerUp', document.body, 5, 5);
+        expect(container.querySelector('[data-crosshair]')).toBeNull();
+    });
+
+    it('lets the page scroll while inactive and blocks the native long-press menu and selection', () => {
+        const { container, svg, x, y } = touchSetup();
+        expect(svg.getAttribute('class')).not.toContain('touch-none');
+        expect(svg.getAttribute('class')).toContain('touch-pan-y');
+        expect(svg.getAttribute('class')).toContain('select-none');
+        touch('pointerDown', svg, x, y);
+        expect(fireEvent.contextMenu(svg)).toBe(false);
+        touch('pointerMove', svg, x, y + 40);
+        act(() => { vi.advanceTimersByTime(600); });
+        touch('pointerUp', svg, x, y + 40);
+        expect(container.querySelector('[data-crosshair]')).toBeNull();
+        longPress(svg, x, y);
+        expect(svg.getAttribute('class')).toContain('touch-none');
+    });
+
+    it('auto-scrolls the page while the crosshair is dragged near the bottom of the viewport', () => {
+        const frames: FrameRequestCallback[] = [];
+        const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => frames.push(callback));
+        vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+        let scrolled = 0;
+        const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(((options: ScrollToOptions) => { scrolled += options.top ?? 0; Object.assign(window, { scrollY: scrolled }); }) as typeof window.scrollBy);
+        Object.assign(window, { innerHeight: 800, scrollY: 0 });
+        const { container, svg, x, y } = touchSetup();
+        longPress(svg, x, y);
+        touch('pointerDown', svg, x, y);
+        touch('pointerMove', svg, x, y + (790 - y));
+        const before = Number(container.querySelector('[data-crosshair] line + line')!.getAttribute('y1'));
+        act(() => { frames.shift()?.(0); });
+        expect(scrollBy).toHaveBeenCalled();
+        expect(scrolled).toBeGreaterThan(0);
+        expect(Number(container.querySelector('[data-crosshair] line + line')!.getAttribute('y1'))).toBeGreaterThan(before - 1e-9);
+        touch('pointerUp', svg, x, 790);
+        const calls = scrollBy.mock.calls.length;
+        act(() => { frames.splice(0).forEach(frame => frame(0)); });
+        expect(scrollBy.mock.calls.length).toBe(calls);
+        raf.mockRestore();
+        vi.restoreAllMocks();
+    });
+
+    it('a touch tap on a tramo does not toggle the selection', () => {
+        const { container, svg, x, y } = touchSetup();
+        const segment = container.querySelector('[data-company]:not([data-company="Sin dato"])')!;
+        longPress(svg, x, y);
+        fireEvent.click(segment);
+        expect(container.querySelector('[data-picked="true"]')).toBeNull();
+    });
+});
+
+it('renders the map without tramos or offers when the tables are empty', () => {
+    render(<RutasMap tramos={[]} ofertas={[]} />);
+    expect(screen.getByTestId('rutas-map')).toBeTruthy();
 });
