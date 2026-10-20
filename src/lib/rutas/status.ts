@@ -58,7 +58,7 @@ export const RUTAS_METHODOLOGY = [
     },
     {
         title: 'Detalle',
-        description: 'Al pasar el cursor se muestran la ruta y la concesionaria del tramo que está bajo el puntero. El filtro tiene tres opciones. En Ninguno, la concesión se pinta por concesionaria y la leyenda las nombra; el pavimento sigue la leyenda de estado. En Ruta, al presionar un escudo se despliegan debajo sus concesionarias y el mapa marca solo esa ruta, partida por color. En Concesionaria, al presionar una empresa se despliegan debajo sus rutas y el mapa marca solo los kilómetros que opera. Cada concesionaria tiene un color propio. Lo que no tiene dato se dibuja más tenue. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
+        description: 'Al pasar el cursor se marcan en el mapa la ruta y la concesionaria del tramo que está bajo el puntero, y el cartel muestra solo esa zona. El filtro tiene tres opciones. En Ninguno, la concesión se pinta por concesionaria y la leyenda las nombra; el pavimento sigue la leyenda de estado. En Ruta, al presionar un escudo se despliegan debajo sus concesionarias y el mapa marca solo esa ruta, partida por color. En Concesionaria, al presionar una empresa se despliegan debajo sus rutas y el mapa marca solo los kilómetros que opera. Cada concesionaria tiene un color propio. Lo que no tiene dato se dibuja más tenue. Con la tabla vacía se muestra la carga inicial. Después del primer guardado del administrador, vale lo que quedó en la base.',
     },
 ];
 

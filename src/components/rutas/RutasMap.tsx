@@ -26,6 +26,9 @@ const STORED_GEOMETRY = geometryAsset as RutasGeometry;
 const SIN_DATO_OPACITY = 0.2;
 const ROUTE_CASING_WIDTH = 3;
 const ROUTE_STROKE_WIDTH = 1.5;
+const HIT_STROKE_WIDTH = 5;
+const MARKED_HALO_WIDTH = 8;
+const MARKED_STROKE_WIDTH = 3;
 type ShieldFilter = 'ninguno' | 'ruta' | 'constructora';
 
 const TOOLTIP_BACKGROUND = 'rgba(0, 20, 63, 0.4)';
@@ -124,7 +127,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                                     setPinned({ code: route.code, segmentIndex: null, x: 24, y: 24 });
                                 } : undefined}
                             >
-                                {missing.map(entry => drawSegment(route.code, entry, mode, filterBy, selected))}
+                                {missing.map(entry => drawSegment(route.code, entry, mode, filterBy, selected, segmentMarked(route.code, entry.index, activeTip)))}
                             </g>
                         );
                     })}
@@ -148,7 +151,7 @@ export default function RutasMap({ tramos, geometry = STORED_GEOMETRY, title = '
                                     setPinned({ code: route.code, segmentIndex: null, x: 24, y: 24 });
                                 }}
                             >
-                                {known.map(entry => drawSegment(route.code, entry, mode, filterBy, selected))}
+                                {known.map(entry => drawSegment(route.code, entry, mode, filterBy, selected, segmentMarked(route.code, entry.index, activeTip)))}
                             </g>
                         );
                     })}
@@ -188,16 +191,23 @@ function routeDimmed(code: string, filterBy: ShieldFilter, selected: Set<string>
     return filterBy === 'ruta' && selected.size > 0 && !selected.has(code);
 }
 
-function drawSegment(code: string, entry: IndexedSegment, mode: ColorMode, filterBy: ShieldFilter, selected: Set<string>) {
+function segmentMarked(code: string, index: number, tip: PointerTip | null): boolean {
+    if (tip?.code !== code) return false;
+    return tip.segmentIndex == null || tip.segmentIndex === index;
+}
+
+function drawSegment(code: string, entry: IndexedSegment, mode: ColorMode, filterBy: ShieldFilter, selected: Set<string>, marked: boolean) {
     const { segment, index } = entry;
     const missing = segment.concesionaria === 'Sin dato';
     const companyDimmed = filterBy === 'constructora' && selected.size > 0 && !selected.has(segment.concesionaria);
     const stroke = filterBy === 'ninguno' && mode === 'pavimento' && !missing ? undefined : segment.color;
+    const quiet = companyDimmed ? 0.12 : missing ? SIN_DATO_OPACITY : 1;
     return (
-        <g key={`${code}-${segment.tramoId ?? 'sin-dato'}-${index}`} data-route={code} data-company={segment.concesionaria} data-segment-index={index} opacity={companyDimmed ? 0.12 : missing ? SIN_DATO_OPACITY : 1}>
-            <path d={segment.paths.join('')} stroke="transparent" strokeWidth={18} fill="none" pointerEvents="stroke" />
+        <g key={`${code}-${segment.tramoId ?? 'sin-dato'}-${index}`} data-route={code} data-company={segment.concesionaria} data-segment-index={index} data-marked={marked ? 'true' : undefined} opacity={marked ? 1 : quiet}>
+            <path d={segment.paths.join('')} stroke="transparent" strokeWidth={HIT_STROKE_WIDTH} fill="none" pointerEvents="stroke" />
             <path d={segment.paths.join('')} stroke={ROUTE_GAP} strokeWidth={ROUTE_CASING_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
-            <path d={segment.paths.join('')} stroke={stroke} strokeWidth={ROUTE_STROKE_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
+            {marked ? <path d={segment.paths.join('')} stroke="#FFD700" strokeWidth={MARKED_HALO_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" /> : null}
+            <path d={segment.paths.join('')} stroke={stroke} strokeWidth={marked ? MARKED_STROKE_WIDTH : ROUTE_STROKE_WIDTH} fill="none" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
         </g>
     );
 }

@@ -94,7 +94,8 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
     const route5 = screen.getByRole('button', { name: 'RN 5' });
     const [hit, casing, visible] = route5.querySelectorAll('path');
     expect(hit?.getAttribute('pointer-events')).toBe('stroke');
-    expect(Number(hit?.getAttribute('stroke-width'))).toBeGreaterThanOrEqual(16);
+    expect(Number(hit?.getAttribute('stroke-width'))).toBeGreaterThan(Number(visible?.getAttribute('stroke-width')));
+    expect(Number(hit?.getAttribute('stroke-width'))).toBeLessThanOrEqual(6);
     expect(hit?.getAttribute('stroke')).toBe('transparent');
     expect(casing?.getAttribute('stroke')).toBe('#020617');
     expect(Number(casing?.getAttribute('stroke-width'))).toBeGreaterThan(Number(visible?.getAttribute('stroke-width')));
@@ -159,7 +160,11 @@ it('lists one shield per route and colors only the stretch each company operates
     fireEvent.pointerMove(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."]')!);
     expect(screen.getByRole('status').textContent).toContain('CREDITECH S.A. - PLANTEL S.A.');
     expect(screen.getByRole('status').textContent).not.toContain('CPC S.A.');
+    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."]')?.getAttribute('data-marked')).toBe('true');
+    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."] path[stroke="#FFD700"]')).toBeTruthy();
+    expect(map9.querySelector('[data-company="CPC S.A."]')?.hasAttribute('data-marked')).toBe(false);
     fireEvent.pointerLeave(map9);
+    expect(map9.querySelector('[data-company="CREDITECH S.A. - PLANTEL S.A."]')?.hasAttribute('data-marked')).toBe(false);
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('CREDITECH S.A. - PLANTEL S.A.');
     expect(screen.getByRole('list', { name: 'Referencias' }).textContent).toContain('CPC S.A.');
     const gap9 = document.querySelector('[data-route="9"][data-company="Sin dato"]');
