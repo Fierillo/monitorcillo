@@ -1,14 +1,14 @@
 'use client';
 
-import Link from 'next/link';
 import { toPng } from 'html-to-image';
 import { MoveHorizontal, RotateCcw } from 'lucide-react';
 import { startTransition, useRef, useState, useEffect, useSyncExternalStore } from 'react';
 import type { ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, ChartReferenceLine, IndicatorCompositeViewProps } from '@/types/chart';
 import CompositeChartCard from './indicators/CompositeChartCard';
-import FeedbackButton from './FeedbackButton';
+import IndicatorHeader from './IndicatorHeader';
 import LoadingModal from './LoadingModal';
 import { collectAxisExtentValues, resolveChartHoverPoint } from './chart/utils';
+import { useStoredConfig, writeStoredConfig } from '@/lib/chart-config-store';
 import { beginRangeSelection } from '@/lib/chart-range-selection';
 import type { RangeSelection } from '@/lib/chart-range-selection';
 
@@ -19,11 +19,6 @@ type PersistedChartConfig = {
     baseDateByView?: Record<string, string>;
 };
 
-type ChartConfigCache = { raw: string | null; value: PersistedChartConfig | null };
-
-const chartConfigCache = new Map<string, ChartConfigCache>();
-const chartConfigListeners = new Map<string, Set<() => void>>();
-
 function parseChartConfig(raw: string | null): PersistedChartConfig | null {
     if (!raw) return null;
     try {
@@ -32,35 +27,6 @@ function parseChartConfig(raw: string | null): PersistedChartConfig | null {
     } catch {
         return null;
     }
-}
-
-function readChartConfig(key: string): PersistedChartConfig | null {
-    const raw = window.localStorage.getItem(key);
-    const cached = chartConfigCache.get(key);
-    if (cached && cached.raw === raw) return cached.value;
-    const value = parseChartConfig(raw);
-    chartConfigCache.set(key, { raw, value });
-    return value;
-}
-
-function subscribeChartConfig(key: string, onStoreChange: () => void): () => void {
-    let listeners = chartConfigListeners.get(key);
-    if (!listeners) {
-        listeners = new Set();
-        chartConfigListeners.set(key, listeners);
-    }
-    listeners.add(onStoreChange);
-    return () => {
-        listeners.delete(onStoreChange);
-        if (listeners.size === 0) chartConfigListeners.delete(key);
-    };
-}
-
-function writeChartConfig(key: string, config: PersistedChartConfig): void {
-    const raw = JSON.stringify(config);
-    window.localStorage.setItem(key, raw);
-    chartConfigCache.set(key, { raw, value: config });
-    chartConfigListeners.get(key)?.forEach(listener => listener());
 }
 
 function pickViewId(views: IndicatorCompositeViewProps['views'], initialViewId: string | undefined, persistedViewId: string | undefined): string {
@@ -174,12 +140,7 @@ export default function IndicatorCompositeView({
     const selectByMonth = indicatorId === 'recaudacion';
     const storageKey = `monitorcillo:chart:${indicatorId ?? title}`;
     const isClient = useSyncExternalStore(() => () => {}, () => true, () => false);
-    const persisted = useSyncExternalStore(
-        (onStoreChange) => subscribeChartConfig(storageKey, onStoreChange),
-        () => readChartConfig(storageKey),
-        () => null,
-    );
-    const storedConfig = isClient ? persisted : null;
+    const storedConfig = useStoredConfig(storageKey, parseChartConfig);
     const selectedViewId = pickViewId(views, initialViewId, storedConfig?.selectedViewId);
     const [selectedModeByView, setSelectedModeByView] = useState<Record<string, string>>(initialViewId && initialModeId ? { [initialViewId]: initialModeId } : {});
     const baseDateByView = restoreBaseDateByView(storedConfig?.baseDateByView, views);
@@ -254,7 +215,7 @@ export default function IndicatorCompositeView({
     const [rangeStart, rangeEnd] = clampChartRange(storedRange, maxIndex);
 
     const persistChartConfig = (patch: Partial<PersistedChartConfig>) => {
-        writeChartConfig(storageKey, {
+        writeStoredConfig(storageKey, {
             selectedViewId,
             highlightedAreasByView: Object.fromEntries(Object.entries(highlightedAreasByView).map(([viewId, keys]) => [viewId, [...keys]])),
             rangeByView: storedConfig?.rangeByView,
@@ -469,18 +430,7 @@ export default function IndicatorCompositeView({
     return (
         <>
             <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-2 sm:p-6 lg:p-10" inert={isReturning ? true : undefined} aria-busy={isReturning}>
-                <header className="w-full sm:w-[96%] max-w-[1800px] mb-4 sm:mb-8 border-b-2 border-imperial-gold pb-4 mt-2 sm:mt-4 flex flex-col items-start gap-3 sm:flex-row-reverse sm:items-center sm:justify-between px-2">
-                    <div className="flex w-full items-stretch justify-end gap-2 sm:w-auto">
-                        <FeedbackButton context={feedbackContext} />
-                        <Link href="/" onClick={handleReturnClick} aria-disabled={isReturning} tabIndex={isReturning ? -1 : undefined} className="flex shrink-0 items-center justify-center border-2 border-imperial-gold px-3 py-1 text-xs font-bold uppercase text-imperial-gold transition-colors hover:bg-imperial-gold hover:text-imperial-blue sm:px-4 sm:py-2 sm:text-base">Volver</Link>
-                    </div>
-                    <div className="w-full text-center sm:text-left">
-                        <h1 className="imperial-title text-xl sm:text-3xl font-bold tracking-widest text-imperial-gold leading-tight uppercase">
-                            {title}
-                        </h1>
-                        {subtitle && <p className="text-imperial-cyan mt-1 font-bold text-xs sm:text-base">{subtitle}</p>}
-                    </div>
-                </header>
+                <IndicatorHeader title={title} subtitle={subtitle} feedbackContext={feedbackContext} isReturning={isReturning} onReturnClick={handleReturnClick} />
 
                 <CompositeChartCard
                     title={title} subtitle={subtitle} chartTitle={activeChartTitle} captureRef={captureRef} chartContainerRef={chartContainerRef}
