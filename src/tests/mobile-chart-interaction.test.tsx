@@ -1,6 +1,6 @@
 import { cloneElement, createRef } from 'react';
 import type { ReactNode } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import CompositeChartCard from '../components/indicators/CompositeChartCard';
 
@@ -15,7 +15,8 @@ vi.mock('recharts', () => ({
     CartesianGrid: () => null,
     ComposedChart: (props: Record<string, unknown>) => {
         recharts.chartProps = props;
-        return <div data-testid="chart-surface" onClick={props.onClick as () => void}>{props.children as ReactNode}</div>;
+        const hover = props.onMouseMove as ((state: unknown) => void) | undefined;
+        return <div data-testid="chart-surface" onClick={props.onClick as () => void} onMouseMove={() => hover?.({ activeTooltipIndex: 1, activeCoordinate: { x: 160, y: 100 } })}>{props.children as ReactNode}</div>;
     },
     Customized: () => null,
     Line: () => null,
@@ -30,7 +31,11 @@ vi.mock('recharts', () => ({
     YAxis: () => null,
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+});
+const holdTouch = () => act(() => { vi.advanceTimersByTime(500); });
 
 describe('mobile chart interaction', () => {
     it('keeps selected ticks separated within the plot after axes and edge padding', () => {
@@ -251,7 +256,7 @@ describe('mobile chart interaction', () => {
 
         expect(screen.queryByTestId('chart-pan-slider')).toBeNull();
         expect(chartContainerRef.current?.style.minWidth).toBe('');
-        expect(chartContainerRef.current?.style.touchAction).toBe('none');
+        expect(chartContainerRef.current?.style.touchAction).toBe('pan-x pan-y');
         expect(recharts.chartProps).not.toHaveProperty('onTouchStart');
         expect(recharts.chartProps).not.toHaveProperty('onTouchMove');
         expect(recharts.chartProps).not.toHaveProperty('onTouchEnd');
@@ -418,7 +423,8 @@ describe('mobile chart interaction', () => {
         expect(desktopGuide).toBe('186px');
     });
 
-    it('scrubs the tooltip with one finger over the X axis without resizing the chart', () => {
+    it('scrubs the tooltip with a relative drag once a long press activates it, without resizing the chart', () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         const rows = Array.from({ length: 3 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-0${index + 1}-01`, value: index }));
         const chartContainerRef = createRef<HTMLDivElement>();
         const onHoverTooltipChange = vi.fn();
@@ -445,6 +451,10 @@ describe('mobile chart interaction', () => {
         const chart = chartContainerRef.current!;
         chart.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 320, bottom: 360, width: 320, height: 360, toJSON: () => ({}) });
         const initialWidth = chart.style.minWidth;
+        fireEvent.pointerDown(chart, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 100, isPrimary: true });
+        holdTouch();
+        fireEvent.pointerUp(chart, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 100, isPrimary: true });
+        expect(onHoverTooltipChange).toHaveBeenLastCalledWith(expect.objectContaining({ label: 'MES 0' }));
         fireEvent.pointerDown(chart, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 330, isPrimary: true });
         fireEvent.pointerMove(chart, { pointerId: 1, pointerType: 'touch', clientX: 280, clientY: 330, isPrimary: true });
 
@@ -456,6 +466,7 @@ describe('mobile chart interaction', () => {
     });
 
     it('keeps tracking the finger when the parent re-renders mid-gesture', () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         const rows = Array.from({ length: 3 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-0${index + 1}-01`, value: index }));
         const areas = [{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' as const }];
         const chartContainerRef = createRef<HTMLDivElement>();
@@ -500,13 +511,16 @@ describe('mobile chart interaction', () => {
         element.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 320, bottom: 360, width: 320, height: 360, toJSON: () => ({}) });
 
         fireEvent.pointerDown(element, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 100, isPrimary: true });
+        holdTouch();
+        fireEvent.pointerUp(element, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 100, isPrimary: true });
+        fireEvent.pointerDown(element, { pointerId: 1, pointerType: 'touch', clientX: 20, clientY: 100, isPrimary: true });
         rerender(chart([...rows]));
         fireEvent.pointerMove(element, { pointerId: 1, pointerType: 'touch', clientX: 280, clientY: 100, isPrimary: true });
 
         expect(onHoverTooltipChange).toHaveBeenLastCalledWith(expect.objectContaining({ label: 'MES 2' }));
     });
 
-    it('follows a thumb slide without locking the crosshair', () => {
+    it('leaves an inactive chart to the page when the thumb slides over it', () => {
         const rows = Array.from({ length: 3 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-0${index + 1}-01`, value: index }));
         const chartContainerRef = createRef<HTMLDivElement>();
         const onCrosshairClick = vi.fn();
@@ -552,164 +566,161 @@ describe('mobile chart interaction', () => {
         fireEvent.pointerMove(chart, { pointerId: 1, pointerType: 'touch', clientX: 220, clientY: 120, isPrimary: true });
         fireEvent.pointerUp(chart, { pointerId: 1, pointerType: 'touch', clientX: 220, clientY: 120, isPrimary: true });
 
-        expect(onHoverTooltipChange).toHaveBeenCalled();
-        expect(onHoverTooltipChange).toHaveBeenLastCalledWith(null);
+        expect(onHoverTooltipChange).not.toHaveBeenCalledWith(expect.objectContaining({ label: expect.any(String) }));
+        expect(chart.style.touchAction).toBe('pan-x pan-y');
         expect(onCrosshairClick).not.toHaveBeenCalled();
 
         fireEvent.click(chart.querySelector('[data-testid="chart-surface"]') ?? chart);
         expect(onCrosshairClick).not.toHaveBeenCalled();
     });
 
-    it('locks the crosshair when the finger taps without sliding', () => {
-        const rows = Array.from({ length: 3 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-0${index + 1}-01`, value: index }));
-        const chartContainerRef = createRef<HTMLDivElement>();
-        const onCrosshairClick = vi.fn();
-        render(<CompositeChartCard
-            title="Indicador"
-            chartTitle="Gráfico"
-            captureRef={createRef<HTMLDivElement>()}
-            chartContainerRef={chartContainerRef}
-            chartSize={{ width: 320, height: 360 }}
-            visibleData={rows}
-            sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
-            methodology={[]}
-            valueFormat="percent"
-            yAxisDecimals={1}
-            leftAxisDomain={[0, 20]}
-            xAxisKey="iso_fecha"
-            labelByXAxisValue={new Map()}
-            highlightedAreas={new Set()}
-            selectedMonth={null}
-            selectByMonth={false}
-            showTooltipTotal={false}
-            referenceLines={[]}
-            rangePreview={null}
-            committedRange={[0, 2]}
-            crosshair={null}
-            captureTooltip={null}
-            isMobile
-            isCapturing={false}
-            onPrepareDownload={() => undefined}
-            onDownloadChart={() => undefined}
-            onSelectMonth={() => undefined}
-            onToggleHighlight={() => undefined}
-            onCrosshairClick={onCrosshairClick}
-            onCrosshairUnlock={() => undefined}
-            onHoverTooltipChange={() => undefined}
-        />);
-
-        const chart = chartContainerRef.current!;
-        chart.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 320, bottom: 360, width: 320, height: 360, toJSON: () => ({}) });
-        fireEvent.pointerDown(chart, { pointerId: 1, pointerType: 'touch', clientX: 40, clientY: 80, isPrimary: true });
-        fireEvent.pointerUp(chart, { pointerId: 1, pointerType: 'touch', clientX: 44, clientY: 82, isPrimary: true });
-        fireEvent.click(chart.querySelector('[data-testid="chart-surface"]') ?? chart);
-
-        expect(onCrosshairClick).toHaveBeenCalledTimes(1);
-        expect(onCrosshairClick.mock.calls[0][0].activeTooltipIndex).toBe(0);
-    });
-
-    it('unlocks a fixed crosshair when the same point is tapped again', () => {
+    const renderTouchChart = (overrides: Partial<Parameters<typeof CompositeChartCard>[0]> = {}) => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         const rows = Array.from({ length: 3 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-0${index + 1}-01`, value: index }));
         const chartContainerRef = createRef<HTMLDivElement>();
         const onCrosshairClick = vi.fn();
         const onCrosshairUnlock = vi.fn();
-        render(<CompositeChartCard
-            title="Indicador"
-            chartTitle="Gráfico"
-            captureRef={createRef<HTMLDivElement>()}
-            chartContainerRef={chartContainerRef}
-            chartSize={{ width: 320, height: 360 }}
-            visibleData={rows}
-            sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
-            methodology={[]}
-            valueFormat="percent"
-            yAxisDecimals={1}
-            leftAxisDomain={[0, 20]}
-            xAxisKey="iso_fecha"
-            labelByXAxisValue={new Map()}
-            highlightedAreas={new Set()}
-            selectedMonth={null}
-            selectByMonth={false}
-            showTooltipTotal={false}
-            referenceLines={[]}
-            rangePreview={null}
-            committedRange={[0, 2]}
-            crosshair={{ x: 8, y: 80, locked: true, label: 'MES 0' }}
-            captureTooltip={null}
-            isMobile
-            isCapturing={false}
-            onPrepareDownload={() => undefined}
-            onDownloadChart={() => undefined}
-            onSelectMonth={() => undefined}
-            onToggleHighlight={() => undefined}
-            onCrosshairClick={onCrosshairClick}
-            onCrosshairUnlock={onCrosshairUnlock}
-            onHoverTooltipChange={() => undefined}
-        />);
-
-        const chart = chartContainerRef.current!;
-        chart.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 320, bottom: 360, width: 320, height: 360, toJSON: () => ({}) });
-        fireEvent.pointerDown(chart, { pointerId: 1, pointerType: 'touch', clientX: 40, clientY: 80, isPrimary: true });
-        fireEvent.pointerUp(chart, { pointerId: 1, pointerType: 'touch', clientX: 40, clientY: 80, isPrimary: true });
-
-        expect(onCrosshairUnlock).toHaveBeenCalledTimes(1);
-        expect(onCrosshairClick).not.toHaveBeenCalled();
-    });
-
-    it('scrolls the page with two fingers instead of interacting with the chart', () => {
-        const rows = Array.from({ length: 3 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-0${index + 1}-01`, value: index }));
-        const chartContainerRef = createRef<HTMLDivElement>();
-        const onCrosshairClick = vi.fn();
         const onHoverTooltipChange = vi.fn();
-        const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => undefined);
-        render(<CompositeChartCard
-            title="Indicador"
-            chartTitle="Gráfico"
-            captureRef={createRef<HTMLDivElement>()}
-            chartContainerRef={chartContainerRef}
-            chartSize={{ width: 320, height: 360 }}
-            visibleData={rows}
-            sortedData={rows}
+        const { container } = render(<CompositeChartCard
+            title="Indicador" chartTitle="Gráfico" captureRef={createRef<HTMLDivElement>()}
+            chartContainerRef={chartContainerRef} chartSize={{ width: 320, height: 360 }}
+            visibleData={rows} sortedData={rows}
             areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
-            methodology={[]}
-            valueFormat="percent"
-            yAxisDecimals={1}
-            leftAxisDomain={[0, 20]}
-            xAxisKey="iso_fecha"
-            labelByXAxisValue={new Map()}
-            highlightedAreas={new Set()}
-            selectedMonth={null}
-            selectByMonth={false}
-            showTooltipTotal={false}
-            referenceLines={[]}
-            rangePreview={null}
-            committedRange={[0, 2]}
-            crosshair={null}
-            captureTooltip={null}
-            isMobile
-            isCapturing={false}
-            onPrepareDownload={() => undefined}
-            onDownloadChart={() => undefined}
-            onSelectMonth={() => undefined}
-            onToggleHighlight={() => undefined}
-            onCrosshairClick={onCrosshairClick}
-            onCrosshairUnlock={() => undefined}
+            methodology={[]} valueFormat="percent" yAxisDecimals={1} leftAxisDomain={[0, 20]}
+            xAxisKey="iso_fecha" labelByXAxisValue={new Map()} highlightedAreas={new Set()}
+            selectedMonth={null} selectByMonth={false} showTooltipTotal={false}
+            referenceLines={[]} rangePreview={null} committedRange={[0, 2]}
+            crosshair={null} captureTooltip={null} isMobile isCapturing={false}
+            onPrepareDownload={() => undefined} onDownloadChart={() => undefined}
+            onSelectMonth={() => undefined} onToggleHighlight={() => undefined}
+            onCrosshairClick={onCrosshairClick} onCrosshairUnlock={onCrosshairUnlock}
             onHoverTooltipChange={onHoverTooltipChange}
+            {...overrides}
         />);
-
         const chart = chartContainerRef.current!;
-        const viewport = screen.getByTestId('chart-scroll-viewport');
-        Object.defineProperty(viewport, 'scrollLeft', { value: 0, writable: true, configurable: true });
         chart.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 320, bottom: 360, width: 320, height: 360, toJSON: () => ({}) });
-        fireEvent.pointerDown(chart, { pointerId: 1, pointerType: 'touch', clientX: 80, clientY: 160, isPrimary: true });
-        fireEvent.pointerDown(chart, { pointerId: 2, pointerType: 'touch', clientX: 180, clientY: 160, isPrimary: false });
-        fireEvent.pointerMove(chart, { pointerId: 1, pointerType: 'touch', clientX: 40, clientY: 120, isPrimary: true });
-        fireEvent.pointerMove(chart, { pointerId: 2, pointerType: 'touch', clientX: 140, clientY: 120, isPrimary: false });
+        const tap = (clientX: number, clientY: number) => {
+            fireEvent.pointerDown(chart, { pointerId: 1, pointerType: 'touch', clientX, clientY, isPrimary: true });
+            fireEvent.pointerUp(chart, { pointerId: 1, pointerType: 'touch', clientX, clientY, isPrimary: true });
+        };
+        const longPress = (clientX: number, clientY: number) => {
+            fireEvent.pointerDown(chart, { pointerId: 1, pointerType: 'touch', clientX, clientY, isPrimary: true });
+            holdTouch();
+            fireEvent.pointerUp(chart, { pointerId: 1, pointerType: 'touch', clientX, clientY, isPrimary: true });
+        };
+        return { container, chart, tap, longPress, onCrosshairClick, onCrosshairUnlock, onHoverTooltipChange };
+    };
 
-        expect(scrollBy).toHaveBeenCalled();
+    it('activates the hover crosshair on a long press anywhere without pinning it; a short tap does nothing', () => {
+        const { chart, tap, longPress, onCrosshairClick, onHoverTooltipChange } = renderTouchChart();
+        tap(40, 80);
+        holdTouch();
+        expect(onHoverTooltipChange).not.toHaveBeenCalledWith(expect.objectContaining({ label: expect.any(String) }));
+        longPress(160, 355);
+        fireEvent.click(chart.querySelector('[data-testid="chart-surface"]') ?? chart);
+
+        expect(onHoverTooltipChange).toHaveBeenLastCalledWith(expect.objectContaining({ label: 'MES 1', locked: false }));
         expect(onCrosshairClick).not.toHaveBeenCalled();
-        expect(onHoverTooltipChange).toHaveBeenLastCalledWith(null);
+        expect(chart.style.touchAction).toBe('none');
+        expect(chart.style.userSelect).toBe('none');
+        expect(fireEvent.contextMenu(chart)).toBe(false);
     });
+
+    it('a simple tap anywhere deactivates the crosshair, on the chart or elsewhere on the page', () => {
+        const { chart, tap, longPress, onCrosshairClick, onCrosshairUnlock, onHoverTooltipChange } = renderTouchChart();
+        longPress(40, 80);
+        tap(160, 100);
+        expect(onHoverTooltipChange).toHaveBeenLastCalledWith(null);
+        expect(chart.style.touchAction).toBe('pan-x pan-y');
+
+        longPress(40, 80);
+        fireEvent.pointerDown(document.body, { pointerId: 2, pointerType: 'touch', clientX: 5, clientY: 5, isPrimary: true });
+        fireEvent.pointerUp(document.body, { pointerId: 2, pointerType: 'touch', clientX: 5, clientY: 5, isPrimary: true });
+        expect(onHoverTooltipChange).toHaveBeenLastCalledWith(null);
+        expect(onCrosshairUnlock).not.toHaveBeenCalled();
+        expect(onCrosshairClick).not.toHaveBeenCalled();
+    });
+
+    it('stays off after a deactivating tap even when the browser emits compatibility mouse events', () => {
+        const { chart, longPress, onHoverTooltipChange } = renderTouchChart();
+        const surface = chart.querySelector('[data-testid="chart-surface"]')!;
+        longPress(40, 80);
+        const tapPoint = { clientX: 160, clientY: 100 };
+        fireEvent.pointerDown(chart, { pointerId: 1, pointerType: 'touch', ...tapPoint, isPrimary: true });
+        fireEvent.touchStart(chart);
+        fireEvent.pointerUp(chart, { pointerId: 1, pointerType: 'touch', ...tapPoint, isPrimary: true });
+        fireEvent.touchEnd(chart);
+        fireEvent.mouseMove(surface, tapPoint);
+        fireEvent.mouseDown(surface, tapPoint);
+        fireEvent.mouseUp(surface, tapPoint);
+        fireEvent.click(surface, tapPoint);
+
+        expect(onHoverTooltipChange).toHaveBeenLastCalledWith(null);
+        expect(chart.style.touchAction).toBe('pan-x pan-y');
+    });
+
+    it('still hovers with a real mouse on a mobile-sized chart', () => {
+        const { chart, onHoverTooltipChange } = renderTouchChart();
+        fireEvent.pointerMove(chart, { pointerId: 9, pointerType: 'mouse', clientX: 160, clientY: 100 });
+        fireEvent.mouseMove(chart.querySelector('[data-testid="chart-surface"]')!);
+        expect(onHoverTooltipChange).toHaveBeenLastCalledWith(expect.objectContaining({ label: 'MES 1' }));
+    });
+
+    it('tapping Guardar keeps the active crosshair and its hover through the whole mobile tap sequence', () => {
+        const { chart, longPress, onHoverTooltipChange } = renderTouchChart();
+        longPress(160, 100);
+        const save = screen.getByTitle('Descargar gráfico');
+        const at = { clientX: 300, clientY: 10 };
+        fireEvent.pointerDown(save, { pointerId: 3, pointerType: 'touch', ...at, isPrimary: true });
+        fireEvent.touchStart(save);
+        fireEvent.pointerUp(save, { pointerId: 3, pointerType: 'touch', ...at, isPrimary: true });
+        fireEvent.touchEnd(save);
+        fireEvent.mouseMove(save, at);
+        fireEvent.mouseDown(save, at);
+        fireEvent.mouseUp(save, at);
+        fireEvent.click(save, at);
+
+        expect(onHoverTooltipChange).toHaveBeenLastCalledWith(expect.objectContaining({ label: 'MES 1' }));
+        expect(chart.style.touchAction).toBe('none');
+    });
+
+    it('reports the hover with the chart height so exports can re-place it', () => {
+        const { longPress, onHoverTooltipChange } = renderTouchChart();
+        longPress(160, 100);
+        expect(onHoverTooltipChange).toHaveBeenLastCalledWith(expect.objectContaining({ label: 'MES 1', y: 100, chartHeight: 360, tooltipPosition: { y: expect.any(Number) } }));
+    });
+
+    it('exports the active crosshair and its tooltip at the same relative position', () => {
+        const { container } = renderTouchChart({
+            isMobile: false, isCapturing: true, forceDesktopLayout: true,
+            captureTooltip: { x: 160, y: 100, locked: false, label: 'MES 1', chartHeight: 360, tooltipPosition: { y: 50 } },
+        });
+        const [vertical, horizontal] = [...container.querySelectorAll('.recharts-crosshair-guide line')];
+        expect(Number(horizontal.getAttribute('y1'))).toBeCloseTo(100 * 780 / 360);
+        expect(Number(vertical.getAttribute('x1'))).toBeGreaterThan(500);
+        expect(Number(vertical.getAttribute('x1'))).toBeLessThan(740);
+        const tooltip = [...container.querySelectorAll<HTMLElement>('.absolute.z-10')].find(element => element.style.top)!;
+        expect(parseFloat(tooltip.style.top)).toBeCloseTo(50 * 780 / 360);
+        expect(tooltip.textContent).toContain('MES 1');
+    });
+
+    it('auto-scrolls the page while the active crosshair is dragged near the viewport bottom', () => {
+        const frames: FrameRequestCallback[] = [];
+        vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => frames.push(callback));
+        const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {
+            window.scrollY += 16;
+        });
+        Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
+        const { chart, longPress } = renderTouchChart({ chartSize: { width: 320, height: 800 } });
+        chart.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 320, bottom: 800, width: 320, height: 800, toJSON: () => ({}) });
+        longPress(40, 100);
+        fireEvent.pointerDown(chart, { pointerId: 1, pointerType: 'touch', clientX: 40, clientY: 100, isPrimary: true });
+        fireEvent.pointerMove(chart, { pointerId: 1, pointerType: 'touch', clientX: 40, clientY: window.innerHeight - 1, isPrimary: true });
+        for (let frame = 0; frame < 5 && frames.length; frame++) frames.shift()!(0);
+
+        expect(scrollBy).toHaveBeenCalledWith({ top: expect.any(Number) });
+        expect((scrollBy.mock.calls[0][0] as ScrollToOptions).top).toBeLessThanOrEqual(16);
+        vi.restoreAllMocks();
+    });
+
 });

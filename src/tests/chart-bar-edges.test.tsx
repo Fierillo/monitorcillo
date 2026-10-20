@@ -1,5 +1,5 @@
 import { createRef } from 'react';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import CompositeChartCard from '../components/indicators/CompositeChartCard';
 import type { AreaConfig } from '@/types/chart';
@@ -102,6 +102,7 @@ describe('bar chart edges', () => {
     });
 
     it('aims the mobile touch crosshair at the center of the touched bar', () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         const onHoverTooltipChange = vi.fn();
         const { container, chartContainerRef } = renderChart({ count: 30, width: 390, isMobile: true, isCapturing: false, onHoverTooltipChange });
         const lastColumn = barColumns(container).at(-1)!;
@@ -110,9 +111,12 @@ describe('bar chart edges', () => {
         chart.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 390, bottom: 400, width: 390, height: 400, toJSON: () => ({}) });
 
         fireEvent.pointerDown(chart, { pointerId: 1, pointerType: 'touch', clientX: lastColumn.right - 1, clientY: 200, isPrimary: true });
+        act(() => { vi.advanceTimersByTime(500); });
+        fireEvent.pointerUp(chart, { pointerId: 1, pointerType: 'touch', clientX: lastColumn.right - 1, clientY: 200, isPrimary: true });
 
         const touched = onHoverTooltipChange.mock.lastCall![0] as { x: number; label: string };
         expect(touched.label).toBe('MES 29');
         expectWithinPixel(touched.x, lastColumnCenter);
+        vi.useRealTimers();
     });
 });

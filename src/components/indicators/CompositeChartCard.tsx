@@ -5,6 +5,9 @@ import type { MouseEvent } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { CartesianGrid, ComposedChart, Customized, ReferenceDot, ReferenceLine, XAxis, YAxis } from 'recharts';
 import type { XAxisTickContentProps } from 'recharts';
+import { TOUCH_PRESS_STYLE, useTouchCrosshair } from '@/components/chart/useTouchCrosshair';
+import { isTouchPointer } from '@/lib/crosshair';
+import { CROSSHAIR_DASH, CROSSHAIR_STROKE, CROSSHAIR_STROKE_WIDTH } from '@/components/chart/crosshair-style';
 import type { AreaConfig, ChartAxisDomain, ChartClickState, ChartCrosshairState, ChartDataRow, ChartMobileRangeSelection, ChartReferenceLine, MethodologyItem, ValueFormat, YAxisConfig } from '@/types/chart';
 import ChartArea from '../chart/ChartArea';
 import ChartBar from '../chart/ChartBar';
@@ -14,7 +17,7 @@ import CustomLegend from '../chart/CustomLegend';
 import MobileRangePicker from '../chart/MobileRangePicker';
 import { createHoverTooltipStore, type HoverTooltipStore } from '../chart/hover-tooltip-store';
 import MethodologySection from '../chart/MethodologySection';
-import { calculateTooltipVerticalPosition, chartClickStateFromPointer, chartLayout, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount, xTickEdgeSpacingPx, xTickSpacingPx } from '../chart/utils';
+import { calculateTooltipVerticalPosition, chartClickStateFromPointer, chartLayout, chartXForIndex, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount, xTickEdgeSpacingPx, xTickSpacingPx } from '../chart/utils';
 import type { ChartLayout } from '../chart/utils';
 
 type Props = {
@@ -103,7 +106,7 @@ function ChartHeader({ onPrepareDownload, onDownloadChart, isCapturing, viewSele
             <div>{viewSelector}</div>
             <div className="flex justify-end gap-2 w-full sm:w-auto">
                 {extraControl}
-                <button onMouseDown={onPrepareDownload} onTouchStart={onPrepareDownload} onClick={onDownloadChart} className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center" title="Descargar gráfico">
+                <button data-keep-crosshair onMouseDown={onPrepareDownload} onTouchStart={onPrepareDownload} onClick={onDownloadChart} className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center" title="Descargar gráfico">
                     <ImageDown size={16} /> Guardar
                 </button>
             </div>
@@ -125,10 +128,14 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
         valueFormat: props.valueFormat,
         hasSecondaryAxis: Boolean(props.secondaryYAxis),
     }), [renderedAreas, props.visibleData.length, props.chartSize.width, props.isMobile, props.valueFormat, props.secondaryYAxis]);
+    const captureCrosshair = useMemo(
+        () => props.isCapturing && !props.crosshair?.locked ? placeCaptureCrosshair(props.captureTooltip, props.visibleData, props.chartSize, layout) : null,
+        [props.isCapturing, props.crosshair?.locked, props.captureTooltip, props.visibleData, props.chartSize, layout],
+    );
     const captureCanvasStyle = props.forceDesktopLayout ? { outline: 'none', height: 780 } : { outline: 'none' };
     const captureChartStyle = props.forceDesktopLayout
         ? { outline: 'none', width: 1240, height: 780 }
-        : { outline: 'none', width: '100%', touchAction: props.isMobile ? 'none' : undefined };
+        : { outline: 'none', width: '100%' };
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -203,7 +210,7 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
                         onCommit={props.rangeSelection.onCommit}
                         onCancel={props.rangeSelection.onCancel}
                     /> : null}
-                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} layout={layout} chartContainerRef={chartContainerRef} scrollViewportRef={scrollViewportRef} isControlPressed={isControlPressed} hoverTooltipStore={hoverTooltipStore} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
+                    {props.chartSize.width > 0 && props.chartSize.height > 0 ? <ResponsiveComposedChart {...props} crosshair={props.crosshair ?? captureCrosshair} layout={layout} chartContainerRef={chartContainerRef} scrollViewportRef={scrollViewportRef} isControlPressed={isControlPressed} hoverTooltipStore={hoverTooltipStore} /> : <div className="h-full min-h-[500px] w-full flex items-center justify-center text-imperial-cyan font-bold">Cargando gráfico...</div>}
                     {!props.isCapturing && !props.crosshair?.locked && !isControlPressed ? (
                         <HoverTooltipOverlay
                             store={hoverTooltipStore}
@@ -217,7 +224,7 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
                         />
                     ) : null}
                     {props.crosshair?.locked && props.crosshair.label ? <CrosshairTooltip crosshair={props.crosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} compact={props.isMobile} isCapturing={props.isCapturing} /> : null}
-                    {props.isCapturing && !props.crosshair?.locked && props.captureTooltip?.label ? <CrosshairTooltip crosshair={props.captureTooltip} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} compact={false} isCapturing /> : null}
+                    {captureCrosshair?.label ? <CrosshairTooltip crosshair={captureCrosshair} areas={renderedAreas} valueFormat={props.valueFormat} sortedData={props.sortedData} chartWidth={props.chartSize.width} chartHeight={props.chartSize.height} showTotal={props.showTooltipTotal} compact={false} isCapturing /> : null}
                     {isControlPressed && !props.isCapturing ? (
                         <Image
                             ref={chainsawCursorRef}
@@ -239,12 +246,23 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
     );
 }
 
+/** The on-screen hover (possibly from a differently sized chart) mapped onto this chart: same data point, same relative height. */
+function placeCaptureCrosshair(tip: ChartCrosshairState | null, rows: ChartDataRow[], size: { width: number; height: number }, layout: ChartLayout): ChartCrosshairState | null {
+    if (!tip?.label) return null;
+    const index = rows.findIndex(row => String(row.fecha ?? row.iso_fecha) === tip.label);
+    if (index < 0) return null;
+    const scale = tip.chartHeight ? size.height / tip.chartHeight : 1;
+    const x = chartXForIndex({ index, count: rows.length, left: layout.dataArea.left, right: layout.dataArea.right, width: size.width });
+    const tooltipY = tip.tooltipPosition?.y;
+    return { x, y: tip.y * scale, locked: false, label: tip.label, tooltipPosition: tooltipY == null ? undefined : { y: tooltipY * scale } };
+}
+
 function AxisLabel({ label, color, right = false, control }: { label: string; color?: string; right?: boolean; control?: ReactNode }) {
     return <div className={`flex ${control ? 'w-14' : 'w-5'} shrink-0 items-center justify-center`}><div className={`${right ? 'rotate-90' : '-rotate-90'} flex flex-col items-center gap-1 whitespace-nowrap ${color ? '' : 'text-imperial-gold'} font-bold text-xs uppercase tracking-widest`} style={{ color }}><span>{label}</span>{control}</div></div>;
 }
 
 function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout; chartContainerRef: RefObject<HTMLDivElement | null>; scrollViewportRef: RefObject<HTMLDivElement | null>; isControlPressed: boolean; hoverTooltipStore: HoverTooltipStore }) {
-    const { chartContainerRef, chartSize, crosshair, isCapturing, isControlPressed, isMobile, layout, onCrosshairClick, onCrosshairUnlock, onHoverTooltipChange, hoverTooltipStore, scrollViewportRef, visibleData } = props;
+    const { chartContainerRef, chartSize, isCapturing, isControlPressed, isMobile, layout, onHoverTooltipChange, hoverTooltipStore, visibleData } = props;
     const hoverVerticalRef = useRef<SVGLineElement | null>(null);
     const hoverHorizontalRef = useRef<SVGLineElement | null>(null);
     const rafRef = useRef<number | null>(null);
@@ -267,13 +285,14 @@ function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout
             .filter(area => area.type === 'line' && typeof lockedRow[area.key] === 'number')
             .map(area => ({ area, value: Number(lockedRow[area.key]) }))
         : [];
+    const { areas, highlightedAreas, referenceLines, leftAxisDomain, secondaryYAxis } = props;
     const leftRange = useMemo(
-        () => axisTickRange(props, 'left', !Array.isArray(props.leftAxisDomain)),
-        [props.visibleData, props.areas, props.highlightedAreas, props.referenceLines, props.leftAxisDomain, props.secondaryYAxis],
+        () => axisTickRange({ visibleData, areas, highlightedAreas, referenceLines, leftAxisDomain, secondaryYAxis }, 'left', !Array.isArray(leftAxisDomain)),
+        [visibleData, areas, highlightedAreas, referenceLines, leftAxisDomain, secondaryYAxis],
     );
     const rightRange = useMemo(
-        () => axisTickRange(props, 'right', props.secondaryYAxis?.includeZero ?? !Array.isArray(props.secondaryYAxis?.domain)),
-        [props.visibleData, props.areas, props.highlightedAreas, props.secondaryYAxis],
+        () => axisTickRange({ visibleData, areas, highlightedAreas, referenceLines, leftAxisDomain, secondaryYAxis }, 'right', secondaryYAxis?.includeZero ?? !Array.isArray(secondaryYAxis?.domain)),
+        [visibleData, areas, highlightedAreas, referenceLines, leftAxisDomain, secondaryYAxis],
     );
     const preferredDivisions = props.valueFormat === 'millions' ? 12 : 8;
     const pairedDivisions = props.secondaryYAxis
@@ -365,7 +384,6 @@ function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout
             ? activeRow.comparison_group
             : null;
         setActiveComparisonGroup(current => current === nextComparisonGroup ? current : nextComparisonGroup);
-        props.onHoverTooltipChange({ x, y, locked: false, label });
 
         const normalizedValues = renderedAreas.flatMap(area => {
             const value = activeRow[area.key];
@@ -378,6 +396,7 @@ function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout
         const tooltipHeight = props.isMobile ? 24 + tooltipRows * 15 : 40 + tooltipRows * 24;
         const tooltipY = calculateTooltipVerticalPosition(normalizedValues, y, props.chartSize.height, tooltipHeight);
         hoverTooltipStore.set({ label, x, y, tooltipY });
+        props.onHoverTooltipChange({ x, y, locked: false, label, tooltipPosition: { y: tooltipY }, chartHeight: props.chartSize.height });
 
         if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
         rafRef.current = requestAnimationFrame(() => {
@@ -393,103 +412,60 @@ function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout
         });
     };
 
-    const gestureInputRef = useRef({ chartSize, crosshair, onCrosshairClick, onCrosshairUnlock, onHoverTooltipChange, updateHoverCrosshair, visibleData });
-    useEffect(() => {
-        gestureInputRef.current = { chartSize, crosshair, onCrosshairClick, onCrosshairUnlock, onHoverTooltipChange, updateHoverCrosshair, visibleData };
+    const plot = { left: layout.dataArea.left, right: layout.dataArea.right, top: layout.margins.top, bottom: layout.margins.bottom };
+    const plotBounds = { minX: layout.margins.left + layout.axisWidths.left, minY: plot.top, maxX: chartSize.width - layout.margins.right - layout.axisWidths.right, maxY: chartSize.height - plot.bottom };
+    const clearHover = () => {
+        hideHoverCrosshair();
+        hoverTooltipStore.clear();
+        onHoverTooltipChange(null);
+    };
+    const touchCrosshair = useTouchCrosshair<HTMLDivElement>({
+        bounds: plotBounds,
+        tipBottom: () => chartContainerRef.current?.querySelector('[data-crosshair-tip]')?.getBoundingClientRect().bottom ?? null,
+        onChange: (_element, next) => {
+            if (!next.point) return clearHover();
+            updateHoverCrosshair(chartClickStateFromPointer({ x: next.point[0], y: next.point[1], width: chartSize.width, height: chartSize.height, count: visibleData.length, ...plot }));
+        },
     });
+    const touchRef = useRef(touchCrosshair);
     useEffect(() => {
-        if (!isMobile || isCapturing) return;
+        touchRef.current = touchCrosshair;
+    });
+    const touchEnabled = isMobile && !isCapturing;
+    // Mobile browsers replay a touch as mousemove/mousedown/click; while the last pointer was a finger, those must not drive the mouse hover.
+    const touchPointerRef = useRef(false);
+    useEffect(() => {
         const element = chartContainerRef.current;
         if (!element) return;
+        element.style.touchAction = touchEnabled ? touchCrosshair.touchAction : '';
+        Object.assign(element.style, touchEnabled ? TOUCH_PRESS_STYLE : { userSelect: '', WebkitUserSelect: '', WebkitTouchCallout: '' });
+    }, [chartContainerRef, touchCrosshair.touchAction, touchEnabled]);
+    useEffect(() => {
+        const element = chartContainerRef.current;
+        if (!touchEnabled || !element) return;
 
-        const latest = () => gestureInputRef.current;
-        const gesture = { pointerId: -1, startX: 0, startY: 0, moved: false };
-        const activeTouches = new Map<number, { x: number; y: number }>();
-        let twoFingerGesture = false;
-        let previousCenterY: number | null = null;
-        const ignoreSlideClick = { current: false };
-        const stateFromEvent = (event: PointerEvent) => {
-            const rect = element.getBoundingClientRect();
-            return chartClickStateFromPointer({
-                x: event.clientX - rect.left,
-                y: event.clientY - rect.top,
-                width: latest().chartSize.width,
-                height: latest().chartSize.height,
-                count: latest().visibleData.length,
-                left: layout.dataArea.left,
-                right: layout.dataArea.right,
-                top: layout.margins.top,
-                bottom: layout.margins.bottom,
-            });
+        const pointer = (event: PointerEvent) => ({ pointerType: event.pointerType, pointerId: event.pointerId, clientX: event.clientX, clientY: event.clientY, currentTarget: element });
+        let ignoreClick = false;
+        const track = (event: PointerEvent) => {
+            touchPointerRef.current = isTouchPointer(event);
         };
-        const clearHover = () => {
-            hideHoverCrosshair();
-            hoverTooltipStore.clear();
-            latest().onHoverTooltipChange(null);
-        };
-        const touchCenterY = () => [...activeTouches.values()].reduce((sum, touch) => sum + touch.y, 0) / activeTouches.size;
-        const isTouch = (event: PointerEvent) => event.pointerType !== 'mouse';
         const onPointerDown = (event: PointerEvent) => {
-            if (!isTouch(event)) return;
-            activeTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
-            if (activeTouches.size >= 2) {
-                twoFingerGesture = true;
-                gesture.pointerId = -1;
-                previousCenterY = touchCenterY();
-                clearHover();
-                return;
-            }
-            gesture.pointerId = event.pointerId;
-            gesture.startX = event.clientX;
-            gesture.startY = event.clientY;
-            gesture.moved = false;
-            const state = stateFromEvent(event);
-            if (state) latest().updateHoverCrosshair(state);
+            track(event);
+            touchRef.current.down(pointer(event));
         };
         const onPointerMove = (event: PointerEvent) => {
-            if (activeTouches.has(event.pointerId)) activeTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
-            if (twoFingerGesture && activeTouches.size >= 2) {
-                const centerY = touchCenterY();
-                const deltaY = previousCenterY == null ? 0 : previousCenterY - centerY;
-                if (deltaY !== 0) window.scrollBy(0, deltaY);
-                previousCenterY = centerY;
-                event.preventDefault();
-                return;
-            }
-            if (event.pointerId !== gesture.pointerId) return;
-            if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > 12) gesture.moved = true;
-            const state = stateFromEvent(event);
-            if (state) latest().updateHoverCrosshair(state);
+            track(event);
+            touchRef.current.move(pointer(event));
         };
         const onPointerUp = (event: PointerEvent) => {
-            activeTouches.delete(event.pointerId);
-            if (twoFingerGesture) {
-                ignoreSlideClick.current = true;
-                if (activeTouches.size === 0) {
-                    twoFingerGesture = false;
-                    previousCenterY = null;
-                }
-                clearHover();
-                return;
-            }
-            if (event.pointerId !== gesture.pointerId) return;
-            const moved = gesture.moved || Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > 12;
-            gesture.pointerId = -1;
-            ignoreSlideClick.current = true;
-            if (moved) {
-                clearHover();
-                return;
-            }
-            const state = stateFromEvent(event);
-            if (!state) return;
-            const { crosshair: lockedCrosshair, onCrosshairClick: lock, onCrosshairUnlock: unlock, visibleData: rows } = latest();
-            const point = resolveChartHoverPoint(state, rows);
-            if (lockedCrosshair?.locked && point?.label === lockedCrosshair.label) unlock();
-            else lock(state);
+            if (touchRef.current.up(pointer(event))) ignoreClick = true;
         };
+        const onPointerCancel = (event: PointerEvent) => touchRef.current.cancel(pointer(event));
+        const onContextMenu = (event: Event) => touchRef.current.contextMenu(event);
+        // Touch taps never pin the tooltip: swallow the compatibility click that follows them.
         const onClickCapture = (event: Event) => {
-            if (!ignoreSlideClick.current) return;
-            ignoreSlideClick.current = false;
+            if (!ignoreClick) return;
+            ignoreClick = false;
             event.preventDefault();
             event.stopPropagation();
         };
@@ -497,16 +473,18 @@ function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout
         element.addEventListener('pointerdown', onPointerDown);
         element.addEventListener('pointermove', onPointerMove);
         element.addEventListener('pointerup', onPointerUp);
-        element.addEventListener('pointercancel', onPointerUp);
+        element.addEventListener('pointercancel', onPointerCancel);
         element.addEventListener('click', onClickCapture, true);
+        element.addEventListener('contextmenu', onContextMenu);
         return () => {
+            element.removeEventListener('contextmenu', onContextMenu);
             element.removeEventListener('pointerdown', onPointerDown);
             element.removeEventListener('pointermove', onPointerMove);
             element.removeEventListener('pointerup', onPointerUp);
-            element.removeEventListener('pointercancel', onPointerUp);
+            element.removeEventListener('pointercancel', onPointerCancel);
             element.removeEventListener('click', onClickCapture, true);
         };
-    }, [chartContainerRef, hideHoverCrosshair, hoverTooltipStore, isCapturing, isMobile, layout, scrollViewportRef]);
+    }, [chartContainerRef, touchEnabled]);
 
     return (
         <ComposedChart
@@ -518,7 +496,10 @@ function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout
             barGap={0}
             stackOffset="sign"
             style={{ outline: 'none', pointerEvents: props.isCapturing ? 'none' : 'auto' }}
-            onMouseMove={(e: ChartClickState | null) => updateHoverCrosshair(e)}
+            onMouseMove={(e: ChartClickState | null) => {
+                if (touchEnabled && touchPointerRef.current) return;
+                updateHoverCrosshair(e);
+            }}
             onMouseLeave={() => {
                 hideHoverCrosshair();
                 hoverTooltipStore.clear();
@@ -658,8 +639,8 @@ function RangePreviewGuides({ previewRange, committedRange, sortedData, xAxisKey
 function HoverCrosshair({ verticalRef, horizontalRef, width, height }: { verticalRef: RefObject<SVGLineElement | null>; horizontalRef: RefObject<SVGLineElement | null>; width: number; height: number }) {
     return (
         <g className="recharts-hover-crosshair-guide" pointerEvents="none">
-            <line ref={verticalRef} x1={0} x2={0} y1={0} y2={height} stroke="#FFFFFF99" strokeWidth={0.75} strokeDasharray="2 3" display="none" />
-            <line ref={horizontalRef} x1={0} x2={width} y1={0} y2={0} stroke="#FFFFFF99" strokeWidth={0.75} strokeDasharray="2 3" display="none" />
+            <line ref={verticalRef} x1={0} x2={0} y1={0} y2={height} stroke={CROSSHAIR_STROKE} strokeWidth={CROSSHAIR_STROKE_WIDTH} strokeDasharray={CROSSHAIR_DASH} display="none" />
+            <line ref={horizontalRef} x1={0} x2={width} y1={0} y2={0} stroke={CROSSHAIR_STROKE} strokeWidth={CROSSHAIR_STROKE_WIDTH} strokeDasharray={CROSSHAIR_DASH} display="none" />
         </g>
     );
 }
@@ -667,8 +648,8 @@ function HoverCrosshair({ verticalRef, horizontalRef, width, height }: { vertica
 function ChartCrosshair({ crosshair, width, height, onUnlock, isControlPressed }: { crosshair: ChartCrosshairState | null; width: number; height: number; onUnlock: () => void; isControlPressed: boolean }) {
     const [isHovered, setIsHovered] = useState(false);
     if (!crosshair) return null;
-    const stroke = crosshair.locked ? (isHovered ? '#FFFFFF' : '#FFD700AA') : '#FFFFFF99';
-    const strokeWidth = crosshair.locked && isHovered ? 1.5 : 0.75;
+    const stroke = crosshair.locked ? (isHovered ? '#FFFFFF' : '#FFD700AA') : CROSSHAIR_STROKE;
+    const strokeWidth = crosshair.locked && isHovered ? 1.5 : CROSSHAIR_STROKE_WIDTH;
     const handleClick = (event: MouseEvent<SVGLineElement>) => {
         event.stopPropagation();
         onUnlock();
@@ -682,15 +663,17 @@ function ChartCrosshair({ crosshair, width, height, onUnlock, isControlPressed }
 
     return (
         <g className="recharts-crosshair-guide">
-            <line x1={crosshair.x} x2={crosshair.x} y1={0} y2={height} stroke={stroke} strokeWidth={strokeWidth} strokeDasharray="2 3" pointerEvents="none" />
-            <line x1={0} x2={width} y1={crosshair.y} y2={crosshair.y} stroke={stroke} strokeWidth={strokeWidth} strokeDasharray="2 3" pointerEvents="none" />
+            <line x1={crosshair.x} x2={crosshair.x} y1={0} y2={height} stroke={stroke} strokeWidth={strokeWidth} strokeDasharray={CROSSHAIR_DASH} pointerEvents="none" />
+            <line x1={0} x2={width} y1={crosshair.y} y2={crosshair.y} stroke={stroke} strokeWidth={strokeWidth} strokeDasharray={CROSSHAIR_DASH} pointerEvents="none" />
             {crosshair.locked && !isControlPressed ? <line x1={crosshair.x} x2={crosshair.x} y1={0} y2={height} stroke="rgba(255,255,255,0.01)" strokeWidth={14} pointerEvents="stroke" {...interactionProps} /> : null}
             {crosshair.locked && !isControlPressed ? <line x1={0} x2={width} y1={crosshair.y} y2={crosshair.y} stroke="rgba(255,255,255,0.01)" strokeWidth={14} pointerEvents="stroke" {...interactionProps} /> : null}
         </g>
     );
 }
 
-function axisTickRange(props: ChartRenderProps, axisId: 'left' | 'right', includeZero: boolean): { min: number; max: number; allNonNegative: boolean } {
+type AxisRangeInput = Pick<ChartRenderProps, 'visibleData' | 'areas' | 'highlightedAreas' | 'referenceLines' | 'leftAxisDomain' | 'secondaryYAxis'>;
+
+function axisTickRange(props: AxisRangeInput, axisId: 'left' | 'right', includeZero: boolean): { min: number; max: number; allNonNegative: boolean } {
     const values = collectAxisExtentValues(props.visibleData, props.areas, {
         yAxisId: axisId,
         highlightedAreas: props.highlightedAreas,
@@ -763,7 +746,8 @@ function CrosshairTooltip({ crosshair, areas, valueFormat, sortedData, chartWidt
 }
 
 function ChartSeries({ areaConfig, props, animate }: { areaConfig: AreaConfig; props: ChartRenderProps; animate: boolean }) {
-    const onCtrlClick = useCallback(() => props.onToggleHighlight(areaConfig.legendKey || areaConfig.key), [props.onToggleHighlight, areaConfig.legendKey, areaConfig.key]);
+    const { onToggleHighlight } = props;
+    const onCtrlClick = useCallback(() => onToggleHighlight(areaConfig.legendKey || areaConfig.key), [onToggleHighlight, areaConfig.legendKey, areaConfig.key]);
     const allSeriesKeys = useMemo(() => props.areas.filter(a => a.type === 'line').map(a => a.key), [props.areas]);
     if (areaConfig.type === 'line') return <ChartLine areaConfig={areaConfig} isDimmed={false} data={props.visibleData} chartData={props.visibleData} allSeriesKeys={allSeriesKeys} isCapturing={props.isCapturing} animate={animate} isMobile={props.isMobile} onCtrlClick={onCtrlClick} />;
     if (areaConfig.type === 'bar') return <ChartBar areaConfig={areaConfig} isDimmed={false} selectedMonth={props.selectedMonth} onSelectMonth={props.onSelectMonth} selectByMonth={props.selectByMonth} isCapturing={props.isCapturing} animate={animate} onCtrlClick={onCtrlClick} />;
