@@ -1,0 +1,602 @@
+[
+  {
+    "tramoId": "sur-atlantico-acceso-sur",
+    "concesionaria": "CONCRET NOR SA - MARCALBA SA - POSE SA - COARCO SA",
+    "tarifa": 997,
+    "gano": true,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "pampa",
+    "concesionaria": "CONSTRUCCIONES ELECTROMECÁNICAS DEL OESTE SA",
+    "tarifa": 2355.37,
+    "gano": true,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "sur-atlantico-acceso-sur",
+    "concesionaria": "PANEDILE ARGENTINA SAI.CF e I - SUPERCEMENTO SAIC - ELEPRINT SA.",
+    "tarifa": 1057.85,
+    "gano": false,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "sur-atlantico-acceso-sur",
+    "concesionaria": "BENITO ROGGIO E HIJOS SA - JOSE J. CHEDIACK SAICA",
+    "tarifa": 1230.5766,
+    "gano": false,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "sur-atlantico-acceso-sur",
+    "concesionaria": "CREDITECH SA - CONSTRUCCIONES ELECTROMECÁNICAS DEL OESTE SA",
+    "tarifa": 1248,
+    "gano": false,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "sur-atlantico-acceso-sur",
+    "concesionaria": "CPC SA - CLEAR PETROLEUM SA",
+    "tarifa": 1297.52,
+    "gano": false,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "sur-atlantico-acceso-sur",
+    "concesionaria": "VIAL AGRO SA - FONTANA NICASTRO SAC",
+    "tarifa": 1322.312,
+    "gano": false,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "pampa",
+    "concesionaria": "CN SAPAG SA - VÍCTOR M. CONTRERAS Y CÍA SA",
+    "tarifa": 2477.77,
+    "gano": false,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "pampa",
+    "concesionaria": "CPC SA - CLEAR PETROLEUM SA",
+    "tarifa": 2659.92,
+    "gano": false,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "pampa",
+    "concesionaria": "MERCO VIAL SA - LEMIRO PABLO PIETROBONI SA - ASESORES FINANCIEROS ANDALUCÍA OCCIDENTAL SOCIEDAD GESTORA DE PATRIMONIOS SA",
+    "tarifa": 2975,
+    "gano": false,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "pampa",
+    "concesionaria": "VIAL AGRO SA - FONTANA NICASTRO SAC",
+    "tarifa": 3219,
+    "gano": false,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "pampa",
+    "concesionaria": "CONCRET NOR SA - MARCALBA SA - POSE SA - COARCO SA",
+    "tarifa": 3354,
+    "gano": false,
+    "resolucion": "Res. 706/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/6023329/20260515?suplemento=1"
+  },
+  {
+    "tramoId": "mediterraneo",
+    "concesionaria": "CREDITECH S.A. - PLANTEL S.A.",
+    "tarifa": 1989.67,
+    "gano": true,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "puntano",
+    "concesionaria": "BASAA S.A. - CECOSA S.A.",
+    "tarifa": 1440.08,
+    "gano": true,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-sur",
+    "concesionaria": "CREDITECH S.A. - PLANTEL S.A.",
+    "tarifa": 1256.03,
+    "gano": true,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-norte",
+    "concesionaria": "CPC S.A.",
+    "tarifa": 1856,
+    "gano": true,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "mediterraneo",
+    "concesionaria": "JOSÉ CARTELLONE CONSTRUCCIONES CIVILES S.A - GUIGIVAN S.R.L.",
+    "tarifa": 2298,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "mediterraneo",
+    "concesionaria": "BASAA S.A. - CECOSA S.A.",
+    "tarifa": 2324.38,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "mediterraneo",
+    "concesionaria": "INMAC S.A. - ROWING S.A. - TECNOEDIL S.A. CONSTRUCTORA",
+    "tarifa": 2338.88,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "mediterraneo",
+    "concesionaria": "CPC S.A.",
+    "tarifa": 2410,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "mediterraneo",
+    "concesionaria": "PANEDILE ARGENTINA S.A.I.C.F e I. - SUPERCEMENTO S.A.I.C. - ELEPRINT S.A.",
+    "tarifa": 2487,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "mediterraneo",
+    "concesionaria": "PAOLINI HNOS S.A. - SEMI.S.A. - C&E CONSTRUCCIONES S.A. - CONSTRUCTORA DOS ARROYOS S.A.",
+    "tarifa": 2595,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "mediterraneo",
+    "concesionaria": "ROVELLA CARRANZA S.A. - JCR S.A.",
+    "tarifa": 2603.31,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "mediterraneo",
+    "concesionaria": "IEB CONSTRUCCIONES SOCIEDAD ANÓNIMA - TRADING MRG S.A.U.",
+    "tarifa": 2635.99,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "mediterraneo",
+    "concesionaria": "LUCIANO CONSTRUCCIONES S.A.",
+    "tarifa": 3086,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "puntano",
+    "concesionaria": "ROVELLA CARRANZA S.A. – JCR S.A.",
+    "tarifa": 1761.98,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "puntano",
+    "concesionaria": "CN SAPAG S.A. - VÍCTOR M. CONTRERAS Y CÍA. S.A.",
+    "tarifa": 1761.98,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "puntano",
+    "concesionaria": "CREDITECH S.A. - PLANTEL S.A.",
+    "tarifa": 1965.29,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "puntano",
+    "concesionaria": "PANEDILE ARGENTINA S.A.I.C.F e I. - SUPERCEMENTO S.A.I.C. - ELEPRINT S.A.",
+    "tarifa": 1987,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "puntano",
+    "concesionaria": "CPC S.A.",
+    "tarifa": 2026,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "puntano",
+    "concesionaria": "IEB CONSTRUCCIONES SOCIEDAD ANÓNIMA - TRADING MRG S.A.U.",
+    "tarifa": 2163.99,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "puntano",
+    "concesionaria": "JOSÉ J. CHEDIACK S.A.I.C.A. - BENITO ROGGIO E HIJOS S.A.",
+    "tarifa": 2184.52,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "puntano",
+    "concesionaria": "LUCIANO CONSTRUCCIONES S.A.",
+    "tarifa": 2195,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-sur",
+    "concesionaria": "PAOLINI HNOS S.A. - SEMI.S.A. - C&E CONSTRUCCIONES S.A. - CONSTRUCTORA DOS ARROYOS S.A.",
+    "tarifa": 1570,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-sur",
+    "concesionaria": "PANEDILE ARGENTINA S.A.I.C.F e I. - SUPERCEMENTO S.A.I.C. - ELEPRINT S.A.",
+    "tarifa": 1757,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-sur",
+    "concesionaria": "CPC S.A.",
+    "tarifa": 1820,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-sur",
+    "concesionaria": "CONCRET NOR S.A. - MARCALBA S.A. - POSE S.A. - COARCO S.A.",
+    "tarifa": 2065,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-sur",
+    "concesionaria": "IEB CONSTRUCCIONES SOCIEDAD ANÓNIMA - TRADING MRG S.A.U.",
+    "tarifa": 2244.99,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-sur",
+    "concesionaria": "BASAA S.A. - CECOSA S.A.",
+    "tarifa": 2444.63,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-norte",
+    "concesionaria": "PANEDILE ARGENTINA S.A.I.C.F e I. - SUPERCEMENTO S.A.I.C. - ELEPRINT S.A.",
+    "tarifa": 1867,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-norte",
+    "concesionaria": "CREDITECH S.A. - PLANTEL S.A.",
+    "tarifa": 2134.71,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-norte",
+    "concesionaria": "IEB CONSTRUCCIONES SOCIEDAD ANÓNIMA - TRADING MRG S.A.U.",
+    "tarifa": 2469.99,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "portuario-norte",
+    "concesionaria": "BASAA S.A. - CECOSA S.A.",
+    "tarifa": 3337.6,
+    "gano": false,
+    "resolucion": "Res. 1149/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/345005/20260728"
+  },
+  {
+    "tramoId": "centro",
+    "concesionaria": "AFEMA S.A. - PABLO FEDERICO E HIJOS S.A. - GUIDO MOGETTA S.A.",
+    "tarifa": 1399,
+    "gano": true,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "centro-norte",
+    "concesionaria": "JOSÉ CARTELLONE CONSTRUCCIONES CIVILES S.A.",
+    "tarifa": 2175,
+    "gano": true,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "mesopotamico",
+    "concesionaria": "IEB CONSTRUCCIONES SOCIEDAD ANÓNIMA - TRADING MRG S.A.U.",
+    "tarifa": 3564.99,
+    "gano": true,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "noroeste",
+    "concesionaria": "AUTOVÍA CONSTRUCCIONES Y SERVICIOS S.A. - VAPEU S.R.L. - GUIGIVAN S.R.L.",
+    "tarifa": 2285,
+    "gano": true,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "litoral",
+    "concesionaria": "JCR S.A. - NÉSTOR JULIO GUERECHET S.A.",
+    "tarifa": 2876.04,
+    "gano": true,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "noreste",
+    "concesionaria": "CARLOS E ENRIQUEZ SA - HORMI S.A.",
+    "tarifa": 2950,
+    "gano": true,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "chaco-santa-fe",
+    "concesionaria": "JOSÉ ELEUTERIO PITÓN S.A. - ROVIAL S.A. - OBRING S.A.",
+    "tarifa": 3520,
+    "gano": true,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "cuyo",
+    "concesionaria": "LAUGERO CONSTRUCCIONES S.A. - GREEN S.A. - CORPORACIÓN DEL SUR S.A.",
+    "tarifa": 3090.2462,
+    "gano": true,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "centro",
+    "concesionaria": "CREDITECH S.A. - PLANTEL S.A.",
+    "tarifa": 1499,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "centro",
+    "concesionaria": "BASAA S.A. - CECOSA S.A.",
+    "tarifa": 1687.27,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "centro",
+    "concesionaria": "ROVIAL S.A. - OBRING S.A. - JOSÉ ELEUTERIO PITÓN S.A. - EDECA S.A.",
+    "tarifa": 2270,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "centro",
+    "concesionaria": "JOSÉ J. CHEDIACK S.A.I.C.A. - BENITO ROGGIO E HIJOS S.A.",
+    "tarifa": 2510,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "centro-norte",
+    "concesionaria": "CREDITECH S.A. - PLANTEL S.A.",
+    "tarifa": 2279,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "centro-norte",
+    "concesionaria": "CN SAPAG SOCIEDAD ANONIMA - VICTOR M. CONTRERAS Y CIA S.A.",
+    "tarifa": 2383.63,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "centro-norte",
+    "concesionaria": "IEB CONSTRUCCIONES SOCIEDAD ANÓNIMA - TRADING MRG S.A.U.",
+    "tarifa": 2441.99,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "centro-norte",
+    "concesionaria": "AFEMA S.A. - PABLO FEDERICO E HIJOS S.A. - GUIDO MOGETTA S.A.",
+    "tarifa": 2652,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "centro-norte",
+    "concesionaria": "LUCIANO CONSTRUCCIONES S.A.",
+    "tarifa": 2975.21,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "centro-norte",
+    "concesionaria": "ROVIAL S.A. - OBRING S.A. - JOSÉ ELEUTERIO PITÓN S.A. - EDECA S.A.",
+    "tarifa": 3200,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "noroeste",
+    "concesionaria": "BASAA S.A. - CECOSA S.A.",
+    "tarifa": 2478.54,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "noroeste",
+    "concesionaria": "PANEDILE ARGENTINA S.A.I.C.F E I. - SUPERCEMENTO S.A.I.C. - ELEPRINT S.A.",
+    "tarifa": 2577,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "noroeste",
+    "concesionaria": "IEB CONSTRUCCIONES SOCIEDAD ANÓNIMA - TRADING MRG S.A.U.",
+    "tarifa": 2731.99,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "noroeste",
+    "concesionaria": "PAOLINI HNOS S.A. - SE.MI. S.A. - CONSTRUCTORA DOS ARROYOS S.A. - C&E CONSTRUCCIONES S.A.",
+    "tarifa": 3055,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "noroeste",
+    "concesionaria": "LUCIANO CONSTRUCCIONES S.A.",
+    "tarifa": 3768.59,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "noroeste",
+    "concesionaria": "ROVIAL S.A. - OBRING S.A. - JOSÉ ELEUTERIO PITÓN S.A. - EDECA S.A.",
+    "tarifa": 3950,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "litoral",
+    "concesionaria": "IEB CONSTRUCCIONES SOCIEDAD ANÓNIMA - TRADING MRG S.A.U.",
+    "tarifa": 3267.99,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "litoral",
+    "concesionaria": "JOSÉ ELEUTERIO PITÓN S.A. - ROVIAL S.A. - OBRING S.A.",
+    "tarifa": 3270,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "litoral",
+    "concesionaria": "CARLOS E ENRIQUEZ SA - HORMI S.A.",
+    "tarifa": 3305.79,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "noreste",
+    "concesionaria": "IEB CONSTRUCCIONES SOCIEDAD ANÓNIMA - TRADING MRG S.A.U.",
+    "tarifa": 2969.99,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "noreste",
+    "concesionaria": "BASAA S.A. - CECOSA S.A.",
+    "tarifa": 2973.22,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "noreste",
+    "concesionaria": "PANEDILE ARGENTINA S.A.I.C.F E I. - SUPERCEMENTO S.A.I.C. - ELEPRINT S.A.",
+    "tarifa": 3367,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "cuyo",
+    "concesionaria": "JOSÉ CARTELLONE CONSTRUCCIONES CIVILES S.A. - CONSTRUCTORA SAN JOSE S.R.L.",
+    "tarifa": 3544,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  },
+  {
+    "tramoId": "cuyo",
+    "concesionaria": "IEB CONSTRUCCIONES SOCIEDAD ANÓNIMA - TRADING MRG S.A.U.",
+    "tarifa": 3921.99,
+    "gano": false,
+    "resolucion": "Res. 1379/2026",
+    "fuenteUrl": "https://www.boletinoficial.gob.ar/detalleAviso/primera/346271/20260824"
+  }
+]

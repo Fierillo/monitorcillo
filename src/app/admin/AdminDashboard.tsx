@@ -3,12 +3,33 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { EmisionAdminEditableField, EmisionAdminRow, EmisionDataResponse, FeedbackRecord, Indicator } from '@/types';
+import type { RutaTramo, RutaTramoDraft } from '@/lib/rutas/status';
 import { newEmisionRow, newIndicatorRow, updateEmisionCell, withEmisionTotals } from './admin-utils';
 import EmisionEditor from './components/EmisionEditor';
 import IndicatorsEditor from './components/IndicatorsEditor';
 import FeedbackList from './components/FeedbackList';
+import RutasEditor from './components/RutasEditor';
 
-type AdminTab = 'indicadores' | 'emision' | 'feedback';
+type AdminTab = 'indicadores' | 'emision' | 'rutas' | 'feedback';
+
+function emptyRutaDraft(): RutaTramoDraft {
+    return { id: `tramo-${Date.now()}`, nombre: '', rutas: '', km: '', concesionaria: '', fechaTomaPosesion: '', obrasInicialesPct: '', fechaHabilitacionTarifa: '', etapa: 'sin-concesionar', pavimento: 'sin-dato' };
+}
+
+function toRutaDraft(tramo: RutaTramo): RutaTramoDraft {
+    return {
+        id: tramo.id,
+        nombre: tramo.nombre,
+        rutas: tramo.rutas.join(', '),
+        km: tramo.km == null ? '' : String(tramo.km).replace('.', ','),
+        concesionaria: tramo.concesionaria,
+        fechaTomaPosesion: tramo.fechaTomaPosesion ?? '',
+        obrasInicialesPct: tramo.obrasInicialesPct == null ? '' : String(tramo.obrasInicialesPct).replace('.', ','),
+        fechaHabilitacionTarifa: tramo.fechaHabilitacionTarifa ?? '',
+        etapa: tramo.etapa,
+        pavimento: tramo.pavimento,
+    };
+}
 
 export default function AdminDashboard({ initialData, initialFeedback }: { initialData: Indicator[]; initialFeedback: FeedbackRecord[] }) {
     const router = useRouter();
@@ -16,6 +37,9 @@ export default function AdminDashboard({ initialData, initialFeedback }: { initi
     const [msg, setMsg] = useState('');
     const [emisionData, setEmisionData] = useState<EmisionAdminRow[]>([]);
     const [emisionMsg, setEmisionMsg] = useState('');
+    const [rutasData, setRutasData] = useState<RutaTramoDraft[]>([]);
+    const [rutasStored, setRutasStored] = useState<RutaTramoDraft[]>([]);
+    const [rutasMsg, setRutasMsg] = useState('');
     const [activeTab, setActiveTab] = useState<AdminTab>('indicadores');
 
     useEffect(() => {
@@ -25,6 +49,15 @@ export default function AdminDashboard({ initialData, initialFeedback }: { initi
                 if (response?.data) setEmisionData(withEmisionTotals(response.data));
             })
             .catch(err => console.error('Error cargando emisión:', err));
+        fetch('/api/data?type=rutas')
+            .then(res => res.json())
+            .then((response: { data?: RutaTramo[] }) => {
+                if (!response?.data) return;
+                const drafts = response.data.map(toRutaDraft);
+                setRutasData(drafts);
+                setRutasStored(drafts);
+            })
+            .catch(err => console.error('Error cargando rutas:', err));
     }, []);
 
     async function handleLogout() {
@@ -63,6 +96,19 @@ export default function AdminDashboard({ initialData, initialFeedback }: { initi
         setEmisionData(prev => updateEmisionCell(prev, index, field, value));
     };
 
+    async function handleSaveRutas() {
+        try {
+            const res = await fetch('/api/data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'rutas', data: rutasData }) });
+            const body = await res.json().catch(() => null) as { error?: string } | null;
+            if (!res.ok) throw new Error(body?.error || 'Error al guardar rutas');
+            setRutasStored(rutasData);
+            setRutasMsg('Tramos guardados');
+            setTimeout(() => setRutasMsg(''), 3000);
+        } catch (error) {
+            setRutasMsg(error instanceof Error ? error.message : 'Error al guardar rutas');
+        }
+    }
+
     return (
         <div className="p-8 text-foreground bg-background min-h-screen">
             <div className="flex justify-between items-center mb-6 border-b-2 border-imperial-gold pb-4">
@@ -75,6 +121,8 @@ export default function AdminDashboard({ initialData, initialFeedback }: { initi
                 <IndicatorsEditor data={data} msg={msg} onAdd={() => setData(prev => [...prev, newIndicatorRow()])} onPop={() => setData(prev => prev.slice(0, -1))} onSave={handleSave} onCellChange={handleCellChange} />
             ) : activeTab === 'emision' ? (
                 <EmisionEditor data={emisionData} msg={emisionMsg} onAdd={() => setEmisionData(prev => [...prev, newEmisionRow(prev)])} onPop={() => setEmisionData(prev => prev.slice(0, -1))} onSave={handleSaveEmision} onCellChange={handleEmisionCellChange} />
+            ) : activeTab === 'rutas' ? (
+                <RutasEditor data={rutasData} stored={rutasStored} msg={rutasMsg} onAdd={() => setRutasData(prev => [...prev, emptyRutaDraft()])} onDelete={index => setRutasData(prev => prev.filter((_, rowIndex) => rowIndex !== index))} onSave={handleSaveRutas} onCellChange={(index, field, value) => setRutasData(prev => prev.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: value } : row))} />
             ) : <FeedbackList data={initialFeedback} />}
         </div>
     );
@@ -88,6 +136,9 @@ function AdminTabs({ activeTab, onChange }: { activeTab: AdminTab; onChange: (ta
             </button>
             <button onClick={() => onChange('emision')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'emision' ? 'text-imperial-gold border-b-2 border-imperial-gold' : 'text-white/50 hover:text-white'}`}>
                 Emisión / Absorción
+            </button>
+            <button onClick={() => onChange('rutas')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'rutas' ? 'text-imperial-gold border-b-2 border-imperial-gold' : 'text-white/50 hover:text-white'}`}>
+                Rutas nacionales
             </button>
             <button onClick={() => onChange('feedback')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'feedback' ? 'text-imperial-gold border-b-2 border-imperial-gold' : 'text-white/50 hover:text-white'}`}>
                 Feedback

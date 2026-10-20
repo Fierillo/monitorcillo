@@ -1,0 +1,284 @@
+[
+  {
+    "tramoId": "oriental",
+    "ruta": "12",
+    "desdeKm": 0,
+    "hastaKm": 144.46,
+    "km": 144.46
+  },
+  {
+    "tramoId": "oriental",
+    "ruta": "14",
+    "desdeKm": 0,
+    "hastaKm": 497.33,
+    "km": 497.33
+  },
+  {
+    "tramoId": "oriental",
+    "ruta": "135",
+    "desdeKm": 0,
+    "hastaKm": 14.58,
+    "km": 12.94
+  },
+  {
+    "tramoId": "oriental",
+    "ruta": "A15",
+    "desdeKm": 0,
+    "hastaKm": 14.73,
+    "km": 14.67
+  },
+  {
+    "tramoId": "oriental",
+    "ruta": "117",
+    "desdeKm": 0,
+    "hastaKm": 12.88,
+    "km": 12.88
+  },
+  {
+    "tramoId": "conexion",
+    "ruta": "174",
+    "desdeKm": 0,
+    "hastaKm": 59.43,
+    "km": 59.34
+  },
+  {
+    "tramoId": "sur-atlantico-acceso-sur",
+    "ruta": "3",
+    "desdeKm": 46.3,
+    "hastaKm": 661.82,
+    "km": 615.52
+  },
+  {
+    "tramoId": "sur-atlantico-acceso-sur",
+    "ruta": "205",
+    "desdeKm": 44.3,
+    "hastaKm": 317.41,
+    "km": 255.03
+  },
+  {
+    "tramoId": "sur-atlantico-acceso-sur",
+    "ruta": "226",
+    "desdeKm": 0,
+    "hastaKm": 404.32,
+    "km": 404.32
+  },
+  {
+    "tramoId": "pampa",
+    "ruta": "5",
+    "desdeKm": 65,
+    "hastaKm": 606.65,
+    "km": 546.65,
+    "originKm": 65
+  },
+  {
+    "tramoId": "mediterraneo",
+    "ruta": "7",
+    "desdeKm": 54,
+    "hastaKm": 644.74,
+    "km": 590.74
+  },
+  {
+    "tramoId": "mediterraneo",
+    "ruta": "35",
+    "desdeKm": 650.6,
+    "hastaKm": 709.55,
+    "km": 81.58
+  },
+  {
+    "tramoId": "portuario-sur",
+    "ruta": "9",
+    "desdeKm": 64,
+    "hastaKm": 228.19,
+    "km": 164.19
+  },
+  {
+    "tramoId": "portuario-sur",
+    "ruta": "188",
+    "desdeKm": 0,
+    "hastaKm": 482.5,
+    "km": 472.56
+  },
+  {
+    "tramoId": "portuario-norte",
+    "ruta": "9",
+    "desdeKm": 228.19,
+    "hastaKm": 278.52,
+    "km": 50.33
+  },
+  {
+    "tramoId": "portuario-norte",
+    "ruta": "33",
+    "desdeKm": 323.9,
+    "hastaKm": 771.85,
+    "km": 447.95
+  },
+  {
+    "tramoId": "portuario-norte",
+    "ruta": "A8",
+    "desdeKm": 0,
+    "hastaKm": 29.76,
+    "km": 29.76
+  },
+  {
+    "tramoId": "puntano",
+    "ruta": "8",
+    "desdeKm": 23.3,
+    "hastaKm": 726.86,
+    "km": 665.96
+  },
+  {
+    "tramoId": "puntano",
+    "ruta": "36",
+    "desdeKm": 0,
+    "hastaKm": 10.57,
+    "km": 10.57
+  },
+  {
+    "tramoId": "puntano",
+    "ruta": "A5",
+    "desdeKm": 0,
+    "hastaKm": 11.4,
+    "km": 11.42
+  },
+  {
+    "tramoId": "puntano",
+    "ruta": "193",
+    "desdeKm": 0,
+    "hastaKm": 35.32,
+    "km": 32.05
+  },
+  {
+    "tramoId": "centro",
+    "ruta": "9",
+    "desdeKm": 278.52,
+    "hastaKm": 641.68,
+    "km": 363.16
+  },
+  {
+    "tramoId": "centro",
+    "ruta": "19",
+    "desdeKm": 0,
+    "hastaKm": 130.08,
+    "km": 130.08
+  },
+  {
+    "tramoId": "centro",
+    "ruta": "34",
+    "desdeKm": 0,
+    "hastaKm": 188.68,
+    "km": 188.68
+  },
+  {
+    "tramoId": "mesopotamico",
+    "ruta": "18",
+    "desdeKm": 0,
+    "hastaKm": 226.72,
+    "km": 226.72
+  },
+  {
+    "tramoId": "mesopotamico",
+    "ruta": "12",
+    "desdeKm": 358.5,
+    "hastaKm": 407.89,
+    "km": 49.39
+  },
+  {
+    "tramoId": "centro-norte",
+    "ruta": "34",
+    "desdeKm": 188.68,
+    "hastaKm": 725.11,
+    "km": 536.43
+  },
+  {
+    "tramoId": "noroeste",
+    "ruta": "9",
+    "desdeKm": 1139.68,
+    "hastaKm": 1593.25,
+    "km": 453.57
+  },
+  {
+    "tramoId": "noroeste",
+    "ruta": "9",
+    "desdeKm": 1691.7,
+    "hastaKm": 1710.22,
+    "km": 18.52
+  },
+  {
+    "tramoId": "noroeste",
+    "ruta": "34",
+    "desdeKm": 1130,
+    "hastaKm": 1196.51,
+    "km": 66.51
+  },
+  {
+    "tramoId": "noroeste",
+    "ruta": "66",
+    "desdeKm": 0,
+    "hastaKm": 37.97,
+    "km": 37.94
+  },
+  {
+    "tramoId": "noroeste",
+    "ruta": "1V66",
+    "desdeKm": 0,
+    "hastaKm": 13.23,
+    "km": 13.23
+  },
+  {
+    "tramoId": "noroeste",
+    "ruta": "A16",
+    "desdeKm": 0,
+    "hastaKm": 6.75,
+    "km": 6.75
+  },
+  {
+    "tramoId": "litoral",
+    "ruta": "12",
+    "desdeKm": 871.15,
+    "hastaKm": 1206.69,
+    "km": 335.54
+  },
+  {
+    "tramoId": "litoral",
+    "ruta": "16",
+    "desdeKm": 0,
+    "hastaKm": 211.2,
+    "km": 211.2
+  },
+  {
+    "tramoId": "noreste",
+    "ruta": "12",
+    "desdeKm": 1206.69,
+    "hastaKm": 1336,
+    "km": 129.31
+  },
+  {
+    "tramoId": "noreste",
+    "ruta": "12",
+    "desdeKm": 1349.2,
+    "hastaKm": 1641.76,
+    "km": 292.32
+  },
+  {
+    "tramoId": "noreste",
+    "ruta": "105",
+    "desdeKm": 0,
+    "hastaKm": 34.8,
+    "km": 34.59
+  },
+  {
+    "tramoId": "chaco-santa-fe",
+    "ruta": "11",
+    "desdeKm": 510.62,
+    "hastaKm": 1007.8,
+    "km": 497.18,
+    "originKm": 322
+  },
+  {
+    "tramoId": "cuyo",
+    "ruta": "7",
+    "desdeKm": 865.49,
+    "hastaKm": 1236.86,
+    "km": 371.37
+  }
+]

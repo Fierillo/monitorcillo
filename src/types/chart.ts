@@ -153,6 +153,8 @@ export type ChartCrosshairState = {
     activePayload?: readonly TooltipPayload[];
     label?: string;
     tooltipPosition?: { x?: number; y?: number };
+    /** Height of the chart that measured `y`, so an export at another size can re-place it. */
+    chartHeight?: number;
 };
 
 export type ChartSeriesClickEvent = {

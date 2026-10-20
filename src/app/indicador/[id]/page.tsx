@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { IndicatorPageProps } from '@/types';
 import IndicatorCompositeView from '@/components/IndicatorCompositeView';
+import RutasMap from '@/components/rutas/RutasMap';
+import { getRutasOfertas, getRutasTramos } from '@/lib/db/rutas';
 import { getIndicatorDetailConfig } from '@/lib/indicator-detail-configs';
 
 export const revalidate = 21600;
@@ -28,6 +30,10 @@ export default async function IndicatorDetailPage({ params, searchParams }: Indi
 
     if (!indicator.hasDetails) {
         return <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-8 text-center"><h1 className="text-2xl text-imperial-gold mb-4">No hay detalles disponibles para este indicador.</h1><Link href="/" className="text-imperial-cyan font-bold hover:underline">Volver atrás</Link></div>;
+    }
+
+    if (indicator.id === 'rutas-nacionales') {
+        return <RutasMap tramos={await getRutasTramos()} ofertas={await getRutasOfertas()} title={indicator.indicador} />;
     }
 
     const config = await getIndicatorDetailConfig(indicator);

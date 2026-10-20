@@ -49,3 +49,31 @@ h1, h2, h3, h4, h5, h6, .imperial-title {
 *:focus-visible {
   outline: none !important;
 }
+
+.route-scroll,
+html:has(.route-scroll) {
+  scrollbar-width: thin;
+  scrollbar-color: #FFD700 #00143F;
+}
+
+.route-scroll::-webkit-scrollbar,
+html:has(.route-scroll)::-webkit-scrollbar {
+  width: 4px;
+}
+
+.route-scroll::-webkit-scrollbar-track,
+html:has(.route-scroll)::-webkit-scrollbar-track {
+  background: #00143F;
+}
+
+.route-scroll::-webkit-scrollbar-thumb,
+html:has(.route-scroll)::-webkit-scrollbar-thumb {
+  background: #FFD700;
+}
+
+.route-scroll::-webkit-scrollbar-button,
+html:has(.route-scroll)::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
