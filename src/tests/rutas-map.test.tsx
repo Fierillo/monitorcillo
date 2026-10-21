@@ -394,9 +394,9 @@ it('tooltip text is white except the concesionaria and the concession state valu
     fireEvent.pointerMove(segment.closest('[data-route]') ?? segment);
     const spans = [...screen.getByRole('status').querySelectorAll('span')];
     const valueOf = (name: string) => spans[spans.findIndex(span => span.textContent === `${name}: `) + 1];
-    for (const span of spans.filter(span => span.textContent?.endsWith(': '))) expect(span.style.color).toBe('rgb(255, 255, 255)');
-    expect(valueOf('Tramo').style.color).toBe('rgb(255, 255, 255)');
-    expect(valueOf('Km').style.color).toBe('rgb(255, 255, 255)');
+    for (const span of spans.filter(span => span.textContent?.endsWith(': '))) expect(span.style.color).toBe('rgb(232, 226, 208)');
+    expect(valueOf('Tramo').style.color).toBe('rgb(232, 226, 208)');
+    expect(valueOf('Km').style.color).toBe('rgb(232, 226, 208)');
     expect(valueOf('Concesionaria').style.color).not.toBe('rgb(255, 255, 255)');
     expect(valueOf('Estado').textContent).toBe('Concesionado');
     expect(valueOf('Estado').style.color).not.toBe('rgb(255, 255, 255)');

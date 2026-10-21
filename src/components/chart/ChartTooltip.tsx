@@ -6,7 +6,7 @@ import { SPANISH_MONTHS, formatValueByType } from './utils';
 export const TOOLTIP_BACKGROUND = 'rgba(11, 20, 38, 0.4)';
 export const TOOLTIP_BLUR = 'blur(2px)';
 export const TOOLTIP_OUTLINE_DARK = '3px rgba(0, 0, 0, 0.85)';
-export const TOOLTIP_BOX = { backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: '10px', color: '#FFF', backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR } as const;
+export const TOOLTIP_BOX = { backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: '10px', color: '#E8E2D0', backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR } as const;
 const TOOLTIP_OUTLINE_LIGHT = '3px rgba(255, 255, 255, 0.9)';
 
 function tooltipTextOutline(color = '#C9A44C') {
@@ -47,7 +47,7 @@ export default function ChartTooltip({
     if (areaConfigs.some(area => area.comparisonMode === 'mandate-month') && typeof rowData.comparison_group === 'string') {
         const comparisons = chartData.filter(row => row.comparison_group === rowData.comparison_group && typeof row.icg === 'number');
         return (
-            <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: compact ? '4px' : '10px', color: '#FFF', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '12px' : '14px', lineHeight: compact ? 1.05 : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
+            <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: compact ? '4px' : '10px', color: '#E8E2D0', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '12px' : '14px', lineHeight: compact ? 1.05 : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
                 <div style={{ fontWeight: 'bold', marginBottom: compact ? '2px' : '4px', ...tooltipTextOutline() }}>{rowData.fecha}</div>
                 {comparisons.map(row => {
                     const primaryColor = String(row.mandate_color ?? '#C9A44C');
@@ -91,7 +91,7 @@ export default function ChartTooltip({
         });
 
         return (
-            <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: compact ? '4px' : '10px', color: '#FFF', minWidth: compact ? '112px' : '180px', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
+            <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: compact ? '4px' : '10px', color: '#E8E2D0', minWidth: compact ? '112px' : '180px', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
                 {rows}
             </div>
         );
@@ -119,7 +119,7 @@ export default function ChartTooltip({
     ) : row.node;
 
     return (
-        <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: compact ? '4px' : '10px', color: '#FFF', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '12px' : '14px', lineHeight: compact ? 1.2 : 1.35, whiteSpace: 'nowrap', backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
+        <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: compact ? '4px' : '10px', color: '#E8E2D0', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '12px' : '14px', lineHeight: compact ? 1.2 : 1.35, whiteSpace: 'nowrap', backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
             <div style={{ height: isCapturing ? '24px' : undefined, lineHeight: isCapturing ? '20px' : undefined, color: '#C9A44C', fontWeight: 'bold', marginBottom: compact ? '2px' : '4px', ...tooltipTextOutline() }}>{rowData.fecha}</div>
             {(separateFooter ? stackRows : valueRows).map(renderRow)}
             {separateFooter ? (
