@@ -33,3 +33,12 @@ export function readableTextColor(foreground: string, background: string, minimu
     if (contrastRatio(foreground, background) >= minimumRatio) return foreground;
     return relativeLuminance(background) > 0.5 ? '#000000' : '#FFFFFF';
 }
+
+export const LEGEND_BACKGROUND = '#101C33';
+export const LEGEND_OUTLINE_COLOR = '#FFFFFF';
+
+/** True when a legend marker color is hard to see on the chart/map panel (< 3:1). Non-hex colors are left as-is. */
+export function needsLegendOutline(color: string | undefined, background = LEGEND_BACKGROUND, minimumRatio = 3): boolean {
+    if (!color || !/^#?([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(color.trim())) return false;
+    return contrastRatio(color, background) < minimumRatio;
+}

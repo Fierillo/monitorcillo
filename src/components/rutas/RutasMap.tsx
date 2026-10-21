@@ -33,6 +33,7 @@ import { parseRutasView, RUTAS_VIEW_KEY, type RutasFilter, type RutasView } from
 import { buildHitIndex, nearestInIndex, segmentPicked, toggleSelection, type TramoPick } from '@/lib/rutas/hit';
 import { companiesOf, companiesOnRoute, routeCodes, type CompanyRoutes } from '@/lib/rutas/companies';
 import { legendFor } from '@/lib/rutas/legend';
+import { LEGEND_OUTLINE_COLOR, needsLegendOutline } from '@/lib/color-contrast';
 import { tipAt, tipOferta, tipRow } from '@/lib/rutas/tooltip';
 import type { RutaOferta } from '@/lib/rutas/ofertas';
 
@@ -186,7 +187,7 @@ export default function RutasMap({ tramos, ofertas = [], geometry = STORED_GEOME
                     <ul aria-label="Referencias" className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-imperial-ivory">
                         {legend.map(item => (
                             <li key={item.key} className="flex items-center gap-1.5">
-                                <span data-company-color={item.color} className="inline-block h-2.5 w-6" style={{ backgroundColor: item.color }} />
+                                <span data-company-color={item.color} className="inline-block h-2.5 w-6" style={{ backgroundColor: item.color, outline: needsLegendOutline(item.color) ? `1px solid ${LEGEND_OUTLINE_COLOR}` : undefined }} />
                                 {item.label}
                             </li>
                         ))}

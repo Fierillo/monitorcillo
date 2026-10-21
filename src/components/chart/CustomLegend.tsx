@@ -2,6 +2,7 @@
 
 import type { CustomLegendProps } from '@/types/chart';
 import SeriesColorMarker from './SeriesColorMarker';
+import { LEGEND_OUTLINE_COLOR, needsLegendOutline } from '@/lib/color-contrast';
 
 export default function CustomLegend({ areas, highlightedAreas, onToggleHighlight, compact = false }: CustomLegendProps) {
     const legendAreas = areas.filter((area, index) => {
@@ -39,7 +40,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                     >
                         {area.type === 'line'
                             ? <SeriesColorMarker color={markerColor} secondaryColor={secondaryMarkerColor} dash={area.dash} strokeWidth={area.strokeWidth} />
-                            : <svg width="10" height="10"><circle cx="5" cy="5" r="5" fill={area.legendFilled === false ? 'transparent' : markerColor} stroke={markerColor} strokeWidth={area.legendFilled === false ? 1.5 : 0} /></svg>}
+                            : <svg width="10" height="10"><circle cx="5" cy="5" r={needsLegendOutline(markerColor) ? 4.5 : 5} fill={area.legendFilled === false ? 'transparent' : markerColor} stroke={needsLegendOutline(markerColor) ? LEGEND_OUTLINE_COLOR : markerColor} strokeWidth={needsLegendOutline(markerColor) ? 1 : area.legendFilled === false ? 1.5 : 0} /></svg>}
                         {area.name}
                     </span>
                 );
@@ -65,7 +66,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                                 </pattern>
                             </defs>
                         ) : null}
-                        <rect x="1" y="1" width="12" height="8" fill={(area.preliminaryFillPattern ?? area.fillPattern) === 'diagonal-stripes' ? `url(#legend-pattern-${area.key})` : area.color} fillOpacity={area.preliminaryFillPattern || area.fillPattern ? 1 : 0.45} stroke={area.preliminaryBorderColor ?? area.borderColor ?? area.color} strokeDasharray={area.preliminaryFillPattern || area.fillPattern ? undefined : '3 2'} />
+                        <rect x="1" y="1" width="12" height="8" fill={(area.preliminaryFillPattern ?? area.fillPattern) === 'diagonal-stripes' ? `url(#legend-pattern-${area.key})` : area.color} fillOpacity={area.preliminaryFillPattern || area.fillPattern ? 1 : 0.45} stroke={needsLegendOutline(area.preliminaryBorderColor ?? area.borderColor ?? area.color) ? LEGEND_OUTLINE_COLOR : area.preliminaryBorderColor ?? area.borderColor ?? area.color} strokeDasharray={area.preliminaryFillPattern || area.fillPattern ? undefined : '3 2'} />
                     </svg>
                     {area.preliminaryLabel}
                 </span>
@@ -91,7 +92,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                                 </pattern>
                             </defs>
                         ) : null}
-                        <rect x="1" y="1" width="12" height="8" fill={area.proposalFillPattern === 'diagonal-stripes' ? `url(#legend-proposal-pattern-${area.key})` : area.color} fillOpacity={area.proposalFillPattern ? 1 : 0.45} stroke={area.borderColor ?? area.color} strokeDasharray={area.proposalFillPattern ? undefined : '3 2'} />
+                        <rect x="1" y="1" width="12" height="8" fill={area.proposalFillPattern === 'diagonal-stripes' ? `url(#legend-proposal-pattern-${area.key})` : area.color} fillOpacity={area.proposalFillPattern ? 1 : 0.45} stroke={needsLegendOutline(area.borderColor ?? area.color) ? LEGEND_OUTLINE_COLOR : area.borderColor ?? area.color} strokeDasharray={area.proposalFillPattern ? undefined : '3 2'} />
                     </svg>
                     {area.proposalLabel}
                 </span>
