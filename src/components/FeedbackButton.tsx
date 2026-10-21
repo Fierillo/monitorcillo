@@ -59,7 +59,7 @@ export default function FeedbackButton({ context }: { context: FeedbackContext }
                     setStatus('');
                     setIsOpen(true);
                 }}
-                className="no-capture inline-flex items-center justify-center gap-2 border border-red-400/70 bg-red-900/80 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-imperial-ivory transition-colors hover:bg-red-700"
+                className="no-capture inline-flex items-center justify-center gap-2 border-2 border-red-400 bg-red-800 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-red-700"
                 aria-label="Enviar feedback"
             >
                 <FeedbackIcon />

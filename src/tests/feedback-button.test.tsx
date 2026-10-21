@@ -8,6 +8,12 @@ afterEach(() => {
 });
 
 describe('FeedbackButton', () => {
+    it('keeps the approved preview look for the trigger (red pill with red-400 border)', () => {
+        render(<FeedbackButton context={{ surface: 'general_table', path: '/' }} />);
+        const trigger = screen.getByRole('button', { name: 'Enviar feedback' });
+        for (const cls of ['border-2', 'border-red-400', 'bg-red-800', 'text-white', 'hover:bg-red-700']) expect(trigger.className).toContain(cls);
+    });
+
     it('submits the message with its page context', async () => {
         const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true }), {
             status: 201,
