@@ -38,8 +38,9 @@ function databaseUnavailable(error: unknown): NextResponse {
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
+    const scope = type === 'emision' || type === 'rutas' ? type : 'catalog';
 
-    if (!await checkRequestRateLimit(request, `api:data:get:${type ?? 'catalog'}`, READ_RATE_LIMIT)) {
+    if (!await checkRequestRateLimit(request, `api:data:get:${scope}`, READ_RATE_LIMIT)) {
         return NextResponse.json({ error: 'Too many requests. Try again in 5 minutes.' }, { status: 429 });
     }
 

@@ -56,6 +56,16 @@ beforeEach(() => {
 });
 
 describe('GET /api/data', () => {
+    it('does not let arbitrary type values open fresh rate-limit buckets', async () => {
+        mocks.getIndicators.mockResolvedValue([]);
+        for (let i = 0; i < 30; i += 1) {
+            expect((await GET(dataRequest(`junk-${i}`, '203.0.113.99'))).status).toBe(200);
+        }
+
+        expect((await GET(dataRequest('junk-final', '203.0.113.99'))).status).toBe(429);
+        expect((await GET(dataRequest(undefined, '203.0.113.99'))).status).toBe(429);
+    });
+
     it('answers with the catalog when the database responds', async () => {
         mocks.getIndicators.mockResolvedValue([{ id: 'icg', dato: '2,41' }]);
 

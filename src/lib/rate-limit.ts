@@ -5,6 +5,8 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const WINDOW_MS = 5 * 60 * 1000;
 let sql: NeonQueryFunction<false, false> | null = null;
 let tableReady = false;
+let lastCleanupAt = 0;
+const CLEANUP_INTERVAL_MS = 60 * 1000;
 
 type RateLimitOptions = {
     maxAttempts: number;
@@ -46,6 +48,14 @@ async function ensureRateLimitTable(database: NeonQueryFunction<false, false>): 
     tableReady = true;
 }
 
+/** Drops expired buckets at most once a minute per instance, so rate_limits stays small. */
+async function cleanupExpiredRateLimits(database: NeonQueryFunction<false, false>): Promise<void> {
+    const now = Date.now();
+    if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
+    lastCleanupAt = now;
+    await database.query('DELETE FROM rate_limits WHERE reset_time < NOW()', []);
+}
+
 function checkMemoryRateLimit(key: string, options: RateLimitOptions): boolean {
     const now = Date.now();
     const record = rateLimitMap.get(key);
@@ -69,6 +79,7 @@ export async function checkRateLimit(key: string, options: RateLimitOptions = ST
     if (!database) return checkMemoryRateLimit(key, options);
 
     await ensureRateLimitTable(database);
+    await cleanupExpiredRateLimits(database);
 
     const rows = await database.query(`
         INSERT INTO rate_limits (key, count, reset_time, updated_at)
