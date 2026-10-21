@@ -85,6 +85,54 @@ describe('feedback route', () => {
         expect(mocks.saveFeedback).toHaveBeenCalledTimes(2);
     });
 
+    it('silently drops submissions that fill the honeypot field', async () => {
+        const response = await POST(new Request('http://localhost/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-real-ip': '203.0.113.40' },
+            body: JSON.stringify({ message: 'spam spam', website: 'http://spam.example', context: { surface: 'chart', path: '/' } }),
+        }));
+
+        expect(response.status).toBe(201);
+        expect(mocks.saveFeedback).not.toHaveBeenCalled();
+    });
+
+    it('limits feedback globally per hour across IPs', async () => {
+        for (let i = 0; i < 20; i += 1) {
+            expect((await POST(feedbackRequest('Mensaje válido', `198.51.100.${i}`))).status).toBe(201);
+        }
+
+        expect((await POST(feedbackRequest('Mensaje válido', '198.51.100.250'))).status).toBe(429);
+    });
+
+    it('checks the rate limit before parsing the body', async () => {
+        const invalid = () => new Request('http://localhost/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-real-ip': '203.0.113.50' },
+            body: 'not json',
+        });
+
+        expect((await POST(invalid())).status).toBe(400);
+        expect((await POST(invalid())).status).toBe(429);
+    });
+
+    it('rejects bodies larger than 4 KB', async () => {
+        const big = JSON.stringify({ message: 'hola', context: { surface: 'chart', path: '/' }, pad: 'x'.repeat(5000) });
+        const declared = await POST(new Request('http://localhost/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-real-ip': '203.0.113.60', 'content-length': String(big.length) },
+            body: big,
+        }));
+        const undeclared = await POST(new Request('http://localhost/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-real-ip': '203.0.113.61' },
+            body: big,
+        }));
+
+        expect(declared.status).toBe(413);
+        expect(undeclared.status).toBe(413);
+        expect(mocks.saveFeedback).not.toHaveBeenCalled();
+    });
+
     it('rejects messages longer than 500 characters', async () => {
         const response = await POST(feedbackRequest('a'.repeat(501)));
 

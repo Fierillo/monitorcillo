@@ -10,6 +10,7 @@ export default function FeedbackButton({ context }: { context: FeedbackContext }
     const [isOpen, setIsOpen] = useState(false);
     const [message, setMessage] = useState('');
     const [twitterHandle, setTwitterHandle] = useState('');
+    const [website, setWebsite] = useState('');
     const [status, setStatus] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -31,6 +32,7 @@ export default function FeedbackButton({ context }: { context: FeedbackContext }
                 body: JSON.stringify({
                     message,
                     ...(twitterHandle.trim() ? { twitterHandle } : {}),
+                    ...(website ? { website } : {}),
                     context,
                 }),
             });
@@ -101,6 +103,10 @@ export default function FeedbackButton({ context }: { context: FeedbackContext }
                                 className="w-full border border-imperial-cyan bg-[#000d2a] p-3 text-sm text-white placeholder:text-white/40 focus:border-imperial-gold"
                                 placeholder="@usuario"
                             />
+                            <div aria-hidden="true" className="absolute -left-[10000px] h-px w-px overflow-hidden">
+                                <label htmlFor="feedback-website">No completar</label>
+                                <input id="feedback-website" name="website" type="text" tabIndex={-1} autoComplete="off" value={website} onChange={event => setWebsite(event.target.value)} />
+                            </div>
                             <p className="mt-1 text-xs text-white/50">Si querés créditos cuando implementemos tu idea.</p>
                             {status ? <p role="status" className={`mt-3 text-sm font-bold ${status.startsWith('Feedback enviado') ? 'text-green-400' : 'text-red-300'}`}>{status}</p> : null}
                             <div className="mt-4 flex justify-end gap-3">

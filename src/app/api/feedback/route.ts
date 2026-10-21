@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { saveFeedback, setFeedbackStatus } from '@/lib/db/feedback';
-import { checkRequestRateLimit } from '@/lib/rate-limit';
+import { checkRateLimit, checkRequestRateLimit } from '@/lib/rate-limit';
 import type { FeedbackContext, FeedbackSubmission, FeedbackSurface } from '@/types';
 
 const MAX_MESSAGE_LENGTH = 500;
 const FEEDBACK_RATE_LIMIT = { maxAttempts: 1, windowMs: 5 * 60 * 1000 };
+const GLOBAL_FEEDBACK_RATE_LIMIT = { maxAttempts: 20, windowMs: 60 * 60 * 1000 };
+const MAX_BODY_BYTES = 4 * 1024;
+const HONEYPOT_FIELD = 'website';
+
+function tooLarge(): NextResponse {
+    return NextResponse.json({ error: 'El mensaje es demasiado grande.' }, { status: 413 });
+}
 
 function optionalText(value: unknown, maxLength: number): string | undefined {
     if (value === undefined || value === null || value === '') return undefined;
@@ -57,9 +64,31 @@ export function parseFeedbackSubmission(value: unknown): FeedbackSubmission {
 }
 
 export async function POST(request: Request) {
+    if (!await checkRequestRateLimit(request, 'api:feedback:post', FEEDBACK_RATE_LIMIT)) {
+        return NextResponse.json(
+            { error: 'Ya enviaste feedback recientemente. Intentá de nuevo en 5 minutos.' },
+            { status: 429, headers: { 'Retry-After': '300' } },
+        );
+    }
+    if (!await checkRateLimit('global:api:feedback:post', GLOBAL_FEEDBACK_RATE_LIMIT)) {
+        return NextResponse.json(
+            { error: 'Recibimos mucho feedback en la última hora. Intentá de nuevo más tarde.' },
+            { status: 429, headers: { 'Retry-After': '3600' } },
+        );
+    }
+
+    if (Number(request.headers.get('content-length') ?? 0) > MAX_BODY_BYTES) return tooLarge();
+    const text = await request.text();
+    if (Buffer.byteLength(text, 'utf8') > MAX_BODY_BYTES) return tooLarge();
+
     let feedback: FeedbackSubmission;
     try {
-        feedback = parseFeedbackSubmission(await request.json());
+        const body: unknown = JSON.parse(text);
+        // Honeypot: real users never see this field; accept and drop to avoid tipping off bots.
+        if (body && typeof body === 'object' && (body as Record<string, unknown>)[HONEYPOT_FIELD]) {
+            return NextResponse.json({ success: true }, { status: 201 });
+        }
+        feedback = parseFeedbackSubmission(body);
     } catch (error) {
         const invalidHandle = error instanceof Error && error.message === 'Invalid twitter handle';
         return NextResponse.json({
@@ -67,13 +96,6 @@ export async function POST(request: Request) {
                 ? 'El usuario de X no es válido. Usá @usuario, sin espacios.'
                 : 'Escribí un mensaje de entre 3 y 500 caracteres.',
         }, { status: 400 });
-    }
-
-    if (!await checkRequestRateLimit(request, 'api:feedback:post', FEEDBACK_RATE_LIMIT)) {
-        return NextResponse.json(
-            { error: 'Ya enviaste feedback recientemente. Intentá de nuevo en 5 minutos.' },
-            { status: 429, headers: { 'Retry-After': '300' } },
-        );
     }
 
     try {
