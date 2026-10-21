@@ -174,6 +174,38 @@ describe('POST /api/data failure reporting', () => {
         await expect(response.json()).resolves.not.toHaveProperty('error', expect.stringContaining('10.0.0.1'));
     });
 
+    it('rejects POST bodies larger than 1 MB with 413', async () => {
+        const big = JSON.stringify({ type: 'emision', data: [{ iso_fecha: '2026-01-01', pad: 'x'.repeat(1024 * 1024) }] });
+        const declared = await POST(new Request('http://localhost/api/data', {
+            method: 'POST',
+            headers: { 'x-real-ip': '203.0.113.70', 'content-type': 'application/json', 'content-length': String(big.length) },
+            body: big,
+        }));
+        const undeclared = await POST(new Request('http://localhost/api/data', {
+            method: 'POST',
+            headers: { 'x-real-ip': '203.0.113.71', 'content-type': 'application/json' },
+            body: big,
+        }));
+
+        expect(declared.status).toBe(413);
+        expect(undeclared.status).toBe(413);
+        expect(mocks.saveRawData).not.toHaveBeenCalled();
+    });
+
+    it('rejects payloads with too many rows with 413', async () => {
+        const catalog = await POST(new Request('http://localhost/api/data', {
+            method: 'POST',
+            headers: { 'x-real-ip': '203.0.113.72', 'content-type': 'application/json' },
+            body: JSON.stringify(Array.from({ length: 201 }, (_, i) => ({ id: `x${i}` }))),
+        }));
+        const emision = await POST(emisionRequest(Array.from({ length: 5001 }, () => ({})), '203.0.113.73'));
+
+        expect(catalog.status).toBe(413);
+        expect(emision.status).toBe(413);
+        expect(mocks.saveIndicators).not.toHaveBeenCalled();
+        expect(mocks.saveRawData).not.toHaveBeenCalled();
+    });
+
     it('still answers 400 when the payload itself is invalid', async () => {
         const response = await POST(new Request('http://localhost/api/data', {
             method: 'POST',

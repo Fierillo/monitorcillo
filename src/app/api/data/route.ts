@@ -22,12 +22,26 @@ function isRutasPostBody(body: unknown): body is RutasPostBody {
     return isTypedPostBody(body, 'rutas');
 }
 
+// Real payloads today: catalog ~16 rows (<10 KB), rutas 16 tramos (~15 KB), emision a few hundred daily rows.
+const MAX_POST_BODY_BYTES = 1024 * 1024;
+const MAX_CATALOG_ROWS = 200;
+const MAX_EMISION_ROWS = 5000;
+const MAX_RUTAS_ROWS = 500;
+const TOO_LARGE = Symbol('too-large');
+
 async function readJsonBody(request: Request): Promise<unknown> {
+    if (Number(request.headers.get('content-length') ?? 0) > MAX_POST_BODY_BYTES) return TOO_LARGE;
     try {
-        return await request.json();
+        const text = await request.text();
+        if (Buffer.byteLength(text, 'utf8') > MAX_POST_BODY_BYTES) return TOO_LARGE;
+        return JSON.parse(text);
     } catch {
         return null;
     }
+}
+
+function payloadTooLarge(): NextResponse {
+    return NextResponse.json({ error: 'Payload too large.' }, { status: 413 });
 }
 
 function databaseUnavailable(error: unknown): NextResponse {
@@ -111,9 +125,10 @@ export async function POST(req: Request) {
     }
 
     const body = await readJsonBody(req);
-    if (isEmisionPostBody(body)) return saveEmision(body);
-    if (isRutasPostBody(body)) return saveRutas(body);
-    if (Array.isArray(body)) return saveCatalog(body as IndicatorsPostBody);
+    if (body === TOO_LARGE) return payloadTooLarge();
+    if (isEmisionPostBody(body)) return body.data.length > MAX_EMISION_ROWS ? payloadTooLarge() : saveEmision(body);
+    if (isRutasPostBody(body)) return body.data.length > MAX_RUTAS_ROWS ? payloadTooLarge() : saveRutas(body);
+    if (Array.isArray(body)) return body.length > MAX_CATALOG_ROWS ? payloadTooLarge() : saveCatalog(body as IndicatorsPostBody);
 
     return NextResponse.json({ error: 'Invalid payload. Send an array of indicators, or { "type": "emision" | "rutas", "data": [...] }.' }, { status: 400 });
 }
