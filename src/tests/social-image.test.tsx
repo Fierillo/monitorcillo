@@ -16,7 +16,7 @@ it('shares the same static PNG on Open Graph and Twitter', () => {
     const twitterImages = metadata.twitter?.images as string[];
     expect(twitterImages).toEqual(images);
     expect(images).toHaveLength(1);
-    expect(images[0]).toMatch(/^\/[^?]+\.png$/);
-    const image = PNG.sync.read(readFileSync(join(process.cwd(), 'public', images[0])));
+    expect(images[0]).toMatch(/^\/[^?]+\.png(\?v=\d+)?$/);
+    const image = PNG.sync.read(readFileSync(join(process.cwd(), 'public', images[0].split('?')[0])));
     expect([image.width, image.height]).toEqual([1200, 630]);
 });

@@ -25,8 +25,8 @@ export const metadata: Metadata = {
     template: "%s | Monitorcillo",
   },
   description: SITE_TAGLINE,
-  openGraph: { images: ["/og.png"] },
-  twitter: { card: "summary_large_image", images: ["/og.png"] },
+  openGraph: { images: ["/og.png?v=2"] },
+  twitter: { card: "summary_large_image", images: ["/og.png?v=2"] },
 };
 
 export default function RootLayout({
