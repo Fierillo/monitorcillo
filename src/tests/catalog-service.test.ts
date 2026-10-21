@@ -27,7 +27,7 @@ describe('buildCurrentIndicatorsCatalog', () => {
     it('refreshes persisted catalog references from indicator specs', async () => {
         const result = await buildCurrentIndicatorsCatalog({
             getCatalogRows: async () => [{ ...baseCatalogRow, id: 'bma', referencia: 'Referencia vieja' }],
-            getLatestNormalizedRow: async (type, valueColumn, fallbackColumns) => {
+            getLatestNormalizedRow: async (type, valueColumn) => {
                 if (type !== 'bma') return null;
                 expect(valueColumn).toBe('bma_amplia');
                 return { iso_fecha: '2026-04-01', BMAmplia: 6.7 };
@@ -113,7 +113,7 @@ describe('buildCurrentIndicatorsCatalog', () => {
     it('uses latest-row data sources without loading full tables', async () => {
         const result = await buildCurrentIndicatorsCatalog({
             getCatalogRows: async () => [{ ...baseCatalogRow, id: 'bma', fecha: '1 ABR 26', dato: '6,7%' }],
-            getLatestNormalizedRow: async (type, valueColumn, fallbackColumns) => {
+            getLatestNormalizedRow: async (type, valueColumn) => {
                 if (type !== 'bma') return null;
                 expect(valueColumn).toBe('bma_amplia');
                 return { iso_fecha: '2026-04-01', BMAmplia: 6.7 };
@@ -138,7 +138,7 @@ describe('buildCurrentIndicatorsCatalog', () => {
     it('uses publication date metadata and previous-month reference for poder adquisitivo', async () => {
         const result = await buildCurrentIndicatorsCatalog({
             getCatalogRows: async () => [{ ...baseCatalogRow, id: 'poder-adquisitivo' }],
-            getLatestNormalizedRow: async (type, valueColumn, fallbackColumns) => {
+            getLatestNormalizedRow: async (type, valueColumn) => {
                 if (type !== 'poder') return null;
                 expect(valueColumn).toBe('blanco');
                 return { iso_fecha: '2026-02-01', blanco: 88.8 };

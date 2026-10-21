@@ -50,8 +50,15 @@ export const RECAUDACION_RESIDUAL = {
     color: '#9CA3AF',
 } as const;
 
+function withoutSourceFields<T extends { seriesId: unknown; concepts: unknown }>(tax: T): Omit<T, 'seriesId' | 'concepts'> {
+    const rest: Partial<T> = { ...tax };
+    delete rest.seriesId;
+    delete rest.concepts;
+    return rest as Omit<T, 'seriesId' | 'concepts'>;
+}
+
 export const RECAUDACION_BREAKDOWN_TYPES = [
-    ...RECAUDACION_TAX_TYPES.map(({ seriesId: _seriesId, concepts: _concepts, ...tax }) => tax),
+    ...RECAUDACION_TAX_TYPES.map(withoutSourceFields),
     RECAUDACION_RESIDUAL,
 ] as const;
 
