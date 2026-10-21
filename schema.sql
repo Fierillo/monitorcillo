@@ -519,3 +519,9 @@ CREATE TABLE IF NOT EXISTS rutas_tramos (
     pavimento VARCHAR(32) NOT NULL DEFAULT 'sin-dato',
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Admin sessions revoked on logout (also created lazily by src/lib/auth-revocation.ts)
+CREATE TABLE IF NOT EXISTS revoked_auth_tokens (
+    nonce TEXT PRIMARY KEY,
+    expires_at TIMESTAMPTZ NOT NULL
+);

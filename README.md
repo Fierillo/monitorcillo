@@ -102,7 +102,8 @@ Variables principales:
 | Variable | Uso |
 | --- | --- |
 | `NEON_URL` | Conexión Postgres serverless |
-| `ADMIN_PASSWORD` | Acceso al panel admin |
+| `ADMIN_PASSWORD` | Acceso al panel admin (mínimo 16 caracteres) |
+| `AUTH_SECRET` | Clave HMAC de la sesión admin, ≥ 32 caracteres (`openssl rand -hex 32`) |
 
 Comandos:
 
