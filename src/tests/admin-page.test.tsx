@@ -30,6 +30,8 @@ import AdminDashboard from '../app/admin/AdminDashboard';
 import LoginForm from '../app/admin/LoginForm';
 
 const originalAdminPassword = process.env.ADMIN_PASSWORD;
+const originalAuthSecret = process.env.AUTH_SECRET;
+const AUTH_SECRET = 'test-auth-secret-0123456789abcdef';
 
 function expectElementType(element: ReactNode, type: ElementType): void {
     expect(isValidElement(element)).toBe(true);
@@ -39,6 +41,7 @@ function expectElementType(element: ReactNode, type: ElementType): void {
 
 beforeEach(() => {
     process.env.ADMIN_PASSWORD = 'strong-admin-password';
+    process.env.AUTH_SECRET = AUTH_SECRET;
     mocks.cookieValue = undefined;
     mocks.getIndicators.mockReset();
     mocks.getIndicators.mockResolvedValue([]);
@@ -49,6 +52,8 @@ beforeEach(() => {
 afterEach(() => {
     if (originalAdminPassword === undefined) delete process.env.ADMIN_PASSWORD;
     else process.env.ADMIN_PASSWORD = originalAdminPassword;
+    if (originalAuthSecret === undefined) delete process.env.AUTH_SECRET;
+    else process.env.AUTH_SECRET = originalAuthSecret;
 });
 
 describe('admin page auth', () => {
@@ -63,7 +68,7 @@ describe('admin page auth', () => {
     });
 
     it('renders the admin dashboard with a valid signed cookie', async () => {
-        mocks.cookieValue = createAuthToken('strong-admin-password');
+        mocks.cookieValue = createAuthToken(AUTH_SECRET);
 
         const element = await AdminPage();
 

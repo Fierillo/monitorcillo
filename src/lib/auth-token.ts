@@ -1,7 +1,10 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { isNonceRevoked, revokeNonce } from './auth-revocation';
 
 export const AUTH_COOKIE_NAME = 'auth_token';
 export const AUTH_MAX_AGE_SECONDS = 60 * 60 * 24;
+export const MIN_AUTH_SECRET_LENGTH = 32;
+export const MIN_ADMIN_PASSWORD_LENGTH = 16;
 
 type AuthTokenPayload = {
     exp: number;
@@ -15,8 +18,8 @@ function safeEqual(left: string, right: string): boolean {
     return timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function signPayload(payload: string, adminPassword: string): string {
-    return createHmac('sha256', adminPassword).update(payload).digest('base64url');
+function signPayload(payload: string, secret: string): string {
+    return createHmac('sha256', secret).update(payload).digest('base64url');
 }
 
 function parsePayload(payload: string): AuthTokenPayload | null {
@@ -34,29 +37,50 @@ export function getAdminPassword(): string | null {
     return password && password.length > 0 ? password : null;
 }
 
+/** HMAC key for session tokens. Kept apart from ADMIN_PASSWORD; null (fail closed) when missing or too short. */
+export function getAuthSecret(): string | null {
+    const secret = process.env.AUTH_SECRET;
+    return secret && secret.length >= MIN_AUTH_SECRET_LENGTH ? secret : null;
+}
+
 export function verifyAdminPassword(candidate: unknown, adminPassword = getAdminPassword()): boolean {
     if (!adminPassword || typeof candidate !== 'string') return false;
     return safeEqual(candidate, adminPassword);
 }
 
-export function createAuthToken(adminPassword: string, now = Date.now()): string {
+export function createAuthToken(secret: string, now = Date.now()): string {
     const payload = Buffer.from(JSON.stringify({
         exp: now + AUTH_MAX_AGE_SECONDS * 1000,
         nonce: randomBytes(16).toString('base64url'),
     })).toString('base64url');
 
-    return `${payload}.${signPayload(payload, adminPassword)}`;
+    return `${payload}.${signPayload(payload, secret)}`;
 }
 
-export function verifyAuthToken(token: unknown, adminPassword = getAdminPassword(), now = Date.now()): boolean {
-    if (!adminPassword || typeof token !== 'string') return false;
+function readAuthToken(token: unknown, secret: string | null, now: number): AuthTokenPayload | null {
+    if (!secret || typeof token !== 'string') return null;
 
     const parts = token.split('.');
-    if (parts.length !== 2) return false;
+    if (parts.length !== 2) return null;
 
     const [payload, signature] = parts;
-    if (!payload || !signature || !safeEqual(signature, signPayload(payload, adminPassword))) return false;
+    if (!payload || !signature || !safeEqual(signature, signPayload(payload, secret))) return null;
 
     const parsed = parsePayload(payload);
-    return parsed !== null && parsed.exp > now;
+    return parsed !== null && parsed.exp > now ? parsed : null;
+}
+
+export function verifyAuthToken(token: unknown, secret = getAuthSecret(), now = Date.now()): boolean {
+    return readAuthToken(token, secret, now) !== null;
+}
+
+/** Signature, expiry and server-side revocation (logout). */
+export async function isAuthTokenActive(token: unknown, secret = getAuthSecret(), now = Date.now()): Promise<boolean> {
+    const parsed = readAuthToken(token, secret, now);
+    return parsed !== null && !await isNonceRevoked(parsed.nonce);
+}
+
+export async function revokeAuthToken(token: unknown, secret = getAuthSecret(), now = Date.now()): Promise<void> {
+    const parsed = readAuthToken(token, secret, now);
+    if (parsed) await revokeNonce(parsed.nonce, parsed.exp);
 }
