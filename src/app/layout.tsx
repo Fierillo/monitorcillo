@@ -38,7 +38,7 @@ export default function RootLayout({
     <html lang="es" className={`${cinzel.variable} ${libreBaskerville.variable}`}>
       <body className={`${cinzel.variable} ${libreBaskerville.variable} antialiased`}>
         {children}
-        <footer className="border-t border-imperial-gold/40 px-4 py-5 text-center text-xs font-bold tracking-widest text-imperial-cyan sm:text-sm">
+        <footer className="px-4 py-5 text-center text-xs font-bold tracking-widest text-imperial-cyan sm:text-sm">
           <a
             href="https://github.com/Fierillo/monitorcillo"
             target="_blank"
