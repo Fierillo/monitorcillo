@@ -59,7 +59,7 @@ export default function FeedbackButton({ context }: { context: FeedbackContext }
                     setStatus('');
                     setIsOpen(true);
                 }}
-                className="no-capture inline-flex items-center justify-center gap-2 border-2 border-red-400 bg-red-800 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-red-700"
+                className="no-capture inline-flex items-center justify-center gap-2 border border-red-400/70 bg-red-900/80 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-imperial-ivory transition-colors hover:bg-red-700"
                 aria-label="Enviar feedback"
             >
                 <FeedbackIcon />
@@ -69,13 +69,13 @@ export default function FeedbackButton({ context }: { context: FeedbackContext }
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" role="presentation" onMouseDown={event => {
                     if (event.target === event.currentTarget) close();
                 }}>
-                    <section role="dialog" aria-modal="true" aria-labelledby="feedback-title" className="w-full max-w-lg border-2 border-red-400 bg-imperial-blue p-5 text-left shadow-2xl">
+                    <section role="dialog" aria-modal="true" aria-labelledby="feedback-title" className="w-full max-w-lg imperial-frame bg-imperial-blue p-5 text-left">
                         <div className="mb-4 flex items-start justify-between gap-4">
                             <div>
-                                <h2 id="feedback-title" className="text-lg font-bold text-white">Enviar feedback</h2>
+                                <h2 id="feedback-title" className="text-lg font-bold text-imperial-ivory">Enviar feedback</h2>
                                 <p className="mt-1 text-sm text-imperial-cyan">Contanos qué viste y qué debería mejorar. Máximo {MAX_MESSAGE_LENGTH} caracteres.</p>
                             </div>
-                            <button type="button" onClick={close} className="border border-white/40 px-2 py-1 text-sm font-bold text-white hover:bg-white/10" aria-label="Cerrar formulario">X</button>
+                            <button type="button" onClick={close} className="border border-white/40 px-2 py-1 text-sm font-bold text-imperial-ivory hover:bg-white/10" aria-label="Cerrar formulario">X</button>
                         </div>
                         <form onSubmit={submit}>
                             <label htmlFor="feedback-message" className="mb-2 block text-xs font-bold uppercase tracking-wider text-imperial-gold">Mensaje</label>
@@ -88,10 +88,10 @@ export default function FeedbackButton({ context }: { context: FeedbackContext }
                                 required
                                 autoFocus
                                 rows={5}
-                                className="w-full resize-y border border-imperial-cyan bg-[#000d2a] p-3 text-sm text-white placeholder:text-white/40 focus:border-imperial-gold"
+                                className="w-full resize-y border border-imperial-cyan bg-[#000d2a] p-3 text-sm text-imperial-ivory placeholder:text-imperial-ivory/40 focus:border-imperial-gold"
                                 placeholder="Ej.: En este gráfico no se distingue la serie..."
                             />
-                            <div className="mt-1 text-right text-xs text-white/50">{message.length}/{MAX_MESSAGE_LENGTH}</div>
+                            <div className="mt-1 text-right text-xs text-imperial-ivory/50">{message.length}/{MAX_MESSAGE_LENGTH}</div>
                             <label htmlFor="feedback-twitter" className="mb-2 mt-4 block text-xs font-bold uppercase tracking-wider text-imperial-gold">Usuario de X (opcional)</label>
                             <input
                                 id="feedback-twitter"
@@ -100,18 +100,18 @@ export default function FeedbackButton({ context }: { context: FeedbackContext }
                                 onChange={event => setTwitterHandle(event.target.value)}
                                 maxLength={80}
                                 autoComplete="username"
-                                className="w-full border border-imperial-cyan bg-[#000d2a] p-3 text-sm text-white placeholder:text-white/40 focus:border-imperial-gold"
+                                className="w-full border border-imperial-cyan bg-[#000d2a] p-3 text-sm text-imperial-ivory placeholder:text-imperial-ivory/40 focus:border-imperial-gold"
                                 placeholder="@usuario"
                             />
                             <div aria-hidden="true" className="absolute -left-[10000px] h-px w-px overflow-hidden">
                                 <label htmlFor="feedback-website">No completar</label>
                                 <input id="feedback-website" name="website" type="text" tabIndex={-1} autoComplete="off" value={website} onChange={event => setWebsite(event.target.value)} />
                             </div>
-                            <p className="mt-1 text-xs text-white/50">Si querés créditos cuando implementemos tu idea.</p>
+                            <p className="mt-1 text-xs text-imperial-ivory/50">Si querés créditos cuando implementemos tu idea.</p>
                             {status ? <p role="status" className={`mt-3 text-sm font-bold ${status.startsWith('Feedback enviado') ? 'text-green-400' : 'text-red-300'}`}>{status}</p> : null}
                             <div className="mt-4 flex justify-end gap-3">
-                                <button type="button" onClick={close} disabled={isSubmitting} className="border border-white/40 px-4 py-2 text-sm font-bold text-white hover:bg-white/10 disabled:opacity-50">Cancelar</button>
-                                <button type="submit" disabled={isSubmitting || message.trim().length < 3} className="bg-red-700 px-5 py-2 text-sm font-bold uppercase text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50">
+                                <button type="button" onClick={close} disabled={isSubmitting} className="border border-white/40 px-4 py-2 text-sm font-bold text-imperial-ivory hover:bg-white/10 disabled:opacity-50">Cancelar</button>
+                                <button type="submit" disabled={isSubmitting || message.trim().length < 3} className="bg-red-700 px-5 py-2 text-sm font-bold uppercase text-imperial-ivory hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50">
                                     {isSubmitting ? 'Enviando...' : 'Enviar'}
                                 </button>
                             </div>

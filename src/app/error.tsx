@@ -11,7 +11,7 @@ export default function Error({ reset }: { error: Error; reset: () => void }) {
             </p>
             <button
                 onClick={reset}
-                className="border-2 border-imperial-gold px-4 py-2 text-sm uppercase tracking-widest text-imperial-gold hover:bg-imperial-gold hover:text-background"
+                className="border border-imperial-gold/60 px-4 py-2 text-sm uppercase tracking-widest text-imperial-gold hover:bg-imperial-gold hover:text-background"
             >
                 Reintentar
             </button>

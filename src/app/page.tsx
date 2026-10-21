@@ -9,14 +9,15 @@ export default async function Home() {
 
     return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-1 sm:p-4">
-      <header className="w-full max-w-full mb-4 sm:mb-8 text-center border-b-2 border-imperial-gold pb-4 mt-2 sm:mt-4">
+      <header className="w-full max-w-full mb-4 sm:mb-8 text-center border-b border-imperial-gold/40 pb-5 mt-2 sm:mt-4">
         <div className="mb-2 flex justify-end px-1 sm:px-4">
           <FeedbackButton context={{ surface: 'general_table', path: '/' }} />
         </div>
-        <h1 className="imperial-title text-2xl sm:text-4xl font-bold uppercase tracking-widest text-imperial-gold">
+        <h1 className="imperial-title text-2xl sm:text-4xl uppercase text-imperial-gold-light">
           Monitorcillo de la Economia Argentina
         </h1>
-        <p className="mt-2 text-sm italic text-imperial-cyan sm:text-base">
+        <div className="imperial-divider" aria-hidden="true"><span /></div>
+        <p className="mt-3 text-sm italic text-imperial-cyan sm:text-base">
           &ldquo;El precio de la libertad es la eterna vigilancia&rdquo; - Wendell Phillips
         </p>
       </header>

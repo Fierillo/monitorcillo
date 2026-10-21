@@ -94,7 +94,7 @@ describe('bar chart edges', () => {
     });
 
     it('starts lines on the x axis border when the chart has no bars', () => {
-        const { container } = renderChart({ count: 12, areas: [{ key: 'total', name: 'Total', color: '#FFD700', type: 'line' }] });
+        const { container } = renderChart({ count: 12, areas: [{ key: 'total', name: 'Total', color: '#C9A44C', type: 'line' }] });
         const axis = xAxisBounds(container);
         const [, firstX] = container.querySelector('.recharts-line-curve')!.getAttribute('d')!.match(/^M\s*([\d.]+)/)!;
 

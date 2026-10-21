@@ -5,7 +5,7 @@ import { memo, useCallback } from 'react';
 import type { ChartBarProps, ChartBarShapeProps, ChartSeriesClickEvent } from '@/types/chart';
 import { handleSeriesCtrlClick } from './seriesInteraction';
 
-const DEFAULT_BAR_BORDER_COLOR = '#00143F';
+const DEFAULT_BAR_BORDER_COLOR = '#0B1426';
 const DEFAULT_BAR_BORDER_WIDTH = 0.5;
 
 function ChartBar({
@@ -57,7 +57,7 @@ function ChartBar({
                         <defs>
                             <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
                                 <rect width="6" height="6" fill={areaConfig.color} />
-                                <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
+                                <line x1="0" y1="0" x2="0" y2="6" stroke="#0B1426" strokeOpacity="0.55" strokeWidth="2" />
                             </pattern>
                         </defs>
                     ) : null}
@@ -81,7 +81,7 @@ function ChartBar({
                         <defs>
                             <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
                                 <rect width="6" height="6" fill={areaConfig.preliminaryColor ?? areaConfig.color} />
-                                <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
+                                <line x1="0" y1="0" x2="0" y2="6" stroke="#0B1426" strokeOpacity="0.55" strokeWidth="2" />
                             </pattern>
                         </defs>
                     ) : null}
@@ -119,7 +119,7 @@ function ChartBar({
             <defs>
                 <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
                     <rect width="6" height="6" fill={areaConfig.color} />
-                    <line x1="0" y1="0" x2="0" y2="6" stroke="#00143F" strokeOpacity="0.55" strokeWidth="2" />
+                    <line x1="0" y1="0" x2="0" y2="6" stroke="#0B1426" strokeOpacity="0.55" strokeWidth="2" />
                 </pattern>
             </defs>
             {rectangle}

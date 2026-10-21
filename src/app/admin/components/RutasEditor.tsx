@@ -35,7 +35,7 @@ export default function RutasEditor({ data, stored = [], msg, onAdd, onDelete, o
         <div className="mb-4 flex flex-col gap-4">
             <div>
                 <p className="text-imperial-cyan font-bold uppercase tracking-widest text-lg">Editor de rutas nacionales</p>
-                <p className="text-white/60 text-sm mt-1">La tabla muestra los tramos guardados en la base. Guardar reemplaza la lista y conserva las fuentes cargadas por el script de importación. El pavimento queda en sin dato hasta que lo completes. Rutas: 9, 12, A012. Fechas: AAAA-MM-DD.</p>
+                <p className="text-imperial-ivory/60 text-sm mt-1">La tabla muestra los tramos guardados en la base. Guardar reemplaza la lista y conserva las fuentes cargadas por el script de importación. El pavimento queda en sin dato hasta que lo completes. Rutas: 9, 12, A012. Fechas: AAAA-MM-DD.</p>
             </div>
             <div className="flex items-center justify-between gap-4">
                 <button type="button" onClick={onAdd} className="bg-imperial-blue border border-imperial-cyan text-imperial-cyan font-bold py-2 px-4 cursor-pointer hover:bg-imperial-cyan hover:text-imperial-blue transition-colors">+ Agregar tramo</button>
@@ -44,7 +44,7 @@ export default function RutasEditor({ data, stored = [], msg, onAdd, onDelete, o
                     <button type="button" onClick={save} className="bg-imperial-gold text-imperial-blue font-bold py-2 px-6 uppercase cursor-pointer hover:bg-yellow-500 transition-colors">Guardar</button>
                 </div>
             </div>
-            <div className="overflow-x-auto border-2 border-imperial-gold">
+            <div className="overflow-x-auto border border-imperial-gold/60">
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-imperial-gold text-imperial-blue text-sm uppercase tracking-wider">
@@ -67,17 +67,17 @@ export default function RutasEditor({ data, stored = [], msg, onAdd, onDelete, o
 function ConfirmDelete({ tramos, onCancel, onConfirm }: { tramos: RutaTramoDraft[]; onCancel: () => void; onConfirm: () => void }) {
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" role="presentation">
-            <section role="alertdialog" aria-modal="true" aria-labelledby="rutas-delete-title" aria-describedby="rutas-delete-body" className="w-full max-w-lg border-2 border-red-400 bg-imperial-blue p-5 text-left shadow-2xl">
+            <section role="alertdialog" aria-modal="true" aria-labelledby="rutas-delete-title" aria-describedby="rutas-delete-body" className="w-full max-w-lg imperial-frame bg-imperial-blue p-5 text-left">
                 <h2 id="rutas-delete-title" className="text-lg font-bold uppercase tracking-wide text-imperial-gold">Eliminar tramos</h2>
-                <div id="rutas-delete-body" className="mt-2 text-sm text-white">
+                <div id="rutas-delete-body" className="mt-2 text-sm text-imperial-ivory">
                     <p>Esta acción es irreversible. Al guardar se borran de la base estos tramos, junto con sus sectores de km y sus ofertas:</p>
                     <ul className="mt-2 list-disc pl-5 font-bold text-imperial-cyan">
                         {tramos.map(tramo => <li key={tramo.id ?? tramo.nombre}>{tramo.nombre || tramo.id}</li>)}
                     </ul>
                 </div>
                 <div className="mt-4 flex justify-end gap-3">
-                    <button type="button" autoFocus onClick={onCancel} className="border border-white/40 px-4 py-2 text-sm font-bold text-white hover:bg-white/10">Cancelar</button>
-                    <button type="button" onClick={onConfirm} className="bg-red-700 px-5 py-2 text-sm font-bold uppercase text-white hover:bg-red-600">Eliminar y guardar</button>
+                    <button type="button" autoFocus onClick={onCancel} className="border border-white/40 px-4 py-2 text-sm font-bold text-imperial-ivory hover:bg-white/10">Cancelar</button>
+                    <button type="button" onClick={onConfirm} className="bg-red-700 px-5 py-2 text-sm font-bold uppercase text-imperial-ivory hover:bg-red-600">Eliminar y guardar</button>
                 </div>
             </section>
         </div>
@@ -90,18 +90,18 @@ function RutaRow({ row, index, onCellChange, onDelete }: { row: RutaTramoDraft; 
         <tr className="border-t border-imperial-cyan/30">
             {TEXT_FIELDS.map(([field, label]) => (
                 <td key={field} className="p-1 border-r border-imperial-cyan/30">
-                    <input aria-label={labelFor(label)} value={row[field]} onChange={event => onCellChange(index, field, event.target.value)} className="w-full min-w-28 bg-transparent p-1 text-white" />
+                    <input aria-label={labelFor(label)} value={row[field]} onChange={event => onCellChange(index, field, event.target.value)} className="w-full min-w-28 bg-transparent p-1 text-imperial-ivory" />
                 </td>
             ))}
             <td className="p-1 border-r border-imperial-cyan/30">
-                <select aria-label={labelFor('Etapa')} value={row.etapa} onChange={event => onCellChange(index, 'etapa', event.target.value)} className="w-full bg-imperial-blue p-1 text-white">
+                <select aria-label={labelFor('Etapa')} value={row.etapa} onChange={event => onCellChange(index, 'etapa', event.target.value)} className="w-full bg-imperial-blue p-1 text-imperial-ivory">
                     <option value="concesionado">Concesionado</option>
                     <option value="en-licitacion">En licitación</option>
                     <option value="sin-concesionar">Sin concesionar</option>
                 </select>
             </td>
             <td className="p-1 border-r border-imperial-cyan/30">
-                <select aria-label={labelFor('Pavimento')} value={row.pavimento} onChange={event => onCellChange(index, 'pavimento', event.target.value)} className="w-full bg-imperial-blue p-1 text-white">
+                <select aria-label={labelFor('Pavimento')} value={row.pavimento} onChange={event => onCellChange(index, 'pavimento', event.target.value)} className="w-full bg-imperial-blue p-1 text-imperial-ivory">
                     <option value="bueno">Bueno</option>
                     <option value="regular">Regular</option>
                     <option value="malo">Malo</option>

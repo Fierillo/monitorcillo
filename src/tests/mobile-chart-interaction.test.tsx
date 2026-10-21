@@ -48,7 +48,7 @@ describe('mobile chart interaction', () => {
             title="Indicador" chartTitle="Gráfico"
             captureRef={createRef<HTMLDivElement>()} chartContainerRef={createRef<HTMLDivElement>()}
             chartSize={{ width: 640, height: 360 }} visibleData={rows} sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
+            areas={[{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'line' }]}
             methodology={[]} valueFormat="currency" yAxisDecimals={1} leftAxisDomain={[0, 121]}
             secondaryYAxis={{ format: 'percent' }}
             xAxisKey="iso_fecha" labelByXAxisValue={new Map(rows.map(row => [row.iso_fecha, row.fecha]))}
@@ -105,8 +105,8 @@ describe('mobile chart interaction', () => {
             visibleData: fewRows,
             sortedData: fewRows,
             areas: [
-                { key: 'value', name: 'Valor', color: '#FFD700', type: 'bar', maxBarSize: 200 },
-                { key: 'other', name: 'Otro', color: '#00BFFF', type: 'bar', maxBarSize: 200 },
+                { key: 'value', name: 'Valor', color: '#C9A44C', type: 'bar', maxBarSize: 200 },
+                { key: 'other', name: 'Otro', color: '#7FA7C4', type: 'bar', maxBarSize: 200 },
             ],
         }));
         const barMargin = recharts.chartProps?.margin as { right: number };
@@ -124,7 +124,7 @@ describe('mobile chart interaction', () => {
             chartSize={{ width: 1000, height: 360 }}
             visibleData={rows}
             sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'bar' }]}
+            areas={[{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'bar' }]}
             methodology={[]}
             valueFormat="percent"
             yAxisDecimals={1}
@@ -177,7 +177,7 @@ describe('mobile chart interaction', () => {
             chartSize={{ width: 320, height: 360 }}
             visibleData={rows}
             sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'bar' }]}
+            areas={[{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'bar' }]}
             methodology={[]}
             valueFormat="percent"
             yAxisDecimals={1}
@@ -219,7 +219,7 @@ describe('mobile chart interaction', () => {
             chartSize={{ width: 320, height: 360 }}
             visibleData={rows}
             sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'bar' }]}
+            areas={[{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'bar' }]}
             methodology={[]}
             valueFormat="percent"
             yAxisDecimals={1}
@@ -269,7 +269,7 @@ describe('mobile chart interaction', () => {
             title="Indicador" chartTitle="Gráfico"
             captureRef={createRef<HTMLDivElement>()} chartContainerRef={createRef<HTMLDivElement>()}
             chartSize={{ width: 320, height: 360 }} visibleData={rows} sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'bar' }]}
+            areas={[{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'bar' }]}
             methodology={[]} valueFormat="percent" yAxisDecimals={1} leftAxisDomain={[0, 501]}
             xAxisKey="iso_fecha" labelByXAxisValue={new Map()} highlightedAreas={new Set()}
             selectedMonth={null} selectByMonth={false} showTooltipTotal={false} referenceLines={[]}
@@ -295,7 +295,7 @@ describe('mobile chart interaction', () => {
             chartSize={{ width: 320, height: 360 }}
             visibleData={rows}
             sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
+            areas={[{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'line' }]}
             methodology={[]}
             valueFormat="percent"
             yAxisDecimals={1}
@@ -342,7 +342,7 @@ describe('mobile chart interaction', () => {
             chartSize={{ width: 320, height: 360 }}
             visibleData={rows.slice(3, 8)}
             sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
+            areas={[{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'line' }]}
             methodology={[]}
             valueFormat="percent"
             yAxisDecimals={1}
@@ -386,7 +386,7 @@ describe('mobile chart interaction', () => {
             chartSize={{ width: 320, height: 360 }}
             visibleData={rows}
             sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
+            areas={[{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'line' }]}
             methodology={[]}
             valueFormat="percent"
             yAxisDecimals={1}
@@ -433,7 +433,7 @@ describe('mobile chart interaction', () => {
             title="Indicador" chartTitle="Gráfico" captureRef={createRef<HTMLDivElement>()}
             chartContainerRef={chartContainerRef} chartSize={{ width: 320, height: 360 }}
             visibleData={rows} sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
+            areas={[{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'line' }]}
             methodology={[]} valueFormat="percent" yAxisDecimals={1} leftAxisDomain={[0, 20]}
             xAxisKey="iso_fecha" labelByXAxisValue={new Map()} highlightedAreas={new Set()}
             selectedMonth={null} selectByMonth={false} showTooltipTotal={false}
@@ -468,7 +468,7 @@ describe('mobile chart interaction', () => {
     it('keeps tracking the finger when the parent re-renders mid-gesture', () => {
         vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         const rows = Array.from({ length: 3 }, (_, index) => ({ fecha: `MES ${index}`, iso_fecha: `2026-0${index + 1}-01`, value: index }));
-        const areas = [{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' as const }];
+        const areas = [{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'line' as const }];
         const chartContainerRef = createRef<HTMLDivElement>();
         const onHoverTooltipChange = vi.fn();
         const chart = (visible: typeof rows) => <CompositeChartCard
@@ -533,7 +533,7 @@ describe('mobile chart interaction', () => {
             chartSize={{ width: 320, height: 360 }}
             visibleData={rows}
             sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
+            areas={[{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'line' }]}
             methodology={[]}
             valueFormat="percent"
             yAxisDecimals={1}
@@ -585,7 +585,7 @@ describe('mobile chart interaction', () => {
             title="Indicador" chartTitle="Gráfico" captureRef={createRef<HTMLDivElement>()}
             chartContainerRef={chartContainerRef} chartSize={{ width: 320, height: 360 }}
             visibleData={rows} sortedData={rows}
-            areas={[{ key: 'value', name: 'Valor', color: '#FFD700', type: 'line' }]}
+            areas={[{ key: 'value', name: 'Valor', color: '#C9A44C', type: 'line' }]}
             methodology={[]} valueFormat="percent" yAxisDecimals={1} leftAxisDomain={[0, 20]}
             xAxisKey="iso_fecha" labelByXAxisValue={new Map()} highlightedAreas={new Set()}
             selectedMonth={null} selectByMonth={false} showTooltipTotal={false}

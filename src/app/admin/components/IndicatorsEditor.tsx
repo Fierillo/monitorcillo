@@ -16,10 +16,10 @@ export default function IndicatorsEditor({ data, msg, onAdd, onPop, onSave, onCe
                 <p className="text-imperial-cyan font-bold uppercase tracking-widest text-lg">Editor de Indicadores</p>
                 <div className="flex gap-4">
                     <button onClick={onAdd} className="bg-imperial-blue border border-imperial-cyan text-imperial-cyan font-bold py-1 px-4 cursor-pointer hover:bg-imperial-cyan hover:text-imperial-blue transition-colors">+ Agregar Fila</button>
-                    <button onClick={onPop} className="border border-red-500 text-red-500 font-bold py-1 px-4 cursor-pointer hover:bg-red-500 hover:text-white transition-colors">- Eliminar Fila</button>
+                    <button onClick={onPop} className="border border-red-500 text-red-500 font-bold py-1 px-4 cursor-pointer hover:bg-red-500 hover:text-imperial-ivory transition-colors">- Eliminar Fila</button>
                 </div>
             </div>
-            <div className="overflow-x-auto border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50">
+            <div className="overflow-x-auto imperial-frame">
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-imperial-gold text-imperial-blue text-sm uppercase tracking-wider">
@@ -43,12 +43,12 @@ function IndicatorRow({ row, index, onCellChange }: { row: Indicator; index: num
     return (
         <tr className="border-t border-imperial-cyan/30">
             <td className="p-1 border-r border-imperial-cyan/30"><input type="text" value={row.fecha} onChange={e => onCellChange(index, 'fecha', e.target.value)} className="w-full bg-transparent text-imperial-gold font-bold p-1 outline-none" /></td>
-            <td className="p-1 border-r border-imperial-cyan/30"><input type="text" value={row.fuente} onChange={e => onCellChange(index, 'fuente', e.target.value)} className="w-full bg-transparent text-white font-semibold p-1 outline-none" /></td>
-            <td className="p-1 border-r border-imperial-cyan/30"><input type="text" value={row.indicador} onChange={e => onCellChange(index, 'indicador', e.target.value)} className="w-full bg-transparent text-white font-bold p-1 outline-none" /></td>
+            <td className="p-1 border-r border-imperial-cyan/30"><input type="text" value={row.fuente} onChange={e => onCellChange(index, 'fuente', e.target.value)} className="w-full bg-transparent text-imperial-ivory font-semibold p-1 outline-none" /></td>
+            <td className="p-1 border-r border-imperial-cyan/30"><input type="text" value={row.indicador} onChange={e => onCellChange(index, 'indicador', e.target.value)} className="w-full bg-transparent text-imperial-ivory font-bold p-1 outline-none" /></td>
             <td className="p-1 border-r border-imperial-cyan/30"><input type="text" value={row.referencia} onChange={e => onCellChange(index, 'referencia', e.target.value)} className="w-full bg-transparent text-imperial-cyan p-1 outline-none" /></td>
             <td className="p-1 border-r border-imperial-cyan/30"><input type="text" value={row.dato} onChange={e => onCellChange(index, 'dato', e.target.value)} className={`w-full bg-transparent font-bold p-1 outline-none ${row.trend === 'down' ? 'text-red-500' : 'text-imperial-gold'}`} /></td>
             <td className="p-1 border-r border-imperial-cyan/30">
-                <select value={row.trend || 'neutral'} onChange={e => onCellChange(index, 'trend', e.target.value)} className="w-full bg-background border border-imperial-cyan text-white p-1 outline-none">
+                <select value={row.trend || 'neutral'} onChange={e => onCellChange(index, 'trend', e.target.value)} className="w-full bg-background border border-imperial-cyan text-imperial-ivory p-1 outline-none">
                     <option value="up">Up</option>
                     <option value="down">Down</option>
                     <option value="neutral">Neutral</option>

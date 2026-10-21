@@ -76,7 +76,7 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
 
     return (
         <main className={chartProps.forceDesktopLayout ? 'w-[1400px] max-w-none' : 'w-full sm:w-[96%] max-w-[1800px]'}>
-            <div className={`${chartProps.forceDesktopLayout ? 'w-[1400px] min-h-[850px] p-4' : 'w-full min-h-[600px] sm:min-h-[850px] p-2 sm:p-4'} bg-imperial-blue border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 flex flex-col overflow-hidden`} style={{ outline: 'none' }} tabIndex={-1}>
+            <div className={`${chartProps.forceDesktopLayout ? 'w-[1400px] min-h-[850px] p-4' : 'w-full min-h-[600px] sm:min-h-[850px] p-2 sm:p-4'} bg-imperial-blue imperial-frame flex flex-col overflow-hidden`} style={{ outline: 'none' }} tabIndex={-1}>
                 <div ref={captureRef} className="flex-1 flex flex-col bg-imperial-blue overflow-hidden" style={captureStyle} tabIndex={-1}>
                     {renderProps.isCapturing ? <ExportHeader title={renderProps.title} subtitle={renderProps.subtitle} /> : null}
                     <ChartHeader onPrepareDownload={renderProps.onPrepareDownload} onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} viewSelector={renderProps.viewSelector} extraControl={<>{renderProps.rangeResetControl}{renderProps.rangeSelectControl}</>} />
@@ -106,7 +106,7 @@ function ChartHeader({ onPrepareDownload, onDownloadChart, isCapturing, viewSele
             <div>{viewSelector}</div>
             <div className="flex justify-end gap-2 w-full sm:w-auto">
                 {extraControl}
-                <button data-keep-crosshair onMouseDown={onPrepareDownload} onTouchStart={onPrepareDownload} onClick={onDownloadChart} className="no-capture border-2 border-imperial-gold text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center" title="Descargar gráfico">
+                <button data-keep-crosshair onMouseDown={onPrepareDownload} onTouchStart={onPrepareDownload} onClick={onDownloadChart} className="no-capture border border-imperial-gold/60 text-imperial-gold px-3 py-1.5 text-xs sm:text-sm font-bold cursor-pointer hover:bg-imperial-gold hover:text-imperial-blue transition-colors flex items-center gap-2 w-full sm:w-auto justify-center" title="Descargar gráfico">
                     <ImageDown size={16} /> Guardar
                 </button>
             </div>
@@ -241,7 +241,7 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
                     ) : null}
                 </div>
             </div>
-            {!props.isMobile && props.secondaryYAxis && <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#00BFFF'} right />}
+            {!props.isMobile && props.secondaryYAxis && <AxisLabel label={props.secondaryYAxis.label ?? ''} color={props.secondaryYAxis.color || '#7FA7C4'} right />}
         </div>
     );
 }
@@ -323,7 +323,7 @@ function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout
             y={tickProps.y}
             textAnchor={tickProps.index === 0 ? 'start' : tickProps.index === tickProps.visibleTicksCount - 1 ? 'end' : 'middle'}
             dy={4}
-            fill="#FFD700"
+            fill="#C9A44C"
             fontSize={xTickFontSize}
         >
             {tickProps.tickFormatter?.(tickProps.payload.value, tickProps.index) ?? String(tickProps.payload.value ?? '')}
@@ -333,8 +333,8 @@ function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout
     const formatLeftTick = useCallback((value: number) => formatAxisValueByType(value, props.valueFormat, props.yAxisDecimals), [props.valueFormat, props.yAxisDecimals]);
     const rightAxisFormat = props.secondaryYAxis?.format;
     const formatRightTick = useCallback((value: number) => formatValueByType(value, rightAxisFormat), [rightAxisFormat]);
-    const leftTickStyle = useMemo(() => ({ fill: '#FFD700', fontSize: 10 }), []);
-    const rightTickStyle = useMemo(() => ({ fill: props.secondaryYAxis?.color || '#00BFFF', fontSize: 10 }), [props.secondaryYAxis?.color]);
+    const leftTickStyle = useMemo(() => ({ fill: '#C9A44C', fontSize: 10 }), []);
+    const rightTickStyle = useMemo(() => ({ fill: props.secondaryYAxis?.color || '#7FA7C4', fontSize: 10 }), [props.secondaryYAxis?.color]);
 
     const visibleReferenceLines = useMemo(() => props.referenceLines.filter(reference => reference.value >= 0), [props.referenceLines]);
     const backgroundReferenceLines = useMemo(() => visibleReferenceLines.filter(reference => !reference.foreground), [visibleReferenceLines]);
@@ -342,12 +342,12 @@ function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout
         key={key}
         y={reference.value}
         yAxisId="left"
-        stroke={outline ? reference.outlineColor : reference.color ?? '#FFD700'}
+        stroke={outline ? reference.outlineColor : reference.color ?? '#C9A44C'}
         strokeWidth={outline ? 4 : reference.foreground ? 1.5 : 1.25}
         strokeDasharray={reference.dash?.join(' ')}
         strokeLinecap="round"
         zIndex={reference.foreground ? (outline ? 1000 : 1001) : undefined}
-        label={!outline && reference.label ? { value: `${reference.label}: ${formatValueByType(reference.value, props.valueFormat)}`, position: 'insideTopRight', fill: reference.color ?? '#FFD700', fontSize: 10, fontWeight: 700 } : undefined}
+        label={!outline && reference.label ? { value: `${reference.label}: ${formatValueByType(reference.value, props.valueFormat)}`, position: 'insideTopRight', fill: reference.color ?? '#C9A44C', fontSize: 10, fontWeight: 700 } : undefined}
     />;
 
     const hideHoverCrosshair = useCallback(() => {
@@ -517,7 +517,7 @@ function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout
             <CartesianGrid vertical={false} horizontal={!props.secondaryYAxis} stroke="#ffffff66" strokeWidth={0.75} />
             <XAxis
                 dataKey={props.xAxisKey}
-                stroke="#FFD700"
+                stroke="#C9A44C"
                 tick={renderXAxisTick}
                 tickFormatter={formatXAxisTick}
                 ticks={xTicks}
@@ -527,12 +527,12 @@ function ResponsiveComposedChart(props: ChartRenderProps & { layout: ChartLayout
                 height={xAxisHeight}
                 tickMargin={props.isMobile ? 6 : 4}
             />
-            <YAxis orientation="left" stroke="#FFD700" tick={leftTickStyle} tickFormatter={formatLeftTick} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions' && props.valueFormat !== 'currency'} allowDataOverflow yAxisId="left" width={layout.axisWidths.left} hide={props.isMobile} />
-            {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#00BFFF'} tick={rightTickStyle} tickFormatter={formatRightTick} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={layout.axisWidths.right} hide={props.isMobile} />}
+            <YAxis orientation="left" stroke="#C9A44C" tick={leftTickStyle} tickFormatter={formatLeftTick} ticks={leftTicks} domain={leftDomain} allowDecimals={props.valueFormat !== 'millions' && props.valueFormat !== 'currency'} allowDataOverflow yAxisId="left" width={layout.axisWidths.left} hide={props.isMobile} />
+            {props.secondaryYAxis && <YAxis orientation="right" stroke={props.secondaryYAxis.color || '#7FA7C4'} tick={rightTickStyle} tickFormatter={formatRightTick} ticks={rightTicks} domain={rightDomain} allowDataOverflow yAxisId="right" width={layout.axisWidths.right} hide={props.isMobile} />}
             {props.secondaryYAxis ? leftTicks.map(tick => <ReferenceLine key={`tick-grid-${tick}`} y={tick} yAxisId="left" stroke="#FFFFFF" strokeOpacity={0.35} strokeWidth={0.5} />) : null}
             {backgroundReferenceLines.map((reference, index) => renderReferenceLine(reference, reference.label ?? `${reference.value}-${index}`))}
             {renderedAreas.map(areaConfig => <ChartSeries key={areaConfig.key} areaConfig={areaConfig} props={props} animate={areaConfig.type === 'bar' ? animateBars : animateLines} />)}
-            {comparisonRows.map(row => <MandatePoint key={String(row.iso_fecha)} x={row[props.xAxisKey] as string | number} y={Number(row.icg)} yAxisId="left" primaryColor={String(row.mandate_color ?? '#FFD700')} secondaryColor={typeof row.mandate_secondary_color === 'string' ? row.mandate_secondary_color : undefined} />)}
+            {comparisonRows.map(row => <MandatePoint key={String(row.iso_fecha)} x={row[props.xAxisKey] as string | number} y={Number(row.icg)} yAxisId="left" primaryColor={String(row.mandate_color ?? '#C9A44C')} secondaryColor={typeof row.mandate_secondary_color === 'string' ? row.mandate_secondary_color : undefined} />)}
             {lockedSeriesPoints.map(({ area, value }) => <MandatePoint key={`locked-${area.key}`} x={lockedRow![props.xAxisKey] as string | number} y={value} yAxisId={area.yAxisId ?? 'left'} primaryColor={area.color} secondaryColor={area.secondaryColor} />)}
             <Customized component={(chartState: unknown) => <RangePreviewGuides previewRange={props.rangePreview} committedRange={props.committedRange} sortedData={props.sortedData} xAxisKey={props.xAxisKey} chartState={chartState} />} />
             {visibleReferenceLines.filter(reference => reference.foreground).flatMap((reference, index) => {
@@ -630,7 +630,7 @@ function RangePreviewGuides({ previewRange, committedRange, sortedData, xAxisKey
     return (
         <g className="recharts-range-preview-guide" pointerEvents="none">
             {lines.map((x, index) => (
-                <line key={`${index}-${x}`} x1={x} x2={x} y1={top} y2={top + height} stroke="#00BFFF" strokeWidth={1.5} strokeDasharray="4 4" />
+                <line key={`${index}-${x}`} x1={x} x2={x} y1={top} y2={top + height} stroke="#7FA7C4" strokeWidth={1.5} strokeDasharray="4 4" />
             ))}
         </g>
     );
@@ -648,7 +648,7 @@ function HoverCrosshair({ verticalRef, horizontalRef, width, height }: { vertica
 function ChartCrosshair({ crosshair, width, height, onUnlock, isControlPressed }: { crosshair: ChartCrosshairState | null; width: number; height: number; onUnlock: () => void; isControlPressed: boolean }) {
     const [isHovered, setIsHovered] = useState(false);
     if (!crosshair) return null;
-    const stroke = crosshair.locked ? (isHovered ? '#FFFFFF' : '#FFD700AA') : CROSSHAIR_STROKE;
+    const stroke = crosshair.locked ? (isHovered ? '#FFFFFF' : '#C9A44CAA') : CROSSHAIR_STROKE;
     const strokeWidth = crosshair.locked && isHovered ? 1.5 : CROSSHAIR_STROKE_WIDTH;
     const handleClick = (event: MouseEvent<SVGLineElement>) => {
         event.stopPropagation();

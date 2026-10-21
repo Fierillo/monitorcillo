@@ -3,13 +3,13 @@
 import type { ChartDataRow, ChartTooltipProps } from '@/types/chart';
 import { SPANISH_MONTHS, formatValueByType } from './utils';
 
-export const TOOLTIP_BACKGROUND = 'rgba(0, 20, 63, 0.4)';
+export const TOOLTIP_BACKGROUND = 'rgba(11, 20, 38, 0.4)';
 export const TOOLTIP_BLUR = 'blur(2px)';
 export const TOOLTIP_OUTLINE_DARK = '3px rgba(0, 0, 0, 0.85)';
-export const TOOLTIP_BOX = { backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: '10px', color: '#FFF', backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR } as const;
+export const TOOLTIP_BOX = { backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: '10px', color: '#FFF', backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR } as const;
 const TOOLTIP_OUTLINE_LIGHT = '3px rgba(255, 255, 255, 0.9)';
 
-function tooltipTextOutline(color = '#FFD700') {
+function tooltipTextOutline(color = '#C9A44C') {
     return {
         WebkitTextStroke: isNearBlack(color) ? TOOLTIP_OUTLINE_LIGHT : TOOLTIP_OUTLINE_DARK,
         paintOrder: 'stroke fill',
@@ -47,10 +47,10 @@ export default function ChartTooltip({
     if (areaConfigs.some(area => area.comparisonMode === 'mandate-month') && typeof rowData.comparison_group === 'string') {
         const comparisons = chartData.filter(row => row.comparison_group === rowData.comparison_group && typeof row.icg === 'number');
         return (
-            <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: compact ? '4px' : '10px', color: '#FFF', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '12px' : '14px', lineHeight: compact ? 1.05 : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
+            <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: compact ? '4px' : '10px', color: '#FFF', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '12px' : '14px', lineHeight: compact ? 1.05 : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
                 <div style={{ fontWeight: 'bold', marginBottom: compact ? '2px' : '4px', ...tooltipTextOutline() }}>{rowData.fecha}</div>
                 {comparisons.map(row => {
-                    const primaryColor = String(row.mandate_color ?? '#FFD700');
+                    const primaryColor = String(row.mandate_color ?? '#C9A44C');
                     const secondaryColor = typeof row.mandate_secondary_color === 'string' ? row.mandate_secondary_color : primaryColor;
                     return (
                         <div key={String(row.iso_fecha)} style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>
@@ -78,11 +78,11 @@ export default function ChartTooltip({
                     style={{
                         fontSize: compact ? (isCurrent ? '13px' : '12px') : (isCurrent ? '15px' : '14px'),
                         fontWeight: isCurrent ? 'bold' : 'normal',
-                        color: isCurrent ? '#FFD700' : '#9B59B6',
+                        color: isCurrent ? '#C9A44C' : '#9B59B6',
                         marginBottom: compact ? '1px' : '2px',
                         borderBottom: isCurrent ? '1px solid #666' : 'none',
                         paddingBottom: isCurrent ? (compact ? '2px' : '4px') : '0',
-                        ...tooltipTextOutline(isCurrent ? '#FFD700' : '#9B59B6'),
+                        ...tooltipTextOutline(isCurrent ? '#C9A44C' : '#9B59B6'),
                     }}
                 >
                     {SPANISH_MONTHS[month]} {String(row.year).slice(-2)}: {Number(row.pctPbi ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% PIB
@@ -91,7 +91,7 @@ export default function ChartTooltip({
         });
 
         return (
-            <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: compact ? '4px' : '10px', color: '#FFF', minWidth: compact ? '112px' : '180px', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
+            <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: compact ? '4px' : '10px', color: '#FFF', minWidth: compact ? '112px' : '180px', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
                 {rows}
             </div>
         );
@@ -119,8 +119,8 @@ export default function ChartTooltip({
     ) : row.node;
 
     return (
-        <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #FFD700', padding: compact ? '4px' : '10px', color: '#FFF', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '12px' : '14px', lineHeight: compact ? 1.2 : 1.35, whiteSpace: 'nowrap', backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
-            <div style={{ height: isCapturing ? '24px' : undefined, lineHeight: isCapturing ? '20px' : undefined, color: '#FFD700', fontWeight: 'bold', marginBottom: compact ? '2px' : '4px', ...tooltipTextOutline() }}>{rowData.fecha}</div>
+        <div key={tooltipLabel} data-crosshair-tip="" data-compact={compact || undefined} style={{ backgroundColor: TOOLTIP_BACKGROUND, border: '1px solid #C9A44C', padding: compact ? '4px' : '10px', color: '#FFF', maxWidth: compact ? '176px' : undefined, maxHeight: compact ? '38vh' : undefined, overflowY: compact ? 'auto' : undefined, fontSize: compact ? '12px' : '14px', lineHeight: compact ? 1.2 : 1.35, whiteSpace: 'nowrap', backdropFilter: TOOLTIP_BLUR, WebkitBackdropFilter: TOOLTIP_BLUR }}>
+            <div style={{ height: isCapturing ? '24px' : undefined, lineHeight: isCapturing ? '20px' : undefined, color: '#C9A44C', fontWeight: 'bold', marginBottom: compact ? '2px' : '4px', ...tooltipTextOutline() }}>{rowData.fecha}</div>
             {(separateFooter ? stackRows : valueRows).map(renderRow)}
             {separateFooter ? (
                 <div style={{ marginTop: compact ? '3px' : '6px', paddingTop: compact ? '3px' : '6px', borderTop: '1px solid #666' }}>
@@ -128,7 +128,7 @@ export default function ChartTooltip({
                 </div>
             ) : null}
             {showStackTotal && total != null ? (
-                <div style={{ marginTop: compact ? '3px' : '6px', paddingTop: compact ? '3px' : '6px', borderTop: '1px solid #666', color: '#FFD700', fontWeight: 'bold', ...tooltipTextOutline() }}>
+                <div style={{ marginTop: compact ? '3px' : '6px', paddingTop: compact ? '3px' : '6px', borderTop: '1px solid #666', color: '#C9A44C', fontWeight: 'bold', ...tooltipTextOutline() }}>
                     Total: {formatValueByType(total, totalFormat, 1)}
                 </div>
             ) : null}

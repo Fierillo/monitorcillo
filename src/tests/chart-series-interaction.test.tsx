@@ -32,7 +32,7 @@ vi.mock('recharts', () => ({
     },
 }));
 
-const area = { key: 'series', name: 'Serie', color: '#FFD700' };
+const area = { key: 'series', name: 'Serie', color: '#C9A44C' };
 
 describe('chart series interactions', () => {
     beforeEach(() => {
@@ -136,7 +136,7 @@ describe('chart series interactions', () => {
         render(shape({ payload: { iso_fecha: '2026-08-01' }, x: 10, y: 20, width: 30, height: 40 }));
 
         expect(rechartsProps.rectangles[0]).toMatchObject({
-            stroke: '#00143F',
+            stroke: '#0B1426',
             strokeWidth: 0.5,
             x: 10.25,
             y: 20.25,
@@ -166,6 +166,6 @@ describe('chart series interactions', () => {
 
         render(shape({ payload: { iso_fecha: '2026-08-01', preliminary: true }, x: 0, y: 0, width: 20, height: 20 }));
 
-        expect(rechartsProps.rectangles[0]).toMatchObject({ stroke: '#00143F', strokeWidth: 0.5 });
+        expect(rechartsProps.rectangles[0]).toMatchObject({ stroke: '#0B1426', strokeWidth: 0.5 });
     });
 });

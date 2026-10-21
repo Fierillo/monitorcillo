@@ -26,7 +26,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                         key={toggleKey}
                         onClick={() => onToggleHighlight(toggleKey)}
                         style={{
-                            color: isDimmed ? '#666' : '#FFD700',
+                            color: isDimmed ? '#666' : '#C9A44C',
                             opacity: isDimmed ? 0.45 : 1,
                             cursor: 'pointer',
                             display: 'flex',
@@ -48,7 +48,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                 <span
                     key={`${area.key}-preliminary`}
                     style={{
-                        color: '#FFD700',
+                        color: '#C9A44C',
                         opacity: 0.8,
                         display: 'flex',
                         alignItems: 'center',
@@ -61,7 +61,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                             <defs>
                                 <pattern id={`legend-pattern-${area.key}`} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
                                     <rect width="4" height="4" fill={area.color} />
-                                    <line x1="0" y1="0" x2="0" y2="4" stroke="#00143F" strokeOpacity="0.55" strokeWidth="1.5" />
+                                    <line x1="0" y1="0" x2="0" y2="4" stroke="#0B1426" strokeOpacity="0.55" strokeWidth="1.5" />
                                 </pattern>
                             </defs>
                         ) : null}
@@ -74,7 +74,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                 <span
                     key={`${area.key}-proposal`}
                     style={{
-                        color: '#FFD700',
+                        color: '#C9A44C',
                         opacity: 0.8,
                         display: 'flex',
                         alignItems: 'center',
@@ -87,7 +87,7 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                             <defs>
                                 <pattern id={`legend-proposal-pattern-${area.key}`} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
                                     <rect width="4" height="4" fill={area.color} />
-                                    <line x1="0" y1="0" x2="0" y2="4" stroke="#00143F" strokeOpacity="0.55" strokeWidth="1.5" />
+                                    <line x1="0" y1="0" x2="0" y2="4" stroke="#0B1426" strokeOpacity="0.55" strokeWidth="1.5" />
                                 </pattern>
                             </defs>
                         ) : null}

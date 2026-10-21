@@ -16,7 +16,7 @@ describe('ChartTooltip', () => {
     it('keeps the tooltip panel translucent so chart data stays visible behind it', () => {
         const markup = renderToStaticMarkup(<ChartTooltip {...props} />);
 
-        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
+        expect(markup).toContain('background-color:rgba(11, 20, 38, 0.4)');
         expect(markup).toContain('backdrop-filter:blur(2px)');
     });
 
@@ -45,15 +45,15 @@ describe('ChartTooltip', () => {
         expect(markup).toContain('color:#2E2D2C');
         expect(markup).toContain('-webkit-text-stroke:3px rgba(0, 0, 0, 0.85)');
         expect(markup).toContain('paint-order:stroke fill');
-        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
+        expect(markup).toContain('background-color:rgba(11, 20, 38, 0.4)');
     });
 
     it('hides totals by default for stacked series', () => {
         const markup = renderToStaticMarkup(<ChartTooltip {...props} />);
 
         expect(markup).not.toContain('Total:');
-        expect(markup).toContain('color:#FFD700;font-weight:bold');
-        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
+        expect(markup).toContain('color:#C9A44C;font-weight:bold');
+        expect(markup).toContain('background-color:rgba(11, 20, 38, 0.4)');
     });
 
     it('shows totals when explicitly enabled', () => {
@@ -66,7 +66,7 @@ describe('ChartTooltip', () => {
             areaConfigs={[
                 { key: 'first', name: 'Recursos', color: '#0f0', type: 'bar', stackId: 'presupuesto' },
                 { key: 'second', name: 'Gastos', color: '#f00', type: 'bar', stackId: 'presupuesto' },
-                { key: 'resultado', name: 'Resultado financiero', color: '#FFD700', type: 'line' },
+                { key: 'resultado', name: 'Resultado financiero', color: '#C9A44C', type: 'line' },
             ]}
             valueFormat="percent"
             tooltipProps={{ active: true, label: '2024' }}
@@ -83,7 +83,7 @@ describe('ChartTooltip', () => {
             areaConfigs={[
                 { key: 'first', name: 'Recursos', color: '#0f0', type: 'bar', stackId: 'presupuesto' },
                 { key: 'second', name: 'Gastos', color: '#f00', type: 'bar', stackId: 'presupuesto' },
-                { key: 'resultado', name: 'Resultado financiero', color: '#FFD700', type: 'line' },
+                { key: 'resultado', name: 'Resultado financiero', color: '#C9A44C', type: 'line' },
             ]}
             valueFormat="percent"
             tooltipProps={{ active: true, label: '2024' }}
@@ -130,7 +130,7 @@ describe('ChartTooltip', () => {
     it('blurs chart data behind tooltips', () => {
         const markup = renderToStaticMarkup(<ChartTooltip {...props} />);
 
-        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
+        expect(markup).toContain('background-color:rgba(11, 20, 38, 0.4)');
         expect(markup).toContain('line-height:1.35');
         expect(markup).toContain('white-space:nowrap');
         expect(markup).toContain('backdrop-filter:blur(2px)');
@@ -206,7 +206,7 @@ describe('ChartTooltip', () => {
                 { fecha: 'ENE 22', iso_fecha: '2022-01-01', icg: 1.42, mandate_name: 'Alberto Fernández', mandate_color: '#14B8A6', comparison_month: 2, comparison_term: 1, comparison_group: '1:2' },
                 { fecha: 'ENE 26', iso_fecha: '2026-01-01', icg: 2.4, mandate_name: 'Javier Milei', mandate_color: '#A855F7', comparison_month: 2, comparison_term: 1, comparison_group: '1:2' },
             ]}
-            areaConfigs={[{ key: 'icg', name: 'ICG', color: '#FFD700', type: 'line', comparisonMode: 'mandate-month' }]}
+            areaConfigs={[{ key: 'icg', name: 'ICG', color: '#C9A44C', type: 'line', comparisonMode: 'mandate-month' }]}
             valueFormat="index"
             tooltipProps={{ active: true, label: 'ENE 26' }}
         />);
@@ -222,7 +222,7 @@ describe('ChartTooltip', () => {
         expect(markup).toContain('Alberto Fernández');
         expect(markup).toContain('Javier Milei');
         expect(markup).toContain('2,40');
-        expect(markup).toContain('background-color:rgba(0, 20, 63, 0.4)');
+        expect(markup).toContain('background-color:rgba(11, 20, 38, 0.4)');
         expect(markup).toContain('-webkit-text-stroke:3px rgba(0, 0, 0, 0.85)');
         expect(markup).toContain('paint-order:stroke fill');
         expect(markup).toContain('backdrop-filter:blur(2px)');

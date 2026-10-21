@@ -111,9 +111,9 @@ export default function AdminDashboard({ initialData, initialFeedback }: { initi
 
     return (
         <div className="p-8 text-foreground bg-background min-h-screen">
-            <div className="flex justify-between items-center mb-6 border-b-2 border-imperial-gold pb-4">
+            <div className="flex justify-between items-center mb-6 border-b border-imperial-gold/40 pb-4">
                 <h1 className="text-imperial-gold text-3xl font-bold uppercase tracking-widest">Dashboard Imperial</h1>
-                <button onClick={handleLogout} className="bg-red-900 border border-red-500 text-white px-4 py-2 font-bold cursor-pointer hover:bg-red-800 transition-colors uppercase">Cerrar Sesión</button>
+                <button onClick={handleLogout} className="bg-red-900 border border-red-500 text-imperial-ivory px-4 py-2 font-bold cursor-pointer hover:bg-red-800 transition-colors uppercase">Cerrar Sesión</button>
             </div>
 
             <AdminTabs activeTab={activeTab} onChange={setActiveTab} />
@@ -131,16 +131,16 @@ export default function AdminDashboard({ initialData, initialFeedback }: { initi
 function AdminTabs({ activeTab, onChange }: { activeTab: AdminTab; onChange: (tab: AdminTab) => void }) {
     return (
         <div className="flex gap-4 mb-6 border-b border-imperial-gold/30">
-            <button onClick={() => onChange('indicadores')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'indicadores' ? 'text-imperial-gold border-b-2 border-imperial-gold' : 'text-white/50 hover:text-white'}`}>
+            <button onClick={() => onChange('indicadores')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'indicadores' ? 'text-imperial-gold border-b border-imperial-gold/40' : 'text-imperial-ivory/50 hover:text-imperial-ivory'}`}>
                 Indicadores
             </button>
-            <button onClick={() => onChange('emision')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'emision' ? 'text-imperial-gold border-b-2 border-imperial-gold' : 'text-white/50 hover:text-white'}`}>
+            <button onClick={() => onChange('emision')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'emision' ? 'text-imperial-gold border-b border-imperial-gold/40' : 'text-imperial-ivory/50 hover:text-imperial-ivory'}`}>
                 Emisión / Absorción
             </button>
-            <button onClick={() => onChange('rutas')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'rutas' ? 'text-imperial-gold border-b-2 border-imperial-gold' : 'text-white/50 hover:text-white'}`}>
+            <button onClick={() => onChange('rutas')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'rutas' ? 'text-imperial-gold border-b border-imperial-gold/40' : 'text-imperial-ivory/50 hover:text-imperial-ivory'}`}>
                 Rutas nacionales
             </button>
-            <button onClick={() => onChange('feedback')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'feedback' ? 'text-imperial-gold border-b-2 border-imperial-gold' : 'text-white/50 hover:text-white'}`}>
+            <button onClick={() => onChange('feedback')} className={`py-2 px-4 font-bold uppercase transition-colors ${activeTab === 'feedback' ? 'text-imperial-gold border-b border-imperial-gold/40' : 'text-imperial-ivory/50 hover:text-imperial-ivory'}`}>
                 Feedback
             </button>
         </div>

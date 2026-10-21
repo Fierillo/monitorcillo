@@ -177,13 +177,13 @@ export default function RutasMap({ tramos, ofertas = [], geometry = STORED_GEOME
         <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-2 sm:p-6 lg:p-10">
             <IndicatorHeader title={title} subtitle="Dirección Nacional de Vialidad" feedbackContext={{ surface: 'chart', path: '/indicador/rutas-nacionales', metricId: 'rutas-nacionales', metricTitle: title, modeId: mode, modeTitle: mode === 'concesion' ? 'Concesión' : 'Pavimento' }} />
 
-            <div data-testid="rutas-map" className="w-full sm:w-[96%] max-w-[1800px] border-2 border-imperial-gold bg-imperial-blue p-3 sm:p-5">
+            <div data-testid="rutas-map" className="w-full sm:w-[96%] max-w-[1800px] border border-imperial-gold/60 bg-imperial-blue p-3 sm:p-5">
                 <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div role="group" aria-label="Modo de color" className="flex gap-2">
                         <ModeButton active={mode === 'concesion'} onClick={() => save({ mode: 'concesion' })}>Concesión</ModeButton>
                         <ModeButton active={mode === 'pavimento'} onClick={() => save({ mode: 'pavimento' })}>Pavimento</ModeButton>
                     </div>
-                    <ul aria-label="Referencias" className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-white">
+                    <ul aria-label="Referencias" className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-imperial-ivory">
                         {legend.map(item => (
                             <li key={item.key} className="flex items-center gap-1.5">
                                 <span data-company-color={item.color} className="inline-block h-2.5 w-6" style={{ backgroundColor: item.color }} />
@@ -314,7 +314,7 @@ function ModeButton({ active, onClick, children }: { active: boolean; onClick: (
             type="button"
             aria-pressed={active}
             onClick={onClick}
-            className={`border-2 px-3 py-1.5 text-xs font-bold uppercase sm:text-sm ${active ? 'border-imperial-gold bg-imperial-gold text-imperial-blue' : 'border-imperial-gold/50 text-imperial-gold'}`}
+            className={`border px-3 py-1.5 text-xs font-bold uppercase sm:text-sm ${active ? 'border-imperial-gold bg-imperial-gold text-imperial-blue' : 'border-imperial-gold/50 text-imperial-gold'}`}
         >
             {children}
         </button>

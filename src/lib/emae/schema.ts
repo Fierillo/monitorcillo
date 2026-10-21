@@ -10,7 +10,7 @@ export const EMAE_SECTORS = [
     { key: 'transporte', label: 'Transporte', header: 'Transporte y comunicaciones', color: '#FACC15', weight: 0.072, dash: [2, 5] },
     { key: 'finanzas', label: 'Finanzas', header: 'Intermediacion financiera', color: '#2563EB', weight: 0.045, dash: [2, 5] },
     { key: 'inmobiliarias', label: 'Inmobiliarias', header: 'Actividades inmobiliarias, empresariales y de alquiler', color: '#9CA3AF', weight: 0.148, dash: [2, 5] },
-    { key: 'administracion_publica', label: 'Administracion publica', header: 'Administracion publica y defensa', color: '#00BFFF', weight: 0.055, dash: [2, 5] },
+    { key: 'administracion_publica', label: 'Administracion publica', header: 'Administracion publica y defensa', color: '#7FA7C4', weight: 0.055, dash: [2, 5] },
     { key: 'ensenanza', label: 'Ensenanza', header: 'Ensenanza', color: '#14B8A6', weight: 0.042, dash: [2, 5] },
     { key: 'salud', label: 'Salud', header: 'Servicios sociales y de salud', color: '#F97316', weight: 0.041, dash: [2, 5] },
     { key: 'otros_servicios', label: 'Otros servicios', header: 'Otras actividades de servicios comunitarios, sociales y personales', color: '#A3E635', weight: 0.034, dash: [2, 5] },

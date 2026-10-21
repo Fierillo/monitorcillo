@@ -50,8 +50,8 @@ async function publicSpendingConfig(indicator: Indicator): Promise<DetailConfig>
         { key: 'provincesEstimate', name: 'Provincias', color: '#0284C7', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(2, 132, 199, 0.45)', legendKey: 'provinces', hideInLegend: true },
         { key: 'municipalitiesEstimate', name: 'Municipios', color: '#7DD3FC', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(125, 211, 252, 0.45)', legendKey: 'municipalities', hideInLegend: true },
         { key: 'interestEstimate', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(148, 163, 184, 0.45)', legendKey: 'interest', hideInLegend: true },
-        { key: 'total', name: 'Gasto total', color: '#FFD700', type: 'line', strokeWidth: 3, showDots: false, hideInTooltip: true },
-        { key: 'totalEstimate', name: 'Gasto total estimado', color: 'rgba(255, 215, 0, 0.7)', type: 'line', strokeWidth: 3, showDots: false, dash: [6, 3], legendKey: 'total', hideInLegend: true, hideInTooltip: true },
+        { key: 'total', name: 'Gasto total', color: '#C9A44C', type: 'line', strokeWidth: 3, showDots: false, hideInTooltip: true },
+        { key: 'totalEstimate', name: 'Gasto total estimado', color: 'rgba(201, 164, 76, 0.7)', type: 'line', strokeWidth: 3, showDots: false, dash: [6, 3], legendKey: 'total', hideInLegend: true, hideInTooltip: true },
     ];
     const methodology: MethodologyItem[] = [
         { title: 'Alcance', description: 'Erogaciones corrientes y de capital devengadas por el Sector Público No Financiero de Nación, provincias, CABA y municipios, incluyendo obras sociales.' },
@@ -104,7 +104,7 @@ async function presupuestoNacionalConfig(indicator: Indicator): Promise<DetailCo
             proposalKey: 'proyecto',
             proposalFillPattern: 'diagonal-stripes' as const,
         })),
-        { key: 'resultado', name: 'Resultado financiero', color: '#FFD700', type: 'line', strokeWidth: 2 },
+        { key: 'resultado', name: 'Resultado financiero', color: '#C9A44C', type: 'line', strokeWidth: 2 },
     ];
     const methodology: MethodologyItem[] = [
         { title: 'Fuente', description: 'Presupuesto anual de la Administración Nacional según informes ciudadano ONP (crédito/recurso vigente). 2026 toma la Ley de Presupuesto. 2027 toma el proyecto de ley enviado al Congreso el 15/09/2026.' },
@@ -150,8 +150,8 @@ async function investmentsConfig(indicator: Indicator): Promise<DetailConfig> {
     const totals = rigiTotals(stored.observations);
     const updatedAt = totals ? fechaLarga(totals.updatedAt) : 'sin datos';
     const areas: AreaConfig[] = [
-        { key: 'aprobadas', name: 'Aprobadas acumuladas', color: '#FFD700', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
-        { key: 'en_evaluacion', name: 'En evaluación', color: '#00BFFF', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
+        { key: 'aprobadas', name: 'Aprobadas acumuladas', color: '#C9A44C', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
+        { key: 'en_evaluacion', name: 'En evaluación', color: '#7FA7C4', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
         { key: 'anunciadas', name: 'Otras anunciadas', color: '#A855F7', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
         { key: 'confirmadas', name: 'Otras confirmadas', color: '#22C55E', type: 'bar', stackId: 'inversiones', maxBarSize: 54 },
     ];
@@ -206,7 +206,7 @@ function fechaLarga(iso: string): string {
 
 async function bmaConfig(indicator: Indicator): Promise<DetailConfig> {
     const areas: AreaConfig[] = [
-        { key: 'BMAmplia', name: 'Base Monetaria AMPLIA', color: '#FFD700', stackId: '2', type: 'monotone' },
+        { key: 'BMAmplia', name: 'Base Monetaria AMPLIA', color: '#C9A44C', stackId: '2', type: 'monotone' },
         { key: 'BaseMonetaria', name: 'Base Monetaria', color: '#8888cc' },
         { key: 'PasivosRemunerados', name: 'Pasivos Remunerados', color: '#cc4444' },
         { key: 'DepositosTesoro', name: 'Depósitos del Gobierno Nac. y Otros', color: '#44aa66' },
@@ -497,7 +497,7 @@ async function poderConfig(indicator: Indicator): Promise<DetailConfig> {
                 yAxisLabel: '% del salario privado formal',
                 leftYAxisDomain: [0, 'dataMax + 10'],
                 showTooltipTotal: true,
-                referenceLines: [{ value: 100, color: '#FFD700', dash: [8, 6] }],
+                referenceLines: [{ value: 100, color: '#C9A44C', dash: [8, 6] }],
             },
         ],
     };
@@ -516,8 +516,8 @@ async function emaeConfig(indicator: Indicator): Promise<DetailConfig> {
             : null;
     };
     const areas: AreaConfig[] = [
-        { key: 'emae', name: 'EMAE Original', color: '#FFD700', type: 'line' },
-        { key: 'emae_desestacionalizado', name: 'EMAE Desestacionalizado', color: '#00BFFF', type: 'line' },
+        { key: 'emae', name: 'EMAE Original', color: '#C9A44C', type: 'line' },
+        { key: 'emae_desestacionalizado', name: 'EMAE Desestacionalizado', color: '#7FA7C4', type: 'line' },
         { key: 'emae_tendencia', name: 'EMAE Tendencia-Ciclo', color: '#FF6B6B', type: 'line' },
     ];
     const aggregatePerCapitaData: ChartDataRow[] = data.map(row => {
@@ -699,8 +699,8 @@ async function recaudacionConfig(indicator: Indicator): Promise<DetailConfig> {
     const emaeDates = new Set(emaeData.map(row => row.iso_fecha));
     const data: ChartDataRow[] = recaudacionData.map(row => ({ ...row, preliminary: typeof row.iso_fecha === 'string' && !emaeDates.has(row.iso_fecha) }));
     const areas: AreaConfig[] = [
-        { key: 'pctPbi', name: '% PBI mensual real', color: '#FFD700', type: 'bar', yAxisId: 'left', preliminaryKey: 'preliminary', preliminaryColor: 'rgba(255, 215, 0, 0.45)', preliminaryLabel: 'Preliminar: sin EMAE del mes' },
-        { key: 'pctPbiMm12', name: '% PBI real MM12 log.', color: '#00BFFF', type: 'line', yAxisId: 'left' },
+        { key: 'pctPbi', name: '% PBI mensual real', color: '#C9A44C', type: 'bar', yAxisId: 'left', preliminaryKey: 'preliminary', preliminaryColor: 'rgba(201, 164, 76, 0.45)', preliminaryLabel: 'Preliminar: sin EMAE del mes' },
+        { key: 'pctPbiMm12', name: '% PBI real MM12 log.', color: '#7FA7C4', type: 'line', yAxisId: 'left' },
     ];
     const methodology = [
         { title: 'Recaudación Total', description: 'Recursos tributarios mensuales consolidados. El último dato se toma del informe oficial de Hacienda.' },
@@ -742,7 +742,7 @@ async function recaudacionConfig(indicator: Indicator): Promise<DetailConfig> {
 async function deudaConfig(indicator: Indicator): Promise<DetailConfig> {
     const data = await getIndicatorData('deuda') ?? null;
 const areas: AreaConfig[] = [
-        { key: 'toma_deuda', name: 'Toma deuda', color: '#FFD700', type: 'bar', stackId: 'deuda' },
+        { key: 'toma_deuda', name: 'Toma deuda', color: '#C9A44C', type: 'bar', stackId: 'deuda' },
         { key: 'vencimientos', name: 'Vencimientos', color: '#60A5FA', type: 'bar', stackId: 'deuda' },
         { key: 'pagos', name: 'Pagos', color: '#1D4ED8', type: 'bar', stackId: 'deuda' },
         { key: 'deuda_pbi', name: 'Deuda/PBI', color: '#EF4444', type: 'line', yAxisId: 'right', strokeWidth: 2 },
@@ -762,7 +762,7 @@ const areas: AreaConfig[] = [
 
 async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {
     const areas: AreaConfig[] = [
-        { key: 'pobreza_indec', name: 'Pobreza INDEC', color: '#FFD700', type: 'line', strokeWidth: 2.5, connectNulls: true },
+        { key: 'pobreza_indec', name: 'Pobreza INDEC', color: '#C9A44C', type: 'line', strokeWidth: 2.5, connectNulls: true },
         { key: 'pobreza_utdt', name: 'Nowcast UTDT', color: '#FF4D4D', type: 'line', dash: [6, 4], strokeWidth: 2, connectNulls: true, showDots: false },
         { key: 'pobreza_uca', name: 'Pobreza UCA', color: '#38BDF8', type: 'line', strokeWidth: 2, connectNulls: true, showDots: true },
     ];
@@ -777,7 +777,7 @@ async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {
 
 async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
     const areas: AreaConfig[] = [
-        { key: 'ipc_indec', name: 'IPC INDEC', color: '#FFD700', type: 'line', strokeWidth: 2, showValueLabels: true, labelOffsetY: -12, labelLeader: true },
+        { key: 'ipc_indec', name: 'IPC INDEC', color: '#C9A44C', type: 'line', strokeWidth: 2, showValueLabels: true, labelOffsetY: -12, labelLeader: true },
         { key: 'ipc_nucleo_indec', name: 'IPC Núcleo INDEC', color: '#F59E0B', type: 'line', strokeWidth: 2, dash: [6, 3], showValueLabels: true, labelOffsetY: 20, labelLeader: true },
         { key: 'ipim', name: 'IPIM', color: '#38BDF8', type: 'line', strokeWidth: 2, dash: [4, 3], showValueLabels: true, labelOffsetY: -48, labelLeader: true },
         { key: 'ipc_equilibra', name: 'IPC Equilibra', color: '#FF6B6B', type: 'line', strokeWidth: 2, showValueLabels: true, labelOffsetY: -30, labelLeader: true },
@@ -809,7 +809,7 @@ async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
     const expectationData = normalizeRemExpectations(surveys, actualIpcByMonth) as ChartDataRow[];
     const surveyColors = ['#22C55E', '#38BDF8', '#A78BFA', '#F472B6', '#FB923C', '#FACC15', '#4ADE80', '#818CF8'];
     const expectationAreas: AreaConfig[] = [
-        { key: 'ipc_indec', name: 'IPC INDEC (dato real)', color: '#FFD700', type: 'line', strokeWidth: 3, showDots: false },
+        { key: 'ipc_indec', name: 'IPC INDEC (dato real)', color: '#C9A44C', type: 'line', strokeWidth: 3, showDots: false },
         ...surveys.map((survey, i) => ({
             key: `enc_${survey.surveyDate}`,
             name: `Enc. ${survey.surveyLabel}`,
@@ -893,7 +893,7 @@ async function icgConfig(indicator: Indicator): Promise<DetailConfig> {
         };
     });
     const areas: AreaConfig[] = [
-        { key: 'icg', name: 'ICG', color: '#FFD700', type: 'line', strokeWidth: 2.5, comparisonMode: 'mandate-month' },
+        { key: 'icg', name: 'ICG', color: '#C9A44C', type: 'line', strokeWidth: 2.5, comparisonMode: 'mandate-month' },
     ];
     const methodology = [
         { title: 'Índice', description: 'El Índice de Confianza en el Gobierno de la Universidad Torcuato Di Tella mide mensualmente la opinión pública sobre la labor del gobierno nacional.' },
@@ -964,7 +964,7 @@ async function sipaConfig(indicator: Indicator): Promise<DetailConfig> {
             preliminaryColor: `${series.color}99`,
             ...(index === 0 ? { preliminaryLabel: 'Provisorio: declaración AFIP incompleta' } : {}),
         })),
-        { key: 'total', name: 'Total registrado', color: '#FFD700', type: 'line', strokeWidth: 3, showDots: false, hideInTooltip: true },
+        { key: 'total', name: 'Total registrado', color: '#C9A44C', type: 'line', strokeWidth: 3, showDots: false, hideInTooltip: true },
     ];
     const methodology: MethodologyItem[] = [
         { title: 'Fuente', description: 'Situación y evolución del trabajo registrado (SIPA) de la Secretaría de Trabajo, Empleo y Seguridad Social, sobre registros administrativos de ARCA.' },
@@ -998,7 +998,7 @@ async function balanzaConfig(indicator: Indicator): Promise<DetailConfig> {
     const areas: AreaConfig[] = [
         { key: 'exportaciones', name: 'Exportaciones', color: '#22C55E', type: 'bar', stackId: 'balanza' },
         { key: 'importaciones', name: 'Importaciones', color: '#EF4444', type: 'bar', stackId: 'balanza' },
-        { key: 'saldo', name: 'Saldo', color: '#FFD700', type: 'line', strokeWidth: 2 },
+        { key: 'saldo', name: 'Saldo', color: '#C9A44C', type: 'line', strokeWidth: 2 },
     ];
     const breakdownAreas: AreaConfig[] = [
         ...BALANZA_EXPORT_RUBROS.map(item => ({ key: item.key, name: item.label, color: item.color, type: 'bar' as const, stackId: 'balanza' })),
@@ -1064,7 +1064,7 @@ async function balanzaConfig(indicator: Indicator): Promise<DetailConfig> {
                 areas: [
                     { key: 'exportaciones', name: 'Exportaciones', color: '#22C55E', type: 'bar', stackId: 'apertura', preliminaryKey: 'preliminary', preliminaryColor: '#86EFAC', preliminaryLabel: 'Preliminar: año en curso anualizado' },
                     { key: 'importaciones', name: 'Importaciones', color: '#EF4444', type: 'bar', stackId: 'apertura', preliminaryKey: 'preliminary', preliminaryColor: '#FCA5A5' },
-                    { key: 'apertura', name: 'Total', color: '#FFD700', type: 'line', strokeWidth: 2, hideInTooltip: true },
+                    { key: 'apertura', name: 'Total', color: '#C9A44C', type: 'line', strokeWidth: 2, hideInTooltip: true },
                 ],
                 showTooltipTotal: true,
                 methodology: [

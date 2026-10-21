@@ -184,7 +184,7 @@ export default function IndicatorCompositeView({
         : sourceData;
     const activeYAxisLabel = selectedView?.rebaseable && effectiveBaseDate ? `Base 100 = ${formatBaseDate(effectiveBaseDate)}` : configuredYAxisLabel;
     const activeReferenceLines = selectedView?.rebaseable && effectiveBaseDate
-        ? [...configuredReferenceLines, { value: 100, color: '#FFD700', dash: [6, 4], foreground: true, outlineColor: '#000000' }]
+        ? [...configuredReferenceLines, { value: 100, color: '#C9A44C', dash: [6, 4], foreground: true, outlineColor: '#000000' }]
         : configuredReferenceLines;
     const sortedData = [...activeData].sort((a, b) => chartRowSortKey(a).localeCompare(chartRowSortKey(b)));
 
@@ -391,7 +391,7 @@ export default function IndicatorCompositeView({
             const target = isMobile ? mobileCaptureRef.current : captureRef.current;
             if (!target) return;
             const dataUrl = await toPng(target, {
-                backgroundColor: '#00143F',
+                backgroundColor: '#0B1426',
                 pixelRatio: 2,
                 filter: (node) => {
                     if (node.classList?.contains('no-capture')) return false;
@@ -402,7 +402,7 @@ export default function IndicatorCompositeView({
 
             const link = document.createElement('a');
             link.download = `${title.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.png`;
-            link.href = await addImagePadding(dataUrl, 32, 24, '#00143F');
+            link.href = await addImagePadding(dataUrl, 32, 24, '#0B1426');
             link.click();
         } catch (err) {
             console.error('Error al descargar el gráfico:', err);
@@ -451,7 +451,7 @@ export default function IndicatorCompositeView({
                             aria-label="Acotar rango"
                             title="Acotar rango"
                             aria-pressed={rangeSelection !== null}
-                            className="no-capture flex size-9 shrink-0 items-center justify-center border-2 border-imperial-gold text-imperial-gold transition-colors hover:bg-imperial-gold hover:text-imperial-blue aria-pressed:border-imperial-gold aria-pressed:bg-imperial-gold aria-pressed:text-imperial-blue"
+                            className="no-capture flex size-9 shrink-0 items-center justify-center border border-imperial-gold/60 text-imperial-gold transition-colors hover:bg-imperial-gold hover:text-imperial-blue aria-pressed:border-imperial-gold aria-pressed:bg-imperial-gold aria-pressed:text-imperial-blue"
                         >
                             <MoveHorizontal size={16} aria-hidden="true" />
                         </button>
@@ -462,7 +462,7 @@ export default function IndicatorCompositeView({
                             onClick={handleRangeReset}
                             aria-label="Restablecer rango"
                             title="Restablecer rango"
-                            className="no-capture flex size-9 shrink-0 items-center justify-center border-2 border-red-500 text-red-500 transition-colors hover:bg-red-500 hover:text-white"
+                            className="no-capture flex size-9 shrink-0 items-center justify-center border border-red-500/70 text-red-500 transition-colors hover:bg-red-500 hover:text-imperial-ivory"
                         >
                             <RotateCcw size={16} aria-hidden="true" />
                         </button>

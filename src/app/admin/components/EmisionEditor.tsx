@@ -12,15 +12,15 @@ type Props = {
 
 const COLUMNS = [
     ['ACUMULADO', true, 'text-red-500'],
-    ['TOTAL', true, 'text-white/50'],
-    ['CompraDolares', false, 'text-white'],
-    ['TC', false, 'text-white'],
+    ['TOTAL', true, 'text-imperial-ivory/50'],
+    ['CompraDolares', false, 'text-imperial-ivory'],
+    ['TC', false, 'text-imperial-ivory'],
     ['BCRA', true, 'text-imperial-cyan'],
-    ['Licitado', false, 'text-white'],
-    ['Rollover', false, 'text-white'],
+    ['Licitado', false, 'text-imperial-ivory'],
+    ['Rollover', false, 'text-imperial-ivory'],
     ['Vencimientos', true, 'text-imperial-cyan'],
     ['Licitaciones', true, 'text-imperial-cyan'],
-    ['Resultado fiscal', false, 'text-white'],
+    ['Resultado fiscal', false, 'text-imperial-ivory'],
 ] as const;
 
 export default function EmisionEditor({ data, msg, onAdd, onPop, onSave, onCellChange }: Props) {
@@ -30,10 +30,10 @@ export default function EmisionEditor({ data, msg, onAdd, onPop, onSave, onCellC
         <div className="mb-4 flex flex-col gap-4">
             <div>
                 <p className="text-imperial-cyan font-bold uppercase tracking-widest text-lg">Editor de Emisión / Absorción</p>
-                <p className="text-white/60 text-sm mt-1">Valores en millones de pesos; rollover en %. Desde el 14/10/2026, vencimientos calculados a partir de licitado y rollover. Los vencimientos anteriores se conservan.</p>
+                <p className="text-imperial-ivory/60 text-sm mt-1">Valores en millones de pesos; rollover en %. Desde el 14/10/2026, vencimientos calculados a partir de licitado y rollover. Los vencimientos anteriores se conservan.</p>
             </div>
             {actions}
-            <div className="overflow-x-auto border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50">
+            <div className="overflow-x-auto imperial-frame">
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-imperial-gold text-imperial-blue text-sm uppercase tracking-wider">
@@ -61,7 +61,7 @@ function EmisionActions({ msg, onAdd, onPop, onSave }: Pick<Props, 'msg' | 'onAd
                 <button onClick={onAdd} className="bg-imperial-blue border border-imperial-cyan text-imperial-cyan font-bold py-2 px-4 cursor-pointer hover:bg-imperial-cyan hover:text-imperial-blue transition-colors">
                     + Agregar Día
                 </button>
-                <button onClick={onPop} className="border border-red-500 text-red-500 font-bold py-2 px-4 cursor-pointer hover:bg-red-500 hover:text-white transition-colors">
+                <button onClick={onPop} className="border border-red-500 text-red-500 font-bold py-2 px-4 cursor-pointer hover:bg-red-500 hover:text-imperial-ivory transition-colors">
                     - Eliminar Día
                 </button>
             </div>

@@ -27,7 +27,7 @@ describe('EMAE sector styles', () => {
     });
 
     it('uses custom colors for selected activities', () => {
-        expect(sector('administracion_publica')).toMatchObject({ color: '#00BFFF' });
+        expect(sector('administracion_publica')).toMatchObject({ color: '#7FA7C4' });
         expect(sector('salud')).toMatchObject({ color: '#F97316' });
         expect(sector('hoteles')).toMatchObject({ color: '#A855F7' });
         expect(sector('construccion')).toMatchObject({ color: '#9CA3AF' });

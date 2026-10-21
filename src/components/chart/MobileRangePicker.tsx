@@ -91,7 +91,7 @@ export default function MobileRangePicker({
         >
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-imperial-gold/25" style={{ top: 5 }} />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-imperial-gold/25" />
-            <div ref={guideRef} data-testid="range-picker-guide" className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-imperial-gold shadow-[0_0_10px_rgba(255,215,0,0.8)]" style={{ left: `${guideX}px` }}>
+            <div ref={guideRef} data-testid="range-picker-guide" className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-imperial-gold shadow-[0_0_6px_rgba(201,164,76,0.5)]" style={{ left: `${guideX}px` }}>
                 <div className="absolute -top-0.5 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-imperial-gold" />
             </div>
             {selection.phase === 'end' ? (
@@ -105,7 +105,7 @@ export default function MobileRangePicker({
                     <span data-testid="range-picker-hint" className="border border-imperial-gold/60 bg-imperial-blue/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-imperial-cyan">
                         {selection.phase === 'start' ? 'Desde' : 'Hasta'}
                     </span>
-                    <span ref={dateRef} data-testid="range-picker-date" className="border-2 border-imperial-gold bg-imperial-blue px-3 py-1 text-base font-bold tracking-wider text-imperial-gold shadow-lg shadow-imperial-blue/60">
+                    <span ref={dateRef} data-testid="range-picker-date" className="border border-imperial-gold/60 bg-imperial-blue px-3 py-1 text-base font-bold tracking-wider text-imperial-gold shadow-lg shadow-imperial-blue/60">
                         {date}
                     </span>
                 </div>

@@ -43,7 +43,7 @@ export default function RootLayout({
             href="https://github.com/Fierillo/monitorcillo"
             target="_blank"
             rel="noreferrer"
-            className="text-imperial-gold transition-colors hover:text-white focus-visible:text-white"
+            className="text-imperial-gold transition-colors hover:text-imperial-ivory focus-visible:text-imperial-ivory"
           >
             Monitorcillo
           </a>{' '}
@@ -52,7 +52,7 @@ export default function RootLayout({
             href="https://github.com/Fierillo"
             target="_blank"
             rel="noreferrer"
-            className="text-imperial-gold transition-colors hover:text-white focus-visible:text-white"
+            className="text-imperial-gold transition-colors hover:text-imperial-ivory focus-visible:text-imperial-ivory"
           >
             Fierillo
           </a>

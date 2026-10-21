@@ -81,7 +81,7 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
     const [isNavigating, setIsNavigating] = useState(false);
 
     if (!data || data.length === 0) {
-        return <div className="text-center p-8 border-2 border-imperial-gold text-imperial-gold font-bold">Sin datos.</div>;
+        return <div className="text-center p-8 border border-imperial-gold/60 text-imperial-gold font-bold">Sin datos.</div>;
     }
 
     const rows = sortIndicatorsByDate(data);
@@ -104,18 +104,18 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
     return (
         <>
             <div
-                className="overflow-x-auto border-2 border-imperial-gold shadow-lg shadow-imperial-blue/50 w-full"
+                className="overflow-x-auto imperial-frame w-full"
                 inert={isNavigating ? true : undefined}
                 aria-busy={isNavigating}
             >
                 <table className="w-max min-w-full table-auto border-separate border-spacing-x-1 border-spacing-y-0 text-left lg:w-full lg:min-w-[900px] lg:border-collapse lg:border-spacing-0">
                     <thead>
-                        <tr className="h-12 bg-imperial-gold text-imperial-blue text-xs sm:text-base uppercase tracking-wider imperial-title">
-                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20 whitespace-nowrap lg:overflow-hidden">Fecha</th>
-                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20 whitespace-nowrap lg:overflow-hidden"><FitText>Próxima</FitText></th>
-                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20 whitespace-nowrap lg:overflow-hidden">Fuente</th>
-                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20 whitespace-nowrap lg:overflow-hidden">Indicador</th>
-                            <th scope="col" className="p-3 font-bold border-r border-imperial-blue/20 whitespace-nowrap lg:overflow-hidden">Referencia</th>
+                        <tr className="h-12 bg-imperial-night text-imperial-gold border-b border-imperial-gold/60 text-xs sm:text-base uppercase tracking-wider imperial-title">
+                            <th scope="col" className="p-3 font-bold border-r border-imperial-gold/20 whitespace-nowrap lg:overflow-hidden">Fecha</th>
+                            <th scope="col" className="p-3 font-bold border-r border-imperial-gold/20 whitespace-nowrap lg:overflow-hidden"><FitText>Próxima</FitText></th>
+                            <th scope="col" className="p-3 font-bold border-r border-imperial-gold/20 whitespace-nowrap lg:overflow-hidden">Fuente</th>
+                            <th scope="col" className="p-3 font-bold border-r border-imperial-gold/20 whitespace-nowrap lg:overflow-hidden">Indicador</th>
+                            <th scope="col" className="p-3 font-bold border-r border-imperial-gold/20 whitespace-nowrap lg:overflow-hidden">Referencia</th>
                             <th scope="col" className="p-3 font-bold whitespace-nowrap lg:overflow-hidden"><FitText>Último dato</FitText></th>
                         </tr>
                     </thead>
@@ -128,7 +128,7 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                             return (
                                 <tr
                                     key={row.id}
-                                    className={`h-14 ${i % 2 === 0 ? 'bg-imperial-blue' : 'bg-background'} border-t border-imperial-cyan/30 hover:bg-white/10 transition-colors ${row.hasDetails ? 'hover:border-imperial-gold hover:shadow-inner' : ''}`}
+                                    className={`h-14 ${i % 2 === 0 ? 'bg-imperial-blue' : 'bg-imperial-night'} border-t border-imperial-gold/15 hover:bg-imperial-gold/5 transition-colors ${row.hasDetails ? 'hover:border-imperial-gold hover:shadow-inner' : ''}`}
                                 >
                                     <td className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base text-imperial-gold font-bold whitespace-nowrap align-middle lg:overflow-hidden">
                                         <FitText>{row.fecha}</FitText>
@@ -145,17 +145,17 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                                             <FitText>{row.proximaFecha ?? '-'}</FitText>
                                         </span>
                                     </td>
-                                    <td title={row.fuente} className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base font-semibold whitespace-nowrap align-middle text-white lg:overflow-hidden">
+                                    <td title={row.fuente} className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base font-semibold whitespace-nowrap align-middle text-imperial-ivory lg:overflow-hidden">
                                         <FitText>{source}</FitText>
                                     </td>
-                                    <td title={row.indicador} className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base font-bold whitespace-nowrap align-middle text-white lg:overflow-hidden">
+                                    <td title={row.indicador} className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base font-bold whitespace-nowrap align-middle text-imperial-ivory lg:overflow-hidden">
                                         {row.hasDetails ? (
                                             <Link
                                                 href={`/indicador/${row.id}`}
                                                 onClick={handleMetricClick}
                                                 tabIndex={isNavigating ? -1 : undefined}
                                                 aria-disabled={isNavigating}
-                                                className="inline-flex w-max items-center gap-1.5 whitespace-nowrap text-white hover:text-imperial-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold lg:flex lg:w-full lg:min-w-0 lg:max-w-full lg:overflow-hidden"
+                                                className="inline-flex w-max items-center gap-1.5 whitespace-nowrap text-imperial-ivory hover:text-imperial-gold focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold lg:flex lg:w-full lg:min-w-0 lg:max-w-full lg:overflow-hidden"
                                             >
                                                 <FitText className="lg:flex-1">{indicator}</FitText>
                                                 <span aria-hidden="true" className="shrink-0 text-imperial-gold text-[10px] sm:text-xs border border-imperial-gold px-1 rounded">▼</span>

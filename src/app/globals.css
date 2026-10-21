@@ -1,22 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #00143F;
-  --foreground: #FFD700;
+  --background: #0B1426;
+  --foreground: #E3C77A;
 }
 
 @theme {
-  --color-imperial-gold: #FFD700;
-  --color-imperial-blue: #00143F;
-  --color-imperial-cyan: #00BFFF;
+  --color-imperial-gold: #C9A44C;
+  --color-imperial-gold-light: #E3C77A;
+  --color-imperial-blue: #101C33;
+  --color-imperial-night: #0B1426;
+  --color-imperial-cyan: #7FA7C4;
+  --color-imperial-ivory: #E8E2D0;
   
   --font-cinzel: var(--font-cinzel);
   --font-baskerville: var(--font-libre-baskerville);
 }
 
 :root {
-  --background: #00143F;
-  --foreground: #FFD700;
+  --background: #0B1426;
+  --foreground: #E3C77A;
 }
 
 body {
@@ -53,7 +56,7 @@ h1, h2, h3, h4, h5, h6, .imperial-title {
 .route-scroll,
 html:has(.route-scroll) {
   scrollbar-width: thin;
-  scrollbar-color: #FFD700 #00143F;
+  scrollbar-color: #C9A44C #0B1426;
 }
 
 .route-scroll::-webkit-scrollbar,
@@ -63,12 +66,12 @@ html:has(.route-scroll)::-webkit-scrollbar {
 
 .route-scroll::-webkit-scrollbar-track,
 html:has(.route-scroll)::-webkit-scrollbar-track {
-  background: #00143F;
+  background: #0B1426;
 }
 
 .route-scroll::-webkit-scrollbar-thumb,
 html:has(.route-scroll)::-webkit-scrollbar-thumb {
-  background: #FFD700;
+  background: #C9A44C;
 }
 
 .route-scroll::-webkit-scrollbar-button,
@@ -76,4 +79,59 @@ html:has(.route-scroll)::-webkit-scrollbar-button {
   display: none;
   height: 0;
   width: 0;
+}
+
+/* Sober imperial additions */
+html {
+  background: #0B1426;
+}
+
+.imperial-title {
+  font-variant: small-caps;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+}
+
+.imperial-frame {
+  border: 1px solid rgba(201, 164, 76, 0.55);
+  outline: 1px solid rgba(201, 164, 76, 0.18);
+  outline-offset: 3px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.imperial-divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0.9rem auto 0;
+  max-width: 32rem;
+}
+.imperial-divider::before,
+.imperial-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #C9A44C);
+}
+.imperial-divider::after {
+  background: linear-gradient(90deg, #C9A44C, transparent);
+}
+.imperial-divider > span {
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  border: 1px solid #C9A44C;
+  background: #0B1426;
+}
+
+input, select, textarea {
+  background-color: #0B1426;
+  color: #E8E2D0;
+  border-color: rgba(201, 164, 76, 0.45);
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 1px solid #E3C77A !important;
+  outline-offset: 2px;
 }

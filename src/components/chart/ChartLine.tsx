@@ -136,7 +136,7 @@ export default function ChartLine({ areaConfig, isDimmed, data, chartData, allSe
                         } fill={color} stroke="none" />
                     </>
                 ) : null}
-                <text x={labelProps.x} y={labelY} fill={color} fontSize={11} fontWeight={700} textAnchor="middle" paintOrder="stroke" stroke="#00143F" strokeWidth={3} strokeOpacity={0.85}>
+                <text x={labelProps.x} y={labelY} fill={color} fontSize={11} fontWeight={700} textAnchor="middle" paintOrder="stroke" stroke="#0B1426" strokeWidth={3} strokeOpacity={0.85}>
                     {formatValueByType(value, areaConfig.valueFormat, 1)}
                 </text>
             </g>

@@ -22,7 +22,7 @@ export default function LoadingModal({ message = 'Cargando...', fullscreen = tru
             aria-busy="true"
             aria-label={message}
         >
-            <div className="flex flex-col items-center gap-4 border-2 border-imperial-gold bg-imperial-blue px-10 py-8 shadow-lg shadow-black/40">
+            <div className="flex flex-col items-center gap-4 border border-imperial-gold/60 bg-imperial-blue px-10 py-8 shadow-lg shadow-black/40">
                 <LoadingSpinner className="h-10 w-10 border-imperial-gold" />
                 <p className="text-sm font-bold uppercase tracking-widest text-imperial-gold">{message}</p>
             </div>

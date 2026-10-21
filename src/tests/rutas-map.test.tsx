@@ -55,8 +55,8 @@ it('switches color mode and shows route, km, concessionaire and status on hover 
     const status = screen.getByRole('status');
     expect(screen.getByTestId('rutas-map').contains(status)).toBe(true);
     expect(status.className).not.toContain('fixed');
-    expect(status.getAttribute('style')).toContain('rgba(0, 20, 63, 0.4)');
-    expect(status.getAttribute('style')).toContain('rgb(255, 215, 0)');
+    expect(status.getAttribute('style')).toContain('rgba(11, 20, 38, 0.4)');
+    expect(status.getAttribute('style')).toContain('rgb(201, 164, 76)');
     expect(status.getAttribute('style')).toContain('blur(2px)');
     expect(status.textContent).toContain('RN 9');
     expect(status.textContent).toContain('320 km');
@@ -112,8 +112,8 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
     const tooltip = screen.getByRole('status');
     expect(frame.contains(tooltip)).toBe(true);
     expect(tooltip.className).not.toContain('fixed');
-    expect(tooltip.getAttribute('style')).toContain('rgba(0, 20, 63, 0.4)');
-    expect(tooltip.getAttribute('style')).toContain('rgb(255, 215, 0)');
+    expect(tooltip.getAttribute('style')).toContain('rgba(11, 20, 38, 0.4)');
+    expect(tooltip.getAttribute('style')).toContain('rgb(201, 164, 76)');
     expect(tooltip.textContent).toContain('RN 5');
     expect(tooltip.textContent).toContain('Pampa');
     expect(tooltip.textContent).toContain('CORREDOR VIAL 5 S.A.U.');
@@ -293,7 +293,7 @@ it('shares one tramo selection between map clicks and the sidebar', () => {
 it('a second click on the same tramo clears the selection and leaves no gold halo', () => {
     const { container } = render(<RutasMap tramos={tramos} geometry={geometry} />);
     const picked = () => container.querySelectorAll('[data-picked="true"]');
-    const halos = () => [...container.querySelectorAll('path')].filter(path => path.getAttribute('stroke') === '#FFD700' && !path.getAttribute('fill'));
+    const halos = () => [...container.querySelectorAll('path')].filter(path => path.getAttribute('stroke') === '#C9A44C' && !path.getAttribute('fill'));
     const segment = container.querySelector('[data-company]:not([data-company="Sin dato"])')!;
     fireEvent.click(segment);
     expect(picked()).toHaveLength(1);

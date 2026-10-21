@@ -6,7 +6,7 @@ export const BALANZA_EXPORT_RUBROS = [
 ] as const;
 
 export const BALANZA_IMPORT_USOS = [
-    { key: 'impo_bienes_capital', label: 'Bienes de capital', color: '#00BFFF', seriesId: '74.3_IIBCA_0_M_32' },
+    { key: 'impo_bienes_capital', label: 'Bienes de capital', color: '#7FA7C4', seriesId: '74.3_IIBCA_0_M_32' },
     { key: 'impo_bienes_intermedios', label: 'Bienes intermedios', color: '#818CF8', seriesId: '74.3_IIBI_0_M_36' },
     { key: 'impo_combustibles', label: 'Combustibles y lubricantes', color: '#EAB308', seriesId: '74.3_IICL_0_M_42' },
     { key: 'impo_piezas', label: 'Piezas y accesorios', color: '#A855F7', seriesId: '74.3_IIPABC_0_M_50' },
@@ -18,7 +18,7 @@ export const BALANZA_IMPORT_USOS = [
 export const BALANZA_AGGREGATE_SERIES = [
     { key: 'exportaciones', label: 'Exportaciones', color: '#22C55E', seriesId: '74.3_IET_0_M_16' },
     { key: 'importaciones', label: 'Importaciones', color: '#EF4444', seriesId: '74.3_IIT_0_M_25' },
-    { key: 'saldo', label: 'Saldo', color: '#FFD700', seriesId: '74.3_ISC_0_M_19' },
+    { key: 'saldo', label: 'Saldo', color: '#C9A44C', seriesId: '74.3_ISC_0_M_19' },
 ] as const;
 
 export const BALANZA_BREAKDOWN_SERIES = [...BALANZA_EXPORT_RUBROS, ...BALANZA_IMPORT_USOS] as const;
