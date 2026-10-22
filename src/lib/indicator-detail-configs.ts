@@ -14,6 +14,7 @@ import { getRawData } from './db';
 import { COST_OF_LIVING_MODEL, calculateCostOfLivingBurden, fetchCostOfLivingIndices } from './purchasing-power-cost';
 import { buildRigiChartData, rigiTotals, type RigiApproval } from './investments-source';
 import { getInversiones } from './db/inversiones';
+import { getDeudaVencimientos } from './db/deuda';
 import { fetchPublicSpendingChartData } from './public-spending-source';
 import { PRESUPUESTO_EXPENSE_SERIES, PRESUPUESTO_RESOURCE_SERIES } from './presupuesto/schema';
 import { fetchPresupuestoRubrosChartData } from './presupuesto-source';
@@ -739,16 +740,59 @@ async function recaudacionConfig(indicator: Indicator): Promise<DetailConfig> {
     };
 }
 
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** The cut-off year is only partly ahead: label it with the months it still covers. */
+function maturityLabel(periodo: string, corte: string): string {
+    const [year, month] = corte.split('-').map(Number);
+    return periodo === String(year) && month < 12 ? `${periodo} (${MESES_CORTOS[month]}-dic)` : periodo;
+}
+
+/** The 12 months after the cut-off month, e.g. 2026-06-30 -> "jul-26 a jun-27". */
+function next12MonthsLabel(corte: string): string {
+    const [year, month] = corte.split('-').map(Number);
+    const from = `${MESES_CORTOS[month % 12]}-${String(month === 12 ? year + 1 : year).slice(-2)}`;
+    return `${from} a ${MESES_CORTOS[month - 1]}-${String(year + 1).slice(-2)}`;
+}
+
 async function deudaConfig(indicator: Indicator): Promise<DetailConfig> {
-    const data = await getIndicatorData('deuda') ?? null;
-const areas: AreaConfig[] = [
+    const [data, vencimientos] = await Promise.all([getIndicatorData('deuda'), getDeudaVencimientos()]);
+    const rows = (data ?? []) as ChartDataRow[];
+    const stockRows = rows.filter(row => row.stock_usd != null);
+    const ratioRows = rows.filter(row => row.deuda_pbi_oficial != null);
+    // GDP in USD implied by the latest official ratio: stock that month / (debt/GDP).
+    const gdpAnchor = [...ratioRows].reverse().find(row => row.stock_usd != null);
+    const gdpUsd = gdpAnchor ? Number(gdpAnchor.stock_usd) / (Number(gdpAnchor.deuda_pbi_oficial) / 100) : null;
+    const maturityRows = (vencimientos?.anuales ?? []).map(row => ({ fecha: maturityLabel(row.periodo, vencimientos!.corte), iso_fecha: `${row.periodo.slice(0, 4)}-01-01`, capital: row.capital, interes: row.interes }));
+    const maturityPbiRows = gdpUsd ? maturityRows.map(row => ({ ...row, capital: row.capital / gdpUsd * 100, interes: row.interes / gdpUsd * 100 })) : [];
+    const next = vencimientos?.proximos12m;
+    const nextLine = next ? ` | Vencen USD ${Math.round(next.capital + next.interes).toLocaleString('es-AR')} M en los próximos 12 meses (${next12MonthsLabel(vencimientos!.corte)})` : '';
+    const anchorLabel = gdpAnchor ? String(gdpAnchor.fecha) : 'sin dato';
+
+    const stockArea: AreaConfig = { key: 'stock_usd', name: 'Deuda bruta', color: '#C9A44C', type: 'line', strokeWidth: 2.5, showDots: false };
+    const ratioArea: AreaConfig = { key: 'deuda_pbi_oficial', name: 'Deuda bruta / PBI', color: '#C9A44C', type: 'line', strokeWidth: 2.5, connectNulls: true };
+    const maturityAreas: AreaConfig[] = [
+        { key: 'capital', name: 'Capital', color: '#60A5FA', type: 'bar', stackId: 'vencimientos' },
+        { key: 'interes', name: 'Interés', color: '#E3C77A', type: 'bar', stackId: 'vencimientos' },
+    ];
+    const pbiMethodology = { title: '% del PBI', description: `Stock: ratio oficial Deuda Bruta de la Administración Central / PIB de la hoja A.4.7 de los datos trimestrales (anual hasta el último año cerrado, trimestral después). Vencimientos: cada año se divide por el PBI en dólares implícito en el último ratio de A.4.7 (${anchorLabel}): deuda bruta de ese mes del boletín mensual dividida por ese ratio. Es el mismo PBI para todos los años porque no hay proyección oficial del PBI en dólares.` };
+    const stockMethodology = [
+        { title: 'Stock', description: 'Deuda bruta de la Administración Central a fin de mes, en millones de USD: hoja A.1, fila «A- Deuda bruta (I + II + III)», del boletín mensual de la Secretaría de Finanzas. Los últimos meses son provisorios.' },
+        pbiMethodology,
+    ];
+    const maturityMethodology = [
+        { title: 'Vencimientos por año', description: `Capital e interés de la deuda en situación de pago normal, en millones de USD al tipo de cambio del corte (${vencimientos?.corte ?? 'sin dato'}): hoja A.3.6 de los datos trimestrales de la deuda. El año del corte solo incluye los meses restantes; el último tramo agrupa todos los años posteriores.` },
+        { title: 'Próximos 12 meses', description: 'Total de capital e interés de la hoja A.3.1 del mismo archivo.' },
+        pbiMethodology,
+    ];
+    const flowAreas: AreaConfig[] = [
         { key: 'toma_deuda', name: 'Toma deuda', color: '#C9A44C', type: 'bar', stackId: 'deuda' },
         { key: 'vencimientos', name: 'Vencimientos', color: '#60A5FA', type: 'bar', stackId: 'deuda' },
         { key: 'pagos', name: 'Pagos', color: '#1D4ED8', type: 'bar', stackId: 'deuda' },
         { key: 'deuda_pbi', name: 'Deuda/PBI', color: '#EF4444', type: 'line', yAxisId: 'right', strokeWidth: 2 },
         { key: 'deuda_proyectada', name: 'Deuda/PBI proyectada', color: '#EF4444', type: 'line', yAxisId: 'right', dash: [4, 4], strokeWidth: 1 },
     ];
-    const methodology = [
+    const flowMethodology = [
         { title: 'Fuente Nación', description: 'Ministerio de Economía, Secretaría de Finanzas, datos trimestrales de deuda, boletín mensual y colocaciones de deuda.' },
         { title: 'Colocaciones', description: 'Monto mensual tomado por el Tesoro: colocaciones de títulos/letras de MECON más desembolsos de préstamos de organismos internacionales del boletín mensual, incluyendo FMI.' },
         { title: 'Vencimientos', description: 'Calendario de vencimientos de capital e interés (línea punteada = proyectados).' },
@@ -757,7 +801,29 @@ const areas: AreaConfig[] = [
         { title: 'Deuda/PBI proyectada', description: 'Proyección del stock usando flujos (línea punteada).' },
         { title: 'Normalización', description: 'Las colocaciones en pesos y los vencimientos convertidos a pesos se expresan a precios de enero de 2017 con IPC núcleo y se dividen por el PBI real estimado disponible.' },
     ];
-    return { subtitle: indicator.fuente, chartTitle: 'Perfil de compromisos de deuda pública', data, areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: 'Flujo mensual (% PBI real)', secondaryYAxis: { label: 'Deuda / PBI real', color: '#FF4D4D', format: 'percent' }, indicatorId: indicator.id };
+    const stockTitle = 'Stock de deuda bruta de la Administración Central';
+    const maturityTitle = 'Vencimientos por año: capital e interés';
+    const usd = (chartTitle: string, modeData: ChartDataRow[], areas: AreaConfig[]): ChartModeConfig => ({ id: 'usd', label: 'Millones de USD', chartTitle, data: modeData, areas, yAxisLabel: 'millones de USD', valueFormat: 'millions', leftYAxisDomain: [0, 'auto'] });
+    const pbi = (chartTitle: string, modeData: ChartDataRow[], areas: AreaConfig[]): ChartModeConfig => ({ id: 'pbi', label: '% del PBI', chartTitle, data: modeData, areas, yAxisLabel: '% del PBI', valueFormat: 'percent', yAxisDecimals: 1, leftYAxisDomain: [0, 'auto'] });
+
+    return {
+        subtitle: `${indicator.fuente}${nextLine}`,
+        chartTitle: stockTitle,
+        data: stockRows,
+        areas: [stockArea],
+        methodology: stockMethodology,
+        valueFormat: 'millions',
+        yAxisLabel: 'millones de USD',
+        leftYAxisDomain: [0, 'auto'],
+        indicatorId: indicator.id,
+        views: [
+            { id: 'stock', label: 'Stock', chartTitle: stockTitle, data: stockRows, areas: [stockArea], methodology: stockMethodology, valueFormat: 'millions', yAxisLabel: 'millones de USD', leftYAxisDomain: [0, 'auto'],
+                modes: [usd(stockTitle, stockRows, [stockArea]), pbi(stockTitle, ratioRows, [ratioArea])] },
+            { id: 'vencimientos', label: 'Vencimientos por año', chartTitle: maturityTitle, data: maturityRows, areas: maturityAreas, methodology: maturityMethodology, valueFormat: 'millions', yAxisLabel: 'millones de USD', leftYAxisDomain: [0, 'auto'], showTooltipTotal: true,
+                modes: [usd(maturityTitle, maturityRows, maturityAreas), pbi(maturityTitle, maturityPbiRows, maturityAreas)] },
+            { id: 'flujos', label: 'Flujos', chartTitle: 'Perfil de compromisos de deuda pública', data: rows, areas: flowAreas, methodology: flowMethodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: 'Flujo mensual (% PBI real)', secondaryYAxis: { label: 'Deuda / PBI real', color: '#FF4D4D', format: 'percent' } },
+        ],
+    };
 }
 
 async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {

@@ -65,8 +65,7 @@ function addMonthlyPaidRows(workbook: XLSX.WorkBook, rows: Map<string, DeudaRawR
 
     for (let index = 2; index < headers.length; index++) {
         const fecha = monthFromHeader(headers[index]);
-        if (!fecha || fecha > '2026-03-01') continue;
-        putRow(rows, fecha, parseNumber(total[index]), 'pagos');
+        if (fecha) putRow(rows, fecha, parseNumber(total[index]), 'pagos');
     }
 }
 
@@ -78,35 +77,39 @@ function addMonthlyLoanDisbursementRows(workbook: XLSX.WorkBook, rows: Map<strin
 
     for (let index = 2; index < headers.length; index++) {
         const fecha = monthFromHeader(headers[index]);
-        if (!fecha || fecha > '2026-03-01') continue;
-        putRow(rows, fecha, parseNumber(total[index]), 'toma_deuda_usd');
+        if (fecha) putRow(rows, fecha, parseNumber(total[index]), 'toma_deuda_usd');
     }
 }
 
+/** Bulletin A.1 row "A- DEUDA BRUTA (I + II + III)": end-of-month gross debt, millions of USD. */
 function addMonthlyDebtStockRows(workbook: XLSX.WorkBook, rows: Map<string, DeudaRawRow>) {
-    const stockRows = sheetRows(workbook.Sheets['A.4']);
+    const stockRows = sheetRows(workbook.Sheets['A.1']);
     const headers = stockRows.find(row => row.filter(cell => monthFromHeader(cell)).length >= 2) ?? [];
-    const total = stockRows.find(row => normalizeText(row[1]) === 'iii - deuda bruta (i + ii)');
+    const total = stockRows.find(row => normalizeText(row[1]).startsWith('a- deuda bruta'));
     if (!total) return;
 
     for (let index = 2; index < headers.length; index++) {
         const fecha = monthFromHeader(headers[index]);
-        if (!fecha || fecha > '2026-03-01') continue;
-        putRow(rows, fecha, parseNumber(total[index]), 'stock_deuda_usd');
+        if (fecha) putRow(rows, fecha, parseNumber(total[index]), 'stock_deuda_usd');
     }
 }
 
-function addAnnualProjectedRows(workbook: XLSX.WorkBook, rows: Map<string, DeudaRawRow>) {
+function yearHeaderRow(rows: unknown[][]): unknown[] {
+    return rows.find(row => row.slice(2).some(cell => /^\d{4}$/.test(String(cell ?? '').trim()))) ?? [];
+}
+
+/** A.3.6 annual totals for the years after the monthly sheets, spread evenly over their months. */
+function addAnnualProjectedRows(workbook: XLSX.WorkBook, rows: Map<string, DeudaRawRow>, afterYear: number) {
     const projectionRows = sheetRows(workbook.Sheets['A.3.6']);
-    const headers = projectionRows[9] ?? [];
+    const headers = yearHeaderRow(projectionRows);
     const total = findRow(projectionRows, 'total');
     if (!total) return;
 
     for (let index = 2; index < headers.length; index++) {
-        const year = Number(headers[index]);
+        const header = String(headers[index] ?? '').trim();
         const annualValue = parseNumber(total[index]);
-        if (!year || year < 2028 || year > 2035 || annualValue == null) continue;
-        for (let month = 1; month <= 12; month++) putRow(rows, `${year}-${String(month).padStart(2, '0')}-01`, annualValue / 1000 / 12);
+        if (!/^\d{4}$/.test(header) || Number(header) <= afterYear || annualValue == null) continue;
+        for (let month = 1; month <= 12; month++) putRow(rows, `${header}-${String(month).padStart(2, '0')}-01`, annualValue / 1000 / 12);
     }
 }
 
@@ -157,14 +160,67 @@ export function parseInitialDebtStockWorkbook(buffer: Buffer): DeudaRawRow[] {
     return stockMilesUsd == null ? [] : [{ fecha: '2017-01-01', stock_inicial_usd: stockMilesUsd / 1000, stock_deuda_usd: stockMilesUsd / 1000 }];
 }
 
-export function parseDeudaPublicaWorkbook(buffer: Buffer): DeudaRawRow[] {
+/** Quarterly workbook maturities: months up to the report month are paid, later ones projected; A.3.6 covers the later years. */
+export function parseDeudaPublicaWorkbook(buffer: Buffer, reportMonth: string): DeudaRawRow[] {
     const workbook = readWorkbook(buffer);
     const rows = new Map<string, DeudaRawRow>();
-    addMonthlyProjectedRows(workbook, 'A.3.2', 'A.3.3', rows, '2024-01-01', '2025-12-01', 'vencimientos');
-    addMonthlyProjectedRows(workbook, 'A.3.2', 'A.3.3', rows, '2026-04-01', '2026-12-01', 'vencimientos_proyectados');
-    addMonthlyProjectedRows(workbook, 'A.3.4', 'A.3.5', rows, '2027-01-01', '2027-12-01', 'vencimientos_proyectados');
-    addAnnualProjectedRows(workbook, rows);
+    const nextMonth = `${reportMonth.slice(0, 8)}02`;
+    for (const [capital, interest] of [['A.3.2', 'A.3.3'], ['A.3.4', 'A.3.5']]) {
+        addMonthlyProjectedRows(workbook, capital, interest, rows, '0000-01-01', reportMonth, 'vencimientos');
+        addMonthlyProjectedRows(workbook, capital, interest, rows, nextMonth, '9999-12-01', 'vencimientos_proyectados');
+    }
+    const lastMonthlyYear = Math.max(Number(reportMonth.slice(0, 4)), ...Array.from(rows.keys()).map(fecha => Number(fecha.slice(0, 4))));
+    addAnnualProjectedRows(workbook, rows, lastMonthlyYear);
     return Array.from(rows.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
+function rowsAfter(rows: unknown[][], label: string): { total: unknown[]; capital: unknown[]; interest: unknown[] } | null {
+    const start = rows.findIndex(row => normalizeText(row[1]) === label);
+    if (start < 0) return null;
+    const after = rows.slice(start + 1);
+    const capital = after.find(row => normalizeText(row[1]) === 'capital');
+    const interest = after.find(row => normalizeText(row[1]) === 'interes');
+    return capital && interest ? { total: rows[start], capital, interest } : null;
+}
+
+const thousandsToMillions = (value: unknown) => (parseNumber(value) ?? 0) / 1000;
+
+export type DeudaMaturities = {
+    anuales: { periodo: string; capital_usd: number; interes_usd: number }[];
+    proximos12m: { capital_usd: number; interes_usd: number } | null;
+};
+
+/** A.3.6 capital/interest per year (last bucket like "2036/2089" kept as a range) and the A.3.1 next-12-month total, millions of USD. */
+export function parseDeudaMaturitiesWorkbook(buffer: Buffer): DeudaMaturities {
+    const workbook = readWorkbook(buffer);
+    const annualRows = sheetRows(workbook.Sheets['A.3.6']);
+    const headers = yearHeaderRow(annualRows);
+    const annual = rowsAfter(annualRows, 'total');
+    const anuales = annual ? headers.flatMap((cell, index) => {
+        const header = String(cell ?? '').trim();
+        if (index < 2 || !/^\d{4}(\/\d{4})?$/.test(header)) return [];
+        return [{ periodo: header.replace('/', '-'), capital_usd: thousandsToMillions(annual.capital[index]), interes_usd: thousandsToMillions(annual.interest[index]) }];
+    }) : [];
+    const next = rowsAfter(sheetRows(workbook.Sheets['A.3.1']), 'total');
+    const lastValue = (row: unknown[]) => [...row].reverse().find(cell => parseNumber(cell) != null);
+    const proximos12m = next ? { capital_usd: thousandsToMillions(lastValue(next.capital)), interes_usd: thousandsToMillions(lastValue(next.interest)) } : null;
+    return { anuales, proximos12m };
+}
+
+/** A.4.7 "Deuda Bruta de la Administración Central" as % of GDP: years at December, quarters at their last month. */
+export function parseDebtToGdpWorkbook(buffer: Buffer): DeudaRawRow[] {
+    const rows = sheetRows(readWorkbook(buffer).Sheets['A.4.7']);
+    const headers = rows.find(row => normalizeText(row[2]) === 'indicadores') ?? [];
+    const ratio = rows.find(row => normalizeText(row[2]) === 'deuda bruta de la administracion central');
+    if (!ratio) return [];
+    return headers.flatMap((cell, index) => {
+        const header = normalizeText(cell);
+        const quarter = header.match(/^(\d)\D*trim\D*(\d{4})/);
+        const year = header.match(/^(\d{4})/);
+        const fecha = quarter ? `${quarter[2]}-${String(Number(quarter[1]) * 3).padStart(2, '0')}-01` : year ? `${year[1]}-12-01` : null;
+        const value = Number.parseFloat(String(ratio[index] ?? '').replace('%', ''));
+        return fecha && Number.isFinite(value) ? [{ fecha, deuda_pbi_oficial: value }] : [];
+    });
 }
 
 export function parseDeudaMonthlyPaymentsWorkbook(buffer: Buffer): DeudaRawRow[] {

@@ -59,4 +59,21 @@ describe('normalizeDeuda', () => {
         expect(result[4]).toMatchObject({ deuda_pbi: 130, deuda_proyectada: null });
         expect(result[5]).toMatchObject({ vencimientos: -4, vencimientos_proyectados: -4, total: -4, deuda_proyectada: 126 });
     });
+    it('keeps the observed gross debt stock in USD and the official debt/GDP ratio', () => {
+        const result = normalizeDeuda([
+            { fecha: '2017-01-01', ipc_nucleo: 100, pbi_trimestral: 1000, stock_inicial_usd: 100, stock_deuda_usd: 100 },
+            { fecha: '2025-11-01', ipc_nucleo: 100, pbi_trimestral: 1000, vencimientos: 1, tc: 1 },
+            { fecha: '2025-12-01', ipc_nucleo: 100, pbi_trimestral: 1000, stock_deuda_usd: 455076.7, deuda_pbi_oficial: 78.1, tc: 1 },
+        ]);
+
+        expect(result.find(row => row.iso_fecha === '2025-12-01')).toMatchObject({ stock_usd: 455076.7, deuda_pbi_oficial: 78.1 });
+        expect(result.find(row => row.iso_fecha === '2025-11-01')?.stock_usd).toBeNull();
+    });
+});
+
+describe('deuda normalized row mapping', () => {
+    it('reads the stock in USD and the official debt/GDP ratio back from Neon', async () => {
+        const { toNormalizedRow } = await import('../lib/db/row-mappers');
+        expect(toNormalizedRow('deuda', { fecha: '2026-09-01', stock_usd: '486627.5', deuda_pbi_oficial: '71.4' })).toMatchObject({ stock_usd: 486627.5, deuda_pbi_oficial: 71.4 });
+    });
 });

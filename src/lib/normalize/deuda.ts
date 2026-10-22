@@ -81,7 +81,9 @@ export function normalizeDeuda(rawData: DeudaRawRow[]): DeudaNormalizedRow[] {
             if (deudaPbi != null) projectedDebt = deudaPbi;
             const deudaProyectada = deudaPbi == null && lastObservedDebtDate != null && row.fecha > lastObservedDebtDate && projectedDebt != null ? projectedDebt + (total ?? 0) : null;
             if (deudaProyectada != null) projectedDebt = deudaProyectada;
-            const chartValues = [deudaPbi, deudaProyectada, tomaDeuda, vencimientos, vencimientosProyectados, pagos].filter((value): value is number => value != null);
+            const stockUsd = toNullableNumber(row.stock_deuda_usd ?? null);
+            const deudaPbiOficial = toNullableNumber(row.deuda_pbi_oficial ?? null);
+            const chartValues = [deudaPbi, deudaProyectada, tomaDeuda, vencimientos, vencimientosProyectados, pagos, stockUsd, deudaPbiOficial].filter((value): value is number => value != null);
 
             if (chartValues.length === 0) return null;
             acumulado += total ?? 0;
@@ -97,6 +99,8 @@ export function normalizeDeuda(rawData: DeudaRawRow[]): DeudaNormalizedRow[] {
                 deuda_proyectada: deudaProyectada,
                 acumulado,
                 total,
+                stock_usd: stockUsd,
+                deuda_pbi_oficial: deudaPbiOficial,
             };
         })
         .filter(notNull);

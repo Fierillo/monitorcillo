@@ -9,7 +9,8 @@ import { ensureDepositosPrestamosTables, fetchDepositosPrestamosRaw } from './de
 import { ensureEmaeSectorTables, fetchEmaeRaw } from './emae';
 import { fetchPoderAdquisitivoRawReport } from './poder-adquisitivo';
 import { ensureRecaudacionTables, fetchRecaudacionRawReport } from './recaudacion';
-import { ensureDeudaTables, fetchDeudaRaw } from './deuda';
+import { ensureDeudaTables, fetchDeudaRawReport } from './deuda';
+import { replaceDeudaVencimientos } from '../db/deuda';
 import { ensurePobrezaTables, fetchPobrezaRawReport } from './pobreza';
 import { ensureInflacionTables, fetchInflacionRawReport } from './inflacion';
 import { ensureIcgTables, fetchIcgRawReport } from './icg';
@@ -139,8 +140,12 @@ export async function syncDeuda(): Promise<SyncResult> {
     const type: IndicatorType = 'deuda';
     await ensureDeudaTables();
     const existingData = (await getRawData(type)) ?? [];
-    const rawData = await fetchDeudaRaw();
-    return persistMergedRawAndNormalize(type, existingData, rawData, normalizeDeuda);
+    const report = await fetchDeudaRawReport();
+    const result = await persistMergedRawAndNormalize(type, existingData, report.rows, normalizeDeuda, true);
+    await replaceDeudaVencimientos(report.maturities, report.corte, report.quarterlyUrl);
+    const lastStock = report.rows.filter(row => row.stock_deuda_usd != null).at(-1)?.fecha ?? null;
+    if (report.bulletinPublishedAt) await saveIndicatorPublication('deuda-boletin', report.bulletinPublishedAt, lastStock);
+    return result;
 }
 
 export async function syncPobreza(): Promise<SyncResult> {

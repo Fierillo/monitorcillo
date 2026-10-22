@@ -130,6 +130,8 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
             deuda_proyectada: toNullableNumber(row.deuda_proyectada),
             acumulado: toNullableNumber(row.acumulado),
             total: toNullableNumber(row.total),
+            stock_usd: toNullableNumber(row.stock_usd),
+            deuda_pbi_oficial: toNullableNumber(row.deuda_pbi_oficial),
         } as NormalizedDataByType[T];
     }
 

@@ -21,7 +21,7 @@ const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     'depositos-prestamos': ['fecha', 'depositos_pesos_pbi', 'depositos_usd_pbi', 'depositos_total_pbi', 'prestamos_pesos_pbi', 'prestamos_usd_pbi', 'prestamos_total_pbi', 'depositos_pesos_constantes', 'depositos_usd_constantes', 'prestamos_pesos_constantes', 'prestamos_usd_constantes', 'depositos_publicos_pesos_pbi', 'depositos_publicos_usd_pbi', 'prestamos_publicos_pesos_pbi', 'prestamos_publicos_usd_pbi', 'depositos_publicos_pesos_constantes', 'depositos_publicos_usd_constantes', 'prestamos_publicos_pesos_constantes', 'prestamos_publicos_usd_constantes', 'mora_irregular_pct', 'mora_incobrable_pct', 'mora_total_irregular_pct', 'mora_familias_pct', 'mora_empresas_pct', ...PNFC_SERIES.map(series => series.dbKey)],
     reca: ['fecha', 'mes', 'year', 'pct_pbi', 'pct_pbi_mm12', ...RECAUDACION_TAX_PCT_DB_COLUMNS, ...RECAUDACION_TAX_MM12_DB_COLUMNS],
     poder: ['fecha', 'blanco', 'negro', 'privado', 'publico', 'ripte', 'jubilacion'],
-    deuda: ['fecha', 'toma_deuda', 'vencimientos', 'vencimientos_proyectados', 'pagos', 'deuda_pbi', 'deuda_proyectada', 'acumulado', 'total'],
+    deuda: ['fecha', 'toma_deuda', 'vencimientos', 'vencimientos_proyectados', 'pagos', 'deuda_pbi', 'deuda_proyectada', 'acumulado', 'total', 'stock_usd', 'deuda_pbi_oficial'],
     pobreza: ['fecha', 'pobreza_indec', 'pobreza_utdt', 'pobreza_uca'],
     inflacion: ['fecha', 'ipc_indec', 'ipc_nucleo_indec', 'ipc_equilibra', 'ipc_online', 'rem', 'ipim', 'ipc'],
     icg: ['fecha', 'icg'],
@@ -96,7 +96,7 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
             ...RECAUDACION_BREAKDOWN_TYPES.map(tax => toNullableNumber(row[tax.mm12Key])),
         ];
     }
-    if (type === 'deuda') return [fecha, toNullableNumber(row.toma_deuda), toNullableNumber(row.vencimientos), toNullableNumber(row.vencimientos_proyectados), toNullableNumber(row.pagos), toNullableNumber(row.deuda_pbi), toNullableNumber(row.deuda_proyectada), toNullableNumber(row.acumulado), toNullableNumber(row.total)];
+    if (type === 'deuda') return [fecha, toNullableNumber(row.toma_deuda), toNullableNumber(row.vencimientos), toNullableNumber(row.vencimientos_proyectados), toNullableNumber(row.pagos), toNullableNumber(row.deuda_pbi), toNullableNumber(row.deuda_proyectada), toNullableNumber(row.acumulado), toNullableNumber(row.total), toNullableNumber(row.stock_usd), toNullableNumber(row.deuda_pbi_oficial)];
     if (type === 'pobreza') return [fecha, toNullableNumber(row.pobreza_indec), toNullableNumber(row.pobreza_utdt), toNullableNumber(row.pobreza_uca)];
     if (type === 'inflacion') return [fecha, toNullableNumber(row.ipc_indec), toNullableNumber(row.ipc_nucleo_indec), toNullableNumber(row.ipc_equilibra), toNullableNumber(row.ipc_online), toNullableNumber(row.rem), toNullableNumber(row.ipim), toNullableNumber(row.ipc)];
     if (type === 'icg') return [fecha, toNullableNumber(row.icg)];

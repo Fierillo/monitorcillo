@@ -235,6 +235,8 @@ export type DeudaRawRow = {
     vencimientos?: NumericValue;
     vencimientos_proyectados?: NumericValue;
     pagos?: NumericValue;
+    /** Official gross debt / GDP (%), quarterly workbook A.4.7. */
+    deuda_pbi_oficial?: NumericValue;
     tc?: NumericValue;
     ipc_nucleo?: NumericValue;
     pbi_trimestral?: NumericValue;
@@ -252,6 +254,9 @@ export type DeudaNormalizedRow = {
     deuda_proyectada: number | null;
     acumulado: number | null;
     total: number | null;
+    /** Observed gross debt stock, millions of USD (never interpolated). */
+    stock_usd: number | null;
+    deuda_pbi_oficial: number | null;
 };
 
 export type PobrezaRawRow = {

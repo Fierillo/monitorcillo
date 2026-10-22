@@ -28,6 +28,11 @@ const refreshSources = vi.hoisted(() => ({
     fetchPoderAdquisitivoRawReport: vi.fn(),
 }));
 
+const deudaSource = vi.hoisted(() => ({ ensureDeudaTables: vi.fn(), fetchDeudaRawReport: vi.fn() }));
+const deudaDb = vi.hoisted(() => ({ replaceDeudaVencimientos: vi.fn() }));
+
+vi.mock('@/lib/sync/deuda', () => deudaSource);
+vi.mock('@/lib/db/deuda', () => deudaDb);
 vi.mock('@/lib/db/client', () => ({ sql: { query: vi.fn(), transaction: vi.fn() } }));
 vi.mock('@/lib/db', () => db);
 vi.mock('@/lib/sync/icg', () => icgSource);
@@ -83,7 +88,7 @@ function expectNoSeriesWrites() {
 describe('sync data preservation', () => {
     beforeEach(() => {
         vi.resetModules();
-        [...Object.values(db), ...Object.values(icgSource), ...Object.values(sipaSource), ...Object.values(bmaSource), ...Object.values(refreshSources)].forEach(mock => mock.mockReset());
+        [...Object.values(db), ...Object.values(icgSource), ...Object.values(sipaSource), ...Object.values(bmaSource), ...Object.values(refreshSources), ...Object.values(deudaSource), ...Object.values(deudaDb)].forEach(mock => mock.mockReset());
         db.getRawData.mockResolvedValue(STORED_ICG_HISTORY);
     });
 
@@ -124,6 +129,17 @@ describe('sync data preservation', () => {
         expect(db.saveRawData).not.toHaveBeenCalled();
         expect(db.replaceNormalizedData).toHaveBeenCalledExactlyOnceWith(type, [expect.objectContaining({ iso_fecha: '2017-01-01' })]);
         expect(db.saveIndicatorPublication).not.toHaveBeenCalled();
+    });
+
+    it('syncDeuda regenerates normalized debt from unchanged raw rows so new normalized columns get filled', async () => {
+        const stored = [{ fecha: '2017-01-01', ipc_nucleo: 100, stock_deuda_usd: 486627.5 }];
+        db.getRawData.mockResolvedValue(stored);
+        deudaSource.fetchDeudaRawReport.mockResolvedValue({ rows: stored, maturities: { anuales: [], proximos12m: null }, corte: '2026-06-30', quarterlyUrl: 'https://example.test/q.xlsx', bulletinPublishedAt: null });
+        const tasks = await import('@/lib/sync/tasks');
+
+        await tasks.syncDeuda();
+        expect(db.saveRawData).not.toHaveBeenCalled();
+        expect(db.replaceNormalizedData).toHaveBeenCalledExactlyOnceWith('deuda', [expect.objectContaining({ iso_fecha: '2017-01-01', stock_usd: 486627.5 })]);
     });
 
     it('writes nothing when the source returns no observations', async () => {

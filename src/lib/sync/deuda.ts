@@ -1,11 +1,12 @@
 import type { DeudaRawRow } from '@/types';
-import { parseDebtPlacementExcelUrls, parseDebtPlacementsWorkbook, parseDeudaMonthlyLoanDisbursementsWorkbook, parseDeudaMonthlyPaymentsWorkbook, parseDeudaMonthlyStockWorkbook, parseDeudaPublicaWorkbook, parseInitialDebtStockWorkbook, parseLatestDeudaPublicaExcelUrl, parseLatestMonthlyDebtExcelUrl, parseLegacyProjectedWorkbook } from '../deuda-source';
+import type { DeudaMaturities } from '../deuda-source';
+import { parseDebtPlacementExcelUrls, parseDebtPlacementsWorkbook, parseDebtToGdpWorkbook, parseDeudaMaturitiesWorkbook, parseDeudaMonthlyLoanDisbursementsWorkbook, parseDeudaMonthlyPaymentsWorkbook, parseDeudaMonthlyStockWorkbook, parseDeudaPublicaWorkbook, parseInitialDebtStockWorkbook, parseLatestDeudaPublicaExcelUrl, parseLatestMonthlyDebtExcelUrl, parseLegacyProjectedWorkbook } from '../deuda-source';
 import { sql } from '../db/client';
 import { getRawData } from '../db/raw';
 import { buildMonthlyPbiSeries } from '../pbi-source';
 import { fetchBcraVariable } from './bcra';
 import { fetchEmaeWorkbookRows, fetchPbiAnchorRows } from './cache';
-import { fetchBufferFromUrl, fetchTextFromUrl } from './http-client';
+import { fetchBufferFromUrl, fetchLastModifiedDate, fetchTextFromUrl } from './http-client';
 import { emaeDesestacionalizadoMap, seriesValueMap, valueAtOrBefore } from './series';
 import { fetchTimeSeries } from './time-series-client';
 
@@ -69,7 +70,17 @@ async function fetchDebtPlacementRows(urls: string[]): Promise<DeudaRawRow[]> {
     return rows;
 }
 
-export async function fetchDeudaRaw(): Promise<DeudaRawRow[]> {
+type DeudaRawReport = {
+    rows: DeudaRawRow[];
+    maturities: DeudaMaturities;
+    /** Cut-off date of the quarterly workbook (from its file name). */
+    corte: string;
+    quarterlyUrl: string;
+    /** When the monthly bulletin was uploaded (HTTP Last-Modified); drives the estimated next bulletin. */
+    bulletinPublishedAt: string | null;
+};
+
+export async function fetchDeudaRawReport(): Promise<DeudaRawReport> {
     const [quarterlyHtml, monthlyHtml, placementsHtml, placementsArchiveHtml] = await Promise.all([
         fetchTextFromUrl(DEUDA_TRIMESTRAL_URL),
         fetchTextFromUrl(DEUDA_MENSUAL_URL),
@@ -84,7 +95,7 @@ export async function fetchDeudaRaw(): Promise<DeudaRawRow[]> {
 
     const reportDate = reportDateFromUrl(quarterlyWorkbookUrl);
     const reportMonth = `${reportDate.slice(0, 7)}-01`;
-    const [quarterlyWorkbook, monthlyWorkbook, legacyWorkbooks, debtIssuanceRows, placementRows, pbiAnchors, emae, ipc, tcRows] = await Promise.all([
+    const [quarterlyWorkbook, monthlyWorkbook, legacyWorkbooks, debtIssuanceRows, placementRows, pbiAnchors, emae, ipc, tcRows, bulletinPublishedAt] = await Promise.all([
         fetchBufferFromUrl(quarterlyWorkbookUrl),
         fetchBufferFromUrl(monthlyWorkbookUrl),
         Promise.all(LEGACY_PROJECTED_WORKBOOKS.map(item => fetchBufferFromUrl(item.url).then(buffer => ({ ...item, buffer })))),
@@ -94,6 +105,7 @@ export async function fetchDeudaRaw(): Promise<DeudaRawRow[]> {
         fetchEmaeWorkbookRows(),
         fetchTimeSeries({ ids: ['148.3_INUCLEONAL_DICI_M_19'] }),
         fetchBcraVariable(4, '2017-01-01', reportDate),
+        fetchLastModifiedDate(monthlyWorkbookUrl),
     ]);
 
     const rawRows = mergeRows([
@@ -104,15 +116,22 @@ export async function fetchDeudaRaw(): Promise<DeudaRawRow[]> {
         parseDeudaMonthlyStockWorkbook(monthlyWorkbook),
         parseDeudaMonthlyLoanDisbursementsWorkbook(monthlyWorkbook),
         parseDeudaMonthlyPaymentsWorkbook(monthlyWorkbook),
-        parseDeudaPublicaWorkbook(quarterlyWorkbook),
-    ]).filter(row => row.fecha >= '2017-01-01' && row.fecha <= '2035-12-01');
+        parseDeudaPublicaWorkbook(quarterlyWorkbook, reportMonth),
+        parseDebtToGdpWorkbook(quarterlyWorkbook),
+    ]).filter(row => row.fecha >= '2017-01-01');
     const fechas = rawRows.map(row => row.fecha);
     const pbiByFecha = buildMonthlyPbiSeries(pbiAnchors, emae, [...fechas, reportMonth]);
     const emaeByFecha = emaeDesestacionalizadoMap(emae);
     const ipcByFecha = seriesValueMap(ipc.data || []);
     const tcByFecha = seriesValueMap(tcRows.map(row => [row.fecha, row.valor]));
 
-    return mergeMacroData(rawRows, reportMonth, tcByFecha, pbiByFecha, ipcByFecha, emaeByFecha);
+    return {
+        rows: mergeMacroData(rawRows, reportMonth, tcByFecha, pbiByFecha, ipcByFecha, emaeByFecha),
+        maturities: parseDeudaMaturitiesWorkbook(quarterlyWorkbook),
+        corte: reportDate,
+        quarterlyUrl: quarterlyWorkbookUrl,
+        bulletinPublishedAt,
+    };
 }
 
 export async function ensureDeudaTables(): Promise<void> {
@@ -130,5 +149,8 @@ export async function ensureDeudaTables(): Promise<void> {
     await sql.query(`ALTER TABLE deuda_normalized ADD COLUMN IF NOT EXISTS deuda_pbi DECIMAL`, []);
     await sql.query(`ALTER TABLE deuda_normalized ADD COLUMN IF NOT EXISTS deuda_proyectada DECIMAL`, []);
     await sql.query(`ALTER TABLE deuda_normalized ADD COLUMN IF NOT EXISTS acumulado DECIMAL`, []);
+    await sql.query(`ALTER TABLE deuda_raw ADD COLUMN IF NOT EXISTS deuda_pbi_oficial DECIMAL`, []);
+    await sql.query(`ALTER TABLE deuda_normalized ADD COLUMN IF NOT EXISTS stock_usd DECIMAL`, []);
+    await sql.query(`ALTER TABLE deuda_normalized ADD COLUMN IF NOT EXISTS deuda_pbi_oficial DECIMAL`, []);
     await sql.query(`CREATE INDEX IF NOT EXISTS idx_deuda_fecha ON deuda_raw(fecha)`, []);
 }
