@@ -58,6 +58,17 @@ describe('manually entered emision data', () => {
         }
     });
 
+    it('reads stored empty Tesoro fields back as missing', async () => {
+        db.getRawData.mockResolvedValue([{ fecha: '2026-01-07', compra_dolares: 10, tc: 1_000, bcra: 10_000, vencimientos: null, licitado: null, resultado_fiscal: null }]);
+        bcra.fetchEmisionRaw.mockResolvedValue(bcraResponse(12, 1_000));
+        const { syncEmision } = await import('@/lib/sync/tasks');
+
+        await syncEmision();
+
+        const [, normalized] = db.replaceNormalizedData.mock.calls[0];
+        expect(normalized[0]).toMatchObject({ Vencimientos: 0, Licitado: 0, 'Resultado fiscal': 0 });
+    });
+
     it('is left untouched when the BCRA values did not change', async () => {
         bcra.fetchEmisionRaw.mockResolvedValue(bcraResponse(10, 1_000));
         const { syncEmision } = await import('@/lib/sync/tasks');
@@ -77,7 +88,7 @@ describe('manually entered emision data', () => {
         expect(db.replaceNormalizedData).not.toHaveBeenCalled();
     });
 
-    it('starts at zero only for a date that was never stored', async () => {
+    it('leaves the manually entered fields missing for a new date instead of zero', async () => {
         db.getRawData.mockResolvedValue([]);
         bcra.fetchEmisionRaw.mockResolvedValue(bcraResponse(12, 1_000));
         const { syncEmision } = await import('@/lib/sync/tasks');
@@ -85,7 +96,7 @@ describe('manually entered emision data', () => {
         await syncEmision();
 
         expect(db.saveRawData).toHaveBeenCalledWith('emision', [
-            { fecha: '2026-01-07', compra_dolares: 12, tc: 1_000, bcra: 12_000, vencimientos: 0, licitado: 0, resultado_fiscal: 0 },
+            { fecha: '2026-01-07', compra_dolares: 12, tc: 1_000, bcra: 12_000 },
         ]);
     });
 });

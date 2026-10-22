@@ -18,15 +18,20 @@ import { ensureBalanzaTables, fetchBalanzaRawReport } from './balanza';
 import { ensureSipaTables, fetchSipaRawReport } from './sipa';
 import { mergeRawSeries } from './merge-raw';
 
+function optionalNumber(value: EmisionRawRow['tc']): number | undefined {
+    return value === null || value === undefined || value === '' ? undefined : Number(value);
+}
+
 function normalizeEmisionRawRow(row: EmisionRawRow): EmisionRawRow {
     return {
         fecha: typeof row.fecha === 'string' && row.fecha.includes('-') ? row.fecha : fechaToISO(row.fecha),
         compra_dolares: Number(row.compra_dolares ?? 0),
-        tc: row.tc === null || row.tc === undefined || row.tc === '' ? undefined : Number(row.tc),
+        tc: optionalNumber(row.tc),
         bcra: Number(row.bcra ?? 0),
-        vencimientos: Number(row.vencimientos ?? 0),
-        licitado: Number(row.licitado ?? 0),
-        resultado_fiscal: Number(row.resultado_fiscal ?? 0),
+        // Manually entered Tesoro and MECON figures: days without them stay missing instead of becoming zeros.
+        vencimientos: optionalNumber(row.vencimientos),
+        licitado: optionalNumber(row.licitado),
+        resultado_fiscal: optionalNumber(row.resultado_fiscal),
     };
 }
 
@@ -68,7 +73,7 @@ export async function syncEmision(): Promise<SyncResult> {
     const existingByFecha = new Map(existingData.map((row) => [row.fecha, row]));
     const rowsToUpsert = apiRows.map((row): Partial<EmisionRawRow> | null => {
         const existing = existingByFecha.get(row.fecha);
-        if (!existing) return { ...row, vencimientos: 0, licitado: 0, resultado_fiscal: 0 };
+        if (!existing) return row;
         const apiChanged = existing.compra_dolares !== row.compra_dolares || existing.tc !== row.tc || existing.bcra !== row.bcra;
         return apiChanged ? { fecha: row.fecha, compra_dolares: row.compra_dolares, tc: row.tc, bcra: row.bcra } : null;
     }).filter((row): row is Partial<EmisionRawRow> => row !== null);
