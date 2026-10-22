@@ -1,5 +1,5 @@
 import type { CatalogIndicatorSpec, CatalogNextExpectedEvent, DataRow } from '@/types';
-import { joinLabels, rowDate, toFiniteNumber } from './rows';
+import { rowDate, toFiniteNumber } from './rows';
 
 const decimalFormatter = new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 1,
@@ -43,12 +43,6 @@ function addMonthsFromDate(date: string, months: number): string {
     return d.toISOString().split('T')[0];
 }
 
-function addDaysFromDate(date: string, days: number): string {
-    const d = new Date(`${date}T12:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + days);
-    return d.toISOString().split('T')[0];
-}
-
 function latestDateWithValue(rows: DataRow[], fields: string[]): string | null {
     let latest: string | null = null;
     for (const row of rows) {
@@ -70,23 +64,28 @@ function futureMonthly(baseDate: string | null, today: string, label: string, pr
     return [{ date, label, priority }];
 }
 
-function futureDays(baseDate: string | null, today: string, days: number, label: string, priority = 0): CatalogNextExpectedEvent[] {
-    if (!baseDate) return [];
-    let date = addDaysFromDate(baseDate, days);
-    while (date <= today) date = addDaysFromDate(date, days);
-    return [{ date, label, priority }];
+/** An event on an official release calendar (INDEC, BCRA, Finanzas; stored by the calendar syncs), or none: never estimated. */
+function officialRelease(date: string | null | undefined, label: string, priority = 0): CatalogNextExpectedEvent[] {
+    return date ? [{ date, label, priority, official: true }] : [];
+}
+
+/** An estimate anchored to another report's official calendar date: it competes with official dates but keeps the asterisk. */
+function calendarAnchoredEstimate(date: string | null | undefined, label: string, priority = 0): CatalogNextExpectedEvent[] {
+    return officialRelease(date, label, priority).map(event => ({ ...event, estimated: true }));
 }
 
 /** Data type behind each raw date field: the single source for the Fecha and Próxima labels. */
 const BMA_FIELDS = { base_monetaria: 'Base monetaria', pases: 'Pases', leliq: 'LELIQ', lefi: 'LEFI', otros: 'Otros pasivos', depositos_tesoro: 'Depósitos del Tesoro' };
-const DEPOSITOS_FIELDS = { depositos_pesos: 'Depósitos', depositos_usd: 'Depósitos', prestamos_pesos: 'Préstamos', prestamos_usd: 'Préstamos', depositos_publicos_pesos: 'Depósitos', depositos_publicos_usd: 'Depósitos', prestamos_publicos_pesos: 'Préstamos', prestamos_publicos_usd: 'Préstamos' };
+const DEPOSITOS_LABEL = 'Depósitos y Préstamos'; // one BCRA release
+const DEPOSITOS_FIELDS = { depositos_pesos: DEPOSITOS_LABEL, depositos_usd: DEPOSITOS_LABEL, prestamos_pesos: DEPOSITOS_LABEL, prestamos_usd: DEPOSITOS_LABEL, depositos_publicos_pesos: DEPOSITOS_LABEL, depositos_publicos_usd: DEPOSITOS_LABEL, prestamos_publicos_pesos: DEPOSITOS_LABEL, prestamos_publicos_usd: DEPOSITOS_LABEL };
 const EMISION_FIELDS = { compra_dolares: 'Operaciones BCRA', tc: 'Operaciones BCRA', bcra: 'Operaciones BCRA', vencimientos: 'Licitación del Tesoro', licitado: 'Licitación del Tesoro', resultado_fiscal: 'Resultado fiscal' };
 const RECAUDACION_FIELDS = { recaudacion_total: 'Recaudación tributaria' };
-const PODER_FIELDS = { salario_registrado: 'Índice de salarios', salario_no_registrado: 'Índice de salarios', salario_privado: 'Índice de salarios', salario_publico: 'Índice de salarios', ripte: 'RIPTE', jubilacion_minima: 'Jubilación mínima' };
+const PODER_FIELDS = { salario_registrado: 'Índice de salarios', salario_no_registrado: 'Índice de salarios', salario_privado: 'Índice de salarios', salario_publico: 'Índice de salarios', jubilacion_minima: 'Jubilación mínima' }; // RIPTE stays a series, but has no release calendar to date or label
 const EMAE_FIELDS = { emae: 'EMAE', emae_desestacionalizado: 'EMAE', emae_tendencia: 'EMAE' };
 const DEUDA_FIELDS = { stock_deuda_usd: 'Stock de deuda' };
 const INFLACION_FIELDS = { ipc_indec_general: 'IPC INDEC', ipc_indec_nucleo: 'IPC INDEC', ipc_equilibra: 'IPC Equilibra', rem: 'REM' };
 const ICG_FIELDS = { icg: 'ICG' };
+const POBREZA_FIELDS = { pobreza_utdt: 'Nowcast UTDT', pobreza_indec: 'Pobreza INDEC', pobreza_uca: 'Pobreza UCA' };
 const SIPA_FIELDS = { total: 'Trabajo registrado', privado: 'Trabajo registrado', publico: 'Trabajo registrado', casas_particulares: 'Trabajo registrado', autonomos: 'Trabajo registrado', monotributo: 'Trabajo registrado', monotributo_social: 'Trabajo registrado' };
 const BALANZA_FIELDS = { exportaciones: 'Intercambio comercial', importaciones: 'Intercambio comercial', saldo: 'Intercambio comercial' };
 
@@ -103,7 +102,6 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: BMA_FIELDS,
         formatValue: formatPbiPercentage,
         getNextExpectedDate: nextBusinessDay,
-        getNextExpectedEvents: ({ rawRows, today }) => futureDays(latestDateWithValue(rawRows, ['depositos_tesoro']), today, 7, BMA_FIELDS.depositos_tesoro),
     },
     'depositos-prestamos': {
         type: 'depositos-prestamos',
@@ -117,7 +115,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: DEPOSITOS_FIELDS,
         formatValue: value => `Préstamos: ${formatPbiPercentage(value)}`,
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
-        getNextExpectedEvents: ({ rawRows, rawDate, today }) => futureMonthly(latestDateWithValue(rawRows, Object.keys(DEPOSITOS_FIELDS)) ?? rawDate, today, joinLabels(Object.values(DEPOSITOS_FIELDS))),
+        getNextExpectedEvents: ({ rawRows, rawDate, today }) => futureMonthly(latestDateWithValue(rawRows, Object.keys(DEPOSITOS_FIELDS)) ?? rawDate, today, DEPOSITOS_LABEL),
     },
     emision: {
         type: 'emision',
@@ -131,9 +129,9 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: EMISION_FIELDS,
         formatValue: value => `$${integerFormatter.format(Math.round(value))}M`,
         getNextExpectedDate: nextBusinessDay,
-        getNextExpectedEvents: ({ rawRows, today }) => [
-            ...futureDays(latestDateWithValue(rawRows, ['licitado', 'vencimientos']), today, 14, EMISION_FIELDS.licitado, 10),
-            ...futureMonthly(latestDateWithValue(rawRows, ['resultado_fiscal']), today, EMISION_FIELDS.resultado_fiscal, 5),
+        getNextExpectedEvents: ({ sourcePublicationDates }) => [
+            ...officialRelease(sourcePublicationDates?.['tesoro-licitacion'], EMISION_FIELDS.licitado, 10),
+            ...officialRelease(sourcePublicationDates?.['mecon-resultado-fiscal'], EMISION_FIELDS.resultado_fiscal, 5),
         ],
     },
     recaudacion: {
@@ -148,7 +146,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: RECAUDACION_FIELDS,
         formatValue: formatPbiPercentage,
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
-        getNextExpectedEvents: ({ rawRows, rawDate, publicationDate, today }) => futureMonthly(publicationDate ?? latestDateWithValue(rawRows, ['recaudacion_total']) ?? rawDate, today, RECAUDACION_FIELDS.recaudacion_total),
+        getNextExpectedEvents: ({ sourcePublicationDates }) => officialRelease(sourcePublicationDates?.['mecon-recaudacion'], RECAUDACION_FIELDS.recaudacion_total),
     },
     'poder-adquisitivo': {
         type: 'poder',
@@ -163,10 +161,10 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: PODER_FIELDS,
         formatValue: formatPaBlanco,
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
-        getNextExpectedEvents: ({ rawRows, rawDate, publicationDate, today }) => [
-            ...futureMonthly(publicationDate ?? latestDateWithValue(rawRows, ['salario_registrado', 'salario_no_registrado', 'salario_privado', 'salario_publico', 'ipc_nucleo']) ?? rawDate, today, PODER_FIELDS.salario_registrado, 10),
-            ...futureMonthly(latestDateWithValue(rawRows, ['ripte']), today, PODER_FIELDS.ripte, 8),
-            ...futureMonthly(latestDateWithValue(rawRows, ['jubilacion_minima']), today, PODER_FIELDS.jubilacion_minima, 6),
+        getNextExpectedEvents: ({ sourcePublicationDates }) => [
+            ...officialRelease(sourcePublicationDates?.['indec-salarios'], PODER_FIELDS.salario_registrado, 10),
+            // Mobility is 100% of the IPC two months earlier, so the new jubilación is known when INDEC publishes IPC.
+            ...officialRelease(sourcePublicationDates?.['indec-ipc'], PODER_FIELDS.jubilacion_minima, 6),
         ],
     },
     emae: {
@@ -181,7 +179,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: EMAE_FIELDS,
         formatValue: formatDecimal,
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
-        getNextExpectedEvents: ({ rawRows, rawDate, publicationDate, today }) => futureMonthly(publicationDate ?? latestDateWithValue(rawRows, Object.keys(EMAE_FIELDS)) ?? rawDate, today, EMAE_FIELDS.emae),
+        getNextExpectedEvents: ({ sourcePublicationDates }) => officialRelease(sourcePublicationDates?.['indec-emae'], EMAE_FIELDS.emae),
     },
     deuda: {
         type: 'deuda',
@@ -196,7 +194,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: DEUDA_FIELDS,
         formatValue: value => `USD ${Math.round(value).toLocaleString('es-AR')} M`,
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
-        getNextExpectedEvents: ({ sourcePublicationDates, today }) => futureMonthly(sourcePublicationDates?.['deuda-boletin'] ?? null, today, `${DEUDA_FIELDS.stock_deuda_usd} (estimada)`),
+        getNextExpectedEvents: ({ sourcePublicationDates, today }) => futureMonthly(sourcePublicationDates?.['deuda-boletin'] ?? null, today, DEUDA_FIELDS.stock_deuda_usd),
     },
     pobreza: {
         type: 'pobreza',
@@ -208,13 +206,15 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         normalizedValueColumn: 'pobreza_utdt',
         fallbackValueColumns: ['pobreza_indec'],
         selectValue: row => row.pobreza_utdt ?? row.pobreza_indec,
-        rawDateFields: {},
+        rawDateFields: {}, // dated by its value and publication, not by raw rows
+        valueSourceFields: POBREZA_FIELDS,
         formatValue: formatPercentage,
         getNextExpectedDate: date => addMonthsFromDate(date, 6),
-        getNextExpectedEvents: ({ rawRows, rawDate, sourcePublicationDates, today }) => [
-            ...futureMonthly(sourcePublicationDates?.['pobreza-utdt'] ?? latestDateWithValue(rawRows, ['pobreza_utdt']) ?? rawDate, today, 'Nowcast UTDT', 10),
-            ...futureMonthly(latestDateWithValue(rawRows, ['pobreza_indec']), today, 'Pobreza INDEC', 8, 6),
-            ...futureMonthly(sourcePublicationDates?.['pobreza-uca'] ?? latestDateWithValue(rawRows, ['pobreza_uca']), today, 'Pobreza UCA', 6, 12),
+        getNextExpectedEvents: ({ rawRows, sourcePublicationDates, today }) => [
+            // The UTDT nowcast has no calendar; it comes out with INDEC's canasta básica (CBA/CBT) valuation.
+            ...calendarAnchoredEstimate(sourcePublicationDates?.['indec-canasta'], POBREZA_FIELDS.pobreza_utdt, 10),
+            ...officialRelease(sourcePublicationDates?.['indec-pobreza'], POBREZA_FIELDS.pobreza_indec, 8),
+            ...futureMonthly(sourcePublicationDates?.['pobreza-uca'] ?? latestDateWithValue(rawRows, ['pobreza_uca']), today, POBREZA_FIELDS.pobreza_uca, 6, 12),
         ],
     },
     inflacion: {
@@ -230,10 +230,10 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: INFLACION_FIELDS,
         formatValue: formatPercentage,
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
-        getNextExpectedEvents: ({ rawRows, rawDate, publicationDate, sourcePublicationDates, today }) => [
-            ...futureMonthly(sourcePublicationDates?.['inflacion-indec'] ?? publicationDate ?? latestDateWithValue(rawRows, ['ipc_indec_general', 'ipc_indec_nucleo']) ?? rawDate, today, INFLACION_FIELDS.ipc_indec_general, 10),
+        getNextExpectedEvents: ({ rawRows, sourcePublicationDates, today }) => [
+            ...officialRelease(sourcePublicationDates?.['indec-ipc'], INFLACION_FIELDS.ipc_indec_general, 10),
             ...futureMonthly(sourcePublicationDates?.['inflacion-equilibra'] ?? latestDateWithValue(rawRows, ['ipc_equilibra']), today, INFLACION_FIELDS.ipc_equilibra, 8),
-            ...futureMonthly(sourcePublicationDates?.['inflacion-rem'] ?? latestDateWithValue(rawRows, ['rem']), today, INFLACION_FIELDS.rem, 15),
+            ...officialRelease(sourcePublicationDates?.['bcra-rem'], INFLACION_FIELDS.rem, 15),
         ],
     },
     icg: {
@@ -249,8 +249,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         formatValue: value => `${formatDecimal(value)} puntos`,
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
         getNextExpectedEvents: ({ sourcePublicationDates }) => {
-            const date = sourcePublicationDates?.['icg-next'];
-            return date ? [{ date, label: ICG_FIELDS.icg }] : [];
+            return officialRelease(sourcePublicationDates?.['icg-next'], ICG_FIELDS.icg);
         },
     },
     sipa: {
@@ -279,6 +278,6 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         rawDateFields: BALANZA_FIELDS,
         formatValue: value => `USD ${integerFormatter.format(Math.round(value))} M`,
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
-        getNextExpectedEvents: ({ rawRows, rawDate, publicationDate, today }) => futureMonthly(publicationDate ?? latestDateWithValue(rawRows, Object.keys(BALANZA_FIELDS)) ?? rawDate, today, BALANZA_FIELDS.exportaciones),
+        getNextExpectedEvents: ({ sourcePublicationDates }) => officialRelease(sourcePublicationDates?.['indec-ica'], BALANZA_FIELDS.exportaciones),
     },
 };

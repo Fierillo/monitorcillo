@@ -1,5 +1,13 @@
-const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
-const MONTHS_IDX: Record<string, number> = { ENE: 0, FEB: 1, MAR: 2, ABR: 3, MAY: 4, JUN: 5, JUL: 6, AGO: 7, SEPT: 8, SEP: 8, OCT: 9, NOV: 10, DIC: 11 };
+/** Spanish month names, the single month list of the site. */
+export const MONTH_NAMES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const MONTHS_ES = MONTH_NAMES_ES.map(name => name === 'septiembre' ? 'SEPT' : name.slice(0, 3).toUpperCase());
+const MONTHS_IDX: Record<string, number> = { ...Object.fromEntries(MONTHS_ES.map((label, index) => [label, index])), SEP: 8 };
+
+/** YYYY-MM-DD from a year, a 1-based month and a day. */
+export function isoDate(year: number, month: number, day: number): string {
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `${year}-${pad(month)}-${pad(day)}`;
+}
 
 /** Today's date (YYYY-MM-DD) in Argentina: the single day boundary for the whole site. */
 export function argentinaToday(): string {

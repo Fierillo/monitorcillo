@@ -43,15 +43,28 @@ export function latestRawDate(rows: DataRow[], fields: string[]): string | null 
     return row ? rowDate(row) : null;
 }
 
-/** Data types (spec labels) of the series that set the latest raw date, e.g. «Índice de salarios y RIPTE». */
-export function latestRawDateLabel(rows: DataRow[], labels: Record<string, string>): string | undefined {
+/** Data types (spec labels) of the series that set the latest raw date, e.g. «Índice de salarios y RIPTE» (see sourceLabel). */
+function latestRawDateLabel(rows: DataRow[], labels: Record<string, string>): string | undefined {
     const { row, candidates } = latestRawRow(rows, Object.keys(labels));
     if (!row) return undefined;
-    return joinLabels(candidates.filter(field => toFiniteNumber(row[field]) !== null).map(field => labels[field]));
+    return sourceLabel(joinLabels(candidates.filter(field => toFiniteNumber(row[field]) !== null).map(field => labels[field])), labels) ?? undefined;
+}
+
+/** A date label only tells which source it is on multi-source indicators; on a single-source one (EMAE → «EMAE») it repeats the indicator, so it is omitted. */
+function sourceLabel(label: string, labels: Record<string, string>): string | null {
+    return new Set(Object.values(labels)).size > 1 ? label : null;
+}
+
+/** Label of the Última fecha: the source of the shown value for value-dated indicators, else the series that set the latest raw date. */
+export function latestDateLabel(spec: CatalogIndicatorSpec, valueRow: DataRow, rawRows: DataRow[]): string | undefined {
+    const sources = spec.valueSourceFields;
+    if (!sources) return latestRawDateLabel(rawRows, spec.rawDateFields);
+    const field = Object.keys(sources).find(key => toFiniteNumber(valueRow[key]) !== null);
+    return field ? sourceLabel(sources[field], sources) ?? undefined : undefined;
 }
 
 /** Joins data-type labels without repeats: «Depósitos y Préstamos». */
-export function joinLabels(labels: string[]): string {
+function joinLabels(labels: string[]): string {
     return new Intl.ListFormat('es', { type: 'conjunction' }).format([...new Set(labels)]);
 }
 
@@ -88,9 +101,10 @@ function isDailyField(rows: DataRow[], field: string): boolean {
     return gaps[Math.floor(gaps.length / 2)] <= MAX_DAILY_GAP_MS;
 }
 
-/** An indicator is daily when any of its date series is daily. */
-export function hasDailyField(rows: DataRow[], fields: string[]): boolean {
-    return fields.some(field => isDailyField(rows, field));
+/** An indicator is daily only when every date series with data is daily. */
+export function allFieldsDaily(rows: DataRow[], fields: string[]): boolean {
+    const observed = fields.filter(field => rows.some(row => toFiniteNumber(row[field]) !== null));
+    return observed.length > 0 && observed.every(field => isDailyField(rows, field));
 }
 
 /** Date candidates: the non-daily series, or every field when all are daily. */
@@ -108,16 +122,17 @@ export function nextExpectedCatalogEvent(
     sourcePublicationDates: Record<string, string | null> | undefined,
     normalizedRows: DataRow[],
     rawRows: DataRow[],
-): { date: string; description: string } | null {
+): { date: string; description: string | null; estimated: boolean } | null {
     if (!spec.getNextExpectedEvents) return null;
 
     const today = argentinaToday();
     const events = spec.getNextExpectedEvents({ valueRow, referenceDate, rawDate, publicationDate, sourcePublicationDates, normalizedRows, rawRows, today })
-        .filter(event => /^\d{4}-\d{2}-\d{2}$/.test(event.date) && event.date > today)
+        .filter(event => /^\d{4}-\d{2}-\d{2}$/.test(event.date) && event.date >= today)
         .sort((a, b) => a.date.localeCompare(b.date) || (b.priority ?? 0) - (a.priority ?? 0));
 
-    const event = events[0];
-    return event ? { date: isoToFecha(event.date), description: event.label } : null;
+    // An official calendar event always wins; estimates are only a fallback, flagged for the table's footnote.
+    const event = events.find(candidate => candidate.official) ?? events[0];
+    return event ? { date: isoToFecha(event.date), description: sourceLabel(event.label, spec.valueSourceFields ?? spec.rawDateFields), estimated: !event.official || !!event.estimated } : null;
 }
 
 export function referenceRowForSpec(spec: CatalogIndicatorSpec, valueRow: DataRow, normalizedRows: DataRow[], rawRows: DataRow[]): DataRow | null {

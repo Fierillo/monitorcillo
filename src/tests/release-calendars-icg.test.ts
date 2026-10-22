@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { describe, expect, it } from 'vitest';
-import { fetchIcgCalendarSchedule, icgNextPublicationFromSchedule, icgPublicationDateFromSchedule, parseIcgCalendarImageUrl, parseIcgDiffusionSchedule, readIcgCalendarImageText, decodeUtdtPageHtml } from '../lib/icg-schedule';
+import { fetchIcgCalendarSchedule, icgNextPublicationFromSchedule, icgPublicationDateFromSchedule, parseIcgCalendarImageUrl, parseIcgDiffusionSchedule, readIcgCalendarImageText, decodeUtdtPageHtml } from '../lib/release-calendars';
 
 describe('ICG UTDT diffusion calendar', () => {
     it('parses publication dates from a cronograma table', () => {
@@ -82,7 +82,7 @@ describe('ICG UTDT diffusion calendar', () => {
         expect(icgPublicationDateFromSchedule(schedule, '2027-02-01')).toBe('2027-02-22');
     });
 
-    it('picks the next cronograma date after today', () => {
+    it('picks the next cronograma date on or after today', () => {
         const schedule = parseIcgDiffusionSchedule(`
             Cronograma de difusión ICG 2027
             ENERO LUNES 25
@@ -90,7 +90,7 @@ describe('ICG UTDT diffusion calendar', () => {
             MARZO MARTES 23
         `);
         expect(icgNextPublicationFromSchedule(schedule, '2027-02-10')).toBe('2027-02-22');
-        expect(icgNextPublicationFromSchedule(schedule, '2027-02-22')).toBe('2027-03-23');
+        expect(icgNextPublicationFromSchedule(schedule, '2027-02-23')).toBe('2027-03-23');
     });
 
     it('finds the cronograma image on the UTDT calendar page', () => {
@@ -155,4 +155,11 @@ describe('ICG UTDT diffusion calendar', () => {
             { period: '2027-03-01', publishedOn: '2027-03-23' },
         ]);
     }, 15_000);
+});
+
+describe('ICG next release on its release day', () => {
+    it('keeps today\'s release as the next one, like every other official calendar (>= today)', () => {
+        const schedule = [{ period: '2026-09-01', publishedOn: '2026-09-28' }, { period: '2026-10-01', publishedOn: '2026-10-26' }];
+        expect(icgNextPublicationFromSchedule(schedule, '2026-10-26')).toBe('2026-10-26');
+    });
 });

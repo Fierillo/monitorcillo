@@ -487,10 +487,8 @@ export async function fetchInflacionRawReport(): Promise<InflacionSourceReport> 
         rows: Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha)),
         publishedAt: latestDate(indecWorkbookReport.publishedAt, latestDate(equilibraReport.publishedAt, latestDate(onlineReport.publishedAt, remReport.publishedAt))),
         sourcePublications: [
-            { id: 'inflacion-indec', publishedAt: indecWorkbookReport.publishedAt, periodDate: indecWorkbookReport.rows.at(-1)?.fecha ?? null },
             { id: 'inflacion-equilibra', publishedAt: equilibraReport.publishedAt, periodDate: equilibraReport.rows.at(-1)?.fecha ?? null },
             { id: 'inflacion-ipc-online', publishedAt: onlineReport.publishedAt, periodDate: onlineReport.rows.at(-1)?.fecha ?? null },
-            { id: 'inflacion-rem', publishedAt: remReport.publishedAt, periodDate: remReport.rows.at(-1)?.fecha ?? null },
         ].filter((source): source is { id: string; publishedAt: string; periodDate: string | null } => source.publishedAt !== null),
     };
 }

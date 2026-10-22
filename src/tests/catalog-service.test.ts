@@ -1,28 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildCurrentIndicatorsCatalog } from '../lib/catalog-service';
 import type { DataRow, IndicatorType } from '@/types';
-import { argentinaToday } from '../lib/normalize/dates';
-import { baseCatalogRow } from './catalog-test-utils';
-
-const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
-
-function addMonthsFromDate(date: string, months: number): string {
-    const d = new Date(`${date}T12:00:00Z`);
-    d.setUTCMonth(d.getUTCMonth() + months);
-    return d.toISOString().split('T')[0];
-}
-
-function futureMonthly(baseDate: string): string {
-    const today = argentinaToday();
-    let date = addMonthsFromDate(baseDate, 1);
-    while (date <= today) date = addMonthsFromDate(date, 1);
-    return date;
-}
-
-function formatDay(date: string): string {
-    const d = new Date(`${date}T12:00:00Z`);
-    return `${d.getUTCDate()} ${MONTHS_ES[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}`;
-}
+import { baseCatalogRow, formatDay, futureMonthly } from './catalog-test-utils';
 
 describe('buildCurrentIndicatorsCatalog', () => {
     it('refreshes persisted catalog references from indicator specs', async () => {
@@ -182,8 +161,8 @@ describe('buildCurrentIndicatorsCatalog', () => {
     });
 
     it('uses publication date metadata for monthly indicators', async () => {
-        await expectPublishedDate('emae', 'emae', 'emae_desestacionalizado', { iso_fecha: '2026-02-01', emae_desestacionalizado: 105.2 }, '2026-04-22', { fecha: '22 ABR 26', dato: '105,2', proxima_fecha: formatDay(futureMonthly('2026-04-22')) });
-        await expectPublishedDate('recaudacion', 'reca', 'pct_pbi', { iso_fecha: '2026-04-01', pctPbi: 2.2 }, '2026-05-04', { fecha: '4 MAY 26', dato: '2,2% del PBI real', proxima_fecha: formatDay(futureMonthly('2026-05-04')) });
+        await expectPublishedDate('emae', 'emae', 'emae_desestacionalizado', { iso_fecha: '2026-02-01', emae_desestacionalizado: 105.2 }, '2026-04-22', { fecha: '22 ABR 26', dato: '105,2', proxima_fecha: undefined });
+        await expectPublishedDate('recaudacion', 'reca', 'pct_pbi', { iso_fecha: '2026-04-01', pctPbi: 2.2 }, '2026-05-04', { fecha: '4 MAY 26', dato: '2,2% del PBI real', proxima_fecha: undefined });
     });
 
     it('uses publication date metadata and previous-month reference for poder adquisitivo', async () => {
@@ -202,11 +181,47 @@ describe('buildCurrentIndicatorsCatalog', () => {
             getRawRows: async () => { throw new Error('Full raw table should not be loaded'); },
         });
 
-        expect(result.find(row => row.id === 'poder-adquisitivo')).toMatchObject({ fecha: '17 ABR 26', referencia: 'PA blanco: 91,2', reference_description: 'Mes anterior', dato: 'PA blanco: 88,8', trend: 'down', proxima_fecha: formatDay(futureMonthly('2026-04-17')) });
+        expect(result.find(row => row.id === 'poder-adquisitivo')).toMatchObject({ fecha: '17 ABR 26', referencia: 'PA blanco: 91,2', reference_description: 'Mes anterior', dato: 'PA blanco: 88,8', trend: 'down', proxima_fecha: undefined });
+    });
+
+    const CALENDAR_ROWS: Record<string, { normalized: DataRow; raw: DataRow }> = {
+        poder: { normalized: { iso_fecha: '2026-08-01', blanco: 73 }, raw: { fecha: '2026-10-01', ripte: 1, jubilacion_minima: 1 } },
+        emae: { normalized: { iso_fecha: '2026-08-01', emae_desestacionalizado: 150 }, raw: { fecha: '2026-08-01', emae_desestacionalizado: 150 } },
+        balanza: { normalized: { iso_fecha: '2026-09-01', saldo: 900 }, raw: { fecha: '2026-09-01', saldo: 900 } },
+        inflacion: { normalized: { iso_fecha: '2026-09-01', ipc: 2.1 }, raw: { fecha: '2026-10-01', ipc_equilibra: 2, rem: 2 } },
+        emision: { normalized: { iso_fecha: '2026-10-16', ACUMULADO: 5 }, raw: { fecha: '2026-10-14', licitado: 9, vencimientos: 8, resultado_fiscal: 1 } },
+        reca: { normalized: { iso_fecha: '2026-09-01', pctPbi: 1 }, raw: { fecha: '2026-09-01', recaudacion_total: 1 } },
+        pobreza: { normalized: { iso_fecha: '2026-03-01', pobreza_utdt: 29 }, raw: { fecha: '2026-03-01', pobreza_utdt: 29, pobreza_indec: 28.2 } },
+    };
+
+    it.each([
+        ['INDEC EMAE', 'emae', { 'indec-emae': '2026-11-24' }, { proxima_fecha: '24 NOV 26', proxima_fecha_description: null }],
+        ['INDEC ICA', 'balanza-comercial', { 'indec-ica': '2026-11-19' }, { proxima_fecha: '19 NOV 26' }],
+        ['no INDEC calendar: never estimated', 'emae', {}, { proxima_fecha: undefined }],
+        ['jubilación by INDEC IPC, before salarios', 'poder-adquisitivo', { 'indec-ipc': '2026-11-12', 'indec-salarios': '2026-11-13' }, { proxima_fecha: '12 NOV 26', proxima_fecha_description: 'Jubilación mínima', proxima_estimada: false }],
+        ['RIPTE has no calendar: no estimate either', 'poder-adquisitivo', {}, { proxima_fecha: undefined }],
+        ['BCRA REM beats the sooner-estimated Equilibra', 'inflacion', { 'bcra-rem': '2026-11-05' }, { proxima_fecha: '5 NOV 26', proxima_fecha_description: 'REM', proxima_estimada: false }],
+        ['Finanzas auction', 'emision', { 'tesoro-licitacion': '2026-10-28', 'mecon-resultado-fiscal': '2026-11-16' }, { proxima_fecha: '28 OCT 26', proxima_fecha_description: 'Licitación del Tesoro' }],
+        ['MECON resultado fiscal', 'emision', { 'mecon-resultado-fiscal': '2026-11-16' }, { proxima_fecha: '16 NOV 26', proxima_fecha_description: 'Resultado fiscal', proxima_estimada: false }],
+        ['MECON recaudación', 'recaudacion', { 'mecon-recaudacion': '2026-11-02' }, { proxima_fecha: '2 NOV 26', proxima_estimada: false }],
+        ['UTDT nowcast anchored to INDEC canasta, sooner than INDEC pobreza', 'pobreza', { 'indec-canasta': '2026-11-12', 'indec-pobreza': '2027-03-31' }, { proxima_fecha: '12 NOV 26', proxima_fecha_description: 'Nowcast UTDT', proxima_estimada: true }],
+    ] as [string, IndicatorType | string, Record<string, string>, Record<string, unknown>][])('takes Próxima from the official calendars: %s', async (_, id, calendar, expected) => {
+        vi.useFakeTimers({ now: new Date('2026-10-22T15:00:00Z'), toFake: ['Date'] });
+        const [row] = await buildCurrentIndicatorsCatalog({
+            loadedRowsAreAuthoritative: true,
+            getCatalogRows: async () => [{ ...baseCatalogRow, id }],
+            getNormalizedRows: async (type) => CALENDAR_ROWS[type] ? [CALENDAR_ROWS[type].normalized] : [],
+            getRawRows: async (type) => CALENDAR_ROWS[type] ? [CALENDAR_ROWS[type].raw] : [],
+            getLatestNormalizedRow: async () => null,
+            getLatestRawDate: async () => null,
+            getPublicationDates: async (ids) => Object.fromEntries(ids.map(key => [key, calendar[key] ?? null])),
+        });
+        vi.useRealTimers();
+        expect(row).toMatchObject(expected);
     });
 
     it('uses publication date metadata for inflation', async () => {
-        await expectPublishedDate('inflacion', 'inflacion', 'ipc', { iso_fecha: '2026-03-01', ipc: 6.1 }, '2026-04-15', { fecha: '15 ABR 26', dato: '6,1%', reference_description: 'Mes anterior', trend: 'down', proxima_fecha: formatDay(futureMonthly('2026-04-15')) }, ['ipc_equilibra', 'rem', 'ipc_indec', 'ipc_nucleo_indec'], { iso_fecha: '2026-02-01', ipc: 5.5 });
+        await expectPublishedDate('inflacion', 'inflacion', 'ipc', { iso_fecha: '2026-03-01', ipc: 6.1 }, '2026-04-15', { fecha: '15 ABR 26', dato: '6,1%', reference_description: 'Mes anterior', trend: 'down', proxima_fecha: undefined }, ['ipc_equilibra', 'rem', 'ipc_indec', 'ipc_nucleo_indec'], { iso_fecha: '2026-02-01', ipc: 5.5 });
     });
 
     it('uses INDEC publication date and nearest inflation source for next date', async () => {
@@ -216,9 +231,9 @@ describe('buildCurrentIndicatorsCatalog', () => {
             getLatestRawDate: async () => '2026-04-01',
             getPublicationDate: async (id) => id === 'inflacion' ? '2026-05-14' : null,
             getPublicationDates: async () => ({
-                'inflacion-indec': '2026-05-14',
+                'indec-ipc': futureMonthly('2026-05-14'),
                 'inflacion-equilibra': '2026-05-10',
-                'inflacion-rem': '2026-05-03',
+                'bcra-rem': futureMonthly('2026-05-03'),
             }),
             getNormalizedRowByDate: async (type, date) => type === 'inflacion' && date === '2026-03-01' ? { iso_fecha: '2026-03-01', ipc: 3.4 } : null,
             getRawRowByDate: async () => null,
@@ -239,26 +254,6 @@ describe('buildCurrentIndicatorsCatalog', () => {
         });
     });
 
-    it('uses UTDT publication date and nowcast source for poverty', async () => {
-        const result = await buildCurrentIndicatorsCatalog({
-            getCatalogRows: async () => [{ ...baseCatalogRow, id: 'pobreza' }],
-            getLatestNormalizedRow: async (type) => type === 'pobreza' ? { iso_fecha: '2026-03-01', pobreza_utdt: 29 } : null,
-            getLatestRawDate: async () => '2026-03-01',
-            getPublicationDate: async (id) => id === 'pobreza' ? '2026-05-14' : null,
-            getPublicationDates: async () => ({ 'pobreza-utdt': '2026-05-14' }),
-            getNormalizedRowByDate: async (type, date) => type === 'pobreza' && date === '2025-03-01' ? { iso_fecha: '2025-03-01', pobreza_indec: 38.1 } : null,
-            getRawRowByDate: async () => null,
-            getNormalizedRows: async () => [],
-            getRawRows: async () => [{ fecha: '2026-03-01', pobreza_utdt: 29 }, { fecha: '2026-01-01', pobreza_indec: 28.2 }],
-        });
-
-        expect(result.find(row => row.id === 'pobreza')).toMatchObject({
-            fecha: '14 MAY 26',
-            proxima_fecha: formatDay(futureMonthly('2026-05-14')),
-            proxima_fecha_description: 'Nowcast UTDT',
-        });
-    });
-
     it('uses ICG publication date and the persisted cronograma next date', async () => {
         const result = await buildCurrentIndicatorsCatalog({
             getCatalogRows: async () => [{ ...baseCatalogRow, id: 'icg' }],
@@ -276,7 +271,7 @@ describe('buildCurrentIndicatorsCatalog', () => {
             fecha: '24 AGO 26',
             dato: '2,4 puntos',
             proxima_fecha: formatDay('2027-03-23'),
-            proxima_fecha_description: 'ICG',
+            proxima_fecha_description: null,
         });
     });
 });

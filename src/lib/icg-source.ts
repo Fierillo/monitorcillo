@@ -1,7 +1,7 @@
 import type { IcgRawRow } from '@/types';
 import { extractFileLinks, readWorkbook, sheetRows } from './protocols';
 import { fetchBufferFromUrl } from './sync/http-client';
-import { UTDT_ICG_CALENDAR_URL, decodeUtdtPageHtml, fetchIcgCalendarSchedule, icgNextPublicationFromSchedule, icgPublicationDateFromSchedule, readIcgCalendarImageText, type IcgDiffusionEntry } from './icg-schedule';
+import { UTDT_ICG_CALENDAR_URL, decodeUtdtPageHtml, fetchIcgCalendarSchedule, icgNextPublicationFromSchedule, icgPublicationDateFromSchedule, readIcgCalendarImageText, type IcgDiffusionEntry } from './release-calendars';
 
 const UTDT_ICG_DATA_PAGE_URL = 'https://www.utdt.edu/listado_contenidos.php?id_item_menu=28756';
 const UTDT_ORIGIN = 'https://www.utdt.edu';

@@ -1,33 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildIndicatorCatalogItem, buildIndicatorsCatalog, CATALOG_INDICATOR_SPECS } from '../lib/catalog';
-import { argentinaToday } from '../lib/normalize/dates';
-import { baseCatalogRow } from './catalog-test-utils';
-
-const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
-
-function addMonthsFromDate(date: string, months: number): string {
-    const d = new Date(`${date}T12:00:00Z`);
-    d.setUTCMonth(d.getUTCMonth() + months);
-    return d.toISOString().split('T')[0];
-}
-
-function addDaysFromDate(date: string, days: number): string {
-    const d = new Date(`${date}T12:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + days);
-    return d.toISOString().split('T')[0];
-}
-
-function futureDate(baseDate: string, step: (date: string) => string): string {
-    const today = argentinaToday();
-    let date = step(baseDate);
-    while (date <= today) date = step(date);
-    return date;
-}
-
-function formatDay(date: string): string {
-    const d = new Date(`${date}T12:00:00Z`);
-    return `${d.getUTCDate()} ${MONTHS_ES[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}`;
-}
+import { addMonthsFromDate, baseCatalogRow, formatDay, futureDate } from './catalog-test-utils';
 
 describe('buildIndicatorsCatalog', () => {
     it('uses the exact latest raw BMA date and clarifies PBI percentage values', () => {
@@ -46,7 +19,8 @@ describe('buildIndicatorsCatalog', () => {
 
         expect(result[0].fecha).toBe('2 MAY 26');
         expect(result[0].dato).toBe('6,7% del PBI real');
-        expect(result[0].proxima_fecha).toBe(formatDay(futureDate('2026-04-23', date => addDaysFromDate(date, 7))));
+        expect(result[0].proxima_fecha, 'BMA is daily BCRA data: no next date, not even an estimate').toBeUndefined();
+        expect(result[0].proxima_estimada).toBeUndefined();
     });
 
     it('shows the latest recaudacion period without an artificial day', () => {
@@ -62,7 +36,7 @@ describe('buildIndicatorsCatalog', () => {
             referencia: '3,7% del PBI real',
             reference_description: 'Mismo mes año anterior',
             trend: 'up',
-            proxima_fecha: formatDay(futureDate('2026-05-02', date => addMonthsFromDate(date, 1))),
+            proxima_fecha: undefined, // only the MECON calendar dates it
         });
     });
 
@@ -74,9 +48,10 @@ describe('buildIndicatorsCatalog', () => {
             poder: [{ iso_fecha: '2026-04-01', blanco: 90.1 }, { iso_fecha: '2026-05-01', blanco: 88.8 }],
         }, { poder: [{ fecha: '2026-05-01', salario_registrado: 100 }] });
 
-        expect(emae[0]).toMatchObject({ fecha: 'MAY 26', dato: '108,2', proxima_fecha: formatDay(futureDate('2026-05-01', date => addMonthsFromDate(date, 1))) });
+        expect(emae[0]).toMatchObject({ fecha: 'MAY 26', dato: '108,2' });
+        expect(emae[0].proxima_fecha).toBeUndefined(); // INDEC dates come only from its calendar
         expect(emae[0].daily).toBe(false);
-        expect(poder[0]).toMatchObject({ fecha: 'MAY 26', dato: 'PA blanco: 88,8', referencia: 'PA blanco: 90,1', trend: 'down', proxima_fecha: formatDay(futureDate('2026-05-01', date => addMonthsFromDate(date, 1))) });
+        expect(poder[0]).toMatchObject({ fecha: 'MAY 26', dato: 'PA blanco: 88,8', referencia: 'PA blanco: 90,1', trend: 'down', proxima_fecha: undefined });
     });
 
     it('keeps day labels for daily emission data', () => {
@@ -89,16 +64,17 @@ describe('buildIndicatorsCatalog', () => {
         expect(result[0].proxima_fecha).toBeUndefined();
     });
 
-    it('derives debt catalog values from the latest observed gross debt stock, not from projections', () => {
-        const result = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'deuda' }], {
-            deuda: [{ iso_fecha: '2025-09-01', stock_usd: 454037 }, { iso_fecha: '2026-09-01', stock_usd: 486627.5 }, { iso_fecha: '2035-12-01', total: -0.2 }],
-        }, { deuda: [{ fecha: '2026-09-01', stock_deuda_usd: 486627.5 }, { fecha: '2035-12-01', vencimientos: 1, vencimientos_proyectados: 1 }] });
-
-        expect(result[0]).toMatchObject({ fecha: 'SEPT 26', dato: 'USD 486.628 M', referencia: 'USD 454.037 M', reference_description: 'Mismo mes año anterior', trend: 'down' });
-    });
-
-    it('dates an indicator by its non-daily series when it mixes them with daily ones', () => {
-        const [item] = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'bma' }], { bma: [{ iso_fecha: '2026-10-01', BMAmplia: 4.8 }] }, {
+    it('is daily only when ALL of its date series are daily, and dates a mixed indicator by its non-daily series', () => {
+        const weekdays = ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16'];
+        const emision = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'emision' }, CATALOG_INDICATOR_SPECS.emision, { iso_fecha: '2026-10-01', ACUMULADO: 5 }, '2026-10-16', null, null, [], [
+            ...weekdays.map((fecha, index) => ({ fecha, compra_dolares: index, tc: 1, bcra: index })),
+            { fecha: '2026-09-01', resultado_fiscal: 1 }, { fecha: '2026-10-01', resultado_fiscal: 2 },
+            { fecha: '2026-09-30', licitado: 1, vencimientos: 1 }, { fecha: '2026-10-14', licitado: 2, vencimientos: 2 },
+        ], { 'tesoro-licitacion': '2099-10-28' });
+        expect(emision).toMatchObject({ daily: false, proxima_fecha: '28 OCT 99', proxima_fecha_description: 'Licitación del Tesoro' });
+        const bma = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'bma' }, CATALOG_INDICATOR_SPECS.bma, { iso_fecha: '2026-10-01', BMAmplia: 4 }, '2026-10-16', null, null, [], weekdays.map((fecha, index) => ({ fecha, base_monetaria: index, pases: index, depositos_tesoro: index })));
+        expect(bma.daily, 'every BMA series is daily BCRA data').toBe(true);
+        const [mixed] = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'bma' }], { bma: [{ iso_fecha: '2026-10-01', BMAmplia: 4.8 }] }, {
             bma: [
                 { fecha: '2026-10-08', depositos_tesoro: 3 },
                 { fecha: '2026-10-15', depositos_tesoro: 4 },
@@ -107,8 +83,16 @@ describe('buildIndicatorsCatalog', () => {
                 { fecha: '2026-10-19', base_monetaria: 12 },
             ],
         });
-        expect(item.fecha).toBe('15 OCT 26');
-        expect(item.daily, 'its daily series make it a daily indicator').toBe(true);
+        expect(mixed.fecha).toBe('15 OCT 26');
+        expect(mixed.daily, 'a weekly series among daily ones: not a daily indicator').toBe(false);
+    });
+
+    it('derives debt catalog values from the latest observed gross debt stock, not from projections', () => {
+        const result = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'deuda' }], {
+            deuda: [{ iso_fecha: '2025-09-01', stock_usd: 454037 }, { iso_fecha: '2026-09-01', stock_usd: 486627.5 }, { iso_fecha: '2035-12-01', total: -0.2 }],
+        }, { deuda: [{ fecha: '2026-09-01', stock_deuda_usd: 486627.5 }, { fecha: '2035-12-01', vencimientos: 1, vencimientos_proyectados: 1 }] });
+
+        expect(result[0]).toMatchObject({ fecha: 'SEPT 26', dato: 'USD 486.628 M', referencia: 'USD 454.037 M', reference_description: 'Mismo mes año anterior', trend: 'down' });
     });
 
     it('names the data type behind Fecha and Próxima, joining series that share the latest date', () => {
@@ -118,19 +102,34 @@ describe('buildIndicatorsCatalog', () => {
             { fecha: '2026-08-01', salario_registrado: 100, ripte: 90 },
             { fecha: '2026-09-01', ripte: 95 },
         ]);
-        expect(ripteOnly.fecha_description).toBe('RIPTE');
+        expect(ripteOnly.fecha_description, 'a newer RIPTE point does not date Poder adquisitivo').toBe('Índice de salarios');
         const shared = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'poder-adquisitivo' }, spec, valueRow, '2026-09-01', null, null, [], [
             { fecha: '2026-09-01', salario_registrado: 100, salario_privado: 101, ripte: 95 },
         ]);
-        expect(shared.fecha_description).toBe('Índice de salarios y RIPTE');
-        expect(['Índice de salarios', 'RIPTE', 'Jubilación mínima']).toContain(shared.proxima_fecha_description);
+        expect(shared.fecha_description).toBe('Índice de salarios');
+        expect(['Índice de salarios', 'Jubilación mínima', null]).toContain(shared.proxima_fecha_description);
     });
 
-    it('labels Fecha and Próxima with the same data type when every series shares the date', () => {
-        const [item] = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'depositos-prestamos' }], {
+    it('labels Última fecha with the source that set it on multi-source indicators, even when all of them share the date', () => {
+        const pobreza = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'pobreza' }, CATALOG_INDICATOR_SPECS.pobreza, { iso_fecha: '2026-09-01', pobreza_utdt: 32.6 }, '2026-09-01', '2026-09-12', null, [], [
+            { fecha: '2026-07-01', pobreza_indec: 32.3, pobreza_utdt: 32.2 },
+            { fecha: '2026-09-01', pobreza_utdt: 32.6 },
+        ]);
+        expect(pobreza).toMatchObject({ fecha: '12 SEPT 26', fecha_description: 'Nowcast UTDT' });
+        const poder = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'poder-adquisitivo' }, CATALOG_INDICATOR_SPECS['poder-adquisitivo'], { iso_fecha: '2026-08-01', blanco: 73 }, '2026-10-01', null, null, [], [
+            { fecha: '2026-10-01', salario_registrado: 1, ripte: 1, jubilacion_minima: 1 },
+        ]);
+        expect(poder.fecha_description, 'RIPTE has no release calendar, so it never labels a date').toBe('Índice de salarios y Jubilación mínima');
+    });
+
+    it('omits a date label that only repeats the indicator: it must tell which of several sources it is', () => {
+        const [depositos] = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'depositos-prestamos' }], {
             'depositos-prestamos': [{ iso_fecha: '2026-10-01', prestamosTotalPbi: 12 }],
         }, { 'depositos-prestamos': [{ fecha: '2026-10-01', depositos_pesos: 1, prestamos_pesos: 2 }] });
-        expect(item.fecha_description).toBe(item.proxima_fecha_description);
+        expect(depositos.proxima_fecha, 'still has a next date').toBeDefined();
+        expect(depositos).toMatchObject({ fecha_description: undefined, proxima_fecha_description: null }); // every source shares the date, one single event
+        const emae = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'emae' }, CATALOG_INDICATOR_SPECS.emae, { iso_fecha: '2026-08-01', emae_desestacionalizado: 1 }, '2026-08-01', null, null, [], [{ fecha: '2026-08-01', emae: 1 }], { 'indec-emae': '2099-11-24' });
+        expect(emae).toMatchObject({ proxima_fecha: '24 NOV 99', proxima_fecha_description: null, fecha_description: undefined });
     });
 
     it('keeps the publication day', () => {
@@ -146,7 +145,7 @@ describe('buildIndicatorsCatalog', () => {
         expect(item.proxima_fecha).toBeUndefined();
         const next = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'deuda' }, CATALOG_INDICATOR_SPECS.deuda, { iso_fecha: '2026-09-01', stock_usd: 1 }, '2026-09-01', null, null, [], [], { 'deuda-boletin': '2026-10-15' });
         expect(next.proxima_fecha).toBe(formatDay(futureDate('2026-10-15', date => addMonthsFromDate(date, 1))));
-        expect(next.proxima_fecha_description).toMatch(/estimad/i);
+        expect(next).toMatchObject({ proxima_fecha_description: null, proxima_estimada: true }); // asterisk + footnote; «Stock de deuda» would only repeat the indicator
     });
 
     it('derives poverty catalog values from the combined principal series', () => {
@@ -154,7 +153,7 @@ describe('buildIndicatorsCatalog', () => {
             pobreza: [{ iso_fecha: '2025-03-01', pobreza_indec: 38.1 }, { iso_fecha: '2026-03-01', pobreza_utdt: 29 }],
         }, { pobreza: [{ fecha: '2026-01-01', pobreza_utdt: 29 }] });
 
-        expect(result[0]).toMatchObject({ dato: '29,0%', referencia: '38,1%', reference_description: 'Mismo semestre año anterior', trend: 'up', proxima_fecha: formatDay(futureDate('2026-01-01', date => addMonthsFromDate(date, 1))) });
+        expect(result[0]).toMatchObject({ dato: '29,0%', referencia: '38,1%', reference_description: 'Mismo semestre año anterior', trend: 'up', proxima_fecha: undefined }); // dated only by calendars (canasta, INDEC)
     });
 
     it('uses fallback columns for poverty when principal value is null', () => {
@@ -165,7 +164,7 @@ describe('buildIndicatorsCatalog', () => {
             ],
         }, { pobreza: [{ fecha: '2026-01-01', pobreza_utdt: 29 }] });
 
-        expect(result[0]).toMatchObject({ fecha: '1 MAR 26', dato: '29,0%', referencia: '38,1%', trend: 'up', proxima_fecha: formatDay(futureDate('2026-01-01', date => addMonthsFromDate(date, 1))) });
+        expect(result[0]).toMatchObject({ fecha: '1 MAR 26', dato: '29,0%', referencia: '38,1%', trend: 'up', proxima_fecha: undefined });
     });
 
     it('uses fallback columns for inflation when principal value is null', () => {
@@ -193,8 +192,8 @@ describe('buildIndicatorsCatalog', () => {
             referencia: 'USD 412 M',
             reference_description: 'Mes anterior',
             trend: 'up',
-            proxima_fecha: formatDay(futureDate('2026-06-01', date => addMonthsFromDate(date, 1))),
         });
+        expect(result[0].proxima_fecha).toBeUndefined();
     });
 
     it('shows the latest SIPA total registered employment in millions of workers', () => {

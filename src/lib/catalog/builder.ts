@@ -5,9 +5,9 @@ import {
     formatCatalogDate,
     formatCatalogDisplayDate,
     formatReferenceValue,
-    hasDailyField,
+    allFieldsDaily,
     latestRawDate,
-    latestRawDateLabel,
+    latestDateLabel,
     latestRow,
     nextExpectedCatalogEvent,
     referenceNumericValue,
@@ -55,8 +55,9 @@ export function buildIndicatorsCatalog(
             dato: spec.formatValue(value),
             proxima_fecha: nextEvent?.date,
             proxima_fecha_description: nextEvent?.description ?? null,
-            fecha_description: latestRawDateLabel(rawRows, spec.rawDateFields),
-            daily: hasDailyField(rawRows, Object.keys(spec.rawDateFields)),
+            proxima_estimada: nextEvent?.estimated,
+            fecha_description: latestDateLabel(spec, valueRow, rawRows),
+            daily: allFieldsDaily(rawRows, Object.keys(spec.rawDateFields)),
         };
     });
 }
@@ -92,7 +93,8 @@ export function buildIndicatorCatalogItem(
         dato: spec.formatValue(value),
         proxima_fecha: nextEvent?.date,
         proxima_fecha_description: nextEvent?.description ?? null,
-        fecha_description: latestRawDateLabel(rawRows, spec.rawDateFields),
-        daily: hasDailyField(rawRows, Object.keys(spec.rawDateFields)),
+        proxima_estimada: nextEvent?.estimated,
+        fecha_description: latestDateLabel(spec, valueRow, rawRows),
+        daily: allFieldsDaily(rawRows, Object.keys(spec.rawDateFields)),
     };
 }

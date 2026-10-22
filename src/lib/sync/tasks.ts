@@ -1,7 +1,7 @@
 import type { EmisionRawRow, IndicatorType, NormalizedDataRow, RawDataByType, SyncResult, SyncRunReport } from '@/types';
 import { getRawData, replaceNormalizedData, saveIndicatorPublication, saveIndicatorsCatalog, saveRawData } from '../db';
 import { buildCurrentIndicatorsCatalog } from '../catalog-service';
-import { fechaToISO, normalizeBalanza, normalizeBma, normalizeDepositosPrestamos, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion, normalizeSipa } from '../normalize';
+import { argentinaToday, fechaToISO, normalizeBalanza, normalizeBma, normalizeDepositosPrestamos, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion, normalizeSipa } from '../normalize';
 import { runSyncTasks } from '../sync-runner';
 import { buildEmissionRows, fetchEmisionRaw } from './bcra';
 import { fetchBmaRaw } from './bma';
@@ -17,6 +17,7 @@ import { ensureIcgTables, fetchIcgRawReport } from './icg';
 import { ensureBalanzaTables, fetchBalanzaRawReport } from './balanza';
 import { ensureSipaTables, fetchSipaRawReport } from './sipa';
 import { mergeRawSeries } from './merge-raw';
+import { fetchNextOfficialReleases } from '../release-calendars';
 
 function optionalNumber(value: EmisionRawRow['tc']): number | undefined {
     return value === null || value === undefined || value === '' ? undefined : Number(value);
@@ -216,6 +217,13 @@ export async function syncSipa(): Promise<SyncResult> {
     return result;
 }
 
+/** Stores the next official release of each calendar-backed event (INDEC, BCRA REM, Tesoro auction) as a publication. */
+export async function syncOfficialCalendars(): Promise<SyncResult> {
+    const next = Object.entries(await fetchNextOfficialReleases(argentinaToday()));
+    await Promise.all(next.map(([id, date]) => saveIndicatorPublication(id, date, null)));
+    return { appended: 0, total: next.length };
+}
+
 export async function runSync(): Promise<SyncRunReport> {
     const indicatorReport = await runSyncTasks([
         { key: 'emision', run: syncEmision },
@@ -230,6 +238,7 @@ export async function runSync(): Promise<SyncRunReport> {
         { key: 'icg', run: syncIcg },
         { key: 'balanza_comercial', run: syncBalanza },
         { key: 'sipa', run: syncSipa },
+        { key: 'calendarios_oficiales', run: syncOfficialCalendars },
     ]);
     const catalogReport = await runSyncTasks([{ key: 'catalog', run: syncIndicatorsCatalog }]);
     return {

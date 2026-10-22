@@ -33,8 +33,13 @@ async function defaultCatalogDataSources(): Promise<CatalogDataSources> {
 }
 
 const SOURCE_PUBLICATION_IDS: Partial<Record<string, string[]>> = {
-    inflacion: ['inflacion-indec', 'inflacion-equilibra', 'inflacion-rem'],
-    pobreza: ['pobreza-utdt', 'pobreza-uca'],
+    inflacion: ['indec-ipc', 'inflacion-equilibra', 'bcra-rem'],
+    emision: ['tesoro-licitacion', 'mecon-resultado-fiscal'],
+    recaudacion: ['mecon-recaudacion'],
+    pobreza: ['indec-canasta', 'pobreza-uca', 'indec-pobreza'],
+    'poder-adquisitivo': ['indec-salarios', 'indec-ipc'],
+    emae: ['indec-emae'],
+    'balanza-comercial': ['indec-ica'],
     icg: ['icg-next'],
     deuda: ['deuda-boletin'],
 };

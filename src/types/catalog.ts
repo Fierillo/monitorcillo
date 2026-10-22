@@ -7,6 +7,10 @@ export type CatalogNextExpectedEvent = {
     date: string;
     label: string;
     priority?: number;
+    /** Dated by an official release calendar, so it competes with the other calendar dates; otherwise a free estimate. */
+    official?: boolean;
+    /** Derived from another report's calendar date rather than the source's own: shown with the estimate asterisk. */
+    estimated?: boolean;
 };
 
 export type CatalogNextExpectedEventContext = {
@@ -34,6 +38,8 @@ export type CatalogIndicatorSpec = {
     selectValue: (row: DataRow) => unknown;
     /** Raw date field → short name of its data type. */
     rawDateFields: Record<string, string>;
+    /** Source labels of the value-row fields, for indicators dated by their value rather than by raw rows; else rawDateFields are the sources. */
+    valueSourceFields?: Record<string, string>;
     formatValue: (value: number) => string;
     getNextExpectedDate: (latestDate: string) => string;
     getNextExpectedEvents?: (context: CatalogNextExpectedEventContext) => CatalogNextExpectedEvent[];
