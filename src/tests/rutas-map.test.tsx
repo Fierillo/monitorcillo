@@ -35,7 +35,7 @@ const tramos: RutaTramo[] = [{
 }];
 
 it('switches color mode and shows route, km, concessionaire and status on hover and tap', () => {
-    render(<RutasMap tramos={tramos} geometry={geometry} />);
+    render(<RutasMap tramos={tramos} geometry={geometry} largos={[{ ruta: '9', km: 383, fuente: 'IGN', fuenteUrl: 'https://wms.ign.gob.ar/geoserver/ows' }]} />);
 
     const route9 = screen.getByRole('button', { name: 'RN 9' });
     const route12 = screen.getByRole('button', { name: 'RN 12' });
@@ -59,7 +59,9 @@ it('switches color mode and shows route, km, concessionaire and status on hover 
     expect(status.getAttribute('style')).toContain('rgb(201, 164, 76)');
     expect(status.getAttribute('style')).toContain('blur(2px)');
     expect(status.textContent).toContain('RN 9');
-    expect(status.textContent).toContain('320 km');
+    // New contract: a tramo without stored sectors has no section km, so the tooltip shows the route's stored length.
+    expect(status.textContent).toContain('Km: 383 km');
+    expect(status.textContent).not.toContain(' de ');
     expect(status.textContent).toContain('Corredores Viales');
     expect(status.textContent).toContain('Concesionado');
     expect(status.textContent).toContain('Tramo Oriental');
@@ -118,7 +120,7 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
     expect(tooltip.textContent).toContain('Pampa');
     expect(tooltip.textContent).toContain('CORREDOR VIAL 5 S.A.U.');
     expect(tooltip.textContent).toContain('Concesionado');
-    expect(tooltip.textContent).toContain('546,65 km');
+    expect(tooltip.textContent).toMatch(/Km: 547 km de [\d.]+ km/);
     expect(tooltip.textContent).toContain('Tarifa ofertada: $2.355,37 sin IVA');
     expect(tooltip.textContent).toContain('Ofertas: 6 ($2.355,37 – $3.354)');
     for (const name of ['Tarifa ofertada: ', 'Ofertas: ']) {
@@ -129,7 +131,8 @@ it('shows a visible tooltip for a seed route and for a route without a tramo', (
     fireEvent.pointerMove(screen.getByRole('button', { name: 'RN 40' }));
     expect(tooltip.textContent).toContain('RN 40');
     expect(tooltip.textContent).toContain('Sin dato');
-    expect(tooltip.textContent).toContain('5.080,16 km');
+    // New contract: a route without a tramo shows its own trace length, not the final milestone.
+    expect(tooltip.textContent).toMatch(/Km: [\d.]+ km$/);
 
     fireEvent.click(screen.getByRole('button', { name: 'Pavimento' }));
     expect(tooltip.textContent).toContain('Sin dato');
@@ -410,8 +413,30 @@ it('in the Ruta view, unconcessioned dashed sections are slightly transparent', 
     expect((gap.querySelector('path[data-fill]') as SVGPathElement).style.filter).toBe('');
 });
 
-it('shows a big concessioned-share figure only in the unfiltered concession view', () => {
+const red = { km: 40198, fuente: 'Gobierno nacional / Vialidad Nacional, 8-jul-2025', fuenteUrl: 'https://example.com/red' };
+
+it('divides the concessioned km by the stored national network total', () => {
+    render(<RutasMap tramos={tramos} geometry={geometry} red={red} />);
+    expect(screen.getByTestId('concession-share').textContent).toMatch(/4,9\s?%/);
+});
+
+it('shows only the concessioned km when the network total is not stored', () => {
     render(<RutasMap tramos={tramos} geometry={geometry} />);
+    const share = screen.getByTestId('concession-share');
+    expect(share.textContent).not.toContain('%');
+    expect(share.textContent).toMatch(/1\.975 km/);
+});
+
+it('cites the network total source in the methodology', () => {
+    render(<RutasMap tramos={tramos} geometry={geometry} red={red} />);
+    fireEvent.click(screen.getByRole('button', { name: /Fuentes y metodología/ }));
+    expect(document.body.textContent).toContain('40.198 km');
+    expect(document.body.textContent).toContain(red.fuente);
+    expect(document.body.textContent).toContain(red.fuenteUrl);
+});
+
+it('shows a big concessioned-share figure only in the unfiltered concession view', () => {
+    render(<RutasMap tramos={tramos} geometry={geometry} red={red} />);
     expect(screen.getByTestId('concession-share').textContent).toMatch(/\d+(,\d)?\s?%/);
     fireEvent.change(screen.getByRole('combobox', { name: 'Filtrar por' }), { target: { value: 'ruta' } });
     expect(screen.queryByTestId('concession-share')).toBeNull();

@@ -1,0 +1,824 @@
+[
+    {
+        "ruta": "1",
+        "km": 48.81,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "1S40",
+        "km": 265.99,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "1V03",
+        "km": 6.38,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "1V09",
+        "km": 795.73,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "1V11",
+        "km": 14.65,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "1V26",
+        "km": 34.87,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "1V38",
+        "km": 36.58,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "1V40",
+        "km": 64.13,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "1V66",
+        "km": 14.84,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "2S40",
+        "km": 70.21,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "2V03",
+        "km": 27.3,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "2V09",
+        "km": 31.22,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "2V40",
+        "km": 6.89,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "3",
+        "km": 3221.92,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "3V09",
+        "km": 18.04,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "5",
+        "km": 551.78,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "7",
+        "km": 1347.48,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "8",
+        "km": 703.49,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "9",
+        "km": 1994.08,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "11",
+        "km": 1033.38,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "12",
+        "km": 1737.63,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "14",
+        "km": 1614.43,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "16",
+        "km": 775.18,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "18",
+        "km": 250.45,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "19",
+        "km": 339.56,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "20",
+        "km": 217.02,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "22",
+        "km": 739.64,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "23",
+        "km": 601.43,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "24CA",
+        "km": 80.2,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "24CB",
+        "km": 69.86,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "24CI",
+        "km": 10.96,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "24CJ",
+        "km": 89.78,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "24CK",
+        "km": 5.1,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "25",
+        "km": 538.48,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "26",
+        "km": 210.2,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "33",
+        "km": 771.25,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "34",
+        "km": 1488.08,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "35",
+        "km": 713.1,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "36",
+        "km": 217.47,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "38",
+        "km": 841.68,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "40",
+        "km": 5291.3,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "50",
+        "km": 96.89,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "51",
+        "km": 289.03,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "52",
+        "km": 257.09,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "60",
+        "km": 788,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "64",
+        "km": 179.58,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "65",
+        "km": 52.06,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "66",
+        "km": 38.59,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "68",
+        "km": 177.12,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "73",
+        "km": 37.61,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "74",
+        "km": 112.93,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "75",
+        "km": 135.54,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "76",
+        "km": 373.16,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "77",
+        "km": 101.96,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "78",
+        "km": 92.26,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "79",
+        "km": 366.69,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "81",
+        "km": 684.09,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "86",
+        "km": 519.12,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "89",
+        "km": 348.09,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "95",
+        "km": 711.99,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "98",
+        "km": 260.09,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "101",
+        "km": 141.2,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "105",
+        "km": 49.08,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "117",
+        "km": 21.57,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "118",
+        "km": 197.07,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "119",
+        "km": 110.2,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "120",
+        "km": 57.53,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "121",
+        "km": 9.39,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "122",
+        "km": 5.87,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "123",
+        "km": 214.58,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "127",
+        "km": 263.99,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "130",
+        "km": 84.34,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "131",
+        "km": 41.55,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "135",
+        "km": 15.77,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "136",
+        "km": 34.57,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "141",
+        "km": 204.4,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "142",
+        "km": 77.36,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "143",
+        "km": 636.37,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "144",
+        "km": 131.34,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "145",
+        "km": 74.5,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "146",
+        "km": 403.93,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "147",
+        "km": 118.62,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "148",
+        "km": 41.33,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "149",
+        "km": 347.34,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "150",
+        "km": 389.82,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "151",
+        "km": 319.99,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "152",
+        "km": 301.82,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "153",
+        "km": 135.33,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "154",
+        "km": 136.79,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "157",
+        "km": 307.28,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "158",
+        "km": 296.54,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "168",
+        "km": 18.15,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "173",
+        "km": 5.57,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "174",
+        "km": 32.62,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "175",
+        "km": 3.09,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "178",
+        "km": 208.58,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "188",
+        "km": 1030.38,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "193",
+        "km": 33.28,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "205",
+        "km": 297.05,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "226",
+        "km": 729.46,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "228",
+        "km": 140.59,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "229",
+        "km": 14.9,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "231",
+        "km": 31.46,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "232",
+        "km": 116.47,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "234",
+        "km": 58.75,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "237",
+        "km": 360.69,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "242",
+        "km": 58.84,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "249",
+        "km": 19.96,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "250",
+        "km": 288.05,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "251",
+        "km": 205.28,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "252",
+        "km": 10.31,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "259",
+        "km": 82.65,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "260",
+        "km": 105.16,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "281",
+        "km": 125.52,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "288",
+        "km": 270.77,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "293",
+        "km": 9.9,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A1",
+        "km": 34.06,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A2",
+        "km": 15.13,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A3",
+        "km": 8.33,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A4",
+        "km": 14.8,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A5",
+        "km": 14.13,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A7",
+        "km": 7.62,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A8",
+        "km": 29.64,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A9",
+        "km": 12.46,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A10",
+        "km": 6.94,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A11",
+        "km": 11.53,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A12",
+        "km": 70.98,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A13",
+        "km": 0.96,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A14",
+        "km": 16.05,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A15",
+        "km": 18.57,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A16",
+        "km": 7,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A19",
+        "km": 46.77,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A22",
+        "km": 36.27,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A25",
+        "km": 28.05,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "A26",
+        "km": 17.29,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "V143",
+        "km": 12.32,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    },
+    {
+        "ruta": "V146",
+        "km": 10.12,
+        "fuente": "IGN, capa ign:vial_nacional (WFS 2.0.0)",
+        "fuenteUrl": "https://wms.ign.gob.ar/geoserver/ows"
+    }
+]

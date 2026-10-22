@@ -7,7 +7,7 @@ const database = vi.hoisted(() => ({
 
 vi.mock('../lib/db/client', () => ({ sql: database }));
 
-import { getRutasOfertas, getRutasTramos, replaceRutasTramos } from '../lib/db/rutas';
+import { getRutasLargos, getRutasOfertas, getRutasRed, getRutasTramos, replaceRutasTramos } from '../lib/db/rutas';
 import { RUTAS_OFERTAS, RUTAS_SECTORES, RUTAS_SEED, seedTramos } from './fixtures/rutas';
 
 beforeEach(() => {
@@ -198,5 +198,45 @@ describe('rutas admin replace', () => {
                 params: [['oriental']],
             });
         }
+    });
+});
+
+describe('rutas red nacional', () => {
+    it('reads the stored national network total with its source', async () => {
+        database.query.mockResolvedValueOnce([{ id: 'nacional', km: '40198', fuente: 'Gobierno nacional', fuente_url: 'https://example.com/red' }]);
+        await expect(getRutasRed()).resolves.toEqual({ km: 40198, fuente: 'Gobierno nacional', fuenteUrl: 'https://example.com/red' });
+        expect(String(database.query.mock.calls[0]?.[0])).toContain('FROM rutas_red');
+    });
+    it('is null when nothing is stored', async () => {
+        await expect(getRutasRed()).resolves.toBeNull();
+    });
+    it('import upserts the network total in the same transaction', async () => {
+        const { importRutas } = await import('../lib/db/rutas');
+        await importRutas([], [], [], { km: 40198, fuente: 'Gobierno nacional', fuenteUrl: 'https://example.com/red' });
+        const calls = database.query.mock.calls.map(([query, params]) => ({ query: String(query), params }));
+        expect(calls.some(call => call.query.includes('CREATE TABLE IF NOT EXISTS rutas_red'))).toBe(true);
+        const upsert = calls.find(call => call.query.includes('INSERT INTO rutas_red'));
+        expect(upsert?.query).toContain('ON CONFLICT (id) DO UPDATE');
+        expect(upsert?.params).toEqual(['nacional', 40198, 'Gobierno nacional', 'https://example.com/red']);
+        expect(database.transaction).toHaveBeenCalledOnce();
+    });
+});
+
+describe('rutas largos', () => {
+    const largo = { ruta: '5', km: 590.4, fuente: 'IGN', fuenteUrl: 'https://wms.ign.gob.ar/geoserver/ows' };
+    it('reads the stored route lengths', async () => {
+        database.query.mockResolvedValueOnce([{ ruta: '5', km: '590.4', fuente: 'IGN', fuente_url: 'https://wms.ign.gob.ar/geoserver/ows' }]);
+        await expect(getRutasLargos()).resolves.toEqual([largo]);
+        expect(String(database.query.mock.calls[0]?.[0])).toContain('FROM rutas_largo');
+    });
+    it('import upserts each route length in the same transaction', async () => {
+        const { importRutas } = await import('../lib/db/rutas');
+        await importRutas([], [], [], undefined, [largo]);
+        const calls = database.query.mock.calls.map(([query, params]) => ({ query: String(query), params }));
+        expect(calls.some(call => call.query.includes('CREATE TABLE IF NOT EXISTS rutas_largo'))).toBe(true);
+        const upsert = calls.find(call => call.query.includes('INSERT INTO rutas_largo'));
+        expect(upsert?.query).toContain('ON CONFLICT (ruta) DO UPDATE');
+        expect(upsert?.params).toEqual(['5', 590.4, 'IGN', 'https://wms.ign.gob.ar/geoserver/ows']);
+        expect(database.transaction).toHaveBeenCalledOnce();
     });
 });

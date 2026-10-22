@@ -26,6 +26,8 @@ import {
     type ProjectedRoute,
     type ProjectedSegment,
     type RutaTramo,
+    type RutaLargo,
+    type RutasRed,
     type RutasGeometry,
 } from '@/lib/rutas/status';
 import { routeColors as paletteForRoutes } from '@/lib/rutas/sectors';
@@ -66,7 +68,10 @@ type RouteLayer = { route: ProjectedRoute; missing: DrawnSegment[]; known: Drawn
 /** Paint inputs shared by every route; per-route ones (hover, pick, route color) travel as primitives so routes re-render alone. */
 type SegmentStyle = { mode: RutasView['mode']; filterBy: RutasFilter; selected: Set<string>; anyPick: boolean; stageById: Map<string, ConcessionStage> };
 
-export default function RutasMap({ tramos, ofertas = [], geometry = STORED_GEOMETRY, title = 'Rutas nacionales' }: { tramos: RutaTramo[]; ofertas?: RutaOferta[]; geometry?: RutasGeometry; title?: string }) {
+/** Stable default so paintRoutes stays memoized across renders. */
+const NO_LARGOS: RutaLargo[] = [];
+
+export default function RutasMap({ tramos, ofertas = [], red = null, largos = NO_LARGOS, geometry = STORED_GEOMETRY, title = 'Rutas nacionales' }: { tramos: RutaTramo[]; ofertas?: RutaOferta[]; red?: RutasRed | null; largos?: RutaLargo[]; geometry?: RutasGeometry; title?: string }) {
     const mapRef = useRef<HTMLDivElement>(null);
     const [tipStore] = useState(createHoverTooltipStore);
     const [hover, setHover] = useState<HoverTip | null>(null);
@@ -82,14 +87,14 @@ export default function RutasMap({ tramos, ofertas = [], geometry = STORED_GEOME
     // Read the stored view at call time so `save` and `pickTramo` stay stable across stored writes.
     const save = useCallback((patch: Partial<RutasView>) => writeStoredConfig(RUTAS_VIEW_KEY, { ...currentView(), ...patch }), []);
 
-    const painted = useMemo(() => paintRoutes(geometry.routes, tramos, mode), [geometry.routes, tramos, mode]);
+    const painted = useMemo(() => paintRoutes(geometry.routes, tramos, mode, largos), [geometry.routes, tramos, mode, largos]);
     const projected = useMemo(() => {
         const canvas = frameMapSize(geometry.outline, painted, 1000);
         return projectMap(geometry.outline, painted, canvas.width, canvas.height);
     }, [geometry.outline, painted]);
     const stageById = useMemo(() => new Map(tramos.map(tramo => [tramo.id, tramo.etapa])), [tramos]);
     const routeColors = useMemo(() => paletteForRoutes(geometry.routes.map(route => route.code)), [geometry.routes]);
-    const share = useMemo(() => concessionedShare(painted, stageById), [painted, stageById]);
+    const share = useMemo(() => concessionedShare(painted, stageById, red?.km ?? null), [painted, stageById, red]);
     const shareKm = useMemo(() => concessionedKm(painted, stageById), [painted, stageById]);
     const hitIndex = useMemo(() => buildHitIndex(projected.routes), [projected.routes]);
     const layers = useMemo(() => projected.routes.map(layerOf), [projected.routes]);
@@ -198,8 +203,10 @@ export default function RutasMap({ tramos, ofertas = [], geometry = STORED_GEOME
                     <div ref={mapRef} className="relative min-w-0 flex-1">
                         {filterBy === 'ninguno' && mode === 'concesion' ? (
                             <div data-testid="concession-share" className="pointer-events-none absolute left-2 top-2 z-[1] flex max-w-[35%] sm:max-w-[45%] flex-col items-start sm:left-auto sm:right-4 sm:top-4" style={{ WebkitTextStroke: SHARE_OUTLINE, paintOrder: 'stroke fill' }}>
-                                <span className="imperial-title text-2xl sm:text-5xl font-bold text-imperial-gold">{SHARE_FORMAT.format(share)}</span>
-                                <span className="text-[10px] sm:text-sm font-bold text-imperial-gold">de la red nacional concesionada</span>
+                                {share === null ? null : <>
+                                    <span className="imperial-title text-2xl sm:text-5xl font-bold text-imperial-gold">{SHARE_FORMAT.format(share)}</span>
+                                    <span className="text-[10px] sm:text-sm font-bold text-imperial-gold">de la red nacional concesionada</span>
+                                </>}
                                 <span className="text-[10px] sm:text-sm font-bold text-imperial-gold">{KM_FORMAT.format(shareKm)} km</span>
                             </div>
                         ) : null}
@@ -220,7 +227,7 @@ export default function RutasMap({ tramos, ofertas = [], geometry = STORED_GEOME
                     <RouteBars codes={codes} companies={companies} routes={projected.routes} filterBy={filterBy} selected={selected} pick={pick} onFilter={changeFilter} onToggle={toggleSelected} onPick={next => { setPickAnchor(null); pickTramo(next); }} />
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-foreground/80">{mode === 'pavimento' ? PAVEMENT_SOURCE_NOTE : CONCESSION_SOURCE_NOTE}</p>
-                <MethodologySection methodology={RUTAS_METHODOLOGY} />
+                <MethodologySection methodology={red ? [...RUTAS_METHODOLOGY, networkMethodology(red)] : RUTAS_METHODOLOGY} />
             </div>
         </div>
     );
@@ -278,6 +285,10 @@ const RouteGroup = memo(function RouteGroup({ layer, part, style, handlers, rout
         </g>
     );
 });
+
+function networkMethodology(red: RutasRed) {
+    return { title: 'Red nacional', description: `El porcentaje concesionado divide los kilómetros concesionados por el total de la red vial nacional, ${KM_FORMAT.format(red.km)} km según ${red.fuente} (${red.fuenteUrl}).` };
+}
 
 function currentView(): RutasView {
     return readStoredConfig(RUTAS_VIEW_KEY, parseRutasView) ?? DEFAULT_VIEW;

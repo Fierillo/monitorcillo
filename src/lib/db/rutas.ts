@@ -1,5 +1,5 @@
 import type { DbRow, DbValue } from '@/types';
-import type { ConcessionStage, PavementCondition, RutaTramo } from '@/lib/rutas/status';
+import type { ConcessionStage, PavementCondition, RutaLargo, RutaTramo, RutasRed } from '@/lib/rutas/status';
 import { CONCESSION_STAGES, PAVEMENT_CONDITIONS } from '@/lib/rutas/status';
 import type { RutaOferta } from '@/lib/rutas/ofertas';
 import type { RouteSector } from '@/lib/rutas/sectors';
@@ -43,7 +43,22 @@ const CREATE_RUTAS_TABLES = [
         origin_km NUMERIC,
         PRIMARY KEY (tramo_id, ruta, desde_km)
     )`,
+    `CREATE TABLE IF NOT EXISTS rutas_red (
+        id VARCHAR(32) PRIMARY KEY,
+        km NUMERIC NOT NULL,
+        fuente TEXT NOT NULL,
+        fuente_url TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS rutas_largo (
+        ruta VARCHAR(16) PRIMARY KEY,
+        km NUMERIC NOT NULL,
+        fuente TEXT NOT NULL,
+        fuente_url TEXT NOT NULL,
+        actualizado TIMESTAMP DEFAULT NOW()
+    )`,
 ];
+
+const RED_ID = 'nacional';
 
 /** Writers only: readers treat a missing table as empty. */
 async function ensureRutasTables(): Promise<void> {
@@ -68,8 +83,8 @@ function upsertTramo(tramo: RutaTramo, sources?: { sources: string[]; sourceNote
     );
 }
 
-/** Idempotent load used by scripts/import-rutas.ts: upserts tramos by id and offers by (tramo, company, resolution). */
-export async function importRutas(tramos: RutaImport[], ofertas: RutaOferta[], sectores: RouteSector[]): Promise<void> {
+/** Idempotent load used by scripts/import-rutas.ts: upserts tramos by id, offers by (tramo, company, resolution), the network total and route lengths by route. */
+export async function importRutas(tramos: RutaImport[], ofertas: RutaOferta[], sectores: RouteSector[], red?: RutasRed, largos: RutaLargo[] = []): Promise<void> {
     await ensureRutasTables();
     await sql.transaction([
         ...tramos.map(tramo => upsertTramo(tramo, tramo)),
@@ -87,7 +102,29 @@ export async function importRutas(tramos: RutaImport[], ofertas: RutaOferta[], s
                 hasta_km = EXCLUDED.hasta_km, km = EXCLUDED.km, origin_km = EXCLUDED.origin_km`,
             [sector.tramoId, sector.ruta, sector.desdeKm, sector.hastaKm, sector.km, sector.originKm ?? null],
         )),
+        ...(red ? [sql.query(
+            `INSERT INTO rutas_red (id, km, fuente, fuente_url) VALUES ($1, $2, $3, $4)
+            ON CONFLICT (id) DO UPDATE SET km = EXCLUDED.km, fuente = EXCLUDED.fuente, fuente_url = EXCLUDED.fuente_url`,
+            [RED_ID, red.km, red.fuente, red.fuenteUrl],
+        )] : []),
+        ...largos.map(largo => sql.query(
+            `INSERT INTO rutas_largo (ruta, km, fuente, fuente_url, actualizado) VALUES ($1, $2, $3, $4, NOW())
+            ON CONFLICT (ruta) DO UPDATE SET km = EXCLUDED.km, fuente = EXCLUDED.fuente, fuente_url = EXCLUDED.fuente_url, actualizado = NOW()`,
+            [largo.ruta, largo.km, largo.fuente, largo.fuenteUrl],
+        )),
     ]);
+}
+
+/** Stored length per national route. */
+export async function getRutasLargos(): Promise<RutaLargo[]> {
+    const rows = await rowsOrEmpty(sql.query('SELECT * FROM rutas_largo ORDER BY ruta', []));
+    return rows.map(row => ({ ruta: String(row.ruta), km: Number(row.km), fuente: String(row.fuente), fuenteUrl: String(row.fuente_url) }));
+}
+
+/** National network total with its source; null when it is not stored. */
+export async function getRutasRed(): Promise<RutasRed | null> {
+    const [row] = await rowsOrEmpty(sql.query('SELECT * FROM rutas_red WHERE id = $1', [RED_ID]));
+    return row ? { km: Number(row.km), fuente: String(row.fuente), fuenteUrl: String(row.fuente_url) } : null;
 }
 
 /** Offers per tramo as stored in rutas_ofertas. */

@@ -10,6 +10,7 @@
     "sync": "node --env-file-if-exists=.env --import tsx src/scripts/sync.ts",
     "sync-indec": "pnpm sync",
     "import-inversiones": "node --env-file-if-exists=.env --import tsx scripts/import-inversiones.ts",
+    "fetch-ign-largos": "node --import tsx scripts/fetch-ign-largos.ts",
     "import-rutas": "node --env-file-if-exists=.env --import tsx scripts/import-rutas.ts",
     "start": "next start",
     "lint": "eslint",

@@ -30,12 +30,15 @@ it('builds the legend per filter', () => {
 
 it('tipRow returns the concession stage of the segment, null for pavement ratings', () => {
     const route = {
-        code: '9', label: 'RN 9', km: 10, kmLabel: '10 km', concesionaria: 'X', tramo: 'a', status: 'concesionado', statusLabel: 'Concesionado', color: '#4ADE80', lines: [],
-        assignments: [{ tramo: 'a', concesionaria: 'X', kmLabel: '5 km', status: 'en-licitacion', statusLabel: 'En licitación' }],
-        segments: [{ tramoId: 'a', tramo: 'a', concesionaria: 'X', color: '#123456', km: 5, lines: [] }, { tramoId: null, tramo: null, concesionaria: 'Sin dato', color: '#94A3B8', km: 5, lines: [] }],
+        code: '9', label: 'RN 9', km: 10, concesionaria: 'X', tramo: 'a', status: 'concesionado', statusLabel: 'Concesionado', color: '#4ADE80', lines: [],
+        assignments: [{ tramo: 'a', concesionaria: 'X', status: 'en-licitacion', statusLabel: 'En licitación' }],
+        segments: [{ tramoId: 'a', tramo: 'a', concesionaria: 'X', color: '#123456', km: 5, sectionKm: 5, lines: [] }, { tramoId: null, tramo: null, concesionaria: 'Sin dato', color: '#94A3B8', km: 5, lines: [] }],
     } as PaintedRoute;
-    expect(tipRow(route, 0)).toEqual({ tramo: 'a', concesionaria: 'X', kmLabel: '5 km', statusLabel: 'En licitación', color: '#123456', stage: 'en-licitacion' });
-    expect(tipRow(route, 1)).toMatchObject({ statusLabel: 'Sin dato', stage: 'sin-dato' });
+    expect(tipRow(route, 0)).toEqual({ tramo: 'a', concesionaria: 'X', kmLabel: '5 km de 10 km', statusLabel: 'En licitación', color: '#123456', stage: 'en-licitacion' });
+    expect(tipRow(route, 1)).toMatchObject({ statusLabel: 'Sin dato', stage: 'sin-dato', kmLabel: '10 km' });
+    expect(tipRow({ ...route, km: 1937.2, segments: [{ ...route.segments[0], sectionKm: 472.09 }] }, 0).kmLabel).toBe('472 km de 1.937 km');
+    expect(tipRow({ ...route, km: null, segments: [{ ...route.segments[0], sectionKm: 472.09 }] }, 0).kmLabel).toBe('472 km');
+    expect(tipRow({ ...route, segments: [{ ...route.segments[0], sectionKm: undefined }] }, 0).kmLabel).toBe('10 km');
     expect(tipRow({ ...route, assignments: [{ ...route.assignments[0], status: 'bueno', statusLabel: 'Bueno' }] }, 0).stage).toBeNull();
 });
 

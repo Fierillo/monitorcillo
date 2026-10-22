@@ -42,7 +42,7 @@ export const CONCESSION_SOURCE_NOTE = 'Etapa inicial de la Red Federal de Conces
 export const RUTAS_METHODOLOGY = [
     {
         title: 'Geometría',
-        description: 'Rutas nacionales publicadas por la Dirección de Observatorio Nacional de Transporte, con fuente Dirección Nacional de Vialidad, en https://datos.transporte.gob.ar/dataset/rutas-nacionales (GeoJSON WFS idera:Rutas_Nacionales, licencia CC-BY-4.0, descarga del 19/10/2026). Se conservó un sentido por ruta y se simplificó la traza para el mapa. La progresiva final de cada ruta se usa como kilómetros cuando el tramo no carga los suyos.',
+        description: 'Rutas nacionales publicadas por la Dirección de Observatorio Nacional de Transporte, con fuente Dirección Nacional de Vialidad, en https://datos.transporte.gob.ar/dataset/rutas-nacionales (GeoJSON WFS idera:Rutas_Nacionales, licencia CC-BY-4.0, descarga del 19/10/2026). Se conservó un sentido por ruta y se simplificó la traza para el mapa. El largo de cada ruta es la longitud geodésica de su traza. Al señalar una sección, el cartel muestra sus kilómetros según Vialidad sobre ese largo total; donde no hay sección cargada muestra solo el largo de la ruta.',
     },
     {
         title: 'Contorno',
@@ -75,6 +75,12 @@ export type RutaTramoDraft = {
     pavimento: string;
 };
 
+/** National road network total stored in Neon (rutas_red), the denominator of the concessioned share. */
+export type RutasRed = { km: number; fuente: string; fuenteUrl: string };
+
+/** Length of one national route measured once from a source layer and stored in rutas_largo. */
+export type RutaLargo = { ruta: string; km: number; fuente: string; fuenteUrl: string };
+
 export type RutaTramo = {
     id: string;
     nombre: string;
@@ -95,6 +101,8 @@ export type PaintedSegment = {
     concesionaria: string;
     color: string;
     km: number | null;
+    /** Km stored for this sector (rutas_sectores); absent when the segment is not a stored sector. */
+    sectionKm?: number;
     lines: number[][][];
 };
 
@@ -114,7 +122,6 @@ export type RutasGeometry = {
 export type RouteAssignment = {
     tramo: string;
     concesionaria: string;
-    kmLabel: string;
     status: ConcessionStage | PavementCondition | 'sin-dato';
     statusLabel: string;
 };
@@ -124,8 +131,8 @@ export type RouteSign = 'nacional' | 'provincial';
 export type PaintedRoute = {
     code: string;
     label: string;
+    /** Stored full-resolution route length, else the geometry's own km. */
     km: number | null;
-    kmLabel: string;
     concesionaria: string;
     tramo: string | null;
     assignments: RouteAssignment[];
@@ -146,7 +153,6 @@ export type ProjectedMap = {
     routes: ProjectedRoute[];
 };
 
-const KM_FORMAT = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
 const DRAFT_FIELDS = ['nombre', 'rutas', 'km', 'concesionaria', 'fechaTomaPosesion', 'obrasInicialesPct', 'fechaHabilitacionTarifa', 'etapa', 'pavimento'] as const;
 
 export function normalizeRouteCode(value: string): string | null {
@@ -191,24 +197,23 @@ export function routeSign(code: string): RouteSign {
     return /^(?:RP|P)\d/.test(cleaned) ? 'provincial' : 'nacional';
 }
 
-export function paintRoutes(routes: RouteGeometry[], tramos: RutaTramo[], mode: ColorMode): PaintedRoute[] {
+export function paintRoutes(routes: RouteGeometry[], tramos: RutaTramo[], mode: ColorMode, largos: RutaLargo[] = []): PaintedRoute[] {
+    const lengths = new Map(largos.map(largo => [largo.ruta, largo.km]));
     const palette = companyColors(tramos.map(tramo => tramo.concesionaria));
     return routes.map(route => {
         const matches = tramos.filter(tramo => tramo.rutas.includes(route.code));
         const tramo = matches.at(-1) ?? null;
         const status = statusFor(tramo, mode);
-        const km = tramo?.km ?? route.km;
         const color = mode === 'concesion' ? CONCESSION_COLORS[status as ConcessionStage | 'sin-dato'] : PAVEMENT_COLORS[status as PavementCondition];
         const ranged = route.km !== null && matches.some(match => sectorsForTramo(route.code, match.sectores).length > 0);
         const segments = segmentsFor(route, matches, mode, palette, color);
         const assignments = ranged
             ? assignmentsFromSegments(segments, matches, mode)
-            : matches.map(match => assignmentFor(match, route.km, mode));
+            : matches.map(match => assignmentFor(match, mode));
         return {
             code: route.code,
             label: route.label,
-            km,
-            kmLabel: km === null ? 'Sin dato' : `${KM_FORMAT.format(km)} km`,
+            km: lengths.get(route.code) ?? route.km,
             concesionaria: tramo?.concesionaria?.trim() || 'Sin dato',
             tramo: tramo?.nombre ?? null,
             assignments,
@@ -231,7 +236,8 @@ function segmentsFor(route: RouteGeometry, matches: RutaTramo[], mode: ColorMode
         const lines = sliceRouteByKm(route.lines, route.km ?? 0, piece.range.desdeKm, piece.range.hastaKm, piece.range.originKm ?? originKm);
         if (lines.length === 0) return [];
         const color = mode === 'concesion' ? palette.get(companyKey(piece.tramo)) ?? fallbackColor : fallbackColorOf(piece.tramo, mode);
-        return [segmentFrom(piece.tramo, color, piece.range.km ?? piece.range.hastaKm - piece.range.desdeKm, lines)];
+        const km = piece.range.km ?? piece.range.hastaKm - piece.range.desdeKm;
+        return [{ ...segmentFrom(piece.tramo, color, km, lines), sectionKm: km }];
     });
     const gaps = gapSegments(route, pieces.map(piece => piece.range), originKm);
     return [...painted, ...gaps];
@@ -258,12 +264,10 @@ function assignmentsFromSegments(segments: PaintedSegment[], matches: RutaTramo[
     for (const tramo of matches) {
         const owned = segments.filter(segment => segment.tramoId === tramo.id);
         if (owned.length === 0) continue;
-        const km = owned.reduce((sum, segment) => sum + (segment.km ?? 0), 0);
         const status = statusFor(tramo, mode);
         rows.push({
             tramo: tramo.nombre,
             concesionaria: companyKey(tramo),
-            kmLabel: `${KM_FORMAT.format(km)} km`,
             status,
             statusLabel: labelFor(status, mode),
         });
@@ -291,13 +295,11 @@ function fallbackColorOf(tramo: RutaTramo, mode: ColorMode): string {
     return mode === 'concesion' ? CONCESSION_COLORS[status as ConcessionStage | 'sin-dato'] : PAVEMENT_COLORS[status as PavementCondition];
 }
 
-function assignmentFor(tramo: RutaTramo, routeKm: number | null, mode: ColorMode): RouteAssignment {
+function assignmentFor(tramo: RutaTramo, mode: ColorMode): RouteAssignment {
     const status = statusFor(tramo, mode);
-    const km = tramo.km ?? routeKm;
     return {
         tramo: tramo.nombre,
         concesionaria: tramo.concesionaria?.trim() || 'Sin dato',
-        kmLabel: km === null ? 'Sin dato' : `${KM_FORMAT.format(km)} km`,
         status,
         statusLabel: labelFor(status, mode),
     };
@@ -454,7 +456,7 @@ export function concessionedKm(routes: PaintedRoute[], stageById: Map<string, Co
         .reduce((sum, segment) => sum + (segment.km ?? 0), 0);
 }
 
-export function concessionedShare(routes: PaintedRoute[], stageById: Map<string, ConcessionStage>): number {
-    const total = routes.reduce((sum, route) => sum + (route.km ?? 0), 0);
-    return total > 0 ? concessionedKm(routes, stageById) / total : 0;
+/** Share over the national network total stored in Neon; null when that total is missing. */
+export function concessionedShare(routes: PaintedRoute[], stageById: Map<string, ConcessionStage>, networkKm: number | null): number | null {
+    return networkKm ? concessionedKm(routes, stageById) / networkKm : null;
 }

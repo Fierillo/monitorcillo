@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import type { IndicatorPageProps } from '@/types';
 import IndicatorCompositeView from '@/components/IndicatorCompositeView';
 import RutasMap from '@/components/rutas/RutasMap';
-import { getRutasOfertas, getRutasTramos } from '@/lib/db/rutas';
+import { getRutasLargos, getRutasOfertas, getRutasRed, getRutasTramos } from '@/lib/db/rutas';
 import { getIndicatorDetailConfig } from '@/lib/indicator-detail-configs';
 
 export const revalidate = 21600;
@@ -33,7 +33,7 @@ export default async function IndicatorDetailPage({ params, searchParams }: Indi
     }
 
     if (indicator.id === 'rutas-nacionales') {
-        return <RutasMap tramos={await getRutasTramos()} ofertas={await getRutasOfertas()} title={indicator.indicador} />;
+        return <RutasMap tramos={await getRutasTramos()} ofertas={await getRutasOfertas()} red={await getRutasRed()} largos={await getRutasLargos()} title={indicator.indicador} />;
     }
 
     const config = await getIndicatorDetailConfig(indicator);

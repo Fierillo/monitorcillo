@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import geometry from '@/lib/rutas/geometry.json';
 import { CONCESSION_COLORS, CONCESSION_STAGES, PAVEMENT_CONDITIONS, RUTAS_METHODOLOGY, paintRoutes } from '@/lib/rutas/status';
 import { RUTAS_SEED, seedTramos } from './fixtures/rutas';
+import red from '../../scripts/data/rutas-red.json';
 
 const geometryCodes = new Set(geometry.routes.map(route => route.code));
 
@@ -38,5 +39,13 @@ describe('official route concession import data', () => {
         const untouched = painted.filter(route => !RUTAS_SEED.some(tramo => tramo.rutas.includes(route.code)));
         expect(painted.some(route => concessioned.has(route.code) && route.color === CONCESSION_COLORS.concesionado)).toBe(concessioned.size > 0);
         expect(untouched.every(route => route.status === 'sin-dato')).toBe(true);
+    });
+});
+
+describe('national network import data', () => {
+    it('stores the network total in km with a named source and its URL', () => {
+        expect(red.km).toBeGreaterThan(0);
+        expect(red.fuente.trim()).not.toBe('');
+        expect(red.fuenteUrl).toMatch(/^https:\/\//);
     });
 });

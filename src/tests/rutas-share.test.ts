@@ -5,12 +5,14 @@ const seg = (tramoId: string | null, km: number | null): PaintedSegment => ({ tr
 const route = (km: number | null, segments: PaintedSegment[]) => ({ km, segments }) as unknown as PaintedRoute;
 
 describe('concessionedShare', () => {
-    it('divides concessioned km by the whole network km', () => {
+    it('divides concessioned km by the stored national network km, not by the drawn routes', () => {
         const stages = new Map([['a', 'concesionado' as const], ['b', 'en-licitacion' as const]]);
-        expect(concessionedShare([route(100, [seg('a', 30), seg('b', 20), seg(null, 50)]), route(100, [seg('a', 10)])], stages)).toBeCloseTo(0.2);
+        expect(concessionedShare([route(100, [seg('a', 30), seg('b', 20), seg(null, 50)]), route(100, [seg('a', 10)])], stages, 400)).toBeCloseTo(0.1);
     });
-    it('is zero for an empty network', () => {
-        expect(concessionedShare([], new Map())).toBe(0);
+    it('has no share without a stored network total', () => {
+        const stages = new Map([['a', 'concesionado' as const]]);
+        expect(concessionedShare([route(100, [seg('a', 30)])], stages, null)).toBeNull();
+        expect(concessionedShare([route(100, [seg('a', 30)])], stages, 0)).toBeNull();
     });
 });
 

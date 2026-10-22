@@ -73,18 +73,17 @@ describe('route color modes', () => {
             statusLabel: 'Concesionado',
             concesionaria: 'Corredores Viales',
             tramo: 'Tramo Oriental',
-            km: 320,
-            kmLabel: '320 km',
         });
+        // The route's own length is its geodesic trace, not the tramo km (320) nor the final milestone (1975.46).
+        expect(route9?.km).toBe(1975.46);
         expect(route12).toMatchObject({
             color: '#94A3B8',
             status: 'sin-dato',
             statusLabel: 'Sin dato',
             concesionaria: 'Sin dato',
             tramo: null,
-            km: 1641.76,
         });
-        expect(route12?.kmLabel).toBe('1.641,76 km');
+        expect(route12?.km).toBe(1641.76);
         expect(route9?.assignments.map(item => item.concesionaria)).toEqual(['Primera', 'Corredores Viales']);
     });
 
@@ -194,6 +193,24 @@ describe('map projection', () => {
     });
 });
 
+describe('route km', () => {
+    it('uses the stored route length and the geometry km only when none is stored', () => {
+        const [nine, twelve] = paintRoutes(routes, [], 'concesion', [{ ruta: '9', km: 2010.3, fuente: 'IGN', fuenteUrl: 'https://wms.ign.gob.ar/geoserver/ows' }]);
+        expect(nine.km).toBe(2010.3);
+        expect(twelve.km).toBe(1641.76);
+    });
+});
+
+describe('section km', () => {
+    it('keeps the stored sector km only on segments drawn from a sector', () => {
+        const [ranged] = paintRoutes(routes, [tramo({ rutas: ['9'], sectores: [{ ruta: '9', desdeKm: 0, hastaKm: 500, km: 472.09 }] })], 'concesion');
+        expect(ranged.segments.find(segment => segment.tramoId)?.sectionKm).toBe(472.09);
+        expect(ranged.segments.find(segment => !segment.tramoId)?.sectionKm).toBeUndefined();
+        const [whole] = paintRoutes(routes, [tramo({ rutas: ['9'] })], 'concesion');
+        expect(whole.segments[0].sectionKm).toBeUndefined();
+    });
+});
+
 describe('sources', () => {
     it('cites the official geometry, outline and the reports that are not an API', () => {
         const text = RUTAS_METHODOLOGY.map(item => `${item.title}: ${item.description}`).join('\n');
@@ -204,6 +221,8 @@ describe('sources', () => {
         expect(text).toContain('Boletín Oficial');
         expect(text).toContain('sin dato');
         expect(text).toContain('Malvinas');
+        expect(text).toContain('longitud geodésica de su traza');
+        expect(text).not.toContain('progresiva final');
         expect(PAVEMENT_SOURCE_NOTE).toContain('2023-2024');
         expect(PAVEMENT_SOURCE_NOTE).toContain('Dirección Nacional de Vialidad');
     });

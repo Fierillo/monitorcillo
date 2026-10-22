@@ -1,7 +1,7 @@
 import { ofertaLabels, type RutaOferta } from '@/lib/rutas/ofertas';
 import { CONCESSION_COLORS, type ConcessionStage, type PaintedRoute } from '@/lib/rutas/status';
 
-const TIP_KM = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
+const TIP_KM = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
 const TIP_WIDTH = 280;
 const TIP_HEIGHT = 132;
 const TIP_GAP = 14;
@@ -13,13 +13,15 @@ function concessionStage(status: string): ConcessionStage | 'sin-dato' | null {
     return status in CONCESSION_COLORS ? status as ConcessionStage | 'sin-dato' : null;
 }
 
-/** Tooltip rows for the hovered segment (or the route's first concessioned one). `stage` is null for pavement ratings. */
+/** Tooltip rows for the hovered segment (or the route's first concessioned one). Km reads "<section> km de <route> km" for a stored sector, else whichever of the two is known. `stage` is null for pavement ratings. */
 export function tipRow(route: PaintedRoute, segmentIndex: number | null): TipRow {
     const segment = tipSegment(route, segmentIndex);
+    const kms = [segment?.sectionKm, route.km].filter((km): km is number => km != null);
+    const kmLabel = kms.map(km => `${TIP_KM.format(km)} km`).join(' de ');
     const assignment = segment ? route.assignments.find(item => item.concesionaria === segment.concesionaria && item.tramo === segment.tramo) : undefined;
     if (segment && assignment) {
         const { status, ...row } = assignment;
-        return { ...row, color: segment.color, stage: concessionStage(status) };
+        return { ...row, kmLabel, color: segment.color, stage: concessionStage(status) };
     }
     if (segment) {
         const missing = segment.concesionaria === 'Sin dato';
@@ -27,7 +29,7 @@ export function tipRow(route: PaintedRoute, segmentIndex: number | null): TipRow
             tramo: segment.tramo ?? 'Sin dato',
             concesionaria: segment.concesionaria,
             statusLabel: missing ? 'Sin dato' : route.statusLabel,
-            kmLabel: segment.km == null ? 'Sin dato' : `${TIP_KM.format(segment.km)} km`,
+            kmLabel,
             color: segment.color,
             stage: missing ? 'sin-dato' : concessionStage(route.status),
         };
@@ -36,7 +38,7 @@ export function tipRow(route: PaintedRoute, segmentIndex: number | null): TipRow
         tramo: route.tramo ?? 'Sin dato',
         concesionaria: route.concesionaria,
         statusLabel: route.statusLabel,
-        kmLabel: route.kmLabel,
+        kmLabel,
         color: route.color,
         stage: concessionStage(route.status),
     };
