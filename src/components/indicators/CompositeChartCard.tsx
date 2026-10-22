@@ -91,7 +91,7 @@ export default function CompositeChartCard({ captureRef, chartContainerRef, ...c
 }
 
 function ExportHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-    return <div className="mb-3 border-b border-imperial-gold/40 pb-3 text-center"><div className="mb-1 text-center text-[8px] font-bold uppercase tracking-widest text-imperial-cyan">monitorcillo.vercel.app</div><h1 className="imperial-title text-balance text-2xl font-bold uppercase leading-tight tracking-widest text-imperial-gold">{title}</h1>{subtitle ? <p className="mt-1 text-sm font-bold uppercase tracking-wide text-imperial-cyan">{subtitle}</p> : null}</div>;
+    return <div className="mb-3 border-b border-imperial-gold/40 pb-3 text-center"><div className="mb-1 text-center text-[8px] font-bold uppercase tracking-widest text-imperial-cyan">monitorcillo.fierillo.world</div><h1 className="imperial-title text-balance text-2xl font-bold uppercase leading-tight tracking-widest text-imperial-gold">{title}</h1>{subtitle ? <p className="mt-1 text-sm font-bold uppercase tracking-wide text-imperial-cyan">{subtitle}</p> : null}</div>;
 }
 
 function ExportFooter() {
