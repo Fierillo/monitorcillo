@@ -32,7 +32,8 @@ export type CatalogIndicatorSpec = {
     normalizedValueColumn: string;
     fallbackValueColumns?: string[];
     selectValue: (row: DataRow) => unknown;
-    rawDateFields: string[];
+    /** Raw date field → short name of its data type. */
+    rawDateFields: Record<string, string>;
     formatValue: (value: number) => string;
     getNextExpectedDate: (latestDate: string) => string;
     getNextExpectedEvents?: (context: CatalogNextExpectedEventContext) => CatalogNextExpectedEvent[];

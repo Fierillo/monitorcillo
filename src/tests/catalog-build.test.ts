@@ -75,6 +75,7 @@ describe('buildIndicatorsCatalog', () => {
         }, { poder: [{ fecha: '2026-05-01', salario_registrado: 100 }] });
 
         expect(emae[0]).toMatchObject({ fecha: 'MAY 26', dato: '108,2', proxima_fecha: formatDay(futureDate('2026-05-01', date => addMonthsFromDate(date, 1))) });
+        expect(emae[0].daily).toBe(false);
         expect(poder[0]).toMatchObject({ fecha: 'MAY 26', dato: 'PA blanco: 88,8', referencia: 'PA blanco: 90,1', trend: 'down', proxima_fecha: formatDay(futureDate('2026-05-01', date => addMonthsFromDate(date, 1))) });
     });
 
@@ -88,12 +89,64 @@ describe('buildIndicatorsCatalog', () => {
         expect(result[0].proxima_fecha).toBeUndefined();
     });
 
-    it('derives debt catalog values from total PBI share', () => {
+    it('derives debt catalog values from the latest observed gross debt stock, not from projections', () => {
         const result = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'deuda' }], {
-            deuda: [{ iso_fecha: '2023-01-01', total: 2.4 }, { iso_fecha: '2024-01-01', total: 1.9 }],
-        }, { deuda: [{ fecha: '2024-01-01', vencimientos: 1 }] });
+            deuda: [{ iso_fecha: '2025-09-01', stock_usd: 454037 }, { iso_fecha: '2026-09-01', stock_usd: 486627.5 }, { iso_fecha: '2035-12-01', total: -0.2 }],
+        }, { deuda: [{ fecha: '2026-09-01', stock_deuda_usd: 486627.5 }, { fecha: '2035-12-01', vencimientos: 1, vencimientos_proyectados: 1 }] });
 
-        expect(result[0]).toMatchObject({ dato: '1,9% del PBI real', referencia: '2,4% del PBI real', reference_description: 'Año anterior', trend: 'up', proxima_fecha: formatDay(futureDate('2024-01-01', date => addMonthsFromDate(date, 1))) });
+        expect(result[0]).toMatchObject({ fecha: 'SEPT 26', dato: 'USD 486.628 M', referencia: 'USD 454.037 M', reference_description: 'Mismo mes año anterior', trend: 'down' });
+    });
+
+    it('dates an indicator by its non-daily series when it mixes them with daily ones', () => {
+        const [item] = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'bma' }], { bma: [{ iso_fecha: '2026-10-01', BMAmplia: 4.8 }] }, {
+            bma: [
+                { fecha: '2026-10-08', depositos_tesoro: 3 },
+                { fecha: '2026-10-15', depositos_tesoro: 4 },
+                { fecha: '2026-10-16', base_monetaria: 10 },
+                { fecha: '2026-10-17', base_monetaria: 11 },
+                { fecha: '2026-10-19', base_monetaria: 12 },
+            ],
+        });
+        expect(item.fecha).toBe('15 OCT 26');
+        expect(item.daily, 'its daily series make it a daily indicator').toBe(true);
+    });
+
+    it('names the data type behind Fecha and Próxima, joining series that share the latest date', () => {
+        const spec = CATALOG_INDICATOR_SPECS['poder-adquisitivo'];
+        const valueRow = { iso_fecha: '2026-08-01', blanco: 73 };
+        const ripteOnly = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'poder-adquisitivo' }, spec, valueRow, '2026-09-01', null, null, [], [
+            { fecha: '2026-08-01', salario_registrado: 100, ripte: 90 },
+            { fecha: '2026-09-01', ripte: 95 },
+        ]);
+        expect(ripteOnly.fecha_description).toBe('RIPTE');
+        const shared = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'poder-adquisitivo' }, spec, valueRow, '2026-09-01', null, null, [], [
+            { fecha: '2026-09-01', salario_registrado: 100, salario_privado: 101, ripte: 95 },
+        ]);
+        expect(shared.fecha_description).toBe('Índice de salarios y RIPTE');
+        expect(['Índice de salarios', 'RIPTE', 'Jubilación mínima']).toContain(shared.proxima_fecha_description);
+    });
+
+    it('labels Fecha and Próxima with the same data type when every series shares the date', () => {
+        const [item] = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'depositos-prestamos' }], {
+            'depositos-prestamos': [{ iso_fecha: '2026-10-01', prestamosTotalPbi: 12 }],
+        }, { 'depositos-prestamos': [{ fecha: '2026-10-01', depositos_pesos: 1, prestamos_pesos: 2 }] });
+        expect(item.fecha_description).toBe(item.proxima_fecha_description);
+    });
+
+    it('keeps the publication day', () => {
+        const spec = CATALOG_INDICATOR_SPECS.emae;
+        const published = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'emae', fuente: 'INDEC' }, spec, { iso_fecha: '2026-08-01', emae_desestacionalizado: 102 }, '2026-08-01', '2026-10-21');
+        expect(published).toMatchObject({ fecha: '21 OCT 26', published_at: '2026-10-21' });
+        const unpublished = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'emae', fuente: 'INDEC' }, spec, { iso_fecha: '2026-08-01', emae_desestacionalizado: 102 }, '2026-08-01');
+        expect(unpublished.published_at).toBeUndefined();
+    });
+
+    it('estimates the next debt bulletin one month after the last published one', () => {
+        const [item] = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'deuda' }], { deuda: [{ iso_fecha: '2026-09-01', stock_usd: 1 }] }, { deuda: [{ fecha: '2026-09-01', stock_deuda_usd: 1 }] });
+        expect(item.proxima_fecha).toBeUndefined();
+        const next = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'deuda' }, CATALOG_INDICATOR_SPECS.deuda, { iso_fecha: '2026-09-01', stock_usd: 1 }, '2026-09-01', null, null, [], [], { 'deuda-boletin': '2026-10-15' });
+        expect(next.proxima_fecha).toBe(formatDay(futureDate('2026-10-15', date => addMonthsFromDate(date, 1))));
+        expect(next.proxima_fecha_description).toMatch(/estimad/i);
     });
 
     it('derives poverty catalog values from the combined principal series', () => {

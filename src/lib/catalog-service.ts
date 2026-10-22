@@ -1,5 +1,6 @@
 import type { CatalogIndicatorRow, DataRow, IndicatorType } from '@/types';
 import { buildIndicatorCatalogItem, buildIndicatorsCatalog, CATALOG_INDICATOR_SPECS, DEFAULT_CATALOG } from './catalog';
+import { latestRawDate, latestRow, rowDate } from './catalog/rows';
 
 export type CatalogDataSources = {
     loadedRowsAreAuthoritative?: boolean;
@@ -35,28 +36,8 @@ const SOURCE_PUBLICATION_IDS: Partial<Record<string, string[]>> = {
     inflacion: ['inflacion-indec', 'inflacion-equilibra', 'inflacion-rem'],
     pobreza: ['pobreza-utdt', 'pobreza-uca'],
     icg: ['icg-next'],
+    deuda: ['deuda-boletin'],
 };
-
-function rowDate(row: DataRow | null): string | null {
-    if (!row) return null;
-    const date = row.iso_fecha ?? row.fecha;
-    if (date instanceof Date) return date.toISOString().split('T')[0];
-    return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
-}
-
-function latestMatchingRow(rows: DataRow[], predicate: (row: DataRow) => boolean): DataRow | null {
-    let latest: DataRow | null = null;
-    for (const row of rows) {
-        const date = rowDate(row);
-        if (!date || !predicate(row)) continue;
-        if (!latest || date > (rowDate(latest) ?? '')) latest = row;
-    }
-    return latest;
-}
-
-function latestRawDate(rows: DataRow[], fields: string[]): string | null {
-    return rowDate(latestMatchingRow(rows, row => fields.some(field => row[field] != null)));
-}
 
 function rowByDate(rows: DataRow[], date: string): DataRow | null {
     return rows.find(row => rowDate(row) === date) ?? null;
@@ -93,23 +74,26 @@ export async function buildCurrentIndicatorsCatalog(sources?: CatalogDataSources
                 normalizedRows = normalizedRowsResult ?? [];
                 rawRows = rawRowsResult ?? [];
                 rowsRequestCompleted = true;
-            } catch { /* ignore */ }
+            } catch (error) {
+                // Falls back to single-row queries below; log so a failing table load is visible.
+                console.error(`[catalog] loading rows for ${item.id} failed:`, error);
+            }
 
             const normalizedRowsAvailable = rowsRequestCompleted && (dataSources.loadedRowsAreAuthoritative === true || normalizedRows.length > 0);
             const rawRowsAvailable = rowsRequestCompleted && (dataSources.loadedRowsAreAuthoritative === true || rawRows.length > 0);
 
             const valueRow = normalizedRowsAvailable
-                ? latestMatchingRow(normalizedRows, row => spec.selectValue(row) != null)
+                ? latestRow(normalizedRows, row => spec.selectValue(row) != null)
                 : await dataSources.getLatestNormalizedRow!(spec.type, spec.normalizedValueColumn, spec.fallbackValueColumns);
 
             const sourcePublicationIds = SOURCE_PUBLICATION_IDS[item.id] ?? [];
             const [rawDate, publicationDate, sourcePublicationDates] = await Promise.all([
-                rawRowsAvailable ? Promise.resolve(latestRawDate(rawRows, spec.rawDateFields)) : dataSources.getLatestRawDate!(spec.type, spec.rawDateFields),
+                rawRowsAvailable ? Promise.resolve(latestRawDate(rawRows, Object.keys(spec.rawDateFields))) : dataSources.getLatestRawDate!(spec.type, Object.keys(spec.rawDateFields)), // Limitation: without loaded rows the cadence is unknown, so daily fields still count here.
                 dataSources.getPublicationDate ? dataSources.getPublicationDate(item.id) : Promise.resolve(null),
                 sourcePublicationIds.length > 0 && dataSources.getPublicationDates ? dataSources.getPublicationDates(sourcePublicationIds) : Promise.resolve(undefined),
             ]);
 
-            const valueDate = rowDate(valueRow);
+            const valueDate = valueRow ? rowDate(valueRow) : null;
             const referenceDate = valueDate ? spec.getReferenceDate(valueDate) : null;
             const referenceRow = referenceDate && dataSources.getNormalizedRowByDate && dataSources.getRawRowByDate
                 ? (spec.referenceSource === 'raw' ? rawRowsAvailable : normalizedRowsAvailable)

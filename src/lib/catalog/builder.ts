@@ -5,7 +5,9 @@ import {
     formatCatalogDate,
     formatCatalogDisplayDate,
     formatReferenceValue,
+    hasDailyField,
     latestRawDate,
+    latestRawDateLabel,
     latestRow,
     nextExpectedCatalogEvent,
     referenceNumericValue,
@@ -38,7 +40,7 @@ export function buildIndicatorsCatalog(
 
         const referenceDate = rowDate(valueRow);
         const rawRows = rawData[spec.type] ?? [];
-        const date = latestRawDate(rawRows, spec) ?? referenceDate;
+        const date = latestRawDate(rawRows, Object.keys(spec.rawDateFields)) ?? referenceDate;
         const referenceRow = referenceRowForSpec(spec, valueRow, normalizedRows, rawRows);
         const referenceValue = referenceNumericValue(spec, referenceRow);
         const nextEvent = nextExpectedCatalogEvent(spec, valueRow, referenceDate, date, null, undefined, normalizedRows, rawRows);
@@ -52,6 +54,8 @@ export function buildIndicatorsCatalog(
             dato: spec.formatValue(value),
             proxima_fecha: nextEvent?.date,
             proxima_fecha_description: nextEvent?.description ?? null,
+            fecha_description: latestRawDateLabel(rawRows, spec.rawDateFields),
+            daily: hasDailyField(rawRows, Object.keys(spec.rawDateFields)),
         };
     });
 }

@@ -53,6 +53,56 @@ describe('buildCurrentIndicatorsCatalog', () => {
         expect(result.find(row => row.id === 'bma')).toMatchObject({ fecha: '2 MAY 26', dato: '6,7% del PBI real' });
     });
 
+    it('ignores daily series as date candidates when loaded rows also have non-daily ones', async () => {
+        const result = await buildCurrentIndicatorsCatalog({
+            loadedRowsAreAuthoritative: true,
+            getCatalogRows: async () => [{ ...baseCatalogRow, id: 'bma' }],
+            getNormalizedRows: async (type) => type === 'bma' ? [{ iso_fecha: '2026-10-01', BMAmplia: 4.8 }] : [],
+            getRawRows: async (type) => type === 'bma' ? [
+                { fecha: '2026-10-08', depositos_tesoro: 3 },
+                { fecha: '2026-10-15', depositos_tesoro: 4 },
+                { fecha: '2026-10-16', base_monetaria: 10 },
+                { fecha: '2026-10-19', base_monetaria: 12 },
+                { fecha: '2026-10-20', base_monetaria: 13 },
+            ] : [],
+            getLatestNormalizedRow: async () => null,
+            getLatestRawDate: async () => null,
+            getNormalizedRowByDate: async () => null,
+            getRawRowByDate: async () => null,
+        });
+        expect(result.find(row => row.id === 'bma')?.fecha).toBe('15 OCT 26');
+    });
+
+    it('dates by finite values only: an empty raw cell does not count as a newer observation', async () => {
+        const result = await buildCurrentIndicatorsCatalog({
+            loadedRowsAreAuthoritative: true,
+            getCatalogRows: async () => [{ ...baseCatalogRow, id: 'emae' }],
+            getNormalizedRows: async (type) => type === 'emae' ? [{ iso_fecha: '2026-07-01', emae_desestacionalizado: 101 }] : [],
+            getRawRows: async (type) => type === 'emae' ? [{ fecha: '2026-07-01', emae: 100 }, { fecha: '2026-08-01', emae: '' }] : [],
+            getLatestNormalizedRow: async () => null,
+            getLatestRawDate: async () => null,
+            getNormalizedRowByDate: async () => null,
+            getRawRowByDate: async () => null,
+        });
+        expect(result.find(row => row.id === 'emae')?.fecha).toBe('JUL 26');
+    });
+
+    it('logs a failed row load instead of swallowing it, then falls back to single queries', async () => {
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const result = await buildCurrentIndicatorsCatalog({
+            getCatalogRows: async () => [{ ...baseCatalogRow, id: 'icg' }],
+            getNormalizedRows: async () => { throw new Error('Neon timeout'); },
+            getRawRows: async () => [],
+            getLatestNormalizedRow: async () => ({ iso_fecha: '2026-09-01', icg: 2.1 }),
+            getLatestRawDate: async () => '2026-09-01',
+            getNormalizedRowByDate: async () => null,
+            getRawRowByDate: async () => null,
+        });
+        expect(result[0].dato).toBe('2,1 puntos');
+        expect(logged).toHaveBeenCalledWith(expect.stringContaining('icg'), expect.objectContaining({ message: 'Neon timeout' }));
+        logged.mockRestore();
+    });
+
     it('derives latest and reference rows from loaded tables without duplicate queries', async () => {
         let latestQueries = 0;
         let referenceQueries = 0;
@@ -226,7 +276,7 @@ describe('buildCurrentIndicatorsCatalog', () => {
             fecha: '24 AGO 26',
             dato: '2,4 puntos',
             proxima_fecha: formatDay('2027-03-23'),
-            proxima_fecha_description: 'UTDT',
+            proxima_fecha_description: 'ICG',
         });
     });
 });
