@@ -19,7 +19,7 @@ jobs:
 
       - uses: pnpm/setup@v2
         with:
-          runtime: node@22
+          runtime: node@22.23.4
           cache: true
 
       - run: pnpm verify
