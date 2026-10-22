@@ -1,5 +1,5 @@
 import type { CatalogIndicatorRow, CatalogIndicatorSpec, DataRow } from '@/types';
-import { isoToFecha, isoToMonthLabel } from '../normalize';
+import { argentinaToday, isoToFecha, isoToMonthLabel } from '../normalize';
 
 export function toFiniteNumber(value: unknown): number | null {
     if (value === null || value === undefined || value === '') return null;
@@ -73,7 +73,7 @@ export function nextExpectedCatalogEvent(
 ): { date: string; description: string } | null {
     if (!spec.getNextExpectedEvents) return null;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = argentinaToday();
     const events = spec.getNextExpectedEvents({ valueRow, referenceDate, rawDate, publicationDate, sourcePublicationDates, normalizedRows, rawRows, today })
         .filter(event => /^\d{4}-\d{2}-\d{2}$/.test(event.date) && event.date > today)
         .sort((a, b) => a.date.localeCompare(b.date) || (b.priority ?? 0) - (a.priority ?? 0));

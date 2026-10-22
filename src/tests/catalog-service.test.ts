@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildCurrentIndicatorsCatalog } from '../lib/catalog-service';
 import type { DataRow, IndicatorType } from '@/types';
+import { argentinaToday } from '../lib/normalize/dates';
 import { baseCatalogRow } from './catalog-test-utils';
 
 const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
@@ -12,7 +13,7 @@ function addMonthsFromDate(date: string, months: number): string {
 }
 
 function futureMonthly(baseDate: string): string {
-    const today = new Date().toISOString().split('T')[0];
+    const today = argentinaToday();
     let date = addMonthsFromDate(baseDate, 1);
     while (date <= today) date = addMonthsFromDate(date, 1);
     return date;

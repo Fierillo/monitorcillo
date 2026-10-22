@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildIndicatorsCatalog } from '../lib/catalog';
+import { buildIndicatorCatalogItem, buildIndicatorsCatalog, CATALOG_INDICATOR_SPECS } from '../lib/catalog';
+import { argentinaToday } from '../lib/normalize/dates';
 import { baseCatalogRow } from './catalog-test-utils';
 
 const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
@@ -17,7 +18,7 @@ function addDaysFromDate(date: string, days: number): string {
 }
 
 function futureDate(baseDate: string, step: (date: string) => string): string {
-    const today = new Date().toISOString().split('T')[0];
+    const today = argentinaToday();
     let date = step(baseDate);
     while (date <= today) date = step(date);
     return date;
