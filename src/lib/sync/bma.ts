@@ -1,6 +1,6 @@
 import type { BcraVariableRow, BmaRawRow } from '@/types';
 import { buildMonthlyPbiSeries } from '../pbi-source';
-import { fetchBcraVariable, sampleMonthlyBalanceDates } from './bcra';
+import { fetchBcraVariable } from './bcra';
 import { fetchEmaeWorkbookRows, fetchPbiAnchorRows } from './cache';
 import { emaeDesestacionalizadoMap, seriesValueMap, valueAtOrBefore } from './series';
 import { fetchTimeSeries } from './time-series-client';
@@ -37,7 +37,7 @@ export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
     mergeBcraSeries(byFecha, leliq, 'leliq');
     mergeBcraSeries(byFecha, lefi, 'lefi');
     mergeBcraSeries(byFecha, otros, 'otros');
-    mergeBcraSeries(byFecha, sampleMonthlyBalanceDates(depositosGobierno), 'depositos_tesoro');
+    mergeBcraSeries(byFecha, depositosGobierno, 'depositos_tesoro');
 
     const monthPrefixes = new Set(Array.from(byFecha.keys()).map(fecha => fecha.slice(0, 7)));
     const firstOfMonthDates = Array.from(monthPrefixes).map(monthPrefix => `${monthPrefix}-01`);
