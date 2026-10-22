@@ -29,20 +29,21 @@ describe('IndicatorsTable columns and sorting', () => {
     it('shows the metric first, then the source, then the dates', () => {
         render(<IndicatorsTable data={data} />);
         expect(screen.getAllByRole('columnheader').map(th => th.textContent?.replace(/[▲▼]/g, '').trim()))
-            .toEqual(['Indicador', 'Fuente', 'Fecha', 'Próxima', 'Referencia', 'Último dato']);
+            .toEqual(['Indicador', 'Fuente', 'Última fecha', 'Próxima', 'Referencia', 'Último dato']);
     });
 
-    it('keeps the date order until a header is clicked, then toggles text with Spanish collation', () => {
-        render(<IndicatorsTable data={data} />);
-        expect(ids()).toEqual(['ipc', 'emae', 'balanza']);
-        expect(screen.getAllByRole('columnheader').some(th => th.hasAttribute('aria-sort'))).toBe(false);
+    it('starts by next date, soonest first, with its wedge shown, until a header is clicked, then toggles text with Spanish collation', () => {
+        render(<IndicatorsTable data={[...data, row('sin-proxima', { fecha: '2027' })]} />);
+        expect(ids(), 'rows without a next date go last').toEqual(['balanza', 'emae', 'ipc', 'sin-proxima']);
+        expect(screen.getAllByRole('columnheader').filter(th => th.hasAttribute('aria-sort')).map(th => [th.textContent, th.getAttribute('aria-sort')]), 'the default date order shows its wedge')
+            .toEqual([['Próxima▲', 'ascending']]);
 
         fireEvent.click(header(/Fuente/));
-        expect(ids()).toEqual(['ipc', 'balanza', 'emae']);
+        expect(ids()).toEqual(['ipc', 'balanza', 'sin-proxima', 'emae']);
         expect(header(/Fuente/).closest('th')?.getAttribute('aria-sort')).toBe('ascending');
 
         fireEvent.click(header(/Fuente/));
-        expect(ids()).toEqual(['emae', 'balanza', 'ipc']);
+        expect(ids()).toEqual(['emae', 'sin-proxima', 'balanza', 'ipc']);
         expect(header(/Fuente/).closest('th')?.getAttribute('aria-sort')).toBe('descending');
     });
 
@@ -56,8 +57,8 @@ describe('IndicatorsTable columns and sorting', () => {
 
     it('draws the sort indicator with enough contrast on the header background', () => {
         render(<IndicatorsTable data={data} />);
-        fireEvent.click(header(/Fecha/));
-        const indicator = header(/Fecha/).querySelector('[data-sort-indicator]');
+        fireEvent.click(header(/Última fecha/));
+        const indicator = header(/Última fecha/).querySelector('[data-sort-indicator]');
         const token = indicator?.className.match(/text-(imperial-[a-z-]+)/)?.[1];
         const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
         const color = (name: string) => css.match(new RegExp(`--color-${name}:\\s*(#[0-9A-Fa-f]{6})`))?.[1] ?? '';
@@ -85,7 +86,7 @@ describe('IndicatorsTable next release highlight', () => {
     it('pins every soonest upcoming non-daily release first in the default order', () => {
         render(<IndicatorsTable data={upcoming} />);
         expect(highlighted()).toEqual(['icg', 'emae']);
-        expect(ids().map(id => id?.replace('Próximo dato a publicarse', ''))).toEqual(['icg', 'emae', 'emision', 'pasado', 'ipc']);
+        expect(ids().map(id => id?.replace('Próximo dato a publicarse', ''))).toEqual(['emision', 'icg', 'emae', 'pasado', 'ipc']); // daily first, then the pinned releases
     });
 
     it('honours a clicked sort without pinning, still marking the rows', () => {
@@ -93,13 +94,21 @@ describe('IndicatorsTable next release highlight', () => {
         fireEvent.click(header(/Indicador/));
         expect(highlighted()).toEqual(['emae', 'icg']);
         expect(ids().map(id => id?.replace('Próximo dato a publicarse', ''))).toEqual(['emae', 'emision', 'icg', 'ipc', 'pasado']);
-        expect(highlighted().length).toBe(document.querySelectorAll('[data-next-release-date]').length);
     });
 
     it('pins only today\'s releases (Buenos Aires) when there are any, the rest stays as the normal table', () => {
         render(<IndicatorsTable data={[...upcoming, row('fiscal', { proximaFecha: '21 OCT 26' })]} />);
         expect(highlighted()).toEqual(['fiscal']);
-        expect(ids().map(id => id?.replace('Próximo dato a publicarse', ''))).toEqual(['fiscal', 'emision', 'pasado', 'icg', 'ipc', 'emae']);
+        expect(ids().map(id => id?.replace('Próximo dato a publicarse', ''))).toEqual(['emision', 'fiscal', 'pasado', 'icg', 'emae', 'ipc']); // the rest by next date
+    });
+
+    it('keeps the «Diaria» rows on top of the date sort in both directions', () => {
+        render(<IndicatorsTable data={[row('viejo', { fecha: '1 ENE 25' }), row('bma', { daily: true, fecha: '20 OCT 26' }), row('nuevo', { fecha: '1 OCT 26' })]} />);
+        fireEvent.click(header(/Última fecha/));
+        expect(header(/Última fecha/).closest('th')?.getAttribute('aria-sort')).toBe('ascending');
+        expect(ids().map(id => id?.replace('Próximo dato a publicarse', ''))).toEqual(['bma', 'viejo', 'nuevo']);
+        fireEvent.click(header(/Última fecha/));
+        expect(ids().map(id => id?.replace('Próximo dato a publicarse', ''))).toEqual(['bma', 'nuevo', 'viejo']);
     });
 
     it('pins only what was published today even if its next date already rolled over', () => {
@@ -113,33 +122,29 @@ describe('IndicatorsTable next release highlight', () => {
         expect(screen.getByText('Índice de salarios', { selector: 'div' }).className, 'tooltips stay within two lines').toMatch(/(^|\s)line-clamp-2(\s|$)/);
     });
 
-    it('keeps every pulse on the page clock so sorting neither restarts nor desyncs it', () => {
+    it('pulses every cell of the released rows only, all on the page clock so sorting neither restarts nor desyncs them', () => {
         const animations = new Map<Element, { startTime: number | null }>();
         Element.prototype.getAnimations = function (this: Element) {
             if (!animations.has(this)) animations.set(this, { startTime: 500 });
             return [animations.get(this)] as unknown as Animation[];
         };
         render(<IndicatorsTable data={upcoming} />);
+        const pulsingRows = () => screen.getAllByRole('row').slice(1).filter(tr => tr.classList.contains('next-release-pulse')).map(tr => tr.querySelector('td')!.textContent?.replace('Próximo dato a publicarse', ''));
+        expect(pulsingRows()).toEqual(['icg', 'emae']);
         fireEvent.click(header(/Fuente/));
-        const pulsing = [...document.querySelectorAll('[data-next-release-date]')];
-        expect(pulsing.length).toBe(2);
-        expect(pulsing.map(cell => cell.getAnimations()[0].startTime)).toEqual([0, 0]);
+        expect(pulsingRows().sort()).toEqual(['emae', 'icg']);
+        const cells = [...document.querySelectorAll('tr.next-release-pulse td')];
+        expect(cells.length).toBe(12);
+        expect(cells.every(cell => cell.getAnimations()[0].startTime === 0)).toBe(true);
         delete (Element.prototype as Partial<Element>).getAnimations;
     });
 
-    it('pulses the date text with readable contrast at every keyframe and a static gold for reduced motion', () => {
-        render(<IndicatorsTable data={upcoming} />);
-        expect(screen.getAllByText('Próximo dato a publicarse').map(label => label.closest('tr')!.querySelector('[data-next-release-date]')?.textContent)).toEqual(['1 ENE 26', '1 ENE 26']);
+    it('pulses by fading, never overriding a cell colour, and stays still for reduced motion', () => {
         const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
-        const color = (name: string) => css.match(new RegExp(`--color-${name}:\\s*(#[0-9A-Fa-f]{6})`))?.[1] ?? '';
         const keyframes = css.match(/@keyframes next-release-pulse\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
-        const texts = [...keyframes.matchAll(/(?<!-)color:\s*var\(--color-([a-z-]+)\)/g)].map(match => match[1]);
-        expect(texts.length, 'pulse needs keyframe text color tokens').toBeGreaterThanOrEqual(2);
-        for (const text of texts) {
-            for (const background of ['imperial-blue', 'imperial-night']) {
-                expect(contrastRatio(color(text), color(background)), `${text} on ${background}`).toBeGreaterThanOrEqual(4.5);
-            }
-        }
-        expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\[data-next-release-date\]\s*\{[^}]*animation:\s*none;[^}]*color:\s*var\(--color-imperial-gold/);
+        expect(keyframes, 'the pulse must not override column colours').not.toMatch(/(?<!-)color\s*:/);
+        const opacities = [...keyframes.matchAll(/opacity:\s*([\d.]+)/g)].map(match => Number(match[1]));
+        expect(Math.min(...opacities), 'faded text stays readable').toBeGreaterThanOrEqual(0.4);
+        expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.next-release-pulse td\s*\{\s*animation:\s*none;\s*\}/);
     });
 });

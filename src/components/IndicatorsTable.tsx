@@ -41,7 +41,7 @@ type Sort = { key: SortKey; direction: SortDirection };
 const COLUMNS: { key: SortKey; label: string; fit?: boolean }[] = [
     { key: 'indicador', label: 'Indicador' },
     { key: 'fuente', label: 'Fuente' },
-    { key: 'fecha', label: 'Fecha' },
+    { key: 'fecha', label: 'Última fecha' },
     { key: 'proximaFecha', label: 'Próxima', fit: true },
     { key: 'referencia', label: 'Referencia' },
     { key: 'dato', label: 'Último dato', fit: true },
@@ -50,6 +50,7 @@ const COLUMNS: { key: SortKey; label: string; fit?: boolean }[] = [
 /** Comparable value of a cell: dates as timestamps, values by their first number, the rest as text; null sorts last. */
 function sortValue(row: Indicator, key: SortKey): number | string | null {
     const text = row[key] ?? '';
+    if (key === 'proximaFecha' && row.daily) return null; // shown as «-»
     if (key === 'fecha' || key === 'proximaFecha') return fechaToTimestamp(text) || null;
     if (key === 'dato') {
         const number = text.match(/-?\d[\d.]*(?:,\d+)?/)?.[0];
@@ -58,9 +59,11 @@ function sortValue(row: Indicator, key: SortKey): number | string | null {
     return text || null;
 }
 
-function sortIndicators(data: Indicator[], { key, direction }: Sort): Indicator[] {
+export function sortIndicators(data: Indicator[], { key, direction }: Sort): Indicator[] {
     const sign = direction === 'ascending' ? 1 : -1;
     return [...data].sort((first, second) => {
+        // «Diaria» rows have no single date: they top the date sorts in both directions.
+        if ((key === 'fecha' || key === 'proximaFecha') && !!first.daily !== !!second.daily) return first.daily ? -1 : 1;
         const a = sortValue(first, key);
         const b = sortValue(second, key);
         if (a === null || b === null) return a === b ? 0 : a === null ? 1 : -1;
@@ -68,9 +71,8 @@ function sortIndicators(data: Indicator[], { key, direction }: Sort): Indicator[
     });
 }
 
-export function sortIndicatorsByDate(data: Indicator[]): Indicator[] {
-    return sortIndicators(data, { key: 'fecha', direction: 'ascending' });
-}
+/** Default order of the table: «Diaria» rows, then by next date, soonest first, rows without one last (today's or the soonest releases pinned right after the daily rows until a header is clicked). */
+const DEFAULT_SORT: Sort = { key: 'proximaFecha', direction: 'ascending' };
 
 /** Ids of the non-daily indicators published today (Buenos Aires) or, failing that, with the soonest next release from today on. */
 function nextReleaseIds(data: Indicator[]): Set<string> {
@@ -125,9 +127,9 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
     const [sort, setSort] = useState<Sort | null>(null);
     const tbodyRef = useRef<HTMLTableSectionElement>(null);
 
-    // Moving a row in the DOM restarts its date's CSS animation; pin every pulse to the page clock so sorting keeps them in phase.
+    // Moving a row in the DOM restarts its cells' CSS animation; pin every pulse to the page clock so sorting keeps them in phase.
     useLayoutEffect(() => {
-        tbodyRef.current?.querySelectorAll('[data-next-release-date]').forEach(date => date.getAnimations?.().forEach(animation => { animation.startTime = 0; }));
+        tbodyRef.current?.querySelectorAll('.next-release-pulse td').forEach(date => date.getAnimations?.().forEach(animation => { animation.startTime = 0; }));
     }, [sort, data]);
 
     if (!data || data.length === 0) {
@@ -135,14 +137,14 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
     }
 
     const nextRelease = nextReleaseIds(data);
-    const byDate = sortIndicatorsByDate(data);
+    const byDate = sortIndicators(data, DEFAULT_SORT);
     const rows = sort
         ? sortIndicators(data, sort)
-        : [...byDate.filter(row => nextRelease.has(row.id)), ...byDate.filter(row => !nextRelease.has(row.id))];
-    const toggleSort = (key: SortKey) => setSort(current => ({
-        key,
-        direction: current?.key === key && current.direction === 'ascending' ? 'descending' : 'ascending',
-    }));
+        : [...byDate.filter(row => row.daily), ...byDate.filter(row => nextRelease.has(row.id)), ...byDate.filter(row => !row.daily && !nextRelease.has(row.id))];
+    const toggleSort = (key: SortKey) => setSort(current => {
+        const shown = current ?? DEFAULT_SORT;
+        return { key, direction: shown.key === key && shown.direction === 'ascending' ? 'descending' : 'ascending' };
+    });
     const showReferenceTooltip = (text: string, element: HTMLElement) => {
         const rect = element.getBoundingClientRect();
         const maxX = window.innerWidth - TOOLTIP_WIDTH - TOOLTIP_OFFSET;
@@ -178,7 +180,8 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                     <thead>
                         <tr className="h-12 bg-imperial-night text-imperial-gold border-b border-imperial-gold/60 text-xs sm:text-base uppercase tracking-wider imperial-title">
                             {COLUMNS.map(({ key, label, fit }, index) => {
-                                const active = sort?.key === key ? sort.direction : undefined;
+                                const shown = sort ?? DEFAULT_SORT;
+                                const active = shown.key === key ? shown.direction : undefined;
                                 return (
                                     <th key={key} scope="col" aria-sort={active} className={`p-0 font-bold whitespace-nowrap lg:overflow-hidden ${index < COLUMNS.length - 1 ? 'border-r border-imperial-gold/20' : ''}`}>
                                         <button
@@ -203,7 +206,7 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                             return (
                                 <tr
                                     key={row.id}
-                                    className={`h-14 ${i % 2 === 0 ? 'bg-imperial-blue' : 'bg-imperial-night'} border-t border-imperial-gold/15 hover:bg-imperial-gold/5 transition-colors ${row.hasDetails ? 'hover:border-imperial-gold hover:shadow-inner' : ''}`}
+                                    className={`h-14 ${i % 2 === 0 ? 'bg-imperial-blue' : 'bg-imperial-night'} border-t border-imperial-gold/15 hover:bg-imperial-gold/5 transition-colors ${row.hasDetails ? 'hover:border-imperial-gold hover:shadow-inner' : ''}${nextRelease.has(row.id) ? ' next-release-pulse' : ''}`}
                                 >
                                     <td title={row.indicador} className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base font-bold whitespace-nowrap align-middle text-imperial-ivory lg:overflow-hidden">
                                         {nextRelease.has(row.id) ? <span className="sr-only">Próximo dato a publicarse</span> : null}
@@ -224,16 +227,16 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                                         <FitText>{source}</FitText>
                                     </td>
                                     <td className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base text-imperial-gold font-bold whitespace-nowrap align-middle lg:overflow-hidden">
-                                        <span {...tooltipTrigger(row.fechaDescription)} data-next-release-date={nextRelease.has(row.id) || undefined} className="block w-max min-w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold lg:w-full lg:min-w-0 lg:overflow-hidden">
-                                            <FitText>{row.fecha}</FitText>
+                                        <span {...tooltipTrigger(row.fechaDescription)} className="block w-max min-w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold lg:w-full lg:min-w-0 lg:overflow-hidden">
+                                            <FitText>{row.daily ? 'Diaria' : row.fecha}</FitText>
                                         </span>
                                     </td>
                                     <td className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base text-imperial-cyan font-semibold whitespace-nowrap align-middle lg:overflow-hidden">
                                         <span
-                                            {...tooltipTrigger(row.proximaFechaDescription)}
+                                            {...tooltipTrigger(row.daily ? null : row.proximaFechaDescription)}
                                             className="block w-max min-w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-imperial-gold lg:w-full lg:min-w-0 lg:overflow-hidden"
                                         >
-                                            <FitText>{row.proximaFecha ?? '-'}</FitText>
+                                            <FitText>{row.proximaFecha && !row.daily ? `${row.proximaFecha}${row.proximaEstimada ? '*' : ''}` : '-'}</FitText>
                                         </span>
                                     </td>
                                     <td title={row.referencia} className="p-2 sm:p-3 text-xs sm:text-sm lg:text-base text-imperial-cyan font-semibold whitespace-nowrap align-middle lg:overflow-hidden">
@@ -253,6 +256,9 @@ export default function IndicatorsTable({ data }: { data: Indicator[] }) {
                     </tbody>
                 </table>
             </div>
+            {data.some(row => row.proximaFecha && row.proximaEstimada && !row.daily) ? (
+                <p className="mt-2 px-2 text-xs text-imperial-cyan/80">* Fecha estimada: la fuente no publica calendario propio.</p>
+            ) : null}
             {tooltip && !isNavigating ? (
                 <div
                     className="pointer-events-none fixed z-[9999] line-clamp-2 whitespace-normal border border-imperial-blue/30 bg-imperial-gold text-imperial-blue shadow-md shadow-imperial-blue/50"

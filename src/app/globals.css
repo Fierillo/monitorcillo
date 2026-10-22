@@ -137,17 +137,17 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 }
 
 @keyframes next-release-pulse {
-  0%, 100% { color: var(--color-imperial-gold); }
-  50% { color: var(--color-imperial-ivory); }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
-[data-next-release-date] {
+/* Every cell of a just-released row fades in and out, keeping its own colour. */
+.next-release-pulse td {
   animation: next-release-pulse 1.6s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-next-release-date] {
+  .next-release-pulse td {
     animation: none;
-    color: var(--color-imperial-gold-light);
   }
 }
