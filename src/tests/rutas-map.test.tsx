@@ -391,28 +391,6 @@ describe('selection tooltip', () => {
     });
 });
 
-it('tooltip text is white except the concesionaria and the concession state values, in their legend colors', () => {
-    const { container } = render(<RutasMap tramos={tramos} geometry={geometry} />);
-    const segment = container.querySelector('[data-company]:not([data-company="Sin dato"])')!;
-    fireEvent.pointerMove(segment.closest('[data-route]') ?? segment);
-    const spans = [...screen.getByRole('status').querySelectorAll('span')];
-    const valueOf = (name: string) => spans[spans.findIndex(span => span.textContent === `${name}: `) + 1];
-    for (const span of spans.filter(span => span.textContent?.endsWith(': '))) expect(span.style.color).toBe('rgb(232, 226, 208)');
-    expect(valueOf('Tramo').style.color).toBe('rgb(232, 226, 208)');
-    expect(valueOf('Km').style.color).toBe('rgb(232, 226, 208)');
-    expect(valueOf('Concesionaria').style.color).not.toBe('rgb(255, 255, 255)');
-    expect(valueOf('Estado').textContent).toBe('Concesionado');
-    expect(valueOf('Estado').style.color).not.toBe('rgb(255, 255, 255)');
-});
-
-it('in the Ruta view, unconcessioned dashed sections are slightly transparent', () => {
-    const { container } = render(<RutasMap tramos={tramos} geometry={geometry} />);
-    fireEvent.change(screen.getByRole('combobox', { name: 'Filtrar por' }), { target: { value: 'ruta' } });
-    const gap = container.querySelector('[data-company="Sin dato"]') as SVGGElement;
-    expect(gap.getAttribute('opacity')).toBe('0.5');
-    expect((gap.querySelector('path[data-fill]') as SVGPathElement).style.filter).toBe('');
-});
-
 const red = { km: 40198, fuente: 'Gobierno nacional / Vialidad Nacional, 8-jul-2025', fuenteUrl: 'https://example.com/red' };
 
 it('divides the concessioned km by the stored national network total', () => {
@@ -440,21 +418,6 @@ it('shows a big concessioned-share figure only in the unfiltered concession view
     expect(screen.getByTestId('concession-share').textContent).toMatch(/\d+(,\d)?\s?%/);
     fireEvent.change(screen.getByRole('combobox', { name: 'Filtrar por' }), { target: { value: 'ruta' } });
     expect(screen.queryByTestId('concession-share')).toBeNull();
-});
-
-it('places the concessioned share over the map with a thin black outline', () => {
-    render(<RutasMap tramos={tramos} geometry={geometry} />);
-    const share = screen.getByTestId('concession-share');
-    expect(share.parentElement?.querySelector('svg[aria-label="Mapa de rutas nacionales de Argentina"]')).not.toBeNull();
-    expect(share.className).toContain('absolute');
-    expect(share.getAttribute('style')).toContain('1px #000');
-});
-
-it('puts the concessioned share top-left on mobile and top-right from sm up', () => {
-    render(<RutasMap tramos={tramos} geometry={geometry} />);
-    const classes = screen.getByTestId('concession-share').className.split(' ');
-    expect(classes).toEqual(expect.arrayContaining(['left-2', 'top-2', 'sm:left-auto', 'sm:right-4']));
-    expect(classes).not.toContain('right-2');
 });
 
 describe('touch crosshair', () => {

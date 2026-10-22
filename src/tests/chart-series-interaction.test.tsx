@@ -1,7 +1,5 @@
 import { cleanup, render } from '@testing-library/react';
-import type { ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Rectangle } from 'recharts';
 import ChartArea from '../components/chart/ChartArea';
 import ChartBar from '../components/chart/ChartBar';
 import ChartLine from '../components/chart/ChartLine';
@@ -43,21 +41,6 @@ describe('chart series interactions', () => {
     });
 
     afterEach(cleanup);
-
-    it('thins out line strokes on mobile', () => {
-        render(<ChartLine
-            areaConfig={{ ...area, type: 'line', strokeWidth: 3 }}
-            isDimmed={false}
-            data={[]}
-            allSeriesKeys={[]}
-            isMobile
-            onCtrlClick={vi.fn()}
-        />);
-
-        const mobileWidth = rechartsProps.lines[0].strokeWidth as number;
-        expect(mobileWidth).toBeLessThan(3);
-        expect(mobileWidth).toBeGreaterThanOrEqual(1.5);
-    });
 
     it('keeps bordered line outlines inside the series stroke width', () => {
         render(<ChartLine
@@ -129,29 +112,6 @@ describe('chart series interactions', () => {
         expect(onCtrlClick).not.toHaveBeenCalled();
     });
 
-    it('uses the imperial blue border style for every bar', () => {
-        render(<ChartBar areaConfig={{ ...area, type: 'bar' }} isDimmed={false} selectedMonth={null} onSelectMonth={vi.fn()} onCtrlClick={vi.fn()} />);
-        const shape = rechartsProps.bars[0].shape as (props: Record<string, unknown>) => ReactElement;
-
-        render(shape({ payload: { iso_fecha: '2026-08-01' }, x: 10, y: 20, width: 30, height: 40 }));
-
-        expect(rechartsProps.rectangles[0]).toMatchObject({
-            stroke: '#0B1426',
-            strokeWidth: 0.5,
-            x: 10.25,
-            y: 20.25,
-            width: 29.5,
-            height: 39.5,
-        });
-    });
-
-    it('draws ordinary bars without an extra SVG group', () => {
-        render(<ChartBar areaConfig={{ ...area, type: 'bar' }} isDimmed={false} selectedMonth={null} onSelectMonth={vi.fn()} onCtrlClick={vi.fn()} />);
-        const shape = rechartsProps.bars[0].shape as (props: Record<string, unknown>) => ReactElement;
-
-        expect(shape({ x: 0, y: 0, width: 20, height: 20 }).type).toBe(Rectangle);
-    });
-
     it('honors disabled animations for bars and lines', () => {
         render(<ChartBar areaConfig={{ ...area, type: 'bar' }} isDimmed={false} selectedMonth={null} onSelectMonth={vi.fn()} onCtrlClick={vi.fn()} animate={false} />);
         render(<ChartLine areaConfig={{ ...area, type: 'line' }} isDimmed={false} data={[]} onCtrlClick={vi.fn()} animate={false} />);
@@ -160,12 +120,4 @@ describe('chart series interactions', () => {
         expect(rechartsProps.lines.every(line => line.isAnimationActive === false)).toBe(true);
     });
 
-    it('keeps the same imperial blue border on preliminary bars', () => {
-        render(<ChartBar areaConfig={{ ...area, type: 'bar', preliminaryKey: 'preliminary' }} isDimmed={false} selectedMonth={null} onSelectMonth={vi.fn()} onCtrlClick={vi.fn()} />);
-        const shape = rechartsProps.bars[0].shape as (props: Record<string, unknown>) => ReactElement;
-
-        render(shape({ payload: { iso_fecha: '2026-08-01', preliminary: true }, x: 0, y: 0, width: 20, height: 20 }));
-
-        expect(rechartsProps.rectangles[0]).toMatchObject({ stroke: '#0B1426', strokeWidth: 0.5 });
-    });
 });

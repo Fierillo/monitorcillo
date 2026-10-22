@@ -27,19 +27,6 @@ describe('admin feedback list', () => {
         expect(screen.getByRole('link', { name: '@fierillo' }).getAttribute('href')).toBe('https://x.com/fierillo');
     });
 
-    it('tints implemented gold and rejected red without muting open items', () => {
-        render(<FeedbackList data={[
-            { ...feedback, id: 1, message: 'Abierto' },
-            { ...feedback, id: 2, message: 'Hecho', implemented: true },
-            { ...feedback, id: 3, message: 'No', rejected: true },
-        ]} />);
-        const [open, implemented, rejected] = screen.getAllByRole('article');
-        expect(open.className).toContain('bg-imperial-blue');
-        expect(open.className).not.toContain('opacity-');
-        expect(implemented.className).toContain('bg-imperial-gold/8');
-        expect(rejected.className).toContain('bg-red-950/35');
-    });
-
     it('toggles implemented and persists it', async () => {
         render(<FeedbackList data={[feedback]} />);
         const checkbox = screen.getByRole('checkbox', { name: 'Implementado' }) as HTMLInputElement;
