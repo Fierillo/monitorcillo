@@ -16,6 +16,7 @@ import {
     toFiniteNumber,
 } from './rows';
 
+/** Bulk fallback: it has no publication dates, so its rows never carry published_at. */
 export function buildIndicatorsCatalog(
     catalog: CatalogIndicatorRow[],
     normalizedData: Partial<Record<IndicatorType, DataRow[] | null | undefined>>,
@@ -87,8 +88,11 @@ export function buildIndicatorCatalogItem(
         reference_description: spec.referenceLabel,
         trend: comparisonTrend(spec, value, referenceValue),
         fecha: date ? formatCatalogDisplayDate(date, spec, publicationDate) : item.fecha,
+        published_at: publicationDate ?? undefined,
         dato: spec.formatValue(value),
         proxima_fecha: nextEvent?.date,
         proxima_fecha_description: nextEvent?.description ?? null,
+        fecha_description: latestRawDateLabel(rawRows, spec.rawDateFields),
+        daily: hasDailyField(rawRows, Object.keys(spec.rawDateFields)),
     };
 }

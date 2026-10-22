@@ -135,3 +135,19 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
   outline: 1px solid #E3C77A !important;
   outline-offset: 2px;
 }
+
+@keyframes next-release-pulse {
+  0%, 100% { color: var(--color-imperial-gold); }
+  50% { color: var(--color-imperial-ivory); }
+}
+
+[data-next-release-date] {
+  animation: next-release-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-next-release-date] {
+    animation: none;
+    color: var(--color-imperial-gold-light);
+  }
+}

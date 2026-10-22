@@ -19,6 +19,9 @@ function mapCatalogRow(row: CatalogIndicatorRow): Indicator {
         sourceUrl: row.source_url,
         proximaFecha: row.proxima_fecha,
         proximaFechaDescription: row.proxima_fecha_description,
+        fechaDescription: row.fecha_description,
+        daily: row.daily,
+        publishedAt: row.published_at,
     };
 }
 

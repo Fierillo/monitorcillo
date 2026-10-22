@@ -24,7 +24,7 @@ export function fechaToTimestamp(fecha: string): number {
     const [dayValue, monthValue, yearValue] = parts.length === 2
         ? ['1', parts[0], parts[1]]
         : parts;
-    const month = MONTHS_IDX[monthValue];
+    const month = MONTHS_IDX[monthValue] ?? MONTHS_IDX[monthValue.slice(0, 3)];
     const parsedYear = parseInt(yearValue, 10);
     const year = yearValue.length === 2 ? 2000 + parsedYear : parsedYear;
     const day = parseInt(dayValue, 10);
