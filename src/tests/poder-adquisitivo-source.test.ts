@@ -4,10 +4,12 @@ const mocks = vi.hoisted(() => ({
     fetchTextFromUrl: vi.fn(),
     fetchTimeSeries: vi.fn(),
     parseSalaryPublicationDate: vi.fn(),
+    fetchIpcNucleoSeries: vi.fn(),
 }));
 
 vi.mock('@/lib/sync/http-client', () => ({ fetchTextFromUrl: mocks.fetchTextFromUrl }));
 vi.mock('@/lib/sync/time-series-client', () => ({ fetchTimeSeries: mocks.fetchTimeSeries }));
+vi.mock('@/lib/sync/cache', () => ({ fetchIpcNucleoSeries: mocks.fetchIpcNucleoSeries }));
 vi.mock('@/lib/salary-source', () => ({ parseSalaryPublicationDate: mocks.parseSalaryPublicationDate }));
 
 import { fetchPoderAdquisitivoRawReport, parseOfficialSalaryCsvRows, parseRipteCsvRows } from '../lib/sync/poder-adquisitivo';
@@ -78,6 +80,16 @@ describe('fetchPoderAdquisitivoRawReport', () => {
         Object.values(mocks).forEach(mock => mock.mockReset());
         mocks.fetchTimeSeries.mockResolvedValue({ data: [['2026-01-01', 100]] });
         mocks.parseSalaryPublicationDate.mockReturnValue('2026-03-20');
+        mocks.fetchIpcNucleoSeries.mockResolvedValue({ data: [['2026-01-01', 100]] });
+    });
+
+    it('takes core IPC from the shared series that extends the stale API with INDEC fallbacks', async () => {
+        mocks.fetchIpcNucleoSeries.mockResolvedValue({ data: [['2026-01-01', 100], ['2026-09-01', 150]] });
+        mocks.fetchTextFromUrl.mockImplementation(async (url: string) => (url.includes('ripte') ? RIPTE_CSV : 'periodo;a;b;c;d\n1/1/2026;1;2;3;4'));
+
+        const { rows } = await fetchPoderAdquisitivoRawReport();
+
+        expect(rows.find(row => row.fecha === '2026-09-01')?.ipc_nucleo).toBe(150);
     });
 
     it('reports the RIPTE values published for each month', async () => {

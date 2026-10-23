@@ -1,9 +1,8 @@
 import type { BcraVariableRow, BmaRawRow } from '@/types';
 import { buildMonthlyPbiSeries } from '../pbi-source';
 import { fetchBcraVariable } from './bcra';
-import { fetchEmaeWorkbookRows, fetchPbiAnchorRows } from './cache';
+import { fetchEmaeWorkbookRows, fetchPbiAnchorRows, fetchIpcNucleoSeries } from './cache';
 import { emaeDesestacionalizadoMap, seriesValueMap, valueAtOrBefore } from './series';
-import { fetchTimeSeries } from './time-series-client';
 
 function mergeBcraSeries(byFecha: Map<string, BmaRawRow>, items: BcraVariableRow[], field: Exclude<keyof BmaRawRow, 'fecha'>) {
     for (const item of items) {
@@ -28,7 +27,7 @@ export async function fetchBmaRaw(): Promise<BmaRawRow[]> {
         fetchBcraVariable(1264, fromDate, toDate),
         fetchPbiAnchorRows(),
         fetchEmaeWorkbookRows(),
-        fetchTimeSeries({ ids: ['148.3_INUCLEONAL_DICI_M_19'] }),
+        fetchIpcNucleoSeries(),
     ]);
 
     const byFecha = new Map<string, BmaRawRow>();

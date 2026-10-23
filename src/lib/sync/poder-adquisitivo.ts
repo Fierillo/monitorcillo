@@ -1,3 +1,4 @@
+import { fetchIpcNucleoSeries } from './cache';
 import type { PoderAdquisitivoRawRow } from '@/types';
 import { parseSalaryPublicationDate } from '../salary-source';
 import { readWorkbook, sheetRows } from '../protocols';
@@ -65,7 +66,7 @@ function buildSalaryRow(fecha: string, salaryRow: Partial<PoderAdquisitivoRawRow
 
 export async function fetchPoderAdquisitivoRawReport(): Promise<{ rows: PoderAdquisitivoRawRow[]; publishedAt: string | null }> {
     const [ipc, jubilaciones, salariosCsv, ripteCsv, publicationHtml] = await Promise.all([
-        fetchTimeSeries({ ids: ['148.3_INUCLEONAL_DICI_M_19'] }),
+        fetchIpcNucleoSeries(),
         fetchTimeSeries({ ids: ['58.1_MP_0_M_24'] }),
         fetchTextFromUrl(OFFICIAL_SALARY_CSV_URL),
         fetchTextFromUrl(RIPTE_CSV_URL),

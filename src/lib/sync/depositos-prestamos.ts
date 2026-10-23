@@ -3,9 +3,8 @@ import { sql } from '../db/client';
 import { buildMonthlyPbiSeries } from '../pbi-source';
 import { PNFC_SERIES } from '../morosidad/schema';
 import { fetchBcraVariable } from './bcra';
-import { fetchEmaeWorkbookRows, fetchPbiAnchorRows } from './cache';
+import { fetchEmaeWorkbookRows, fetchPbiAnchorRows, fetchIpcNucleoSeries } from './cache';
 import { emaeDesestacionalizadoMap, seriesValueMap, valueAtOrBefore } from './series';
-import { fetchTimeSeries } from './time-series-client';
 import { fetchMorosidadRaw } from './morosidad';
 
 const FROM_DATE = '2017-01-01';
@@ -34,7 +33,7 @@ export async function fetchDepositosPrestamosRaw(): Promise<DepositosPrestamosRa
         fetchBcraVariable(4, FROM_DATE, toDate),
         fetchPbiAnchorRows(),
         fetchEmaeWorkbookRows(),
-        fetchTimeSeries({ ids: ['148.3_INUCLEONAL_DICI_M_19'] }),
+        fetchIpcNucleoSeries(),
         fetchMorosidadRaw(),
     ]);
     const series = [depositosPesos, depositosUsd, prestamosPesos, prestamosUsd, depositosPublicosPesos, depositosPublicosUsd, prestamosPublicosPesos, prestamosPublicosUsd].map(lastByMonth);

@@ -10,7 +10,7 @@ import {
     RECAUDACION_TOTAL_SERIES_ID,
 } from '../recaudacion/schema';
 import { mergeRecaudacionOfficialReport, parseLatestRecaudacionWorkbookUrl, parseRecaudacionWorkbook } from '../recaudacion-source';
-import { fetchEmaeWorkbookRows, fetchPbiAnchorRows } from './cache';
+import { fetchEmaeWorkbookRows, fetchPbiAnchorRows, fetchIpcNucleoSeries } from './cache';
 import { RECAUDACION_PAGE_URL } from './constants';
 import { fetchBufferFromUrl, fetchTextFromUrl } from './http-client';
 import { emaeDesestacionalizadoMap, seriesValueMap, valueAtOrBefore } from './series';
@@ -75,7 +75,7 @@ export async function fetchRecaudacionRawReport(): Promise<{ rows: RecaudacionRa
         fetchTimeSeries({ ids: seriesIds }),
         fetchPbiAnchorRows(),
         fetchEmaeWorkbookRows(),
-        fetchTimeSeries({ ids: ['148.3_INUCLEONAL_DICI_M_19'] }),
+        fetchIpcNucleoSeries(),
         fetchRecaudacionOfficialReport(),
     ]);
 

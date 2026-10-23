@@ -5,10 +5,9 @@ import { sql } from '../db/client';
 import { getRawData } from '../db/raw';
 import { buildMonthlyPbiSeries } from '../pbi-source';
 import { fetchBcraVariable } from './bcra';
-import { fetchEmaeWorkbookRows, fetchPbiAnchorRows } from './cache';
+import { fetchEmaeWorkbookRows, fetchPbiAnchorRows, fetchIpcNucleoSeries } from './cache';
 import { fetchBufferFromUrl, fetchLastModifiedDate, fetchTextFromUrl } from './http-client';
 import { emaeDesestacionalizadoMap, seriesValueMap, valueAtOrBefore } from './series';
-import { fetchTimeSeries } from './time-series-client';
 
 const DEUDA_TRIMESTRAL_URL = 'https://www.argentina.gob.ar/economia/finanzas/datos-trimestrales-de-la-deuda';
 const DEUDA_MENSUAL_URL = 'https://www.argentina.gob.ar/economia/finanzas/datos-mensuales';
@@ -103,7 +102,7 @@ export async function fetchDeudaRawReport(): Promise<DeudaRawReport> {
         fetchDebtPlacementRows(placementWorkbookUrls),
         fetchPbiAnchorRows(),
         fetchEmaeWorkbookRows(),
-        fetchTimeSeries({ ids: ['148.3_INUCLEONAL_DICI_M_19'] }),
+        fetchIpcNucleoSeries(),
         fetchBcraVariable(4, '2017-01-01', reportDate),
         fetchLastModifiedDate(monthlyWorkbookUrl),
     ]);
