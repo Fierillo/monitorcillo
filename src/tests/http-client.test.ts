@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 
 vi.mock('https', () => ({ default: { get: mocks.get } }));
 
-type RequestOutcome = Error | { statusCode: number; body?: string };
+type RequestOutcome = Error | { statusCode: number; body?: string; contentType?: string };
 
 function mockRequests(...outcomes: RequestOutcome[]) {
     mocks.get.mockImplementation((
@@ -29,6 +29,7 @@ function mockRequests(...outcomes: RequestOutcome[]) {
 
             const response = Object.assign(new EventEmitter(), {
                 statusCode: outcome?.statusCode ?? 200,
+                headers: { 'content-type': outcome?.contentType },
                 resume: vi.fn(),
             });
             callback(response);
@@ -60,6 +61,23 @@ describe('sync HTTP client', () => {
 
         await expect(result).resolves.toBe('ok');
         expect(mocks.get).toHaveBeenCalledTimes(3);
+    });
+
+    it('rejects a response whose content type is not the expected one', async () => {
+        mockRequests({ statusCode: 200, body: '<!DOCTYPE html>', contentType: 'text/html; charset=utf-8' });
+        const { fetchBufferFromUrl } = await import('@/lib/sync/http-client');
+
+        await expect(fetchBufferFromUrl('https://www.indec.gob.ar/a.xls', { expectedContentType: /excel|spreadsheet|octet-stream/i }))
+            .rejects.toThrow('Unexpected content type text/html');
+        expect(mocks.get).toHaveBeenCalledOnce();
+    });
+
+    it('accepts a response with the expected content type', async () => {
+        mockRequests({ statusCode: 200, body: 'xls', contentType: 'application/vnd.ms-excel' });
+        const { fetchBufferFromUrl } = await import('@/lib/sync/http-client');
+
+        await expect(fetchBufferFromUrl('https://www.indec.gob.ar/a.xls', { expectedContentType: /excel/i }))
+            .resolves.toEqual(Buffer.from('xls'));
     });
 
     it('does not retry non-transient HTTP errors', async () => {

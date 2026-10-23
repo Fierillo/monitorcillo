@@ -18,6 +18,8 @@ const TRANSIENT_ERROR_CODES = new Set([
 
 type HttpRequestOptions = {
     timeoutMs?: number;
+    /** Rejects (without retry) a 2xx response whose Content-Type does not match, e.g. an HTML error page served instead of a file. */
+    expectedContentType?: RegExp;
 };
 
 class HttpStatusError extends Error {
@@ -26,12 +28,19 @@ class HttpStatusError extends Error {
     }
 }
 
-function download(url: string, timeoutMs: number): Promise<Buffer> {
+function download(url: string, timeoutMs: number, expectedContentType?: RegExp): Promise<Buffer> {
     return new Promise((resolve, reject) => {
         const request = https.get(url, { headers: DEFAULT_HEADERS }, (response) => {
             if (!response.statusCode || response.statusCode < 200 || response.statusCode >= 300) {
                 response.resume();
                 reject(new HttpStatusError(url, response.statusCode));
+                return;
+            }
+
+            const contentType = String(response.headers?.['content-type'] ?? '');
+            if (expectedContentType && !expectedContentType.test(contentType)) {
+                response.resume();
+                reject(new Error(`Unexpected content type ${contentType || '(none)'} for ${url}`));
                 return;
             }
 
@@ -59,10 +68,10 @@ function shouldRetry(error: unknown): boolean {
         && TRANSIENT_ERROR_CODES.has((error as NodeJS.ErrnoException).code ?? '');
 }
 
-async function downloadWithRetry(url: string, { timeoutMs = REQUEST_TIMEOUT_MS }: HttpRequestOptions = {}): Promise<Buffer> {
+async function downloadWithRetry(url: string, { timeoutMs = REQUEST_TIMEOUT_MS, expectedContentType }: HttpRequestOptions = {}): Promise<Buffer> {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
         try {
-            return await download(url, timeoutMs);
+            return await download(url, timeoutMs, expectedContentType);
         } catch (error) {
             if (!shouldRetry(error) || attempt === MAX_ATTEMPTS) throw error;
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * 2 ** (attempt - 1)));
