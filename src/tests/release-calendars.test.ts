@@ -87,3 +87,21 @@ describe('official release calendars', () => {
         vi.useRealTimers();
     });
 });
+
+describe('parseIndecCalendarDays', () => {
+    it('reads already-published releases, which have no add-to-calendar link, from the day blocks of a month page', async () => {
+        const { parseIndecCalendarDays } = await import('@/lib/release-calendars');
+        const html = `
+            <div class="nro-dia">9</div><div class="dia">VIERNES</div>
+            <div class="cal-content text-calendario">Índice de salarios. Agosto de 2026</div>
+            <div class="nro-dia">13</div><div class="dia">MARTES</div>
+            <a href=/uploads/informesdeprensa/ipc_10_26.pdf><div class="cal-content text-calendario">
+            &#205;ndice de precios al consumidor (IPC). Cobertura nacional. Septiembre de 2026
+            </div></a>`;
+
+        expect(parseIndecCalendarDays(html, 2026, 10)).toEqual([
+            { date: '2026-10-09', title: 'Índice de salarios. Agosto de 2026' },
+            { date: '2026-10-13', title: 'Índice de precios al consumidor (IPC). Cobertura nacional. Septiembre de 2026' },
+        ]);
+    });
+});

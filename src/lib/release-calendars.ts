@@ -183,12 +183,39 @@ function nextByReport(releases: Release[], reports: Record<string, string>, toda
 /** INDEC's release calendar from today's month through the next twelve. */
 async function fetchIndecCalendar(today: string): Promise<Release[]> {
     const [year, month] = today.split('-').map(Number);
-    const pages = await Promise.all(Array.from({ length: INDEC_MONTHS_AHEAD + 1 }, (_, offset) => {
-        const index = month - 1 + offset;
-        const name = MONTH_NAMES_ES[index % 12];
-        return fetchTextFromUrl(`https://www.indec.gob.ar/Calendario/FiltrosCalendario/mes/${name[0].toUpperCase()}${name.slice(1)}-${year + Math.floor(index / 12)}/1`);
-    }));
+    const pages = await Promise.all(Array.from({ length: INDEC_MONTHS_AHEAD + 1 }, (_, offset) => fetchTextFromUrl(indecCalendarPageUrl(year, month - 1 + offset))));
     return pages.flatMap(parseIndecCalendar);
+}
+
+/** INDEC calendar page of a month given as a 0-based index from January of `year` (may be negative or > 11). */
+function indecCalendarPageUrl(year: number, monthIndex: number): string {
+    const name = MONTH_NAMES_ES[((monthIndex % 12) + 12) % 12];
+    return `https://www.indec.gob.ar/Calendario/FiltrosCalendario/mes/${name[0].toUpperCase()}${name.slice(1)}-${year + Math.floor(monthIndex / 12)}/1`;
+}
+
+/** Day blocks of an INDEC month page; unlike the add-to-calendar links, they include already-published releases. */
+export function parseIndecCalendarDays(html: string, year: number, month: number): Release[] {
+    return decodeHtml(html).split('class="nro-dia">').slice(1).flatMap(block => {
+        const date = `${year}-${String(month).padStart(2, '0')}-${block.match(/^\d+/)![0].padStart(2, '0')}`;
+        return [...block.matchAll(/text-calendario">([^<]+)</g)]
+            .map(([, title]) => ({ date, title: title.replace(/\s+/g, ' ').trim() }))
+            .filter(release => release.title);
+    });
+}
+
+/** Most recent official release date (<= today) of one of our INDEC events, read from this and last month's calendar pages. */
+export async function fetchLastIndecRelease(id: keyof typeof INDEC_CALENDAR_REPORTS | string, today: string): Promise<string | null> {
+    const report = INDEC_CALENDAR_REPORTS[id];
+    if (!report) return null;
+    const [year, month] = today.split('-').map(Number);
+    const months = [month - 2, month - 1].map(index => new Date(Date.UTC(year, index, 1)));
+    const pages = await Promise.all(months.map(async date => parseIndecCalendarDays(
+        await fetchTextFromUrl(indecCalendarPageUrl(date.getUTCFullYear(), date.getUTCMonth())), date.getUTCFullYear(), date.getUTCMonth() + 1)));
+    return pages.flat()
+        .filter(release => release.title.startsWith(report) && release.date <= today)
+        .map(release => release.date)
+        .sort()
+        .at(-1) ?? null;
 }
 
 const BCRA_CALENDAR_URL = 'https://www.bcra.gob.ar/calendario-de-informes/';
