@@ -76,6 +76,19 @@ export async function saveIndicatorPublication(id: string, publishedAt: string, 
     `, [id, publishedAt, periodDate]);
 }
 
+/** Soonest stored date ≥ today among «id», «id#2», «id#3» (upcoming official releases); else the id's own date. */
+export async function getUpcomingPublicationDate(id: string, today: string): Promise<string | null> {
+    try {
+        await ensureIndicatorPublicationsTable();
+        const rows = await sql.query('SELECT id, published_at FROM indicator_publications WHERE id = $1 OR id LIKE $2', [id, `${id}#%`]) as DbRow[];
+        const dates = rows.map(row => ({ id: String(row.id), date: formatDbDate(row.published_at) }));
+        return dates.map(row => row.date).filter(date => date >= today).sort()[0] ?? dates.find(row => row.id === id)?.date ?? null;
+    } catch (error) {
+        if (!isMissingTableError(error)) throw error;
+        return null;
+    }
+}
+
 export async function getIndicatorPublicationDate(id: string): Promise<string | null> {
     try {
         await ensureIndicatorPublicationsTable();

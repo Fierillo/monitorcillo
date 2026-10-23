@@ -1,6 +1,7 @@
 import type { CatalogIndicatorRow, DataRow, IndicatorType } from '@/types';
 import { buildIndicatorCatalogItem, buildIndicatorsCatalog, CATALOG_INDICATOR_SPECS, DEFAULT_CATALOG } from './catalog';
 import { latestRawDate, latestRow, rowDate } from './catalog/rows';
+import { argentinaToday } from './normalize/dates';
 
 export type CatalogDataSources = {
     loadedRowsAreAuthoritative?: boolean;
@@ -28,7 +29,7 @@ async function defaultCatalogDataSources(): Promise<CatalogDataSources> {
         getRawRowByDate: async (type, date) => db.getRawDataByDate(type, date) as Promise<DataRow | null>,
         getLatestRawDate: db.getLatestRawDate,
         getPublicationDate: db.getIndicatorPublicationDate,
-        getPublicationDates: async (ids) => Object.fromEntries(await Promise.all(ids.map(async id => [id, await db.getIndicatorPublicationDate(id)]))),
+        getPublicationDates: async (ids) => Object.fromEntries(await Promise.all(ids.map(async id => [id, await db.getUpcomingPublicationDate(id, argentinaToday())]))),
     };
 }
 

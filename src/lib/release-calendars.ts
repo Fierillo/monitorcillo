@@ -137,9 +137,16 @@ export function icgNextPublicationFromSchedule(schedule: IcgDiffusionEntry[], to
     return nextOnOrAfter(schedule.map(entry => entry.publishedOn), today) ?? null;
 }
 
-/** The first date on or after today (Argentina): the single «next release» rule of every official calendar. */
+/** How many upcoming releases each calendar source keeps, so a passed date gives way to the next without a sync. */
+const UPCOMING_RELEASES = 3;
+
+/** The first dates on or after today (Argentina): the «next release» rule of every official calendar. */
+function upcomingOnOrAfter(dates: string[], today: string): string[] {
+    return [...new Set(dates.filter(date => date >= today))].sort().slice(0, UPCOMING_RELEASES);
+}
+
 function nextOnOrAfter(dates: string[], today: string): string | undefined {
-    return dates.filter(date => date >= today).sort()[0];
+    return upcomingOnOrAfter(dates, today)[0];
 }
 
 type Release = { date: string; title: string };
@@ -168,16 +175,20 @@ export function parseIndecCalendar(html: string): Release[] {
 
 /** Next calendar date of each of our INDEC events. */
 export function nextIndecReleases(releases: Release[], today: string): Record<string, string> {
-    return nextByReport(releases, INDEC_CALENDAR_REPORTS, today, (title, prefix) => title.startsWith(prefix));
+    return Object.fromEntries(Object.entries(upcomingIndecReleases(releases, today)).map(([id, dates]) => [id, dates[0]]));
 }
 
-function nextByReport(releases: Release[], reports: Record<string, string>, today: string, matches: (title: string, report: string) => boolean): Record<string, string> {
-    const next: Record<string, string> = {};
+function upcomingIndecReleases(releases: Release[], today: string): Record<string, string[]> {
+    return upcomingByReport(releases, INDEC_CALENDAR_REPORTS, today, (title, prefix) => title.startsWith(prefix));
+}
+
+function upcomingByReport(releases: Release[], reports: Record<string, string>, today: string, matches: (title: string, report: string) => boolean): Record<string, string[]> {
+    const upcoming: Record<string, string[]> = {};
     for (const [id, report] of Object.entries(reports)) {
-        const date = nextOnOrAfter(releases.filter(release => matches(release.title, report)).map(release => release.date), today);
-        if (date) next[id] = date;
+        const dates = upcomingOnOrAfter(releases.filter(release => matches(release.title, report)).map(release => release.date), today);
+        if (dates.length > 0) upcoming[id] = dates;
     }
-    return next;
+    return upcoming;
 }
 
 /** INDEC's release calendar from today's month through the next twelve. */
@@ -260,14 +271,14 @@ export function parseHaciendaCalendar(html: string): Release[] {
         .map(([, day, month, year, type]) => ({ date: `${year}-${month}-${day}`, title: type }));
 }
 
-/** Next official release of every calendar-backed event, keyed by publication id: INDEC reports, the BCRA REM, the Tesoro auction and the MECON fiscal/tax releases. */
-export async function fetchNextOfficialReleases(today: string): Promise<Record<string, string>> {
+/** Upcoming official releases (soonest first) of every calendar-backed event, keyed by publication id: INDEC reports, the BCRA REM, the Tesoro auction and the MECON fiscal/tax releases. */
+export async function fetchNextOfficialReleases(today: string): Promise<Record<string, string[]>> {
     const [indec, bcra, tesoro, hacienda] = await Promise.all([fetchIndecCalendar(today), fetchTextFromUrl(BCRA_CALENDAR_URL), fetchBufferFromUrl(TESORO_CALENDAR_URL).then(readPdfLayout), fetchTextFromUrl(HACIENDA_CALENDAR_URL)]);
-    const auction = nextOnOrAfter(licitacionDates(tesoro), today);
+    const auctions = upcomingOnOrAfter(licitacionDates(tesoro), today);
     return {
-        ...nextIndecReleases(indec, today),
-        ...nextByReport(parseBcraCalendar(bcra), BCRA_CALENDAR_REPORTS, today, (title, report) => title === report),
-        ...(auction ? { 'tesoro-licitacion': auction } : {}),
-        ...nextByReport(parseHaciendaCalendar(hacienda), HACIENDA_CALENDAR_REPORTS, today, (title, report) => title === report),
+        ...upcomingIndecReleases(indec, today),
+        ...upcomingByReport(parseBcraCalendar(bcra), BCRA_CALENDAR_REPORTS, today, (title, report) => title === report),
+        ...(auctions.length > 0 ? { 'tesoro-licitacion': auctions } : {}),
+        ...upcomingByReport(parseHaciendaCalendar(hacienda), HACIENDA_CALENDAR_REPORTS, today, (title, report) => title === report),
     };
 }

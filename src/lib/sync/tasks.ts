@@ -220,7 +220,8 @@ export async function syncSipa(): Promise<SyncResult> {
 /** Stores the next official release of each calendar-backed event (INDEC, BCRA REM, Tesoro auction) as a publication. */
 export async function syncOfficialCalendars(): Promise<SyncResult> {
     const next = Object.entries(await fetchNextOfficialReleases(argentinaToday()));
-    await Promise.all(next.map(([id, date]) => saveIndicatorPublication(id, date, null)));
+    // The soonest keeps the plain id; the following ones are «id#2», «id#3» (see getUpcomingPublicationDate).
+    await Promise.all(next.flatMap(([id, dates]) => dates.map((date, index) => saveIndicatorPublication(index === 0 ? id : `${id}#${index + 1}`, date, null))));
     return { appended: 0, total: next.length };
 }
 

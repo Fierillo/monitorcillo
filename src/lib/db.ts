@@ -4,7 +4,7 @@ export * from './db/catalog';
 export * from './db/feedback';
 export * from './db/rutas';
 
-import { getIndicatorPublicationDate, getIndicatorsCatalog, saveIndicatorPublication, saveIndicatorsCatalog } from './db/catalog';
+import { getIndicatorPublicationDate, getUpcomingPublicationDate, getIndicatorsCatalog, saveIndicatorPublication, saveIndicatorsCatalog } from './db/catalog';
 import { getFeedback, saveFeedback } from './db/feedback';
 import { getRutasTramos, replaceRutasTramos } from './db/rutas';
 import { getLatestNormalizedData, getNormalizedData, getNormalizedDataByDate, replaceNormalizedData } from './db/normalized';
@@ -23,6 +23,7 @@ const db = {
     saveIndicatorsCatalog,
     saveIndicatorPublication,
     getIndicatorPublicationDate,
+    getUpcomingPublicationDate,
     getFeedback,
     saveFeedback,
     getRutasTramos,

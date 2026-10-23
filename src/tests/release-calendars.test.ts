@@ -83,7 +83,10 @@ describe('official release calendars', () => {
         expect(db.saveIndicatorPublication).toHaveBeenCalledWith('tesoro-licitacion', '2026-10-28', null);
         expect(db.saveIndicatorPublication).toHaveBeenCalledWith('mecon-recaudacion', '2026-11-02', null);
         expect(db.saveIndicatorPublication).toHaveBeenCalledWith('mecon-resultado-fiscal', '2026-11-16', null);
-        expect(db.saveIndicatorPublication).toHaveBeenCalledTimes(9);
+        expect(db.saveIndicatorPublication).toHaveBeenCalledWith('bcra-rem#2', '2026-12-04', null);
+        expect(db.saveIndicatorPublication).toHaveBeenCalledWith('tesoro-licitacion#2', '2026-11-11', null);
+        expect(db.saveIndicatorPublication).toHaveBeenCalledWith('tesoro-licitacion#3', '2026-11-26', null);
+        expect(db.saveIndicatorPublication).toHaveBeenCalledTimes(12); // 9 soonest + REM #2 + auctions #2, #3
         vi.useRealTimers();
     });
 });
