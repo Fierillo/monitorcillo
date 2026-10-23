@@ -83,7 +83,9 @@ const RECAUDACION_FIELDS = { recaudacion_total: 'Recaudación tributaria' };
 const PODER_FIELDS = { salario_registrado: 'Índice de salarios', salario_no_registrado: 'Índice de salarios', salario_privado: 'Índice de salarios', salario_publico: 'Índice de salarios', jubilacion_minima: 'Jubilación mínima' }; // RIPTE stays a series, but has no release calendar to date or label
 const EMAE_FIELDS = { emae: 'EMAE', emae_desestacionalizado: 'EMAE', emae_tendencia: 'EMAE' };
 const DEUDA_FIELDS = { stock_deuda_usd: 'Stock de deuda' };
-const INFLACION_FIELDS = { ipc_indec_general: 'IPC INDEC', ipc_indec_nucleo: 'IPC INDEC', ipc_equilibra: 'IPC Equilibra', rem: 'REM' };
+/** Measured inflation only: the REM forecast is the reference, never the headline nor its date. */
+const INFLACION_REAL_FIELDS = { ipc_indec_general: 'IPC INDEC', ipc_indec_nucleo: 'IPC INDEC', ipc_equilibra: 'IPC Equilibra' };
+const INFLACION_FIELDS = { ...INFLACION_REAL_FIELDS, rem: 'REM' };
 const ICG_FIELDS = { icg: 'ICG' };
 const POBREZA_FIELDS = { pobreza_utdt: 'Nowcast UTDT', pobreza_indec: 'Pobreza INDEC', pobreza_uca: 'Pobreza UCA' };
 const SIPA_FIELDS = { total: 'Trabajo registrado', privado: 'Trabajo registrado', publico: 'Trabajo registrado', casas_particulares: 'Trabajo registrado', autonomos: 'Trabajo registrado', monotributo: 'Trabajo registrado', monotributo_social: 'Trabajo registrado' };
@@ -219,15 +221,15 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
     },
     inflacion: {
         type: 'inflacion',
-        referenceLabel: 'Mes anterior',
+        referenceLabel: 'Pronóstico REM',
         betterWhen: 'lower',
-        getReferenceDate: date => addMonths(date, -1),
-        selectReferenceValue: row => row.ipc,
+        getReferenceDate: date => addMonths(date, 1),
+        selectReferenceValue: row => row.rem,
         datePrecision: 'day',
-        normalizedValueColumn: 'ipc',
-        fallbackValueColumns: ['ipc_equilibra', 'rem', 'ipc_indec', 'ipc_nucleo_indec'],
-        selectValue: row => row.ipc ?? row.ipc_equilibra ?? row.rem ?? row.ipc_indec,
-        rawDateFields: INFLACION_FIELDS,
+        normalizedValueColumn: 'ipc_indec',
+        fallbackValueColumns: ['ipc_equilibra'],
+        selectValue: row => row.ipc_indec ?? row.ipc_equilibra,
+        rawDateFields: INFLACION_REAL_FIELDS,
         formatValue: formatPercentage,
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
         getNextExpectedEvents: ({ rawRows, sourcePublicationDates, today }) => [

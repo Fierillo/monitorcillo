@@ -188,7 +188,7 @@ describe('buildCurrentIndicatorsCatalog', () => {
         poder: { normalized: { iso_fecha: '2026-08-01', blanco: 73 }, raw: { fecha: '2026-10-01', ripte: 1, jubilacion_minima: 1 } },
         emae: { normalized: { iso_fecha: '2026-08-01', emae_desestacionalizado: 150 }, raw: { fecha: '2026-08-01', emae_desestacionalizado: 150 } },
         balanza: { normalized: { iso_fecha: '2026-09-01', saldo: 900 }, raw: { fecha: '2026-09-01', saldo: 900 } },
-        inflacion: { normalized: { iso_fecha: '2026-09-01', ipc: 2.1 }, raw: { fecha: '2026-10-01', ipc_equilibra: 2, rem: 2 } },
+        inflacion: { normalized: { iso_fecha: '2026-09-01', ipc_indec: 2.1 }, raw: { fecha: '2026-10-01', ipc_equilibra: 2, rem: 2 } },
         emision: { normalized: { iso_fecha: '2026-10-16', ACUMULADO: 5 }, raw: { fecha: '2026-10-14', licitado: 9, vencimientos: 8, resultado_fiscal: 1 } },
         reca: { normalized: { iso_fecha: '2026-09-01', pctPbi: 1 }, raw: { fecha: '2026-09-01', recaudacion_total: 1 } },
         pobreza: { normalized: { iso_fecha: '2026-03-01', pobreza_utdt: 29 }, raw: { fecha: '2026-03-01', pobreza_utdt: 29, pobreza_indec: 28.2 } },
@@ -221,13 +221,13 @@ describe('buildCurrentIndicatorsCatalog', () => {
     });
 
     it('uses publication date metadata for inflation', async () => {
-        await expectPublishedDate('inflacion', 'inflacion', 'ipc', { iso_fecha: '2026-03-01', ipc: 6.1 }, '2026-04-15', { fecha: '15 ABR 26', dato: '6,1%', reference_description: 'Mes anterior', trend: 'down', proxima_fecha: undefined }, ['ipc_equilibra', 'rem', 'ipc_indec', 'ipc_nucleo_indec'], { iso_fecha: '2026-02-01', ipc: 5.5 });
+        await expectPublishedDate('inflacion', 'inflacion', 'ipc_indec', { iso_fecha: '2026-03-01', ipc_indec: 6.1 }, '2026-04-15', { fecha: '15 ABR 26', dato: '6,1%', referencia: '5,5%', reference_description: 'Pronóstico REM', trend: 'down', proxima_fecha: undefined }, ['ipc_equilibra'], { iso_fecha: '2026-04-01', rem: 5.5 });
     });
 
     it('uses INDEC publication date and nearest inflation source for next date', async () => {
         const result = await buildCurrentIndicatorsCatalog({
             getCatalogRows: async () => [{ ...baseCatalogRow, id: 'inflacion' }],
-            getLatestNormalizedRow: async (type) => type === 'inflacion' ? { iso_fecha: '2026-04-01', ipc: 2.6 } : null,
+            getLatestNormalizedRow: async (type) => type === 'inflacion' ? { iso_fecha: '2026-04-01', ipc_indec: 2.6 } : null,
             getLatestRawDate: async () => '2026-04-01',
             getPublicationDate: async (id) => id === 'inflacion' ? '2026-05-14' : null,
             getPublicationDates: async () => ({
@@ -235,7 +235,7 @@ describe('buildCurrentIndicatorsCatalog', () => {
                 'inflacion-equilibra': '2026-05-10',
                 'bcra-rem': futureMonthly('2026-05-03'),
             }),
-            getNormalizedRowByDate: async (type, date) => type === 'inflacion' && date === '2026-03-01' ? { iso_fecha: '2026-03-01', ipc: 3.4 } : null,
+            getNormalizedRowByDate: async (type, date) => type === 'inflacion' && date === '2026-05-01' ? { iso_fecha: '2026-05-01', rem: 3.4 } : null,
             getRawRowByDate: async () => null,
             getNormalizedRows: async () => [],
             getRawRows: async () => [{ fecha: '2026-04-01', ipc_indec_general: 1, ipc_equilibra: 1, rem: 1 }],

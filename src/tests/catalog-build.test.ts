@@ -170,13 +170,26 @@ describe('buildIndicatorsCatalog', () => {
     it('uses fallback columns for inflation when principal value is null', () => {
         const result = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'inflacion' }], {
             inflacion: [
-                { iso_fecha: '2025-03-01', ipc: 5.2 },
-                { iso_fecha: '2026-02-01', ipc: 5.5 },
-                { iso_fecha: '2026-03-01', ipc: null, ipc_equilibra: 6.1 },
+                { iso_fecha: '2025-03-01', ipc_indec: 5.2 },
+                { iso_fecha: '2026-02-01', ipc_indec: 5.5 },
+                { iso_fecha: '2026-03-01', ipc_indec: null, ipc_equilibra: 6.1 },
+                { iso_fecha: '2026-04-01', rem: 5.5 },
             ],
         }, { inflacion: [{ fecha: '2026-03-01', ipc_equilibra: 6.1 }] });
 
         expect(result[0]).toMatchObject({ fecha: '1 MAR 26', dato: '6,1%', referencia: '5,5%', trend: 'down', proxima_fecha: formatDay(futureDate('2026-03-01', date => addMonthsFromDate(date, 1))) });
+    });
+
+    it('headlines the latest real inflation and shows the newer REM forecast only as reference', () => {
+        const result = buildIndicatorsCatalog([{ ...baseCatalogRow, id: 'inflacion' }], {
+            inflacion: [
+                { iso_fecha: '2026-08-01', ipc_indec: 1.8, ipc: 1.8 },
+                { iso_fecha: '2026-09-01', ipc_indec: 1.9, ipc_equilibra: 2.1, ipc: 1.9 },
+                { iso_fecha: '2026-10-01', rem: 1.8, ipc: 1.8 },
+            ],
+        }, { inflacion: [{ fecha: '2026-09-01', ipc_indec_general: 12510 }, { fecha: '2026-10-01', rem: 1.8 }] });
+
+        expect(result[0]).toMatchObject({ fecha: '1 SEPT 26', dato: '1,9%', referencia: '1,8%', reference_description: 'Pronóstico REM' });
     });
 
     it('shows the latest trade balance in millions of USD', () => {
