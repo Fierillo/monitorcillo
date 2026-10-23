@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
-import { parseEquilibraRssItem, parseIndecIpcWorkbook } from '../lib/inflacion-source';
+import { parseEquilibraRssItem, parseIndecIpcCsv, parseIndecIpcPressRelease, parseIndecIpcWorkbook } from '../lib/inflacion-source';
 
 function createWorkbook(rows: unknown[][]): Buffer {
     const workbook = XLSX.utils.book_new();
@@ -30,6 +30,41 @@ describe('parseIndecIpcWorkbook', () => {
             ipc_indec: 2.6,
             ipc_nucleo_indec: 2.3,
         });
+    });
+});
+
+describe('parseIndecIpcCsv', () => {
+    it('extracts national monthly general and core variations, ignoring regions and other rows', () => {
+        const csv = [
+            'Codigo;Descripcion;Clasificador;Periodo;Indice_IPC;v_m_IPC;v_i_a_IPC;Region',
+            '0;NIVEL GENERAL;Nivel general y divisiones COICOP;202609;12523,1733;2;33,5;GBA',
+            '0;NIVEL GENERAL;Nivel general y divisiones COICOP;202608;12280,1;1,7;33,5;Nacional',
+            '0;NIVEL GENERAL;Nivel general y divisiones COICOP;202609;12514,1508;1,9;33,4;Nacional',
+            '01;Alimentos y bebidas no alcohólicas;Nivel general y divisiones COICOP;202609;13384,1945;2;35,1;Nacional',
+            'Núcleo;;Categorias;202608;12441,1;1,8;31,6;Nacional',
+            'Núcleo;;Categorias;202609;12654,4322;1,7;31,6;Nacional',
+            'Regulados;;Categorias;202609;13238,1788;2,3;43,3;Nacional',
+        ].join('\r\n');
+
+        expect(parseIndecIpcCsv(csv)).toEqual([
+            { fecha: '2026-08-01', ipc_indec: 1.7, ipc_nucleo_indec: 1.8 },
+            { fecha: '2026-09-01', ipc_indec: 1.9, ipc_nucleo_indec: 1.7 },
+        ]);
+    });
+});
+
+describe('parseIndecIpcPressRelease', () => {
+    it('extracts the month, general and core variation from the INDEC press release text', () => {
+        const text = `Resumen ejecutivo. Septiembre de 2026
+El nivel general del Índice de precios al consumidor registró un alza mensual de 1,9% en septiembre
+de 2026 y acumuló en el año una variación de 23,6%.
+A nivel de las categorías, los precios del IPC Núcleo (1,7%) tuvieron subas vinculadas a Comidas`;
+
+        expect(parseIndecIpcPressRelease(text)).toEqual([{ fecha: '2026-09-01', ipc_indec: 1.9, ipc_nucleo_indec: 1.7 }]);
+    });
+
+    it('returns no rows when the text has no monthly variation', () => {
+        expect(parseIndecIpcPressRelease('Página no encontrada')).toEqual([]);
     });
 });
 
