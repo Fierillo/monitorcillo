@@ -177,6 +177,23 @@ export function toNormalizedRow<T extends IndicatorType>(type: T, row: DbRow): N
         } as NormalizedDataByType[T];
     }
 
+    if (type === 'gasto') {
+        return {
+            iso_fecha,
+            fecha: iso_fecha.slice(0, 4),
+            nation: toNullableNumber(row.nation),
+            provinces: toNullableNumber(row.provinces),
+            municipalities: toNullableNumber(row.municipalities),
+            interest: toNullableNumber(row.interest),
+            total: toNullableNumber(row.total),
+            kind: row.kind,
+            as_of: row.as_of == null ? null : formatDbDate(row.as_of),
+            partial_quarters: toNullableNumber(row.partial_quarters),
+            bridge_year: toNullableNumber(row.bridge_year),
+            interest_subnational: toNullableNumber(row.interest_subnational),
+        } as NormalizedDataByType[T];
+    }
+
     if (type === 'sipa') {
         return {
             ...common,

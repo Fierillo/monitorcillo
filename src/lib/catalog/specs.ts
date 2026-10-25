@@ -1,5 +1,6 @@
 import type { CatalogIndicatorSpec, CatalogNextExpectedEvent, DataRow } from '@/types';
 import { rowDate, toFiniteNumber } from './rows';
+import { partialCuts } from '../normalize/gasto';
 
 const decimalFormatter = new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 1,
@@ -89,6 +90,7 @@ const INFLACION_FIELDS = { ...INFLACION_REAL_FIELDS, rem: 'REM' };
 const ICG_FIELDS = { icg: 'ICG' };
 const POBREZA_FIELDS = { pobreza_utdt: 'Nowcast UTDT', pobreza_indec: 'Pobreza INDEC', pobreza_uca: 'Pobreza UCA' };
 const SIPA_FIELDS = { total: 'Trabajo registrado', privado: 'Trabajo registrado', publico: 'Trabajo registrado', casas_particulares: 'Trabajo registrado', autonomos: 'Trabajo registrado', monotributo: 'Trabajo registrado', monotributo_social: 'Trabajo registrado' };
+const GASTO_FIELDS = { total: 'Gasto público consolidado' };
 const BALANZA_FIELDS = { exportaciones: 'Intercambio comercial', importaciones: 'Intercambio comercial', saldo: 'Intercambio comercial' };
 
 export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
@@ -267,6 +269,30 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         formatValue: value => `${formatDecimal(value / 1000)} millones`,
         getNextExpectedDate: date => addMonthsFromDate(date, 1),
         getNextExpectedEvents: ({ rawRows, rawDate, publicationDate, today }) => futureMonthly(publicationDate ?? latestDateWithValue(rawRows, ['total']) ?? rawDate, today, SIPA_FIELDS.total),
+    },
+    'gasto-publico': {
+        type: 'gasto',
+        referenceLabel: 'Año anterior',
+        betterWhen: 'lower',
+        getReferenceDate: date => addYears(date, -1),
+        selectReferenceValue: row => row.total,
+        datePrecision: 'day',
+        normalizedValueColumn: 'total',
+        selectValue: row => row.total,
+        rawDateFields: {}, // dated by its execution cut (publication), not by the yearly raw rows
+        valueSourceFields: GASTO_FIELDS,
+        formatValue: value => `${formatDecimal(value)}% del PBI`,
+        // The current year is spending accumulated to the cut, not a full year: say so and do not compare it with the previous year.
+        formatRowValue: (row, value) => {
+            if (row.kind !== 'partial' || !row.as_of || !row.partial_quarters) return `${formatDecimal(value)}% del PBI`;
+            const cuts = partialCuts(String(row.as_of), Number(row.partial_quarters));
+            // Fits indicators_catalog.dato (VARCHAR(50)); the full cuts are in the detail page.
+            return `${formatDecimal(value)}% del PBI acum. (Nac. ${cuts.nation.slice(0, 5)}, Prov. ${cuts.provinces.slice(0, 5)})`;
+        },
+        isComparable: row => row.kind !== 'partial',
+        getNextExpectedDate: date => addMonthsFromDate(date, 3),
+        // No official calendar: provincial executions (APNF) come out quarterly, so the next cut is estimated 3 months after the last one.
+        getNextExpectedEvents: ({ publicationDate, today }) => futureMonthly(publicationDate ?? null, today, GASTO_FIELDS.total, 0, 3),
     },
     'balanza-comercial': {
         type: 'balanza',

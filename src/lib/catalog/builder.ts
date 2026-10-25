@@ -42,7 +42,7 @@ export function buildIndicatorsCatalog(
         const referenceDate = rowDate(valueRow);
         const rawRows = rawData[spec.type] ?? [];
         const date = latestRawDate(rawRows, Object.keys(spec.rawDateFields)) ?? referenceDate;
-        const referenceRow = referenceRowForSpec(spec, valueRow, normalizedRows, rawRows);
+        const referenceRow = spec.isComparable?.(valueRow) === false ? null : referenceRowForSpec(spec, valueRow, normalizedRows, rawRows);
         const referenceValue = referenceNumericValue(spec, referenceRow);
         const nextEvent = nextExpectedCatalogEvent(spec, valueRow, referenceDate, date, null, undefined, normalizedRows, rawRows);
 
@@ -52,7 +52,7 @@ export function buildIndicatorsCatalog(
             reference_description: spec.referenceLabel,
             trend: comparisonTrend(spec, value, referenceValue),
             fecha: date ? formatCatalogDate(date, spec.datePrecision) : item.fecha,
-            dato: spec.formatValue(value),
+            dato: spec.formatRowValue?.(valueRow, value) ?? spec.formatValue(value),
             proxima_fecha: nextEvent?.date,
             proxima_fecha_description: nextEvent?.description ?? null,
             proxima_estimada: nextEvent?.estimated,
@@ -68,7 +68,7 @@ export function buildIndicatorCatalogItem(
     valueRow: DataRow | null,
     rawDate: string | null,
     publicationDate: string | null = null,
-    referenceRow: DataRow | null = null,
+    comparedRow: DataRow | null = null,
     normalizedRows: DataRow[] = [],
     rawRows: DataRow[] = [],
     sourcePublicationDates?: Record<string, string | null>,
@@ -78,6 +78,7 @@ export function buildIndicatorCatalogItem(
     const value = toFiniteNumber(spec.selectValue(valueRow));
     if (value === null) return { ...item };
 
+    const referenceRow = spec.isComparable?.(valueRow) === false ? null : comparedRow;
     const referenceDate = rowDate(valueRow);
     const date = rawDate ?? referenceDate;
     const referenceValue = referenceNumericValue(spec, referenceRow);
@@ -90,7 +91,7 @@ export function buildIndicatorCatalogItem(
         trend: comparisonTrend(spec, value, referenceValue),
         fecha: date ? formatCatalogDisplayDate(date, spec, publicationDate) : item.fecha,
         published_at: publicationDate ?? undefined,
-        dato: spec.formatValue(value),
+        dato: spec.formatRowValue?.(valueRow, value) ?? spec.formatValue(value),
         proxima_fecha: nextEvent?.date,
         proxima_fecha_description: nextEvent?.description ?? null,
         proxima_estimada: nextEvent?.estimated,

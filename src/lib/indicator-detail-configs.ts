@@ -1,4 +1,4 @@
-import type { AreaConfig, ChartDataRow, ChartModeConfig, Indicator, IndicatorCompositeViewProps, MethodologyItem } from '@/types';
+import type { AreaConfig, ChartDataRow, GastoNormalizedRow, ChartModeConfig, Indicator, IndicatorCompositeViewProps, MethodologyItem } from '@/types';
 import { BALANZA_EXPORT_RUBROS, BALANZA_IMPORT_USOS, BALANZA_SERIES_KEYS, buildAperturaComercial, usdMillionsToPctPbi, withNegativeImports } from './balanza/schema';
 import { EMAE_SECTORS } from './emae/schema';
 import { PNFC_BREAKDOWNS } from './morosidad/schema';
@@ -15,7 +15,8 @@ import { COST_OF_LIVING_MODEL, calculateCostOfLivingBurden, fetchCostOfLivingInd
 import { buildRigiChartData, rigiTotals, type RigiApproval } from './investments-source';
 import { getInversiones } from './db/inversiones';
 import { getDeudaVencimientos } from './db/deuda';
-import { fetchPublicSpendingChartData } from './public-spending-source';
+import { partialCuts, publicSpendingChartRows } from './normalize/gasto';
+import { argentinaToday } from './normalize/dates';
 import { PRESUPUESTO_EXPENSE_SERIES, PRESUPUESTO_RESOURCE_SERIES } from './presupuesto/schema';
 import { fetchPresupuestoRubrosChartData } from './presupuesto-source';
 
@@ -41,30 +42,70 @@ export async function getIndicatorDetailConfig(indicator: Indicator): Promise<De
 }
 
 async function publicSpendingConfig(indicator: Indicator): Promise<DetailConfig> {
-    const data = await fetchPublicSpendingChartData();
+    const data = publicSpendingChartRows(await getIndicatorData(indicator.id) as unknown as GastoNormalizedRow[]);
+    const currentYear = argentinaToday().slice(0, 4);
+    const lastYear = data.at(-1)?.fecha;
+    const staleNote = lastYear && lastYear < currentYear ? ` | Sin datos de ${currentYear}: se muestra el último dato guardado (${lastYear})` : '';
+    const partialRow = data.find(row => row.partial === true);
+    const estimateYears = data.filter(row => row.estimate === true).map(row => row.fecha).join(', ');
+    const partialYear = partialRow?.fecha;
+    const cuts = partialRow ? partialCuts(String(partialRow.partialAsOf), Number(partialRow.partialQuarters)) : { nation: '', provinces: '' };
+    const cutsLabel = `Nación al ${cuts.nation}, provincias al ${cuts.provinces}`;
+    const hasProjection = partialRow?.totalAnnualized != null;
+    // Tooltip-only series: the per-component projection is listed for the partial year without drawing anything.
+    if (partialRow) partialRow.totalProjected = partialRow.totalAnnualized;
+    if (partialRow) partialRow.tooltipHeader = `${partialYear} · Nación al ${cuts.nation.slice(0, 5)}, provincias al ${cuts.provinces.slice(0, 5)}`;
+    const projectionSection = `${partialYear} estimado`;
+    const projectionTooltip = (key: string, name: string, tooltipColor: string): AreaConfig => ({ key, name, color: 'transparent', tooltipColor, tooltipSection: projectionSection, type: 'line', strokeWidth: 0, showDots: false, hideInLegend: true });
+    const projectionAreas: AreaConfig[] = hasProjection ? [
+        // Dotted ghost segment stacked on the accumulated bar, up to the annualized total.
+        { key: 'annualizedGap', name: 'Anualizado (proyección lineal)', color: '#C9A44C', type: 'bar', stackId: 'spending', fill: false, dash: [3, 3], borderColor: '#C9A44C', borderWidth: 1.5, openBottom: true, preliminaryBlink: true, hideInLegend: true, hideInTooltip: true },
+        projectionTooltip('nationAnnualized', 'Nación', '#8B5CF6'),
+        projectionTooltip('provincesAnnualized', 'Provincias', '#0284C7'),
+        projectionTooltip('municipalitiesAnnualized', 'Municipios', '#7DD3FC'),
+        projectionTooltip('interestAnnualized', 'Intereses', '#94A3B8'),
+        // Separate key: the dotted line's 2025 connector point must not list the projection in the 2025 tooltip.
+        projectionTooltip('totalProjected', 'Total', '#C9A44C'),
+        { key: 'totalAnnualized', name: 'Total anualizado', hideInTooltip: true, color: 'rgba(201, 164, 76, 0.9)', type: 'line', strokeWidth: 2, showDots: true, dash: [2, 3], legendKey: 'total', hideInLegend: true },
+    ] : [];
     const areas: AreaConfig[] = [
         { key: 'nation', name: 'Nación', color: '#8B5CF6', type: 'bar', stackId: 'spending', preliminaryKey: 'preliminary', preliminaryFillPattern: 'diagonal-stripes', preliminaryLabel: 'Preliminar: cifras MECON' },
         { key: 'provinces', name: 'Provincias', color: '#0284C7', type: 'bar', stackId: 'spending', preliminaryKey: 'preliminary', preliminaryFillPattern: 'diagonal-stripes' },
         { key: 'municipalities', name: 'Municipios', color: '#7DD3FC', type: 'bar', stackId: 'spending', preliminaryKey: 'preliminary', preliminaryFillPattern: 'diagonal-stripes' },
         { key: 'interest', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending', preliminaryKey: 'preliminary', preliminaryFillPattern: 'diagonal-stripes' },
-        { key: 'nationEstimate', name: 'Nación', color: '#8B5CF6', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(139, 92, 246, 0.45)', legendKey: 'nation', hideInLegend: true, preliminaryLabel: 'Estimación 2025: Econviews' },
+        { key: 'nationEstimate', name: 'Nación', color: '#8B5CF6', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(139, 92, 246, 0.45)', legendKey: 'nation', hideInLegend: true, preliminaryLabel: `Estimación ${estimateYears}: ejecución anual DGSIAF y APNF` },
         { key: 'provincesEstimate', name: 'Provincias', color: '#0284C7', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(2, 132, 199, 0.45)', legendKey: 'provinces', hideInLegend: true },
-        { key: 'municipalitiesEstimate', name: 'Municipios', color: '#7DD3FC', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(125, 211, 252, 0.45)', legendKey: 'municipalities', hideInLegend: true },
+        { key: 'municipalitiesEstimate', name: 'Municipios (estimado)', color: '#7DD3FC', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(125, 211, 252, 0.45)', legendKey: 'municipalities', hideInLegend: true },
         { key: 'interestEstimate', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending', preliminaryKey: 'estimate', preliminaryColor: 'rgba(148, 163, 184, 0.45)', legendKey: 'interest', hideInLegend: true },
+        { key: 'nationPartial', name: 'Nación', color: '#8B5CF6', type: 'bar', stackId: 'spending', preliminaryKey: 'partial', preliminaryColor: 'rgba(139, 92, 246, 0.45)', preliminaryBlink: true, legendKey: 'nation', hideInLegend: true, preliminaryLabel: `${partialYear} parcial: ${cutsLabel}` },
+        { key: 'provincesPartial', name: 'Provincias', color: '#0284C7', type: 'bar', stackId: 'spending', preliminaryKey: 'partial', preliminaryColor: 'rgba(2, 132, 199, 0.45)', preliminaryBlink: true, legendKey: 'provinces', hideInLegend: true },
+        { key: 'municipalitiesPartial', name: 'Municipios (estimado)', color: '#7DD3FC', type: 'bar', stackId: 'spending', preliminaryKey: 'partial', preliminaryColor: 'rgba(125, 211, 252, 0.45)', preliminaryBlink: true, legendKey: 'municipalities', hideInLegend: true },
+        { key: 'interestPartial', name: 'Intereses', color: '#94A3B8', type: 'bar', stackId: 'spending', preliminaryKey: 'partial', preliminaryColor: 'rgba(148, 163, 184, 0.45)', preliminaryBlink: true, legendKey: 'interest', hideInLegend: true },
         { key: 'total', name: 'Gasto total', color: '#C9A44C', type: 'line', strokeWidth: 3, showDots: false, hideInTooltip: true },
         { key: 'totalEstimate', name: 'Gasto total estimado', color: 'rgba(201, 164, 76, 0.7)', type: 'line', strokeWidth: 3, showDots: false, dash: [6, 3], legendKey: 'total', hideInLegend: true, hideInTooltip: true },
+        ...projectionAreas,
     ];
     const methodology: MethodologyItem[] = [
         { title: 'Alcance', description: 'Erogaciones corrientes y de capital devengadas por el Sector Público No Financiero de Nación, provincias, CABA y municipios, incluyendo obras sociales.' },
         { title: 'Consolidación', description: 'MECON imputa el gasto en el nivel de gobierno ejecutor y elimina transferencias entre niveles para evitar duplicaciones.' },
         { title: 'Gasto primario', description: 'Nación, provincias y municipios se muestran netos de servicios de la deuda pública. Los intereses de los tres niveles se presentan como un componente separado.' },
         { title: 'Serie oficial', description: 'Base de Gasto Público Consolidado 1980-2024 del Ministerio de Economía, actualizada en marzo de 2026. MECON identifica 2021-2024 como cifras provisionales.' },
-        { title: 'Estimación 2025', description: 'Composición publicada por Econviews sobre datos de MECON y estimaciones propias: Nación 15%, provincias 15%, municipios 3% e intereses 1% del PBI.' },
-        { title: 'Lectura', description: 'Las barras muestran la composición por nivel de gobierno e intereses. La línea dorada representa la suma de los cuatro componentes.' },
+        ...(estimateYears ? [
+            { title: `Estimación ${estimateYears}`, description: `Año cerrado que MECON aún no publicó en la serie consolidada; se calcula con las mismas fuentes oficiales que el año en curso, con la ejecución anual completa (DGSIAF y APNF al 4º trimestre), y pasa a dato oficial cuando MECON lo publique.` },
+        ] : []),
+        { title: 'Municipios: estimado', description: `Sin datos de ejecución municipal: se aplica la relación municipios/provincias ${partialRow?.partialBridgeYear ?? 2024} al gasto provincial acumulado. Es una estimación, no un dato.` },
+        { title: 'Método de los años sin serie oficial', description: `Nación: gasto primario devengado (DGSIAF) llevado al alcance de la serie oficial con la relación de nivel ${partialRow?.partialBridgeYear ?? 'del último año común'} entre ambas fuentes (corrección de cobertura, no de tiempo). Provincias: ejecución acumulada APNF. Intereses: devengado nacional, rentas de la propiedad provinciales y la proporción municipal. Denominador: PBI de la Ley de Presupuesto de cada año.` },
+        ...(partialRow ? [
+            { title: `Parcial ${partialYear}`, description: `La barra ${partialYear} es el gasto acumulado, no el año completo, con cortes distintos: Nación (DGSIAF) al ${cuts.nation}; provincias (APNF) al ${cuts.provinces} (${partialRow.partialQuarters}º trimestre), y municipios e intereses subnacionales derivan de provincias. No es comparable con años cerrados; se muestra atenuada y parpadeante, con línea punteada, y se actualiza en cada corte.` },
+        ] : []),
+        ...(hasProjection ? [
+            { title: `Anualizado ${partialYear}`, description: `Recuadro y línea punteados: proyección lineal, no un pronóstico, del acumulado al año completo (Nación por días transcurridos al ${cuts.nation}; provincias, municipios e intereses subnacionales ×4/${partialRow?.partialQuarters} desde el ${cuts.provinces}). Por eso el salto es mayor en provincias y municipios: su acumulado llega solo al ${cuts.provinces}. Sesgada por la estacionalidad del gasto (p. ej. aguinaldo en junio y diciembre). El valor principal sigue siendo el acumulado.` },
+        ] : []),
+        { title: 'Lectura', description: 'Las barras muestran la composición por nivel de gobierno e intereses. La línea dorada representa la suma de los cuatro componentes; el tramo punteado llega al total anualizado del año en curso (proyección lineal).' },
     ];
 
     return {
-        subtitle: `Fuente: ${indicator.fuente} | Devengado anual`,
+        subtitle: `Fuente: ${indicator.fuente} | Devengado anual${partialRow ? ` + ${partialYear} acumulado (${cutsLabel})` : ''}${staleNote}`,
         chartTitle: 'Gasto primario consolidado más intereses',
         data,
         areas,

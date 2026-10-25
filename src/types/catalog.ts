@@ -41,6 +41,10 @@ export type CatalogIndicatorSpec = {
     /** Source labels of the value-row fields, for indicators dated by their value rather than by raw rows; else rawDateFields are the sources. */
     valueSourceFields?: Record<string, string>;
     formatValue: (value: number) => string;
+    /** Value text for a row that needs more than the number (e.g. a year accumulated to a cut). */
+    formatRowValue?: (row: DataRow, value: number) => string;
+    /** False when the row cannot be compared with its reference (e.g. a partial year against a full one). */
+    isComparable?: (row: DataRow) => boolean;
     getNextExpectedDate: (latestDate: string) => string;
     getNextExpectedEvents?: (context: CatalogNextExpectedEventContext) => CatalogNextExpectedEvent[];
 };

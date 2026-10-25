@@ -18,6 +18,7 @@ const MAPPING: Record<string, IndicatorType> = {
     sipa: 'sipa',
     balanza: 'balanza',
     'balanza-comercial': 'balanza',
+    'gasto-publico': 'gasto',
 };
 
 export const getIndicatorData = cache(async (id: string): Promise<ChartDataRow[]> => {

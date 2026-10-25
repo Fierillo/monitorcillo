@@ -274,6 +274,40 @@ export type PobrezaNormalizedRow = {
     pobreza_uca: number | null;
 };
 
+export type GastoKind = 'official' | 'preliminary' | 'estimate' | 'partial';
+
+/** One year of consolidated public spending, % of GDP. «partial» is the annualized current year, upserted each sync until official. */
+export type GastoRawRow = {
+    fecha: string;
+    nation: NumericValue;
+    provinces: NumericValue;
+    municipalities: NumericValue;
+    interest: NumericValue;
+    total: NumericValue;
+    kind: GastoKind;
+    as_of: string | null;
+    partial_quarters: number | null;
+    bridge_year: number | null;
+    /** Provincial and municipal part of «interest» (partial year), projected by quarters instead of days. */
+    interest_subnational: number | null;
+};
+
+export type GastoNormalizedRow = {
+    fecha: string;
+    iso_fecha: string;
+    nation: number | null;
+    provinces: number | null;
+    municipalities: number | null;
+    interest: number | null;
+    total: number | null;
+    kind: GastoKind;
+    as_of: string | null;
+    partial_quarters: number | null;
+    bridge_year: number | null;
+    /** Provincial and municipal part of «interest» (partial year), projected by quarters instead of days. */
+    interest_subnational: number | null;
+};
+
 export type IcgRawRow = {
     fecha: string;
     icg?: NumericValue;
@@ -348,6 +382,7 @@ export type RawDataByType = {
     icg: IcgRawRow;
     balanza: BalanzaRawRow;
     sipa: SipaRawRow;
+    gasto: GastoRawRow;
 };
 
 export type NormalizedDataByType = {
@@ -363,6 +398,7 @@ export type NormalizedDataByType = {
     icg: IcgNormalizedRow;
     balanza: BalanzaNormalizedRow;
     sipa: SipaNormalizedRow;
+    gasto: GastoNormalizedRow;
 };
 
 export type RawDataRow = RawDataByType[IndicatorType];

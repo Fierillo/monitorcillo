@@ -11,3 +11,4 @@ export * from './normalize/inflacion';
 export * from './normalize/icg';
 export * from './normalize/balanza';
 export * from './normalize/sipa';
+export * from './normalize/gasto';

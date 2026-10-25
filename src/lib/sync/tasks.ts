@@ -1,7 +1,7 @@
 import type { EmisionRawRow, IndicatorType, NormalizedDataRow, RawDataByType, SyncResult, SyncRunReport } from '@/types';
 import { getRawData, replaceNormalizedData, saveIndicatorPublication, saveIndicatorsCatalog, saveRawData } from '../db';
 import { buildCurrentIndicatorsCatalog } from '../catalog-service';
-import { argentinaToday, fechaToISO, normalizeBalanza, normalizeBma, normalizeDepositosPrestamos, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion, normalizeSipa } from '../normalize';
+import { argentinaToday, fechaToISO, normalizeBalanza, normalizeBma, normalizeDepositosPrestamos, normalizeDeuda, normalizeEmae, normalizeEmision, normalizeGasto, normalizeIcg, normalizeInflacion, normalizePobreza, normalizePoderAdquisitivo, normalizeRecaudacion, normalizeSipa } from '../normalize';
 import { runSyncTasks } from '../sync-runner';
 import { buildEmissionRows, fetchEmisionRaw } from './bcra';
 import { fetchBmaRaw } from './bma';
@@ -16,6 +16,7 @@ import { ensureInflacionTables, fetchInflacionRawReport } from './inflacion';
 import { ensureIcgTables, fetchIcgRawReport } from './icg';
 import { ensureBalanzaTables, fetchBalanzaRawReport } from './balanza';
 import { ensureSipaTables, fetchSipaRawReport } from './sipa';
+import { ensureGastoTables, fetchGastoRaw } from './gasto';
 import { mergeRawSeries } from './merge-raw';
 import { fetchNextOfficialReleases } from '../release-calendars';
 
@@ -42,9 +43,14 @@ async function persistMergedRawAndNormalize<T extends IndicatorType>(
     incoming: Array<RawDataByType[T]>,
     normalize: (rows: Array<RawDataByType[T]>) => NormalizedDataRow[],
     refreshUnchanged = false,
+    /** Send whole incoming rows for changed dates (tables with NOT NULL columns besides fecha). */
+    fullRowUpserts = false,
 ): Promise<SyncResult> {
     const existingFechas = new Set(existingData.map((row) => row.fecha));
-    const { merged, upserts } = mergeRawSeries(existingData, incoming);
+    const merge = mergeRawSeries(existingData, incoming);
+    const { merged } = merge;
+    const incomingByFecha = new Map(incoming.map(row => [row.fecha, row]));
+    const upserts = fullRowUpserts ? merge.upserts.map(row => incomingByFecha.get(row.fecha) ?? row) : merge.upserts;
 
     if (upserts.length === 0 && !refreshUnchanged) {
         return { appended: 0, total: existingData.length };
@@ -217,6 +223,18 @@ export async function syncSipa(): Promise<SyncResult> {
     return result;
 }
 
+/** The current partial year is upserted every run (new cut, new values) until MECON publishes it as an official year. */
+export async function syncGasto(): Promise<SyncResult> {
+    const type: IndicatorType = 'gasto';
+    await ensureGastoTables();
+    const existingData = (await getRawData(type)) ?? [];
+    const rawData = await fetchGastoRaw(argentinaToday());
+    const result = await persistMergedRawAndNormalize(type, existingData, rawData, normalizeGasto, true, true);
+    const latestCut = rawData.filter(row => row.kind === 'partial' && row.as_of).at(-1);
+    if (latestCut?.as_of) await saveIndicatorPublication('gasto-publico', latestCut.as_of, latestCut.fecha);
+    return result;
+}
+
 /** Stores the next official release of each calendar-backed event (INDEC, BCRA REM, Tesoro auction) as a publication. */
 export async function syncOfficialCalendars(): Promise<SyncResult> {
     const next = Object.entries(await fetchNextOfficialReleases(argentinaToday()));
@@ -239,6 +257,7 @@ export async function runSync(): Promise<SyncRunReport> {
         { key: 'icg', run: syncIcg },
         { key: 'balanza_comercial', run: syncBalanza },
         { key: 'sipa', run: syncSipa },
+        { key: 'gasto_publico', run: syncGasto },
         { key: 'calendarios_oficiales', run: syncOfficialCalendars },
     ]);
     const catalogReport = await runSyncTasks([{ key: 'catalog', run: syncIndicatorsCatalog }]);

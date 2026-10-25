@@ -27,6 +27,7 @@ const NORMALIZED_KEYS: Record<IndicatorType, string[]> = {
     icg: ['fecha', 'icg'],
     balanza: [...BALANZA_NORMALIZED_COLUMNS],
     sipa: [...SIPA_NORMALIZED_COLUMNS],
+    gasto: ['fecha', 'nation', 'provinces', 'municipalities', 'interest', 'total', 'kind', 'as_of', 'partial_quarters', 'bridge_year', 'interest_subnational'],
 };
 
 export async function getNormalizedData<T extends IndicatorType>(type: T): Promise<Array<NormalizedDataByType[T]> | null> {
@@ -101,6 +102,7 @@ function valuesForRow(type: IndicatorType, dataRow: NormalizedDataRow): DbValue[
     if (type === 'inflacion') return [fecha, toNullableNumber(row.ipc_indec), toNullableNumber(row.ipc_nucleo_indec), toNullableNumber(row.ipc_equilibra), toNullableNumber(row.ipc_online), toNullableNumber(row.rem), toNullableNumber(row.ipim), toNullableNumber(row.ipc)];
     if (type === 'icg') return [fecha, toNullableNumber(row.icg)];
     if (type === 'balanza') return [fecha, ...BALANZA_SERIES_KEYS.map(key => toNullableNumber(row[key])), toNullableNumber(row.pbi), toNullableNumber(row.tc), toNullableNumber(row.ipc_nucleo), toNullableNumber(row.pbi_usd)];
+    if (type === 'gasto') return [fecha, toNullableNumber(row.nation), toNullableNumber(row.provinces), toNullableNumber(row.municipalities), toNullableNumber(row.interest), toNullableNumber(row.total), row.kind, row.as_of ?? null, toNullableNumber(row.partial_quarters), toNullableNumber(row.bridge_year), toNullableNumber(row.interest_subnational)];
     if (type === 'sipa') return [fecha, ...SIPA_VALUE_KEYS.map(key => toNullableNumber(row[key])), Boolean(row.provisional)];
     return [fecha, toNullableNumber(row.blanco), toNullableNumber(row.negro), toNullableNumber(row.privado), toNullableNumber(row.publico), toNullableNumber(row.ripte), toNullableNumber(row.jubilacion)];
 }
