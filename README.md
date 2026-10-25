@@ -1,5 +1,6 @@
 <div align="center">
   <h1>Monitorcillo</h1>
+  <p><em>«El precio de la libertad es la eterna vigilancia»</em></p>
   <p><strong>Monitor macroeconómico de la Argentina, actualizado con fuentes oficiales y diseñado para leer datos rápido.</strong></p>
 
   <p>
