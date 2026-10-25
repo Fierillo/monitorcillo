@@ -15,7 +15,7 @@
     <a href="https://github.com/Fierillo/monitorcillo/actions/workflows/sync.yml">
       <img alt="Sync Data" src="https://img.shields.io/github/actions/workflow/status/Fierillo/monitorcillo/sync.yml?branch=main&label=sync&style=flat-square">
     </a>
-    <img alt="pnpm" src="https://img.shields.io/badge/pnpm-10.28.2-F69220?style=flat-square&logo=pnpm&logoColor=white">
+    <img alt="pnpm" src="https://img.shields.io/badge/pnpm-11.20.0-F69220?style=flat-square&logo=pnpm&logoColor=white">
     <a href="./LICENSE">
       <img alt="License" src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
     </a>
@@ -57,7 +57,7 @@ Monitorcillo consolida indicadores económicos argentinos en una interfaz compac
 | UI | Tailwind CSS 4, Recharts, html-to-image |
 | Datos | Neon Serverless Postgres |
 | Sync | GitHub Actions, scripts Node con `tsx`, `pdf-parse` (UTDT), `tesseract.js` (OCR fallback) |
-| Calidad | ESLint, Vitest, typecheck estricto |
+| Calidad | ESLint, Vitest, typecheck estricto, `pnpm audit` semanal |
 | Deploy | Vercel |
 
 ## ¿Cómo funciona la publicación de datos?
@@ -92,7 +92,8 @@ src/
   lib/db/           Acceso a Neon y mapeo de filas
   lib/emae/         Schema único del dominio EMAE
   lib/normalize/    Normalizadores por indicador
-  lib/sync/         Jobs de sincronización y clientes externos
+  lib/sync/         Jobs de sincronización y cadena de fuentes
+  scripts/          Sync y cargas manuales
   types/            Contratos TypeScript compartidos
 ```
 
@@ -100,8 +101,8 @@ src/
 
 Requisitos:
 
-- Node.js 22
-- pnpm 10
+- Node.js 22.23
+- pnpm 11
 - Base Neon compatible con `schema.sql`
 
 Instalación:
@@ -125,29 +126,23 @@ Comandos:
 pnpm dev       # servidor local
 pnpm build     # build + typecheck
 pnpm lint      # eslint
-pnpm test:run  # tests unitarios
+pnpm test:run  # tests unitarios con coverage
+pnpm verify    # tests + typecheck + lint (CI)
 pnpm sync      # sincroniza fuentes oficiales
+pnpm import-inversiones  # carga manual de RIGI
+pnpm import-rutas        # carga manual de rutas (DNV)
 ```
-
-## Principios
-
-- Una fuente de verdad por dominio.
-- Normalizadores pequeños y auditables.
-- Tipos derivados de estructuras reales, no strings duplicados.
-- Documentación mínima: si algo cambia, debe cambiar el código.
-- Deploy reproducible con `pnpm run build`.
 
 ## Pendientes
 
-- Agregar gráfico de deuda.
 - Agregar gráfico de reservas netas.
 
 ## Deploy
 
-El proyecto está preparado para Vercel. La sincronización automática corre con GitHub Actions cada 6 horas y requiere `NEON_URL` configurado como secret del repositorio.
+El proyecto está preparado para Vercel. La sincronización automática corre con GitHub Actions cada 6 horas y requiere `NEON_URL` configurado como secret del repositorio. Cada push y PR corre `pnpm verify`.
 
 Antes de publicar:
 
 ```bash
-pnpm run build
+pnpm verify && pnpm build
 ```
