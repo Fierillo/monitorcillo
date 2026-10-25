@@ -61,12 +61,12 @@ export default function CustomLegend({ areas, highlightedAreas, onToggleHighligh
                         {(area.preliminaryFillPattern ?? area.fillPattern) === 'diagonal-stripes' ? (
                             <defs>
                                 <pattern id={`legend-pattern-${area.key}`} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                                    <rect width="4" height="4" fill={area.color} />
+                                    <rect width="4" height="4" fill={area.preliminaryColor ?? area.color} />
                                     <line x1="0" y1="0" x2="0" y2="4" stroke="#0B1426" strokeOpacity="0.55" strokeWidth="1.5" />
                                 </pattern>
                             </defs>
                         ) : null}
-                        <rect x="1" y="1" width="12" height="8" fill={(area.preliminaryFillPattern ?? area.fillPattern) === 'diagonal-stripes' ? `url(#legend-pattern-${area.key})` : area.color} fillOpacity={area.preliminaryFillPattern || area.fillPattern ? 1 : 0.45} stroke={needsLegendOutline(area.preliminaryBorderColor ?? area.borderColor ?? area.color) ? LEGEND_OUTLINE_COLOR : area.preliminaryBorderColor ?? area.borderColor ?? area.color} strokeDasharray={area.preliminaryFillPattern || area.fillPattern ? undefined : '3 2'} />
+                        <rect x="1" y="1" width="12" height="8" fill={(area.preliminaryFillPattern ?? area.fillPattern) === 'diagonal-stripes' ? `url(#legend-pattern-${area.key})` : area.color} fillOpacity={area.preliminaryFillPattern || area.fillPattern ? 1 : 0.45} stroke={needsLegendOutline(area.preliminaryBorderColor ?? area.borderColor ?? area.color) ? LEGEND_OUTLINE_COLOR : area.preliminaryBorderColor ?? area.borderColor ?? area.color} strokeDasharray={area.preliminaryFillPattern || area.fillPattern ? undefined : '3 2'} className={area.preliminaryBlink ? 'preliminary-blink' : undefined} />
                     </svg>
                     {area.preliminaryLabel}
                 </span>

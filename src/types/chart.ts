@@ -22,6 +22,8 @@ export interface AreaConfig {
     preliminaryColor?: string;
     preliminaryBorderColor?: string;
     preliminaryFillPattern?: 'diagonal-stripes';
+    /** Pulses the preliminary series so it reads as an open, still-moving figure. */
+    preliminaryBlink?: boolean;
     proposalKey?: string;
     proposalLabel?: string;
     proposalFillPattern?: 'diagonal-stripes';
@@ -40,6 +42,12 @@ export interface AreaConfig {
     hideInTooltip?: boolean;
     tooltipFallbackKey?: string;
     tooltipBackgroundColor?: string;
+    /** Text color in the tooltip when it differs from the chart color (e.g. a tooltip-only series drawn transparent). */
+    tooltipColor?: string;
+    /** Groups the series at the end of the tooltip in a dotted box titled with this text, outside the stack total. */
+    tooltipSection?: string;
+    /** Bar drawn as a top-and-sides outline (no bottom edge), continuing the stacked bar below. */
+    openBottom?: boolean;
     revealStrokeAfterPercent?: number;
 }
 

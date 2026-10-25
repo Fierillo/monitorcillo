@@ -120,3 +120,35 @@ describe('bar chart edges', () => {
         vi.useRealTimers();
     });
 });
+
+describe('open-bottom ghost bar', () => {
+    const ghost: AreaConfig = { key: 'gap', name: 'Proyección', color: '#C9A44C', type: 'bar', stackId: 'spending', fill: false, dash: [3, 3], borderColor: '#C9A44C', borderWidth: 1.5, openBottom: true, preliminaryBlink: true };
+
+    function bars(container: HTMLElement) {
+        return [...container.querySelectorAll('path.recharts-rectangle')].map(path => ({ path, x: Number(path.getAttribute('x')), width: Number(path.getAttribute('width')) }));
+    }
+
+    it('draws only the top and sides, flush with the bar below, and blinks with it', () => {
+        const { container } = renderChart({ count: 3, areas: [...stackedBars, ghost] });
+        const open = container.querySelectorAll('path[data-open-bottom]');
+        expect(open.length).toBeGreaterThan(0);
+        const outline = open[0];
+        const d = outline.getAttribute('d') ?? '';
+        expect(d).not.toMatch(/z/i);
+        expect(d.match(/L/g)).toHaveLength(3);
+        expect(outline.getAttribute('stroke-dasharray')).toBe('3 3');
+        expect(outline.getAttribute('fill')).toBe('none');
+        expect(outline.getAttribute('class')).toContain('preliminary-blink');
+        const below = bars(container).find(bar => bar.path.getAttribute('fill') === '#0284C7')!;
+        const [left, right] = [Number(outline.getAttribute('data-left')), Number(outline.getAttribute('data-right'))];
+        // Outer edges of the dotted stroke match the outer edges of the stacked bar below.
+        expect(left - 0.75).toBeCloseTo(below.x - 0.25, 6);
+        expect(right + 0.75).toBeCloseTo(below.x + below.width + 0.25, 6);
+    });
+
+    it('keeps closed rectangles for bars without openBottom', () => {
+        const { container } = renderChart({ count: 3 });
+        expect(container.querySelector('path[data-open-bottom]')).toBeNull();
+        expect(container.querySelector('.preliminary-blink')).toBeNull();
+    });
+});

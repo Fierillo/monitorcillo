@@ -95,10 +95,29 @@ function ChartBar({
                         stroke={areaConfig.preliminaryBorderColor ?? strokeColor}
                         strokeDasharray={areaConfig.preliminaryFillPattern === 'diagonal-stripes' ? undefined : '4 3'}
                         strokeWidth={strokeWidth}
+                        className={areaConfig.preliminaryBlink ? 'preliminary-blink' : undefined}
                         style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
                     />
                 </g>
             );
+        }
+
+        if (areaConfig.openBottom) {
+            // Stroke centered inset so its outer edges match the outer edges of the stacked bars below.
+            const left = (x ?? 0) + borderInset;
+            const right = (x ?? 0) + (width ?? 0) - borderInset;
+            const top = (barY ?? 0) + borderInset;
+            const bottom = (barY ?? 0) + barAbsHeight;
+            return <path
+                d={`M${left},${bottom}L${left},${top}L${right},${top}L${right},${bottom}`}
+                data-open-bottom="" data-left={left} data-right={right}
+                fill="none"
+                stroke={strokeColor}
+                strokeDasharray={dash?.join(' ')}
+                strokeWidth={strokeWidth}
+                className={areaConfig.preliminaryBlink ? 'preliminary-blink' : undefined}
+                style={{ opacity: isDimmed ? opacity * 0.2 : opacity, cursor: 'pointer', outline: 'none' }}
+            />;
         }
 
         const rectangle = <Rectangle

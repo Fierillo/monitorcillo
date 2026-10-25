@@ -151,3 +151,20 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     animation: none;
   }
 }
+
+/* A still-open figure keeps its faded fill but pulses, so it never reads as closed data.
+   The peak is the 2025 opacity and it holds, so the bar reads as that same faded bar. */
+@keyframes preliminary-blink {
+  0%, 40%, 100% { opacity: 1; }
+  70% { opacity: 0.35; }
+}
+
+.preliminary-blink {
+  animation: preliminary-blink 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preliminary-blink {
+    animation: none;
+  }
+}

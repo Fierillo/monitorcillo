@@ -13,6 +13,65 @@ const props = {
 };
 
 describe('ChartTooltip', () => {
+    it.each([false, true])('wraps long headers and names inside a max width instead of truncating (compact=%s)', compact => {
+        const header = '2026 · Nación al 21/10, provincias al 30/06';
+        const markup = renderToStaticMarkup(<ChartTooltip
+            chartData={[{ fecha: '2026', tooltipHeader: header, a: 12.3 }]}
+            areaConfigs={[{ key: 'a', name: 'Una serie con un nombre bastante largo', color: '#8B5CF6', type: 'bar' }]}
+            valueFormat="percent"
+            compact={compact}
+            tooltipProps={{ active: true, label: '2026' }}
+        />);
+
+        expect(markup).toContain(header);
+        expect(markup).toContain('Una serie con un nombre bastante largo');
+        expect(markup).not.toMatch(/ellipsis|overflow:hidden/);
+        expect(markup).toMatch(/max-width:min\(\d+px, \d+vw\)/);
+        expect(markup).toContain('white-space:normal');
+        expect(markup).toContain('overflow-wrap:anywhere');
+        // Only the value stays on one line, next to its (possibly wrapped) label.
+        expect(markup.match(/white-space:nowrap/g)).toHaveLength(1);
+    });
+
+    it('uses a row tooltipHeader and renders sectioned series last, in a dotted box with its own header', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip
+            chartData={[{ fecha: '2026', tooltipHeader: '2026 · al 21/10/2026', acc: 12.3, proj: 15.2 }]}
+            areaConfigs={[
+                { key: 'proj', name: 'Nación', color: 'transparent', tooltipColor: '#8B5CF6', type: 'line', tooltipSection: '2026 estimado' },
+                { key: 'acc', name: 'Nación', color: '#8B5CF6', type: 'bar', stackId: 's' },
+            ]}
+            valueFormat="percent"
+            showTotal
+            tooltipProps={{ active: true, label: '2026' }}
+        />);
+
+        expect(markup).toContain('2026 · al 21/10/2026');
+        expect(markup).not.toContain('>2026<');
+        expect(markup.indexOf('12,3')).toBeLessThan(markup.indexOf('2026 estimado'));
+        expect(markup.indexOf('2026 estimado')).toBeLessThan(markup.indexOf('15,2'));
+        expect(markup).toContain('border:1px dotted');
+        expect(markup).not.toContain('color:transparent');
+    });
+
+    it('leaves tooltips without sections or row headers unchanged', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip {...props} />);
+        expect(markup).toContain('>ENE 26<');
+        expect(markup).not.toContain('dotted');
+    });
+
+    it('writes a tooltip-only series (invisible in the chart) with its tooltipColor, outlined in white when black', () => {
+        const markup = renderToStaticMarkup(<ChartTooltip
+            chartData={[{ fecha: '2026', ghost: 15.2 }]}
+            areaConfigs={[{ key: 'ghost', name: 'Nación anualizado', color: 'transparent', tooltipColor: '#000000', type: 'line' }]}
+            valueFormat="percent"
+            tooltipProps={{ active: true, label: '2026' }}
+        />);
+
+        expect(markup).not.toContain('color:transparent');
+        expect(markup).toContain('color:#000000');
+        expect(markup).toContain('-webkit-text-stroke:3px rgba(255, 255, 255, 0.9)');
+    });
+
     it('uses a light outward outline for near-black series text', () => {
         const markup = renderToStaticMarkup(<ChartTooltip
             chartData={[{ fecha: 'ENE 26', negro: 95.4 }]}
@@ -116,8 +175,8 @@ describe('ChartTooltip', () => {
         />);
 
         expect(markup).toContain('background-color:rgba(255, 255, 255, 0.9)');
-        expect(markup).toContain('<span style="color:#000000;-webkit-text-stroke:3px rgba(255, 255, 255, 0.9);paint-order:stroke fill">Salario informal:');
-        expect(markup).toContain('<span style="color:#FFFFFF;-webkit-text-stroke:3px rgba(0, 0, 0, 0.85);paint-order:stroke fill">Salario formal:');
+        expect(markup).toContain('<span style="color:#000000;min-width:0;white-space:normal;overflow-wrap:anywhere;-webkit-text-stroke:3px rgba(255, 255, 255, 0.9);paint-order:stroke fill">Salario informal:');
+        expect(markup).toContain('<span style="color:#FFFFFF;min-width:0;white-space:normal;overflow-wrap:anywhere;-webkit-text-stroke:3px rgba(0, 0, 0, 0.85);paint-order:stroke fill">Salario formal:');
     });
 
     it('omits every series without a value for the active month', () => {
