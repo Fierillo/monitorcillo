@@ -33,15 +33,20 @@ Monitorcillo consolida indicadores económicos argentinos en una interfaz compac
 | --- | --- | --- |
 | Base Monetaria Amplia | BCRA e INDEC | Serie mensual normalizada contra PBI real |
 | Emisión / Absorción de Pesos | BCRA y MECON | Flujo diario y acumulado |
+| Depósitos y préstamos | BCRA e INDEC | Stocks, tasas y morosidad |
 | Recaudación tributaria | MECON | % de PBI real mensual y MM12 |
+| Inflación (IPC) | INDEC, Equilibra e IPC Online | Variación mensual e interanual |
+| Trabajo registrado (SIPA) | Secretaría de Trabajo | Asalariados registrados, desestacionalizado |
 | Poder adquisitivo | INDEC, RIPTE y ANSES | Índices reales con mes base seleccionable |
 | EMAE | INDEC | Agregado, desestacionalizado, tendencia y sectores MM12 |
 | Deuda pública | MECON, BCRA e INDEC | Perfil de compromisos y deuda/PBI |
-| Gasto público consolidado | MECON y Econviews | Primario por nivel de gobierno más intereses (% PBI) |
+| Gasto público consolidado | MECON (DGSIAF y APNF) | Primario por nivel de gobierno más intereses (% PBI); 2026 acumulado + anualizado |
 | Presupuesto nacional | ONP / datos.gob.ar | Recursos y gastos desagregados por rubro (% PBI) |
 | Pobreza | INDEC y UTDT | Serie oficial semestral y nowcast mensual (gráfico interactivo UTDT) |
 | Índice de Confianza en el Gobierno | UTDT | Serie mensual general y comparación por mandato |
 | Balanza comercial | INDEC | ICA agregado (expo, impo, saldo) y desagregado por rubro/uso |
+| Inversiones | MECON y prensa | Proyectos RIGI aprobados y en evaluación |
+| Rutas nacionales | DNV | Concesión y estado del pavimento por tramo (carga manual) |
 
 ## Stack
 
@@ -54,18 +59,26 @@ Monitorcillo consolida indicadores económicos argentinos en una interfaz compac
 | Calidad | ESLint, Vitest, typecheck estricto |
 | Deploy | Vercel |
 
-## Arquitectura
+## ¿Cómo funciona la publicación de datos?
 
 ```mermaid
-flowchart LR
-    sources[BCRA / INDEC / MECON / ANSES] --> sync[pnpm sync]
-    sync --> raw[(raw tables)]
-    raw --> normalize[normalizers]
-    normalize --> normalized[(normalized tables)]
-    normalized --> catalog[catalog builder]
-    catalog --> next[Next.js app]
-    next --> ui[table + indicator views]
-    next --> api[admin + data API]
+flowchart TD
+    sync["pnpm sync<br/>(GitHub Actions every 6h or local)"] --> chain
+    subgraph chain["Source chain (firstUsable)"]
+        api[API] -->|fail / empty / stale| page[Web page] -->|fail / empty / stale| csv[CSV] -->|fail / empty / stale| ocr[PDF / OCR]
+    end
+    chain --> raw[(raw tables)] --> norm[normalizers]
+    norm --> normalized[("normalized tables<br/>current year upserted in place,<br/>marked partial until official")]
+    chain -->|"publishedAt + period<br/>(from the source itself)"| pubs[("indicator_publications<br/>last publication per indicator")]
+    sync --> cal["syncOfficialCalendars<br/>INDEC / BCRA REM / Tesoro calendars"]
+    cal -->|"next releases (id, id#2, id#3)"| pubs
+    pubs --> next{"upcoming official<br/>date stored?"}
+    next -->|yes| official[official date]
+    next -->|no| estimate["fixed-days estimate (*)<br/>last publication + rule in specs.ts"]
+    normalized --> catalog["catalog builder<br/>latest point + nearest upcoming release<br/>stale = warning, not failure"]
+    official --> catalog
+    estimate --> catalog
+    catalog --> ui[Next.js UI]
 ```
 
 ## Estructura
@@ -114,14 +127,6 @@ pnpm lint      # eslint
 pnpm test:run  # tests unitarios
 pnpm sync      # sincroniza fuentes oficiales
 ```
-
-## Flujo De Datos
-
-1. `pnpm sync` descarga o consulta las fuentes oficiales.
-2. Los datos crudos se guardan en tablas `*_raw`.
-3. Los normalizadores generan series comparables en tablas `*_normalized`.
-4. El catálogo calcula último dato, referencia, tendencia y fuente.
-5. Next.js entrega la home cacheada y revalida cada 6 horas.
 
 ## Principios
 
