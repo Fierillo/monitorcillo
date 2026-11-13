@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
-import { extractFileLinks, parseJson, readWorkbook, sheetRows } from '../lib/protocols';
+import { excelSerialToIsoMonth, extractFileLinks, firstSheetRows, parseJson, readWorkbook, sheetRows } from '../lib/protocols';
 
 describe('ingest protocols', () => {
     it('parses JSON payloads', () => {
@@ -32,10 +32,23 @@ describe('ingest protocols', () => {
         expect(sheetRows(readWorkbook(buffer).Sheets['Hoja inexistente'])).toEqual([]);
     });
 
+    it('reads the rows of the first sheet, including semicolon CSV files in Latin-1 like INDEC publishes them', () => {
+        expect(firstSheetRows(Buffer.from('Codigo;Descripcion;v_m_IPC\r\nNúcleo;;1,7\r\n', 'latin1'))).toEqual([
+            ['Codigo', 'Descripcion', 'v_m_IPC'],
+            ['Núcleo', null, '1,7'],
+        ]);
+    });
+
     it('reads workbooks downloaded as raw bytes', () => {
         const bytes = new Uint8Array(XLSX.write(buildWorkbook(), { type: 'array', bookType: 'xlsx' }));
 
         expect(readWorkbook(bytes).SheetNames).toEqual(['Serie']);
+    });
+
+    it('reads the month of an Excel serial as YYYY-MM-01', () => {
+        expect(excelSerialToIsoMonth(46266)).toBe('2026-09-01');
+        expect(excelSerialToIsoMonth(40000)).toBe('2009-07-01');
+        expect(excelSerialToIsoMonth(-1)).toBeNull();
     });
 
     it('extracts file links from HTML', () => {
