@@ -1,10 +1,6 @@
 import type { ChartDataRow } from '@/types';
 import { unstable_cache } from 'next/cache';
-import { extractFileLinks, readWorkbook, sheetRows } from './protocols';
-import { normalizeText } from './normalize/text';
 import {
-    PRESUPUESTO_EXPENSE_KEYS,
-    PRESUPUESTO_RESOURCE_KEYS,
     PRESUPUESTO_RUBRO_KEYS,
     withNegativeExpenses,
     type PresupuestoRubroKey,
@@ -16,36 +12,6 @@ export type PresupuestoYearRow = Record<PresupuestoRubroKey, number> & {
 };
 
 export type PresupuestoSeries = Map<number, PresupuestoYearRow>;
-
-export type PresupuestoSerieAnualRow = {
-    ingreso: number;
-    gasto: number;
-    pbi: number;
-};
-
-export type PresupuestoSerieAnual = Map<number, PresupuestoSerieAnualRow>;
-
-const RUBRO_ALIASES: Record<string, PresupuestoRubroKey> = {
-    tributarios: 'tributarios',
-    aportes_ss: 'aportes_ss',
-    'aportes y contribuciones ss': 'aportes_ss',
-    'aportes y contribuciones a la seguridad social': 'aportes_ss',
-    otros_ingresos: 'otros_ingresos',
-    'otros ingresos corrientes': 'otros_ingresos',
-    recursos_capital: 'recursos_capital',
-    'recursos de capital': 'recursos_capital',
-    prestaciones_ss: 'prestaciones_ss',
-    'prestaciones de la ss': 'prestaciones_ss',
-    'prestaciones de la seguridad social': 'prestaciones_ss',
-    consumo_operacion: 'consumo_operacion',
-    'consumo y operacion': 'consumo_operacion',
-    'gastos de consumo y operacion': 'consumo_operacion',
-    transferencias: 'transferencias',
-    'transferencias corrientes': 'transferencias',
-    intereses: 'intereses',
-    gastos_capital: 'gastos_capital',
-    'gastos de capital': 'gastos_capital',
-};
 
 export const PRESUPUESTO_LAW_SERIES: PresupuestoSeries = new Map([
     [2020, {
@@ -165,73 +131,6 @@ export const PRESUPUESTO_PBI_BY_YEAR = new Map([
     [2027, 1_421_178_148],
 ]);
 
-function numericValue(value: unknown): number | null {
-    if (value === null || value === undefined || value === '') return null;
-    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-    const raw = String(value).trim().replace(/\s/g, '');
-    const normalized = raw.includes(',') && raw.includes('.')
-        ? raw.replace(/\./g, '').replace(',', '.')
-        : raw.replace(/,/g, '');
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-}
-
-function emptyYearRow(preliminary: boolean): PresupuestoYearRow {
-    return {
-        tributarios: 0,
-        aportes_ss: 0,
-        otros_ingresos: 0,
-        recursos_capital: 0,
-        prestaciones_ss: 0,
-        consumo_operacion: 0,
-        transferencias: 0,
-        intereses: 0,
-        gastos_capital: 0,
-        preliminary,
-        proyecto: false,
-    };
-}
-
-function isCompleteYear(row: PresupuestoYearRow): boolean {
-    const hasResources = PRESUPUESTO_RESOURCE_KEYS.some(key => row[key] !== 0);
-    const hasExpenses = PRESUPUESTO_EXPENSE_KEYS.some(key => row[key] !== 0);
-    return hasResources && hasExpenses;
-}
-
-export function parsePresupuestoWorkbook(buffer: ArrayBuffer | Uint8Array): PresupuestoSeries {
-    const workbook = readWorkbook(buffer);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = sheetRows(sheet);
-    if (rows.length < 2) throw new Error('Failed to parse presupuesto workbook. Missing header or data rows.');
-
-    const headers = rows[0].map(cell => normalizeText(cell));
-    const yearIndex = headers.findIndex(header => header === 'ejercicio' || header === 'anio' || header === 'year');
-    const rubroIndex = headers.findIndex(header => header === 'rubro' || header === 'concepto');
-    const valueIndex = headers.findIndex(header => header === 'millones' || header === 'monto' || header === 'importe');
-    if (yearIndex < 0 || rubroIndex < 0 || valueIndex < 0) {
-        throw new Error('Failed to parse presupuesto workbook. Expected columns ejercicio, rubro and millones.');
-    }
-
-    const series: PresupuestoSeries = new Map();
-    for (const row of rows.slice(1)) {
-        const year = Number(row[yearIndex]);
-        const rubro = RUBRO_ALIASES[normalizeText(row[rubroIndex])];
-        const value = numericValue(row[valueIndex]);
-        if (!Number.isInteger(year) || !rubro || value == null) continue;
-
-        const current = series.get(year) ?? emptyYearRow(year === 2024 || year === 2025);
-        current[rubro] = value;
-        series.set(year, current);
-    }
-
-    for (const [year, row] of series) {
-        if (!isCompleteYear(row)) series.delete(year);
-    }
-
-    if (series.size === 0) throw new Error('Failed to parse presupuesto workbook. No complete annual observations found.');
-    return series;
-}
-
 function toPctPbi(value: number, pbi: number): number {
     return (value / pbi) * 100;
 }
@@ -267,108 +166,8 @@ export function buildPresupuestoChartData(
         });
 }
 
-export function parsePresupuestoDatasetLinks(html: string, origin?: string): string[] {
-    return extractFileLinks(html, { origin, extensions: ['xls', 'xlsx', 'csv'] })
-        .filter(link => /presupuesto/i.test(link.href) || /presupuesto/i.test(link.label))
-        .map(link => link.href);
-}
-
-export function parsePresupuestoSerieAnualCsv(csv: string): PresupuestoSerieAnual {
-    const workbook = readWorkbook(Buffer.from(csv));
-    const [header, ...rows] = sheetRows(workbook.Sheets[workbook.SheetNames[0]]);
-    if (!header || rows.length === 0) throw new Error('Failed to parse presupuesto serie anual CSV. Missing header or data rows.');
-
-    const headers = header.map(normalizeText);
-    const yearIndex = headers.findIndex(header => header.includes('ejercicio') || header === 'anio' || header === 'year');
-    const ingresoIndex = headers.findIndex(header => header === 'ingreso' || header === 'recursos' || header === 'recurso');
-    const gastoIndex = headers.findIndex(header => header === 'gasto' || header === 'gastos');
-    const pbiIndex = headers.findIndex(header => header === 'pib' || header === 'pbi');
-    if (yearIndex < 0 || ingresoIndex < 0 || gastoIndex < 0 || pbiIndex < 0) {
-        throw new Error('Failed to parse presupuesto serie anual CSV. Expected columns ejercicio_presupuestario, ingreso, gasto and PIB.');
-    }
-
-    const series: PresupuestoSerieAnual = new Map();
-    for (const cells of rows) {
-        const yearRaw = String(cells[yearIndex] ?? '');
-        const yearMatch = yearRaw.match(/(\d{4})/);
-        const year = yearMatch ? Number(yearMatch[1]) : Number(yearRaw);
-        const ingreso = numericValue(cells[ingresoIndex]);
-        const gasto = numericValue(cells[gastoIndex]);
-        const pbi = numericValue(cells[pbiIndex]);
-        if (!Number.isInteger(year) || ingreso == null || gasto == null || pbi == null || pbi <= 0) continue;
-        series.set(year, { ingreso, gasto, pbi });
-    }
-
-    if (series.size === 0) throw new Error('Failed to parse presupuesto serie anual CSV. No annual observations found.');
-    return series;
-}
-
-export function buildPresupuestoAgregadoChartData(series: PresupuestoSerieAnual): ChartDataRow[] {
-    return [...series.entries()]
-        .sort(([left], [right]) => left - right)
-        .map(([year, row]) => {
-            const ingreso = toPctPbi(row.ingreso, row.pbi);
-            const gasto = -toPctPbi(row.gasto, row.pbi);
-            return {
-                fecha: String(year),
-                iso_fecha: `${year}-01-01`,
-                ingreso,
-                gasto,
-                resultado: ingreso + gasto,
-                preliminary: year === 2024 || year === 2025,
-            };
-        });
-}
-
-const DATOS_GOB_SERIE_ANUAL_URLS = [
-    'https://datos.gob.ar/dataset/sspre-presupuesto-administracion-publica-nacional/resource/sspre_195/download/serie-anual-gastos-recursos-y-pib.csv',
-    'https://datos.gob.ar/sites/default/files/sspre_195.csv',
-] as const;
-
-async function fetchText(url: string): Promise<string> {
-    const response = await fetch(url, { next: { revalidate: 86400 } });
-    if (!response.ok) throw new Error(`Failed to fetch presupuesto serie anual from ${url}. HTTP ${response.status}.`);
-    return response.text();
-}
-
-async function fetchPresupuestoSerieAnual(): Promise<PresupuestoSerieAnual | null> {
-    for (const url of DATOS_GOB_SERIE_ANUAL_URLS) {
-        try {
-            return parsePresupuestoSerieAnualCsv(await fetchText(url));
-        } catch {
-            continue;
-        }
-    }
-    return null;
-}
-
-export const fetchPresupuestoChartData = unstable_cache(
-    async (): Promise<ChartDataRow[]> => {
-        const serieAnual = await fetchPresupuestoSerieAnual();
-        if (serieAnual) return buildPresupuestoAgregadoChartData(serieAnual);
-        return buildPresupuestoAgregadoChartData(serieAnualFromLawSeries(PRESUPUESTO_LAW_SERIES, PRESUPUESTO_PBI_BY_YEAR));
-    },
-    ['presupuesto-nacional-chart', 'v5-proyecto-2027'],
-    { revalidate: 86400 },
-);
-
 export const fetchPresupuestoRubrosChartData = unstable_cache(
     async (): Promise<ChartDataRow[]> => buildPresupuestoChartData(PRESUPUESTO_LAW_SERIES, PRESUPUESTO_PBI_BY_YEAR),
     ['presupuesto-nacional-rubros-chart', 'v5-proyecto-2027'],
     { revalidate: 86400 },
 );
-
-function serieAnualFromLawSeries(
-    series: PresupuestoSeries,
-    pbiByYear: Map<number, number>,
-): PresupuestoSerieAnual {
-    const result: PresupuestoSerieAnual = new Map();
-    for (const [year, row] of series) {
-        const pbi = pbiByYear.get(year);
-        if (!pbi || pbi <= 0) continue;
-        const ingreso = PRESUPUESTO_RESOURCE_KEYS.reduce((sum, key) => sum + row[key], 0);
-        const gasto = PRESUPUESTO_EXPENSE_KEYS.reduce((sum, key) => sum + row[key], 0);
-        result.set(year, { ingreso, gasto, pbi });
-    }
-    return result;
-}
