@@ -12,7 +12,7 @@ describe('gasto público catalog row', () => {
         const previous = { iso_fecha: '2025-01-01', total: 34, kind: 'estimate' };
         const item = buildIndicatorCatalogItem({ ...baseCatalogRow, id: 'gasto-publico' }, CATALOG_INDICATOR_SPECS['gasto-publico'], partial, null, '2026-10-21', previous, [previous, partial]);
         expect(item.dato.length).toBeLessThanOrEqual(50); // indicators_catalog.dato is VARCHAR(50)
-        expect(item).toMatchObject({ dato: '22,7% del PBI acum. (Nac. 21/10, Prov. 30/06)', referencia: '-', fecha: '21 OCT 26', trend: 'neutral', proxima_fecha: '21 ENE 27' });
+        expect(item).toMatchObject({ dato: '22,7% del PBI acum.', referencia: '-', fecha: '21 OCT 26', trend: 'neutral', proxima_fecha: '21 ENE 27' });
     });
 
     it('compares a closed year with the previous one', () => {

@@ -1,6 +1,5 @@
 import type { CatalogIndicatorSpec, CatalogNextExpectedEvent, DataRow } from '@/types';
 import { rowDate, toFiniteNumber } from './rows';
-import { partialCuts } from '../normalize/gasto';
 
 const decimalFormatter = new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 1,
@@ -283,12 +282,8 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         valueSourceFields: GASTO_FIELDS,
         formatValue: value => `${formatDecimal(value)}% del PBI`,
         // The current year is spending accumulated to the cut, not a full year: say so and do not compare it with the previous year.
-        formatRowValue: (row, value) => {
-            if (row.kind !== 'partial' || !row.as_of || !row.partial_quarters) return `${formatDecimal(value)}% del PBI`;
-            const cuts = partialCuts(String(row.as_of), Number(row.partial_quarters));
-            // Fits indicators_catalog.dato (VARCHAR(50)); the full cuts are in the detail page.
-            return `${formatDecimal(value)}% del PBI acum. (Nac. ${cuts.nation.slice(0, 5)}, Prov. ${cuts.provinces.slice(0, 5)})`;
-        },
+        // The cuts (nation, provinces) are only shown in the detail page.
+        formatRowValue: (row, value) => `${formatDecimal(value)}% del PBI${row.kind === 'partial' ? ' acum.' : ''}`,
         isComparable: row => row.kind !== 'partial',
         getNextExpectedDate: date => addMonthsFromDate(date, 3),
         // No official calendar: provincial executions (APNF) come out quarterly, so the next cut is estimated 3 months after the last one.
