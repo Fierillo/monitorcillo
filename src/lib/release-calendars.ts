@@ -158,6 +158,7 @@ const INDEC_CALENDAR_REPORTS: Record<string, string> = {
     'indec-salarios': 'Índice de salarios.',
     'indec-emae': 'Estimador mensual de actividad económica',
     'indec-ipc': 'Índice de precios al consumidor',
+    'indec-sipm': 'Sistema de índices de precios mayoristas',
     'indec-ica': 'Intercambio comercial argentino',
     'indec-pobreza': 'Incidencia de la pobreza',
     'indec-canasta': 'Valorización mensual de la canasta básica alimentaria',
@@ -207,7 +208,7 @@ function indecCalendarPageUrl(year: number, monthIndex: number): string {
 /** Day blocks of an INDEC month page; unlike the add-to-calendar links, they include already-published releases. */
 export function parseIndecCalendarDays(html: string, year: number, month: number): Release[] {
     return decodeHtml(html).split('class="nro-dia">').slice(1).flatMap(block => {
-        const date = `${year}-${String(month).padStart(2, '0')}-${block.match(/^\d+/)![0].padStart(2, '0')}`;
+        const date = isoDate(year, month, Number(block.match(/^\d+/)![0]));
         return [...block.matchAll(/text-calendario">([^<]+)</g)]
             .map(([, title]) => ({ date, title: title.replace(/\s+/g, ' ').trim() }))
             .filter(release => release.title);

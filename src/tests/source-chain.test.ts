@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { firstUsable, minLatestPeriod } from '@/lib/sync/source-chain';
+
+const mocks = vi.hoisted(() => ({ fetchTextFromUrl: vi.fn() }));
+vi.mock('@/lib/sync/http-client', () => ({ fetchTextFromUrl: mocks.fetchTextFromUrl }));
+
+import { expectedIndecPeriod, firstUsable, minLatestFromRelease, minLatestPeriod } from '@/lib/sync/source-chain';
 
 const rows = (...fechas: string[]) => fechas.map(fecha => ({ fecha }));
 
@@ -35,5 +39,30 @@ describe('minLatestPeriod', () => {
     it('is the month that should already be published given the release lag', () => {
         expect(minLatestPeriod('2026-10-22', 45)).toBe('2026-09-01');
         expect(minLatestPeriod('2026-10-10', 45)).toBe('2026-08-01');
+    });
+});
+
+describe('minLatestFromRelease', () => {
+    it('is the first day of the release month minus the period lag, across years', () => {
+        expect(minLatestFromRelease('2026-11-13', 1)).toBe('2026-10-01');
+        expect(minLatestFromRelease('2026-01-31', 1)).toBe('2025-12-01');
+        expect(minLatestFromRelease('2026-03-31', 0)).toBe('2026-03-01');
+        expect(minLatestFromRelease('2026-02-14', 14)).toBe('2024-12-01');
+    });
+});
+
+describe('expectedIndecPeriod', () => {
+    it('is the month before the latest INDEC release of that report on or before today', async () => {
+        mocks.fetchTextFromUrl.mockImplementation(async (url: string) => url.includes('Octubre-2026')
+            ? '<div class="nro-dia">15</div><div class="cal-content text-calendario">Sistema de &#237;ndices de precios mayoristas (SIPM). Septiembre de 2026</div>'
+            : '');
+
+        await expect(expectedIndecPeriod('indec-sipm', '2026-10-20', 1)).resolves.toBe('2026-09-01');
+    });
+
+    it('falls back to the day-lag rule when the calendar is unavailable', async () => {
+        mocks.fetchTextFromUrl.mockRejectedValue(new Error('calendar down'));
+
+        await expect(expectedIndecPeriod('indec-sipm', '2026-10-20', 1)).resolves.toBe(minLatestPeriod('2026-10-20', 1));
     });
 });

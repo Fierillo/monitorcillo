@@ -1,3 +1,6 @@
+import { addMonths, isoDate } from '../normalize/dates';
+import { fetchLastIndecRelease } from '../release-calendars';
+
 export type SourceStep<T> = { name: string; run: () => Promise<T[]> };
 
 type ChainOptions = {
@@ -34,12 +37,16 @@ export async function firstUsable<T extends { fecha: string }>(label: string, st
 export function minLatestPeriod(today: string, releaseLagDays: number): string {
     const date = new Date(`${today}T00:00:00Z`);
     date.setUTCDate(date.getUTCDate() - releaseLagDays);
-    return `${date.toISOString().slice(0, 7)}-01`;
+    return isoDate(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
 }
 
 /** Newest period an official release should already contain: the release month minus the publication lag in months. */
 export function minLatestFromRelease(releaseDate: string, periodLagMonths: number): string {
-    const date = new Date(`${releaseDate.slice(0, 7)}-01T00:00:00Z`);
-    date.setUTCMonth(date.getUTCMonth() - periodLagMonths);
-    return date.toISOString().slice(0, 10);
+    return addMonths(releaseDate, -periodLagMonths);
+}
+
+/** Expected newest month of a monthly INDEC report: the one published at its latest official release (<= today), else the day-lag rule. */
+export async function expectedIndecPeriod(calendarId: string, today: string, fallbackLagDays: number): Promise<string> {
+    const release = await fetchLastIndecRelease(calendarId, today).catch(() => null);
+    return release ? minLatestFromRelease(release, 1) : minLatestPeriod(today, fallbackLagDays);
 }
