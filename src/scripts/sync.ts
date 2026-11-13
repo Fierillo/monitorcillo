@@ -4,7 +4,8 @@ async function main(): Promise<void> {
     }
 
     const { runSync } = await import('../lib/sync/tasks');
-    const report = await runSync();
+    const { runSyncAndRefreshSite } = await import('../lib/sync/revalidate-site');
+    const report = await runSyncAndRefreshSite({ runSync });
     const success = report.failed.length === 0;
 
     console.log(JSON.stringify({
