@@ -8,6 +8,7 @@ import CompositeChartCard from './indicators/CompositeChartCard';
 import IndicatorHeader from './IndicatorHeader';
 import LoadingModal from './LoadingModal';
 import { collectAxisExtentValues, resolveChartHoverPoint } from './chart/utils';
+import { desktopExportLayout } from './chart/export-layout';
 import { useStoredConfig, writeStoredConfig } from '@/lib/chart-config-store';
 import { beginRangeSelection } from '@/lib/chart-range-selection';
 import type { RangeSelection } from '@/lib/chart-range-selection';
@@ -196,8 +197,9 @@ export default function IndicatorCompositeView({
 
     const captureRef = useRef<HTMLDivElement>(null);
     const chartContainerRef = useRef<HTMLDivElement>(null);
-    const mobileCaptureRef = useRef<HTMLDivElement>(null);
-    const mobileChartContainerRef = useRef<HTMLDivElement>(null);
+    const exportCaptureRef = useRef<HTMLDivElement>(null);
+    const exportChartContainerRef = useRef<HTMLDivElement>(null);
+    const exportLayout = desktopExportLayout();
     const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
     const [crosshair, setCrosshair] = useState<ChartCrosshairState | null>(null);
     const hoverTooltipRef = useRef<ChartCrosshairState | null>(null);
@@ -388,7 +390,7 @@ export default function IndicatorCompositeView({
             setIsCapturing(true);
             await new Promise(resolve => setTimeout(resolve, 600));
 
-            const target = isMobile ? mobileCaptureRef.current : captureRef.current;
+            const target = exportCaptureRef.current;
             if (!target) return;
             const dataUrl = await toPng(target, {
                 backgroundColor: '#0B1426',
@@ -443,7 +445,7 @@ export default function IndicatorCompositeView({
                     referenceLines={activeReferenceLines}
                     rangePreview={previewRange} committedRange={[rangeStart, rangeEnd]}
                     crosshair={crosshair} captureTooltip={captureTooltip} onCrosshairClick={handleCrosshairClick} onCrosshairUnlock={handleCrosshairUnlock} onHoverTooltipChange={handleHoverTooltipChange}
-                    isMobile={isMobile} isCapturing={isCapturing && !isMobile} onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
+                    isMobile={isMobile} isCapturing={false} onPrepareDownload={handlePrepareDownload} onDownloadChart={handleDownloadChart}
                     rangeSelectControl={!isCapturing && sortedData.length > 1 ? (
                         <button
                             type="button"
@@ -476,11 +478,11 @@ export default function IndicatorCompositeView({
                     } : null}
                     onSelectMonth={setSelectedMonth} onToggleHighlight={handleToggleHighlight} viewSelector={viewSelector} axisModeSelector={axisModeSelector} axisModeLabel={selectedMode?.label}
                 />
-                {isMobile && isCapturing ? (
+                {isCapturing ? (
                     <div className="fixed left-[-10000px] top-0 z-[-1]">
                         <CompositeChartCard
-                            title={title} subtitle={subtitle} chartTitle={activeChartTitle} captureRef={mobileCaptureRef} chartContainerRef={mobileChartContainerRef}
-                            chartSize={{ width: 1240, height: 780 }} visibleData={visibleData} sortedData={sortedData}
+                            title={title} subtitle={subtitle} chartTitle={activeChartTitle} captureRef={exportCaptureRef} chartContainerRef={exportChartContainerRef}
+                            chartSize={exportLayout.chartSize} visibleData={visibleData} sortedData={sortedData}
                             areas={activeAreas} methodology={activeMethodology} valueFormat={activeValueFormat}
                             yAxisDecimals={activeYAxisDecimals} yAxisLabel={activeYAxisLabel} secondaryYAxis={activeSecondaryYAxis}
                             leftAxisDomain={leftAxisDomain} xAxisKey={xAxisKey} labelByXAxisValue={labelByXAxisValue}

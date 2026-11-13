@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import CompositeChartCard from '../components/indicators/CompositeChartCard';
+import { desktopExportLayout } from '../components/chart/export-layout';
 
 const recharts = vi.hoisted(() => ({ barProps: null as Record<string, unknown> | null, chartProps: null as Record<string, unknown> | null, xAxisProps: null as Record<string, unknown> | null }));
 
@@ -696,11 +697,12 @@ describe('mobile chart interaction', () => {
             captureTooltip: { x: 160, y: 100, locked: false, label: 'MES 1', chartHeight: 360, tooltipPosition: { y: 50 } },
         });
         const [vertical, horizontal] = [...container.querySelectorAll('.recharts-crosshair-guide line')];
-        expect(Number(horizontal.getAttribute('y1'))).toBeCloseTo(100 * 780 / 360);
+        const exportHeight = desktopExportLayout().chartSize.height;
+        expect(Number(horizontal.getAttribute('y1'))).toBeCloseTo(100 * exportHeight / 360);
         expect(Number(vertical.getAttribute('x1'))).toBeGreaterThan(500);
         expect(Number(vertical.getAttribute('x1'))).toBeLessThan(740);
         const tooltip = [...container.querySelectorAll<HTMLElement>('.absolute.z-10')].find(element => element.style.top)!;
-        expect(parseFloat(tooltip.style.top)).toBeCloseTo(50 * 780 / 360);
+        expect(parseFloat(tooltip.style.top)).toBeCloseTo(50 * exportHeight / 360);
         expect(tooltip.textContent).toContain('MES 1');
     });
 

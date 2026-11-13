@@ -18,6 +18,7 @@ import MobileRangePicker from '../chart/MobileRangePicker';
 import { createHoverTooltipStore, type HoverTooltipStore } from '../chart/hover-tooltip-store';
 import MethodologySection from '../chart/MethodologySection';
 import { calculateTooltipVerticalPosition, chartClickStateFromPointer, chartLayout, chartXForIndex, collectAxisExtentValues, createRoundTicks, formatAxisValueByType, formatValueByType, resolveChartHoverPoint, selectMonthAlignedXTicks, selectRoundTickDivisions, targetXTickCount, xTickEdgeSpacingPx, xTickSpacingPx } from '../chart/utils';
+import { desktopExportLayout } from '../chart/export-layout';
 import type { ChartLayout } from '../chart/utils';
 
 type Props = {
@@ -69,14 +70,15 @@ type ChartRenderProps = Omit<Props, 'captureRef' | 'chartContainerRef'>;
 
 export default function CompositeChartCard({ captureRef, chartContainerRef, ...chartProps }: Props) {
     const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+    const exportLayout = desktopExportLayout();
     const renderProps = chartProps.forceDesktopLayout
-        ? { ...chartProps, isMobile: false, chartSize: { width: 1240, height: 780 } }
+        ? { ...chartProps, isMobile: false, chartSize: exportLayout.chartSize }
         : chartProps;
-    const captureStyle = chartProps.forceDesktopLayout ? { outline: 'none', width: '100%', padding: 16, boxSizing: 'border-box' as const } : { outline: 'none', padding: 0, flex: chartProps.isCapturing ? '0 0 auto' : undefined };
+    const captureStyle = chartProps.forceDesktopLayout ? { outline: 'none' as const, width: '100%', boxSizing: 'border-box' as const } : { outline: 'none' as const, padding: 0, flex: chartProps.isCapturing ? '0 0 auto' : undefined };
 
     return (
-        <main className={chartProps.forceDesktopLayout ? 'w-[1400px] max-w-none' : 'w-full sm:w-[96%] max-w-[1800px]'}>
-            <div className={`${chartProps.forceDesktopLayout ? 'w-[1400px] min-h-[850px] p-4' : 'w-full min-h-[600px] sm:min-h-[850px] p-2 sm:p-4'} bg-imperial-blue imperial-frame flex flex-col overflow-hidden`} style={{ outline: 'none' }} tabIndex={-1}>
+        <main className={chartProps.forceDesktopLayout ? 'max-w-none' : 'w-full sm:w-[96%] max-w-[1800px]'} style={chartProps.forceDesktopLayout ? { width: exportLayout.cardWidth } : undefined}>
+            <div className={`${chartProps.forceDesktopLayout ? 'min-h-[850px] p-4' : 'w-full min-h-[600px] sm:min-h-[850px] p-2 sm:p-4'} bg-imperial-blue imperial-frame flex flex-col overflow-hidden`} style={chartProps.forceDesktopLayout ? { outline: 'none', width: exportLayout.cardWidth } : { outline: 'none' }} tabIndex={-1}>
                 <div ref={captureRef} className="flex-1 flex flex-col bg-imperial-blue overflow-hidden" style={captureStyle} tabIndex={-1}>
                     {renderProps.isCapturing ? <ExportHeader title={renderProps.title} subtitle={renderProps.subtitle} /> : null}
                     <ChartHeader onPrepareDownload={renderProps.onPrepareDownload} onDownloadChart={renderProps.onDownloadChart} isCapturing={renderProps.isCapturing} viewSelector={renderProps.viewSelector} extraControl={<>{renderProps.rangeResetControl}{renderProps.rangeSelectControl}</>} />
@@ -132,10 +134,11 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
         () => props.isCapturing && !props.crosshair?.locked ? placeCaptureCrosshair(props.captureTooltip, props.visibleData, props.chartSize, layout) : null,
         [props.isCapturing, props.crosshair?.locked, props.captureTooltip, props.visibleData, props.chartSize, layout],
     );
-    const captureCanvasStyle = props.forceDesktopLayout ? { outline: 'none', height: 780 } : { outline: 'none' };
+    const exportLayout = desktopExportLayout();
+    const captureCanvasStyle = props.forceDesktopLayout ? { outline: 'none' as const, height: exportLayout.chartSize.height } : { outline: 'none' as const };
     const captureChartStyle = props.forceDesktopLayout
-        ? { outline: 'none', width: 1240, height: 780 }
-        : { outline: 'none', width: '100%' };
+        ? { outline: 'none' as const, width: exportLayout.chartSize.width, height: exportLayout.chartSize.height }
+        : { outline: 'none' as const, width: '100%' };
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -164,7 +167,7 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
     }, [isControlPressed]);
 
     return (
-        <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? 'min-h-[780px]' : 'min-h-[300px] sm:min-h-[500px]'} ${props.isMobile && props.axisModeSelector ? 'pt-12' : ''} overflow-visible`} style={captureCanvasStyle}>
+        <div className={`flex-1 flex flex-row relative ${props.forceDesktopLayout ? '' : 'min-h-[300px] sm:min-h-[500px]'} ${props.isMobile && props.axisModeSelector ? 'pt-12' : ''} overflow-visible`} style={props.forceDesktopLayout ? { ...captureCanvasStyle, minHeight: exportLayout.chartSize.height } : captureCanvasStyle}>
             {props.isMobile && props.axisModeSelector && !props.isCapturing ? <div className="no-capture absolute left-1/2 top-0 z-10 flex -translate-x-1/2 flex-col items-center gap-1 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-imperial-gold"><span>{props.yAxisLabel}</span>{props.axisModeSelector}</div> : null}
             {!props.isMobile && props.yAxisLabel && <AxisLabel label={props.isCapturing && props.axisModeLabel ? `${props.yAxisLabel} · ${props.axisModeLabel}` : props.yAxisLabel} control={!props.isCapturing ? props.axisModeSelector : null} />}
             <div
@@ -195,7 +198,7 @@ function ChartCanvas({ chartContainerRef, scrollViewportRef, ...props }: ChartRe
                         if (chainsawCursorRef.current) chainsawCursorRef.current.style.visibility = 'hidden';
                     }}
                 >
-                    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center select-none"><span className="watermark text-imperial-gold/21 text-xl font-sans font-bold uppercase tracking-[0.5em] sm:text-4xl">@fierillo</span></div>
+                    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center select-none"><span className={`watermark text-imperial-gold/21 font-sans font-bold uppercase tracking-[0.5em] ${props.isCapturing ? 'text-4xl' : 'text-xl sm:text-4xl'}`}>@fierillo</span></div>
                     {props.rangeSelection && !props.isCapturing ? <MobileRangePicker
                         data={props.sortedData}
                         xAxisKey={props.xAxisKey}
