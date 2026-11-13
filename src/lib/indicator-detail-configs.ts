@@ -9,6 +9,7 @@ import { ICG_PRESIDENTIAL_MANDATES, PRESIDENTIAL_MANDATES } from './presidential
 import { fetchRemExpectationsHistory, normalizeRemExpectations } from './inflacion-source';
 import { keepRemAfterLastIndec, toYearOverYearInflacion } from './normalize/inflacion';
 import { getIndicatorData } from './storage';
+import { LEGEND_BACKGROUND, mixHexColors } from './color-contrast';
 
 import { getRawData } from './db';
 import { COST_OF_LIVING_MODEL, calculateCostOfLivingBurden, fetchCostOfLivingIndices } from './purchasing-power-cost';
@@ -16,7 +17,7 @@ import { buildRigiChartData, rigiTotals, type RigiApproval } from './investments
 import { getInversiones } from './db/inversiones';
 import { getDeudaVencimientos } from './db/deuda';
 import { partialCuts, publicSpendingChartRows } from './normalize/gasto';
-import { argentinaToday } from './normalize/dates';
+import { argentinaToday, MONTH_NAMES_ES } from './normalize/dates';
 import { PRESUPUESTO_EXPENSE_SERIES, PRESUPUESTO_RESOURCE_SERIES } from './presupuesto/schema';
 import { fetchPresupuestoRubrosChartData } from './presupuesto-source';
 
@@ -239,7 +240,7 @@ function mesLargo(iso: string): string {
     return `${MESES_LARGOS[month - 1]} de ${year}`;
 }
 
-const MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const MESES_LARGOS = MONTH_NAMES_ES;
 
 function fechaLarga(iso: string): string {
     const [year, month, day] = iso.split('-').map(Number);
@@ -781,7 +782,7 @@ async function recaudacionConfig(indicator: Indicator): Promise<DetailConfig> {
     };
 }
 
-const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const MESES_CORTOS = MONTH_NAMES_ES.map(name => name.slice(0, 3));
 
 /** The cut-off year is only partly ahead: label it with the months it still covers. */
 function maturityLabel(periodo: string, corte: string): string {
@@ -882,13 +883,17 @@ async function pobrezaConfig(indicator: Indicator): Promise<DetailConfig> {
     return { subtitle: indicator.fuente, chartTitle: 'Incidencia de la pobreza', data: await getIndicatorData('pobreza'), areas, methodology, valueFormat: 'percent', yAxisDecimals: 1, yAxisLabel: '% de población', leftYAxisDomain: 'auto-pad', indicatorId: indicator.id };
 }
 
+/** Share of the REM color kept by the oldest branch, so it fades without vanishing into the panel. */
+const REM_OLDEST_BRANCH_WEIGHT = 0.25;
+const REM_COLOR = '#22C55E';
+
 async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
     const areas: AreaConfig[] = [
         { key: 'ipc_indec', name: 'IPC INDEC', color: '#C9A44C', type: 'line', strokeWidth: 2, showValueLabels: true, labelOffsetY: -12, labelLeader: true },
         { key: 'ipc_nucleo_indec', name: 'IPC Núcleo INDEC', color: '#F59E0B', type: 'line', strokeWidth: 2, dash: [6, 3], showValueLabels: true, labelOffsetY: 20, labelLeader: true },
         { key: 'ipim', name: 'IPIM', color: '#38BDF8', type: 'line', strokeWidth: 2, dash: [4, 3], showValueLabels: true, labelOffsetY: -48, labelLeader: true },
         { key: 'ipc_equilibra', name: 'IPC Equilibra', color: '#FF6B6B', type: 'line', strokeWidth: 2, showValueLabels: true, labelOffsetY: -30, labelLeader: true },
-        { key: 'rem', name: 'REM BCRA', color: '#22C55E', type: 'line', strokeWidth: 2, showValueLabels: true, labelOffsetY: 34, labelLeader: true },
+        { key: 'rem', name: 'REM BCRA', color: REM_COLOR, type: 'line', strokeWidth: 2, showValueLabels: true, labelOffsetY: 34, labelLeader: true },
     ];
     const methodology = [
         { title: 'INDEC', description: 'Índice de Precios al Consumidor Nacional (IPC General y Núcleo) base diciembre 2016=100. La variación mensual se calcula como (índice actual - índice anterior) / índice anterior * 100.' },
@@ -901,7 +906,7 @@ async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
 
     const [ipcRaw, surveys] = await Promise.all([
         getIndicatorData('inflacion'),
-        fetchRemExpectationsHistory(6),
+        fetchRemExpectationsHistory(),
     ]);
     const ipcData = keepRemAfterLastIndec(ipcRaw);
     const yearOverYearData = toYearOverYearInflacion(ipcData);
@@ -914,13 +919,12 @@ async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
     }
 
     const expectationData = normalizeRemExpectations(surveys, actualIpcByMonth) as ChartDataRow[];
-    const surveyColors = ['#22C55E', '#38BDF8', '#A78BFA', '#F472B6', '#FB923C', '#FACC15', '#4ADE80', '#818CF8'];
     const expectationAreas: AreaConfig[] = [
         { key: 'ipc_indec', name: 'IPC INDEC (dato real)', color: '#C9A44C', type: 'line', strokeWidth: 3, showDots: false },
         ...surveys.map((survey, i) => ({
             key: `enc_${survey.surveyDate}`,
             name: `Enc. ${survey.surveyLabel}`,
-            color: surveyColors[i % surveyColors.length],
+            color: mixHexColors(LEGEND_BACKGROUND, REM_COLOR, REM_OLDEST_BRANCH_WEIGHT + (1 - REM_OLDEST_BRANCH_WEIGHT) * (i + 1) / surveys.length),
             type: 'line' as const,
             strokeWidth: 1.5,
             showDots: false,
@@ -929,7 +933,7 @@ async function inflacionConfig(indicator: Indicator): Promise<DetailConfig> {
     ];
     const expectationMethodology: MethodologyItem[] = [
         { title: 'Tronco', description: 'La línea dorada sólida muestra la inflación mensual real publicada por INDEC (IPC Nivel General).' },
-        { title: 'Ramas', description: 'Cada línea punteada emerge del dato real del mes de la encuesta y proyecta los pronósticos REM hacia los meses futuros. Si una rama se acerca a la línea dorada, las expectativas se ajustaron al resultado real.' },
+        { title: 'Ramas', description: 'Cada línea punteada emerge del dato real del mes de la encuesta y proyecta los pronósticos REM hacia los meses futuros. Si una rama se acerca a la línea dorada, las expectativas se ajustaron al resultado real. El verde es más tenue cuanto más vieja es la encuesta.' },
         { title: 'Fuente', description: 'XLSX oficial del Relevamiento de Expectativas de Mercado del BCRA. Cada encuesta mensual contiene pronósticos de mediana de inflación para los próximos meses.' },
         { title: 'Cobertura', description: `Se muestran las últimas ${surveys.length} encuestas disponibles.` },
     ];

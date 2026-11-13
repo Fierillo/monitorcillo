@@ -52,4 +52,30 @@ describe('fetchInflacionRawReport IPIM', () => {
 
         expect(publishedAt).toBe('2026-03-12');
     });
+
+    it('completes IPIM from the INDEC CSV when the API lags behind the month INDEC already published', async () => {
+        mocks.fetchTextFromUrl.mockImplementation(async (url: string) => {
+            if (url.includes('/Calendario/') && url.includes('Octubre-2026')) {
+                return '<div class="nro-dia">15</div><div class="cal-content text-calendario">Sistema de &#237;ndices de precios mayoristas (SIPM). Septiembre de 2026</div>';
+            }
+            if (url.includes('/Calendario/')) return '';
+            throw new Error('http unavailable');
+        });
+        mocks.fetchBufferFromUrl.mockImplementation(async (url: string) => {
+            if (url === 'https://www.indec.gob.ar/ftp/cuadros/economia/indice_ipim.csv') {
+                return Buffer.from('periodo;nivel_general_aperturas;indice_ipim\r\n2026-08-01;ng_nivel_general;16580,3281440822\r\n2026-09-01;ng_nivel_general;17104,0233294799\r\n2026-09-01;e_energia_electrica;9,5\r\n');
+            }
+            throw new Error('workbook unavailable');
+        });
+        mocks.fetchTimeSeries.mockImplementation(async ({ ids }: { ids: string[] }) => (ids[0] === '448.1_NIVEL_GENERAL_0_0_13_46'
+            ? { data: [['2026-07-01', 16233.7149476425], ['2026-08-01', 16580.3281440822]] }
+            : { data: [] }));
+
+        const { rows } = await fetchInflacionRawReport('2026-10-20');
+
+        expect(rows.filter(row => row.ipim != null).map(row => [row.fecha, row.ipim])).toEqual([
+            ['2026-08-01', 16580.3281440822],
+            ['2026-09-01', 17104.0233294799],
+        ]);
+    });
 });

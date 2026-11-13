@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ fetchText: vi.fn(), fetchBuffer: vi.fn(), parsePdf: vi.fn(), fetchTimeSeries: vi.fn() }));
 
-vi.mock('@/lib/sync/http-client', () => ({ fetchTextFromUrl: mocks.fetchText, fetchBufferFromUrl: mocks.fetchBuffer }));
+vi.mock('@/lib/sync/http-client', async (importOriginal) => ({ ...await importOriginal<object>(), fetchTextFromUrl: mocks.fetchText, fetchBufferFromUrl: mocks.fetchBuffer }));
 vi.mock('@/lib/sync/time-series-client', () => ({ fetchTimeSeries: mocks.fetchTimeSeries }));
 vi.mock('@/lib/protocols/pdf', () => ({ parsePdf: mocks.parsePdf, fetchPdf: vi.fn() }));
 
@@ -25,7 +25,7 @@ describe('fetchIndecIpcVariations', () => {
         expect(mocks.fetchText).not.toHaveBeenCalledWith(expect.stringContaining('/Nivel4/'));
     });
 
-    it('falls back from a stale API through a page without workbook and a failing CSV to the press release linked from the page', async () => {
+    it('falls back from a stale API through a failing CSV to the press release linked from the page', async () => {
         mocks.fetchText.mockResolvedValue('<a href="/ftp/cuadros/economia/sh_ipc_aperturas.xls">x</a><a href="/uploads/informesdeprensa/ipc_10_26ABC.pdf">Informe</a>');
         mocks.fetchBuffer.mockImplementation(async (url: string) => {
             if (url.endsWith('.csv')) throw new Error('Unexpected content type text/html');
@@ -86,7 +86,7 @@ describe('fetchIndecNucleoIndexRows', () => {
         mocks.fetchText.mockResolvedValue('');
         mocks.fetchBuffer.mockImplementation(async (url: string) => {
             if (!url.endsWith('.csv')) throw new Error('unexpected');
-            return Buffer.from('0;NIVEL GENERAL;x;202609;1;1,9;1;Nacional\nNúcleo;;Categorias;202609;1;1,7;1;Nacional', 'latin1');
+            return Buffer.from('Codigo;Descripcion;Clasificador;Periodo;Indice_IPC;v_m_IPC;v_i_a_IPC;Region\n0;NIVEL GENERAL;x;202609;1;1,9;1;Nacional\nNúcleo;;Categorias;202609;1;1,7;1;Nacional', 'latin1');
         });
         const { fetchIndecNucleoIndexRows } = await import('@/lib/inflacion-source');
 

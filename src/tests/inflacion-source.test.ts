@@ -1,39 +1,13 @@
 import * as XLSX from 'xlsx';
-import { describe, expect, it } from 'vitest';
-import { parseEquilibraRssItem, parseIndecIpcCsv, parseIndecIpcPressRelease, parseIndecIpcWorkbook } from '../lib/inflacion-source';
+import { describe, expect, it, vi } from 'vitest';
+import { fetchRemExpectationsHistory, fetchRemRows, INDEC_IPC_CSV, parseEquilibraRssItem, parseIndecIpcPressRelease, parseIpcOnlineRssItem } from '../lib/inflacion-source';
 
-function createWorkbook(rows: unknown[][]): Buffer {
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), 'Variación mensual IPC Nacional');
-    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
-}
+const http = vi.hoisted(() => ({ fetchTextFromUrl: vi.fn(), fetchBufferFromUrl: vi.fn() }));
+vi.mock('../lib/sync/http-client', async (importOriginal) => ({ ...await importOriginal<object>(), ...http }));
+vi.mock('next/cache', () => ({ unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn }));
+import { firstSheetRows, parseTableSeries } from '../lib/protocols';
 
-describe('parseIndecIpcWorkbook', () => {
-    it('extracts national monthly general and core IPC variations', () => {
-        const result = parseIndecIpcWorkbook(createWorkbook([
-            [],
-            [],
-            [],
-            [],
-            [],
-            ['Total nacional', 'Mar-26', 'Apr-26'],
-            [],
-            ['Nivel general y divisiones COICOP'],
-            [],
-            ['Nivel general', '3.4', '2.6'],
-            [],
-            ['Núcleo', '3.2', '2.3'],
-        ]));
-
-        expect(result).toContainEqual({
-            fecha: '2026-04-01',
-            ipc_indec: 2.6,
-            ipc_nucleo_indec: 2.3,
-        });
-    });
-});
-
-describe('parseIndecIpcCsv', () => {
+describe('INDEC_IPC_CSV', () => {
     it('extracts national monthly general and core variations, ignoring regions and other rows', () => {
         const csv = [
             'Codigo;Descripcion;Clasificador;Periodo;Indice_IPC;v_m_IPC;v_i_a_IPC;Region',
@@ -46,7 +20,7 @@ describe('parseIndecIpcCsv', () => {
             'Regulados;;Categorias;202609;13238,1788;2,3;43,3;Nacional',
         ].join('\r\n');
 
-        expect(parseIndecIpcCsv(csv)).toEqual([
+        expect(parseTableSeries(firstSheetRows(Buffer.from(csv, 'latin1')), INDEC_IPC_CSV)).toEqual([
             { fecha: '2026-08-01', ipc_indec: 1.7, ipc_nucleo_indec: 1.8 },
             { fecha: '2026-09-01', ipc_indec: 1.9, ipc_nucleo_indec: 1.7 },
         ]);
@@ -152,5 +126,65 @@ describe('parseEquilibraRssItem', () => {
             </item>
         `;
         expect(parseEquilibraRssItem(xml)).toBeNull();
+    });
+});
+
+describe('parseIpcOnlineRssItem', () => {
+    it('reads the es-AR monthly inflation of an IPC Online post', () => {
+        const xml = '<title>Octubre 2026</title><description><![CDATA[Inflación: 1,65% en el mes]]></description>';
+
+        expect(parseIpcOnlineRssItem(xml)).toEqual({ fecha: '2026-10-01', ipc_online: 1.65 });
+    });
+});
+
+describe('REM', () => {
+    it('reads the median of each month from the REM API numbers', async () => {
+        http.fetchTextFromUrl.mockResolvedValue(JSON.stringify({ datos: [
+            { 'período': '2026-10-31 00:00:00', mediana: 1.8 },
+            { 'período': '2026-11-30 00:00:00', mediana: 1.84 },
+            { 'período': 'sin fecha', mediana: 2 },
+        ] }));
+
+        await expect(fetchRemRows()).resolves.toEqual([{ fecha: '2026-10-01', rem: 1.8 }, { fecha: '2026-11-01', rem: 1.84 }]);
+    });
+
+    it('reads the latest REM surveys from the historical workbook linked on the BCRA REM page', async () => {
+        const serial = (iso: string) => Date.parse(iso) / 86_400_000 + 25_569;
+        const ipc = 'Precios minoristas (IPC nivel general; INDEC)';
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+            ['Resultados del Relevamiento de Expectativas de Mercado (REM)'],
+            ['Fecha de pronóstico', 'Variable', 'Referencia', 'Período', 'Mediana'],
+            [serial('2026-08-31'), ipc, 'var. % mensual', serial('2026-08-01'), 1.71721073786415],
+            [serial('2026-09-30'), ipc, 'var. % mensual', serial('2026-09-01'), 1.9],
+            [serial('2026-09-30'), 'Precios minoristas (IPC nivel general-GBA; INDEC)', 'var. % mensual', serial('2026-09-01'), 9],
+            [serial('2026-10-30'), ipc, 'var. % mensual', serial('2026-10-01'), 1.8],
+            [serial('2026-10-30'), ipc, 'var. % i.a.; dic-26', serial('2026-12-01'), 30],
+            [serial('2026-10-30'), ipc, 'var. % mensual', serial('2027-04-01'), 1.659749399731315],
+        ]), 'Base de Datos Completa');
+        const historico = '/archivos/Pdfs/PublicacionesEstadisticas/informes/relevamiento-expectativas-mercado-historico.xlsx';
+        http.fetchTextFromUrl.mockResolvedValue(`<a href="/archivos/Pdfs/PublicacionesEstadisticas/informes/relevamiento-expectativas-mercado-tablas-2026-10.xlsx">Tablas</a><a href="${historico}">Histórico</a>`);
+        http.fetchBufferFromUrl.mockResolvedValue(XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }));
+
+        await expect(fetchRemExpectationsHistory(2)).resolves.toEqual([
+            { surveyDate: '2026-09-01', surveyLabel: 'sep-26', targets: [{ month: '2026-09-01', median: 1.9 }] },
+            { surveyDate: '2026-10-01', surveyLabel: 'oct-26', targets: [{ month: '2026-10-01', median: 1.8 }, { month: '2027-04-01', median: 1.659749399731315 }] },
+        ]);
+        expect(http.fetchBufferFromUrl).toHaveBeenCalledWith(`https://www.bcra.gob.ar${historico}`);
+    });
+
+    it('returns the last 12 REM surveys by default', async () => {
+        const serial = (iso: string) => Date.parse(iso) / 86_400_000 + 25_569;
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(Array.from({ length: 13 }, (_, i) => {
+            const month = `2025-${String(i + 1).padStart(2, '0')}-01`.replace('2025-13', '2026-01');
+            return [serial(month), 'Precios minoristas (IPC nivel general; INDEC)', 'var. % mensual', serial(month), 2];
+        })), 'Base de Datos Completa');
+        http.fetchTextFromUrl.mockResolvedValue('<a href="/x/relevamiento-expectativas-mercado-historico.xlsx">Histórico</a>');
+        http.fetchBufferFromUrl.mockResolvedValue(XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }));
+
+        const surveys = await fetchRemExpectationsHistory();
+
+        expect(surveys.map(survey => survey.surveyDate)).toEqual(Array.from({ length: 12 }, (_, i) => `${i < 11 ? 2025 : 2026}-${String(i < 11 ? i + 2 : 1).padStart(2, '0')}-01`));
     });
 });

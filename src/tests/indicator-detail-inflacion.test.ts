@@ -16,6 +16,7 @@ vi.mock('../lib/storage', () => storage);
 vi.mock('../lib/inflacion-source', () => inflacionSource);
 
 import { getIndicatorDetailConfig } from '../lib/indicator-detail-configs';
+import { contrastRatio, LEGEND_BACKGROUND } from '../lib/color-contrast';
 
 const inflacionIndicator: Indicator = {
     id: 'inflacion',
@@ -53,5 +54,18 @@ describe('Inflacion indicator detail config', () => {
         const ipcView = config?.views?.find(view => view.id === 'ipc');
         expect(ipcView?.areas.some(area => area.key === 'ipim' && area.name === 'IPIM')).toBe(true);
         expect(config?.areas.some(area => area.key === 'ipim' && area.name === 'IPIM')).toBe(true);
+    });
+
+    it('draws one REM branch per survey, fading from the newest to the oldest', async () => {
+        const surveys = Array.from({ length: 12 }, (_, i) => ({ surveyDate: `2026-${String(i + 1).padStart(2, '0')}-01`, surveyLabel: `s${i}`, targets: [] }));
+        inflacionSource.fetchRemExpectationsHistory.mockResolvedValue(surveys);
+
+        const config = await getIndicatorDetailConfig(inflacionIndicator);
+        const branches = config?.views?.find(view => view.id === 'expectativas')?.areas.filter(area => area.key.startsWith('enc_')) ?? [];
+        const contrasts = branches.map(branch => contrastRatio(branch.color, LEGEND_BACKGROUND));
+
+        expect(branches.map(branch => branch.key)).toEqual(surveys.map(survey => `enc_${survey.surveyDate}`));
+        expect(contrasts.every((contrast, i) => i === 0 || contrast > contrasts[i - 1])).toBe(true);
+        expect(branches.at(-1)?.color).toBe(config?.areas.find(area => area.key === 'rem')?.color);
     });
 });

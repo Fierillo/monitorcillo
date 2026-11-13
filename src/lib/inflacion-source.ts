@@ -1,12 +1,13 @@
 import type { InflacionRawRow } from '@/types';
 import * as XLSX from 'xlsx';
 import { unstable_cache } from 'next/cache';
-import { extractFileLinks, readWorkbook, sheetRows, type HtmlFileLink } from './protocols';
+import { excelSerialToIsoMonth, extractFileLinks, fetchTableSeries, readWorkbook, type TableSeriesSpec } from './protocols';
 import { parsePdf } from './protocols/pdf';
-import { argentinaToday } from './normalize/dates';
-import { firstUsable, minLatestFromRelease, minLatestPeriod } from './sync/source-chain';
+import { addMonths, argentinaToday, isoDate, isoToMonthLabel, MONTH_NAMES_ES, monthNumber } from './normalize/dates';
+import { parseNumber } from './normalize/numbers';
+import { expectedIndecPeriod, firstUsable, minLatestFromRelease, minLatestPeriod } from './sync/source-chain';
 import { fetchLastIndecRelease } from './release-calendars';
-import { fetchBufferFromUrl, fetchTextFromUrl } from './sync/http-client';
+import { fetchBufferFromUrl, fetchTextFromUrl, isoDateFromHttpDate } from './sync/http-client';
 import { fetchTimeSeries } from './sync/time-series-client';
 
 const INDEC_GENERAL_SERIES_ID = '145.3_INGNACNAL_DICI_M_15';
@@ -14,28 +15,28 @@ const INDEC_NUCLEO_SERIES_ID = '148.3_INUCLEONAL_DICI_M_19';
 const INDEC_IPIM_SERIES_ID = '448.1_NIVEL_GENERAL_0_0_13_46';
 const INDEC_ORIGIN = 'https://www.indec.gob.ar';
 const INDEC_IPC_PAGE_URL = `${INDEC_ORIGIN}/Nivel4/Tema/3/5/31`;
-const INDEC_IPC_CSV_URL = `${INDEC_ORIGIN}/ftp/cuadros/economia/serie_ipc_divisiones.csv`;
-/** IPC for month M is published around day 13 of M+1; the day lag is only used when INDEC's calendar is unavailable. */
-const INDEC_IPC_RELEASE_LAG_DAYS = 45;
-
-/** Expected newest IPC month: the one published at INDEC's latest official release (<= today), else the day-lag rule. */
-async function expectedIndecIpcPeriod(today: string): Promise<string> {
-    const release = await fetchLastIndecRelease('indec-ipc', today).catch(() => null);
-    return release ? minLatestFromRelease(release, 1) : minLatestPeriod(today, INDEC_IPC_RELEASE_LAG_DAYS);
-}
+/** INDEC's IPC series CSV: one row per item, region and month; monthly variations of the national general level and core. */
+export const INDEC_IPC_CSV: TableSeriesSpec<'ipc_indec' | 'ipc_nucleo_indec'> = {
+    url: `${INDEC_ORIGIN}/ftp/cuadros/economia/serie_ipc_divisiones.csv`,
+    date: { column: 'Periodo', format: 'yyyymm' },
+    numberFormat: 'es-AR',
+    where: { Region: 'Nacional' },
+    fields: {
+        ipc_indec: { column: 'v_m_IPC', where: { Descripcion: 'Nivel general' } },
+        ipc_nucleo_indec: { column: 'v_m_IPC', where: { Codigo: 'Núcleo' } },
+    },
+};
+/** IPC and IPIM (SIPM) for month M are published mid M+1; the day lag is only used when INDEC's calendar is unavailable. */
+const INDEC_MONTHLY_RELEASE_LAG_DAYS = 45;
+const INDEC_IPIM_CSV: TableSeriesSpec<'ipim'> = {
+    url: `${INDEC_ORIGIN}/ftp/cuadros/economia/indice_ipim.csv`,
+    date: { column: 'periodo', format: 'iso' },
+    numberFormat: 'es-AR',
+    where: { nivel_general_aperturas: 'ng_nivel_general' },
+    fields: { ipim: { column: 'indice_ipim' } },
+};
 const IPC_ONLINE_FEED_URL = 'https://ipconlinebb.wordpress.com/feed/';
 const REM_BCRA_API_URL = 'https://bcra-rem-api.facujallia.workers.dev/api/ipc_general';
-
-const MONTHS_ES: Record<string, number> = {
-    enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
-    julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
-};
-
-const MONTHS_XLS: Record<string, number> = {
-    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
-    jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
-    ene: 1, abr: 4, ago: 8, dic: 12,
-};
 
 type InflacionSourceReport = {
     rows: InflacionRawRow[];
@@ -48,30 +49,6 @@ type IndecIpcVariationRow = {
     ipc_indec: number | null;
     ipc_nucleo_indec: number | null;
 };
-
-function parseDecimal(value: string): number {
-    return Number(value.replace(',', '.'));
-}
-
-function parseOptionalDecimal(value: unknown): number | null {
-    if (value == null || value === '') return null;
-    const parsed = Number(String(value).replace('%', '').replace(',', '.'));
-    return Number.isFinite(parsed) ? parsed : null;
-}
-
-function parseWorkbookMonth(value: unknown): string | null {
-    const match = String(value ?? '').trim().match(/^([A-Za-zÁÉÍÓÚáéíóú]{3})-(\d{2})$/);
-    if (!match) return null;
-    const month = MONTHS_XLS[match[1].toLowerCase()];
-    if (!month) return null;
-    return `20${match[2]}-${String(month).padStart(2, '0')}-01`;
-}
-
-function isoDateFromValue(value: string | undefined): string | null {
-    if (!value) return null;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString().split('T')[0];
-}
 
 function latestDate(a: string | null, b: string | null): string | null {
     if (!a) return b;
@@ -92,61 +69,16 @@ export async function fetchIndecIpcRows(seriesId: string): Promise<{ fecha: stri
     }
 }
 
-export function parseIndecIpcWorkbook(buffer: Buffer): IndecIpcVariationRow[] {
-    const workbook = readWorkbook(buffer);
-    const sheetName = workbook.SheetNames.find(name => /variaci[oó]n mensual IPC nacional/i.test(name));
-    if (!sheetName) return [];
-
-    const rows = sheetRows(workbook.Sheets[sheetName]);
-    const headerIndex = rows.findIndex(row => /^total nacional$/i.test(String(row[0] ?? '').trim()));
-    if (headerIndex < 0) return [];
-
-    const general = rows.slice(headerIndex + 1).find(row => /^nivel general$/i.test(String(row[0] ?? '').trim()));
-    const nucleo = rows.slice(headerIndex + 1).find(row => /^n[uú]cleo$/i.test(String(row[0] ?? '').trim()));
-    if (!general || !nucleo) return [];
-
-    return rows[headerIndex]
-        .slice(1)
-        .map((value, index): IndecIpcVariationRow | null => {
-            const fecha = parseWorkbookMonth(value);
-            if (!fecha) return null;
-            const ipcIndecVariacion = parseOptionalDecimal(general[index + 1]);
-            const ipcNucleoIndecVariacion = parseOptionalDecimal(nucleo[index + 1]);
-            if (ipcIndecVariacion == null && ipcNucleoIndecVariacion == null) return null;
-            return {
-                fecha,
-                ipc_indec: ipcIndecVariacion,
-                ipc_nucleo_indec: ipcNucleoIndecVariacion,
-            };
-        })
-        .filter((row): row is IndecIpcVariationRow => row !== null);
-}
-
-export function parseIndecIpcCsv(text: string): IndecIpcVariationRow[] {
-    const byFecha = new Map<string, IndecIpcVariationRow>();
-    for (const line of text.split(/\r?\n/)) {
-        const [codigo, descripcion, , periodo, , variacion, , region] = line.split(';').map(cell => cell?.trim());
-        if (region !== 'Nacional' || !/^\d{6}$/.test(periodo ?? '')) continue;
-        const field = /^nivel general$/i.test(descripcion) ? 'ipc_indec' : /^n.cleo$/i.test(codigo) ? 'ipc_nucleo_indec' : null;
-        if (!field) continue;
-        const fecha = `${periodo.slice(0, 4)}-${periodo.slice(4)}-01`;
-        const row = byFecha.get(fecha) ?? { fecha, ipc_indec: null, ipc_nucleo_indec: null };
-        row[field] = parseOptionalDecimal(variacion);
-        byFecha.set(fecha, row);
-    }
-    return Array.from(byFecha.values()).sort((a, b) => a.fecha.localeCompare(b.fecha));
-}
-
 export function parseIndecIpcPressRelease(text: string): IndecIpcVariationRow[] {
     const flat = text.replace(/\s+/g, ' ');
     const general = flat.match(/alza mensual de ([\d.,]+)\s*% en ([a-záéíóú]+) de (\d{4})/i);
-    const month = general ? MONTHS_ES[general[2].toLowerCase()] : undefined;
+    const month = general ? monthNumber(general[2]) : null;
     if (!general || !month) return [];
     const nucleo = flat.match(/IPC N[uú]cleo \(([\d.,]+)\s*%\)/i);
     return [{
-        fecha: `${general[3]}-${String(month).padStart(2, '0')}-01`,
-        ipc_indec: parseDecimal(general[1]),
-        ipc_nucleo_indec: nucleo ? parseDecimal(nucleo[1]) : null,
+        fecha: isoDate(Number(general[3]), month, 1),
+        ipc_indec: parseNumber(general[1], 'es-AR'),
+        ipc_nucleo_indec: nucleo ? parseNumber(nucleo[1], 'es-AR') : null,
     }];
 }
 
@@ -158,33 +90,36 @@ function variationsFromIndex(general: { fecha: string; valor: number }[], nucleo
     return Array.from(byFecha.values()).filter(row => row.ipc_indec != null || row.ipc_nucleo_indec != null).sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
-/** INDEC IPC monthly variations: datos.gob.ar API -> workbook linked from the IPC page -> CSV series -> press-release PDF linked from the page. */
+async function indecIpcPressReleaseUrl(): Promise<string> {
+    const link = extractFileLinks(await fetchTextFromUrl(INDEC_IPC_PAGE_URL), { origin: INDEC_ORIGIN }).find(candidate => /informesdeprensa\/ipc_[^/]*\.pdf$/i.test(candidate.href));
+    if (!link) throw new Error(`No IPC press release linked on ${INDEC_IPC_PAGE_URL}`);
+    return link.href;
+}
+
+/** INDEC IPC monthly variations: datos.gob.ar API -> CSV series -> press-release PDF linked from the page. */
 export async function fetchIndecIpcVariations(
     apiGeneral: { fecha: string; valor: number }[],
     apiNucleo: { fecha: string; valor: number }[],
     today: string = argentinaToday(),
 ): Promise<IndecIpcVariationRow[]> {
-    let pageLinks: Promise<HtmlFileLink[]> | undefined;
-    const linkOnPage = async (pattern: RegExp): Promise<string> => {
-        pageLinks ??= fetchTextFromUrl(INDEC_IPC_PAGE_URL).then(html => extractFileLinks(html, { origin: INDEC_ORIGIN }));
-        const link = (await pageLinks).find(candidate => pattern.test(candidate.href));
-        if (!link) throw new Error(`No link matching ${pattern} on ${INDEC_IPC_PAGE_URL}`);
-        return link.href;
-    };
-
     return firstUsable('INDEC IPC', [
         { name: 'api', run: async () => variationsFromIndex(apiGeneral, apiNucleo) },
-        { name: 'page-workbook', run: async () => parseIndecIpcWorkbook(await fetchBufferFromUrl(await linkOnPage(/sh_ipc_\d{2}_\d{2}\.xlsx?$/i), { expectedContentType: /excel|spreadsheet|octet-stream/i })) },
-        { name: 'csv', run: async () => parseIndecIpcCsv((await fetchBufferFromUrl(INDEC_IPC_CSV_URL, { expectedContentType: /csv|text\/plain|octet-stream/i })).toString('latin1')) },
-        { name: 'press-release-pdf', run: async () => parseIndecIpcPressRelease((await parsePdf(await fetchBufferFromUrl(await linkOnPage(/informesdeprensa\/ipc_[^/]*\.pdf$/i), { expectedContentType: /pdf/i }))).text) },
-    ], { minLatest: await expectedIndecIpcPeriod(today) });
+        { name: 'csv', run: () => fetchTableSeries(INDEC_IPC_CSV) },
+        { name: 'press-release-pdf', run: async () => parseIndecIpcPressRelease((await parsePdf(await fetchBufferFromUrl(await indecIpcPressReleaseUrl(), { expectedContentType: /pdf/i }))).text) },
+    ], { minLatest: await expectedIndecPeriod('indec-ipc', today, INDEC_MONTHLY_RELEASE_LAG_DAYS) });
+}
+
+/** IPIM general level (same base, dic-2015 = 100): datos.gob.ar API -> INDEC CSV when the API lags behind INDEC's latest release. */
+async function fetchIndecIpimRows(today: string): Promise<Array<{ fecha: string; ipim: number | null }>> {
+    return firstUsable('INDEC IPIM', [
+        { name: 'api', run: async () => (await fetchIndecIpcRows(INDEC_IPIM_SERIES_ID)).map(({ fecha, valor }) => ({ fecha, ipim: valor })) },
+        { name: 'csv', run: () => fetchTableSeries(INDEC_IPIM_CSV) },
+    ], { minLatest: await expectedIndecPeriod('indec-sipm', today, INDEC_MONTHLY_RELEASE_LAG_DAYS) });
 }
 
 function completeIndecIndexRows(byFecha: Map<string, InflacionRawRow>, variations: IndecIpcVariationRow[]): void {
     for (const row of variations.sort((a, b) => a.fecha.localeCompare(b.fecha))) {
-        const prevFecha = new Date(`${row.fecha}T00:00:00Z`);
-        prevFecha.setUTCMonth(prevFecha.getUTCMonth() - 1);
-        const previous = byFecha.get(prevFecha.toISOString().split('T')[0]);
+        const previous = byFecha.get(addMonths(row.fecha, -1));
         const current = byFecha.get(row.fecha) ?? { fecha: row.fecha };
 
         const ipcIndecGeneral = current.ipc_indec_general ?? (
@@ -234,7 +169,7 @@ function extractIpcFromText(text: string): number | null {
     ];
     for (const pattern of patterns) {
         const match = text.match(pattern);
-        if (match) return parseDecimal(match[1]);
+        if (match) return parseNumber(match[1], 'es-AR');
     }
     return null;
 }
@@ -242,7 +177,7 @@ function extractIpcFromText(text: string): number | null {
 function extractMonthYearFromTitle(title: string): { month: number; year: number } | null {
     const match = title.match(/\b([a-z]+)\s+(\d{4})\b/i);
     if (!match) return null;
-    const month = MONTHS_ES[match[1].toLowerCase()];
+    const month = monthNumber(match[1]);
     const year = Number(match[2]);
     if (!month || !year) return null;
     return { month, year };
@@ -264,7 +199,7 @@ export function parseEquilibraRssItem(xml: string): InflacionRawRow | null {
     const my = extractMonthYearFromTitle(title);
     if (!my) return null;
 
-    return { fecha: `${my.year}-${String(my.month).padStart(2, '0')}-01`, ipc_equilibra: ipc };
+    return { fecha: isoDate(my.year, my.month, 1), ipc_equilibra: ipc };
 }
 
 async function fetchPostHtml(link: string): Promise<string> {
@@ -306,7 +241,7 @@ async function equilibraRowsFromPosts(posts: EquilibraPost[]): Promise<Equilibra
         const results = await Promise.all(posts.slice(i, i + BATCH_SIZE).map(async (post): Promise<EquilibraRow | null> => {
             const my = extractMonthYearFromTitle(post.title);
             if (!my) return null;
-            const fecha = `${my.year}-${String(my.month).padStart(2, '0')}-01`;
+            const fecha = isoDate(my.year, my.month, 1);
             const ipc = parseEquilibraPostHtml(await fetchPostHtml(post.link));
             return ipc == null ? null : { fecha, ipc_equilibra: ipc, publishedAt: post.publishedAt };
         }));
@@ -323,7 +258,7 @@ async function fetchEquilibraWpJsonRows(): Promise<EquilibraRow[]> {
     const posts = JSON.parse(await fetchTextFromUrl(`${EQUILIBRA_ORIGIN}/wp-json/wp/v2/posts?categories=19&per_page=100`)) as Array<{ date?: string; title?: { rendered?: string }; link?: string }>;
     return equilibraRowsFromPosts(posts
         .filter(post => /mensual/i.test(post.title?.rendered ?? ''))
-        .map(post => ({ title: post.title?.rendered ?? '', link: post.link ?? '', publishedAt: isoDateFromValue(post.date) })));
+        .map(post => ({ title: post.title?.rendered ?? '', link: post.link ?? '', publishedAt: isoDateFromHttpDate(post.date) })));
 }
 
 /** Fetches a paginated WordPress page/feed; only the first page is required, later pages end the walk when they fail or are empty. */
@@ -347,7 +282,7 @@ async function fetchEquilibraFeedRows(): Promise<EquilibraRow[]> {
     for (const item of items) {
         const row = parseEquilibraRssItem(item);
         if (row?.ipc_equilibra == null || rows.some(existing => existing.fecha === row.fecha)) continue;
-        rows.push({ fecha: row.fecha, ipc_equilibra: Number(row.ipc_equilibra), publishedAt: isoDateFromValue(item.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1]) });
+        rows.push({ fecha: row.fecha, ipc_equilibra: Number(row.ipc_equilibra), publishedAt: isoDateFromHttpDate(item.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1]) });
     }
     return rows;
 }
@@ -382,7 +317,7 @@ export function parseIpcOnlineRssItem(xml: string): InflacionRawRow | null {
     const my = extractMonthYearFromTitle(title);
     if (!my) return null;
 
-    return { fecha: `${my.year}-${String(my.month).padStart(2, '0')}-01`, ipc_online: parseDecimal(value) };
+    return { fecha: isoDate(my.year, my.month, 1), ipc_online: parseNumber(value, 'es-AR') };
 }
 
 export async function fetchIpcOnlineRows(): Promise<InflacionRawRow[]> {
@@ -407,7 +342,7 @@ async function fetchIpcOnlineReport(): Promise<InflacionSourceReport> {
                 if (!row || seenFechas.has(row.fecha)) continue;
                 seenFechas.add(row.fecha);
                 rows.push(row);
-                publishedAt = latestDate(publishedAt, isoDateFromValue(item.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1]));
+                publishedAt = latestDate(publishedAt, isoDateFromHttpDate(item.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1]));
                 newItems++;
             }
             if (newItems === 0) break;
@@ -439,8 +374,8 @@ async function fetchRemReport(): Promise<InflacionSourceReport> {
             if (typeof rawPeriodo !== 'string') continue;
             const date = new Date(rawPeriodo);
             if (Number.isNaN(date.getTime())) continue;
-            const fecha = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-01`;
-            const mediana = parseOptionalDecimal(entry.mediana);
+            const fecha = isoDate(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
+            const mediana = parseNumber(entry.mediana, 'en');
             if (mediana == null) continue;
             rows.push({ fecha, rem: mediana });
         }
@@ -455,14 +390,9 @@ async function fetchRemReport(): Promise<InflacionSourceReport> {
     }
 }
 
-const REM_BCRA_XLSX_BASE = 'https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas';
-const MONTH_ABBR = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-
-function remXlsxUrl(month: number, year: number): string {
-    const abbr = MONTH_ABBR[month - 1];
-    const path = year >= 2026 ? `${REM_BCRA_XLSX_BASE}/informes` : REM_BCRA_XLSX_BASE;
-    return `${path}/tablas-relevamiento-expectativas-mercado-${abbr}-${year}.xlsx`;
-}
+const BCRA_ORIGIN = 'https://www.bcra.gob.ar';
+const REM_BCRA_PAGE_URL = `${BCRA_ORIGIN}/PublicacionesEstadisticas/Relevamiento_Expectativas_de_Mercado.asp`;
+const REM_IPC_VARIABLE = 'Precios minoristas (IPC nivel general; INDEC)';
 
 export type RemExpectationSurvey = {
     surveyDate: string;
@@ -470,71 +400,42 @@ export type RemExpectationSurvey = {
     targets: Array<{ month: string; median: number }>;
 };
 
-function parseExcelDate(serial: number): string | null {
-    if (serial < 40000) return null;
-    const date = new Date((serial - 25569) * 86400 * 1000);
-    if (Number.isNaN(date.getTime())) return null;
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-01`;
+function parseExcelDate(serial: unknown): string | null {
+    if (typeof serial !== 'number' || !Number.isFinite(serial) || serial < 40000) return null;
+    return excelSerialToIsoMonth(serial);
 }
 
-export function parseRemXlsx(buffer: Buffer, surveyYear: number, surveyMonth: number): RemExpectationSurvey | null {
-    const workbook = readWorkbook(buffer);
-    const sheetName = workbook.SheetNames.find(name => /cuadros de resultados/i.test(name));
-    if (!sheetName) return null;
-
-    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, raw: true, defval: null }) as unknown[][];
-
-    const headerIdx = rows.findIndex(row => /precios minoristas.*ipc nivel general/i.test(String(row[0] ?? '')));
-    if (headerIdx < 0) return null;
-
-    const dataStart = headerIdx + 2;
-    const targets: Array<{ month: string; median: number }> = [];
-
-    for (let i = dataStart; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row || row[0] == null) break;
-        if (typeof row[0] === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(row[0])) break;
-        if (typeof row[0] === 'number' && row[0] < 40000) break;
-
-        const ref = String(row[1] ?? '');
-        if (!/var\. % mensual/i.test(ref)) continue;
-
-        const fecha = typeof row[0] === 'number' ? parseExcelDate(row[0]) : (typeof row[0] === 'string' ? row[0].split(' ')[0] : null);
-        const mediana = parseOptionalDecimal(row[2]);
-        if (!fecha || mediana == null) continue;
-
-        targets.push({ month: fecha, median: mediana });
+/** Monthly IPC medians of every REM survey, from the "Base de Datos Completa" sheet of BCRA's historical workbook. */
+function parseRemHistory(buffer: Buffer): RemExpectationSurvey[] {
+    const sheet = readWorkbook(buffer).Sheets['Base de Datos Completa'];
+    const rows = sheet ? XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: null }) as unknown[][] : [];
+    const bySurvey = new Map<string, RemExpectationSurvey>();
+    for (const [surveyed, variable, reference, period, median] of rows) {
+        const surveyDate = parseExcelDate(surveyed);
+        const month = parseExcelDate(period);
+        const value = parseNumber(median, 'en');
+        if (variable !== REM_IPC_VARIABLE || reference !== 'var. % mensual' || !surveyDate || !month || value == null) continue;
+        const [year, surveyMonth] = surveyDate.split('-').map(Number);
+        const survey = bySurvey.get(surveyDate) ?? { surveyDate, surveyLabel: `${MONTH_NAMES_ES[surveyMonth - 1].slice(0, 3)}-${String(year).slice(-2)}`, targets: [] };
+        survey.targets.push({ month, median: value });
+        bySurvey.set(surveyDate, survey);
     }
-
-    if (targets.length === 0) return null;
-
-    const surveyDate = `${surveyYear}-${String(surveyMonth).padStart(2, '0')}-01`;
-    const label = `${MONTH_ABBR[surveyMonth - 1]}-${String(surveyYear).slice(-2)}`;
-    return { surveyDate, surveyLabel: label, targets };
+    return Array.from(bySurvey.values()).sort((a, b) => a.surveyDate.localeCompare(b.surveyDate));
 }
 
-export async function fetchRemXlsx(month: number, year: number): Promise<RemExpectationSurvey | null> {
-    const url = remXlsxUrl(month, year);
-    try {
-        const buffer = await fetchBufferFromUrl(url);
-        return parseRemXlsx(buffer, year, month);
-    } catch {
-        return null;
-    }
-}
-
-export async function fetchRemExpectationsHistory(monthsBack: number = 6): Promise<RemExpectationSurvey[]> {
+/** The latest REM surveys, from the historical workbook linked on BCRA's REM page. */
+export async function fetchRemExpectationsHistory(monthsBack: number = 12): Promise<RemExpectationSurvey[]> {
     return unstable_cache(
         async () => {
-            const now = new Date();
-            const surveys = await Promise.all(Array.from({ length: monthsBack }, async (_, offset) => {
-                const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
-                return fetchRemXlsx(d.getUTCMonth() + 1, d.getUTCFullYear());
-            }));
-
-            return surveys
-                .filter((survey): survey is RemExpectationSurvey => survey != null)
-                .sort((a, b) => a.surveyDate.localeCompare(b.surveyDate));
+            try {
+                const link = extractFileLinks(await fetchTextFromUrl(REM_BCRA_PAGE_URL), { origin: BCRA_ORIGIN, extensions: ['xlsx'] })
+                    .find(candidate => /historico\.xlsx$/i.test(candidate.href));
+                if (!link) throw new Error(`No REM historical workbook linked on ${REM_BCRA_PAGE_URL}`);
+                return parseRemHistory(await fetchBufferFromUrl(link.href)).slice(-monthsBack);
+            } catch (error) {
+                console.error('[inflacion-source] Failed to fetch REM surveys:', error);
+                return [];
+            }
         },
         ['rem-expectations-history', String(monthsBack)],
         { revalidate: 21600 },
@@ -550,7 +451,7 @@ export async function fetchInflacionRawReport(today = argentinaToday()): Promise
     const [indecGeneral, indecNucleo, indecIpim, equilibraReport, onlineReport, remReport, indecRelease] = await Promise.all([
         fetchIndecIpcRows(INDEC_GENERAL_SERIES_ID),
         fetchIndecIpcRows(INDEC_NUCLEO_SERIES_ID),
-        fetchIndecIpcRows(INDEC_IPIM_SERIES_ID),
+        fetchIndecIpimRows(today),
         fetchEquilibraIpcReport(),
         fetchIpcOnlineReport(),
         fetchRemReport(),
@@ -567,7 +468,7 @@ export async function fetchInflacionRawReport(today = argentinaToday()): Promise
         byFecha.set(row.fecha, { ...byFecha.get(row.fecha), fecha: row.fecha, ipc_indec_nucleo: row.valor });
     }
     for (const row of indecIpim) {
-        byFecha.set(row.fecha, { ...byFecha.get(row.fecha), fecha: row.fecha, ipim: row.valor });
+        byFecha.set(row.fecha, { ...byFecha.get(row.fecha), ...row });
     }
     completeIndecIndexRows(byFecha, indecVariations);
     for (const row of equilibraReport.rows) {
@@ -591,8 +492,6 @@ export async function fetchInflacionRawReport(today = argentinaToday()): Promise
     };
 }
 
-const MONTHS_ES_REV = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
-
 export function normalizeRemExpectations(
     surveys: RemExpectationSurvey[],
     actualIpcByMonth: Map<string, number>,
@@ -607,9 +506,8 @@ export function normalizeRemExpectations(
     const sortedMonths = Array.from(allMonths).sort();
 
     return sortedMonths.map(month => {
-        const d = new Date(month + 'T12:00:00Z');
         const row: Record<string, unknown> = {
-            fecha: `${MONTHS_ES_REV[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}`,
+            fecha: isoToMonthLabel(month),
             iso_fecha: month,
         };
 

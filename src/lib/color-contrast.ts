@@ -18,6 +18,13 @@ function parseHexColor(color: string): [number, number, number] {
     return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
 }
 
+/** Hex color `weight` of the way from `from` to `to` (0 = from, 1 = to). */
+export function mixHexColors(from: string, to: string, weight: number): string {
+    const start = parseHexColor(from);
+    const end = parseHexColor(to);
+    return `#${start.map((channel, i) => Math.round(channel + (end[i] - channel) * weight).toString(16).padStart(2, '0')).join('').toUpperCase()}`;
+}
+
 export function relativeLuminance(color: string): number {
     const [red, green, blue] = parseHexColor(color).map(channelToLinear);
     return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
