@@ -242,8 +242,8 @@ describe('buildCurrentIndicatorsCatalog', () => {
         });
 
         const nextInflationSource = [
-            { date: futureMonthly('2026-05-14'), label: 'INDEC' },
-            { date: futureMonthly('2026-05-10'), label: 'Equilibra' },
+            { date: futureMonthly('2026-05-14'), label: 'IPC INDEC' },
+            { date: futureMonthly('2026-05-10'), label: 'IPC Equilibra' },
             { date: futureMonthly('2026-05-03'), label: 'REM' },
         ].sort((a, b) => a.date.localeCompare(b.date))[0];
 
