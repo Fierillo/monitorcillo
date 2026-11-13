@@ -1,6 +1,6 @@
 import type { RecaudacionNormalizedRow, RecaudacionRawRow } from '@/types';
 import { RECAUDACION_RESIDUAL, RECAUDACION_TAX_TYPES } from '../recaudacion/schema';
-import { fechaToTimestamp, MONTHS_ES } from './dates';
+import { fechaToTimestamp, isoToMonthLabel } from './dates';
 import { baseIpcValue, notNull, toBasePrices, toNullableNumber } from './numbers';
 
 function toPctPbi(realValue: number | null, pbiMensual: number | null): number | null {
@@ -45,7 +45,6 @@ export function normalizeRecaudacion(rawData: RecaudacionRawRow[]): RecaudacionN
         .map(({ row, recaudacionReal, taxReals, otrosReal }, index, rows) => {
             const year = row.year ?? Number(row.fecha.slice(0, 4));
             const monthStr = row.mes ?? row.fecha.slice(5, 7);
-            const monthNum = parseInt(monthStr, 10);
             const pbiMensual = toNullableNumber(row.pbi_trimestral);
             if (!pbiMensual) return null;
 
@@ -61,7 +60,7 @@ export function normalizeRecaudacion(rawData: RecaudacionRawRow[]): RecaudacionN
             const otrosValues = movingWindow.map(item => item.otrosReal);
 
             return {
-                fecha: `${MONTHS_ES[monthNum - 1]} ${String(year).slice(-2)}`,
+                fecha: isoToMonthLabel(row.fecha),
                 iso_fecha: row.fecha,
                 mes: monthStr,
                 year,

@@ -1,4 +1,5 @@
 import type { ChartDataRow } from '@/types';
+import { isoDate, isoToMonthLabel } from './normalize/dates';
 
 /** `note`: projects whose month is their first verifiable appearance in official totals, not a linked resolution. */
 export type RigiApproval = { month: string; amountUsdMillions: number; note?: string };
@@ -26,7 +27,6 @@ export type NonRigiInvestment = {
 /** Investments as stored in Neon (see src/lib/db/inversiones.ts). */
 export type InversionesData = { approvals: RigiApproval[]; observations: RigiObservation[]; nonRigi: NonRigiInvestment[] };
 
-const MONTHS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEPT', 'OCT', 'NOV', 'DIC'];
 
 /** Current RIGI totals: the latest published observation, or null when none is stored. */
 export function rigiTotals(observations: RigiObservation[]) {
@@ -49,7 +49,6 @@ export function buildRigiChartData({ approvals, observations, nonRigi }: Inversi
     let underEvaluation = 0;
 
     return buildMonthlyDates('2017-01-01', totals.updatedAt.slice(0, 7) + '-01').map(date => {
-        const [year, month] = date.split('-');
         approvedAccumulated += approvedByMonth.get(date) ?? 0;
         underEvaluation = evaluationByMonth.get(date) ?? underEvaluation;
         const monthKey = date.slice(0, 7);
@@ -58,7 +57,7 @@ export function buildRigiChartData({ approvals, observations, nonRigi }: Inversi
         const confirmedIds = new Set(confirmed.map(investment => investment.id));
 
         return {
-            fecha: `${MONTHS[Number(month) - 1]} ${year.slice(2)}`,
+            fecha: isoToMonthLabel(date),
             iso_fecha: date,
             aprobadas: approvedAccumulated,
             en_evaluacion: underEvaluation,
@@ -78,7 +77,7 @@ function buildMonthlyDates(start: string, end: string): string[] {
             year++;
             month = 1;
         }
-        dates.push(`${year}-${String(month).padStart(2, '0')}-01`);
+        dates.push(isoDate(year, month, 1));
     }
 
     return dates;

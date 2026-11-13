@@ -1,13 +1,8 @@
 import type { InflacionNormalizedRow, InflacionRawRow } from '@/types';
-import { MONTHS_ES } from './dates';
+import { addMonths, isoToMonthLabel } from './dates';
 import { toNullableNumber } from './numbers';
 
 const INFLACION_RATE_KEYS = ['ipc_indec', 'ipc_nucleo_indec', 'ipc_equilibra', 'ipc_online', 'rem', 'ipim', 'ipc'] as const;
-
-function addMonths(fecha: string, offset: number): string {
-    const [year, month] = fecha.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1 + offset, 1)).toISOString().split('T')[0];
-}
 
 function yearOverYearRate<T extends object>(byFecha: Map<string, T>, isoFecha: string, key: string): number | null {
     let product = 1;
@@ -109,7 +104,7 @@ export function normalizeInflacion(rawData: InflacionRawRow[]): InflacionNormali
         if (Number.isNaN(date.getTime())) continue;
 
         normalizedRows.push({
-            fecha: `${MONTHS_ES[date.getUTCMonth()]} ${String(date.getUTCFullYear()).slice(-2)}`,
+            fecha: isoToMonthLabel(fecha),
             iso_fecha: fecha,
             ipc_indec: ipcIndec != null ? Number(ipcIndec.toFixed(2)) : null,
             ipc_nucleo_indec: ipcNucleoIndec != null ? Number(ipcNucleoIndec.toFixed(2)) : null,

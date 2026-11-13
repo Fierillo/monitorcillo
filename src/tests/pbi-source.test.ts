@@ -52,4 +52,14 @@ describe('PBI official source parsing', () => {
         expect(monthlyPbi.get('2026-06-01')).toBe(1300);
         expect(monthlyPbi.get('2026-07-01')).toBeCloseTo(1430, 6);
     });
+
+    it('reads PBI values in the en format SheetJS writes: thousands commas and decimal points', () => {
+        const anchors = parsePbiWorkbook(workbookBuffer([
+            ['Período', null, 'Oferta y demanda globales'],
+            ['Año', 'Trimestre', 'PIB'],
+            ['2025', 'I', '736,261.5'],
+        ]));
+
+        expect(anchors[0]).toEqual({ fecha: '2025-06-01', pbi: 736261.5 * 13.5236902916533 });
+    });
 });

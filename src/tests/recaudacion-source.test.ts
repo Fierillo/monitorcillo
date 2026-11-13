@@ -108,4 +108,15 @@ describe('Recaudacion official source parsing', () => {
             contribuciones_patronales: 2000000,
         });
     });
+
+    it('reads amounts in the en format SheetJS writes: thousands commas and decimal points', () => {
+        const report = parseRecaudacionWorkbook(workbookBuffer([
+            ['RECAUDACION TRIBUTARIA. ABRIL DE 2026. (1) '],
+            ['Concepto', "Abr. '26"],
+            [' Ganancias', '3,136,961.5'],
+            [' Total recursos tributarios', '17,400,833.25'],
+        ]));
+
+        expect(report?.row).toMatchObject({ ganancias: 3136961.5, recaudacion_total: 17400833.25 });
+    });
 });

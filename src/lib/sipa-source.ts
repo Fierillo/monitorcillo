@@ -2,7 +2,9 @@ import type { SipaRawRow } from '@/types';
 import { SIPA_PAGE_URL, SIPA_VALUE_KEYS } from './sipa-schema';
 import { readWorkbook, sheetRows } from './protocols';
 import { normalizeText } from './normalize/text';
-import { fetchBufferFromUrl, fetchLastModifiedDate, isoDateFromHttpDate } from './sync/http-client';
+import { parsePeriod } from './normalize/dates';
+import { parseNumber } from './normalize/numbers';
+import { fetchBufferFromUrl, fetchLastModifiedDate, fetchTextFromUrl } from './sync/http-client';
 
 type SipaSourceReport = {
     rows: SipaRawRow[];
@@ -13,44 +15,8 @@ const ARGENTINA_GOB_BASE_URL = 'https://www.argentina.gob.ar';
 const SIPA_WORKBOOK_PATTERN = /trabajoregistrado[_%5F](\d{4})[_%5F]estadisticas\.xlsx/i;
 const SIPA_WORKBOOK_TIMEOUT_MS = 120_000;
 
-const MONTHS: Record<string, string> = {
-    jan: '01',
-    ene: '01',
-    feb: '02',
-    mar: '03',
-    apr: '04',
-    abr: '04',
-    may: '05',
-    jun: '06',
-    jul: '07',
-    aug: '08',
-    ago: '08',
-    sep: '09',
-    oct: '10',
-    nov: '11',
-    dec: '12',
-    dic: '12',
-};
-
 function absoluteArgentinaGobUrl(url: string): string {
     return new URL(url.replace(/^blank:#/, ''), ARGENTINA_GOB_BASE_URL).toString();
-}
-
-function parsePeriod(value: unknown): { fecha: string; provisional: boolean } | null {
-    const raw = String(value ?? '').trim();
-    const match = raw.match(/^([A-Za-z]{3})-(\d{2})(\*)?$/);
-    if (!match) return null;
-    const month = MONTHS[match[1].toLowerCase()];
-    if (!month) return null;
-    const year = Number(match[2]) >= 80 ? `19${match[2]}` : `20${match[2]}`;
-    return { fecha: `${year}-${month}-01`, provisional: match[3] === '*' };
-}
-
-function parseNumber(value: unknown): number | null {
-    const normalized = String(value ?? '').replace(/,/g, '').trim();
-    if (!normalized || normalized === '-') return null;
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
 }
 
 function columnIndex(header: unknown[], matcher: (text: string) => boolean): number {
@@ -93,30 +59,25 @@ export function parseSipaWorkbook(buffer: Buffer): SipaRawRow[] {
     }
 
     return rows.slice(headerIndex + 1).flatMap(row => {
-        const period = parsePeriod(row[0]);
-        if (!period) return [];
+        const raw = String(row[0] ?? '').trim();
+        const fecha = parsePeriod(raw, 'mmm-yy');
+        if (!fecha) return [];
         return [{
-            fecha: period.fecha,
-            privado: parseNumber(row[indexes.privado]),
-            publico: parseNumber(row[indexes.publico]),
-            casas_particulares: parseNumber(row[indexes.casas_particulares]),
-            autonomos: parseNumber(row[indexes.autonomos]),
-            monotributo: parseNumber(row[indexes.monotributo]),
-            monotributo_social: parseNumber(row[indexes.monotributo_social]),
-            total: parseNumber(row[indexes.total]),
-            provisional: period.provisional,
+            fecha,
+            privado: parseNumber(row[indexes.privado], 'en'),
+            publico: parseNumber(row[indexes.publico], 'en'),
+            casas_particulares: parseNumber(row[indexes.casas_particulares], 'en'),
+            autonomos: parseNumber(row[indexes.autonomos], 'en'),
+            monotributo: parseNumber(row[indexes.monotributo], 'en'),
+            monotributo_social: parseNumber(row[indexes.monotributo_social], 'en'),
+            total: parseNumber(row[indexes.total], 'en'),
+            provisional: raw.endsWith('*'),
         }];
     });
 }
 
 export async function fetchSipaRawReport(): Promise<SipaSourceReport> {
-    const pageResponse = await fetch(SIPA_PAGE_URL);
-    if (!pageResponse.ok) {
-        throw new Error(`Failed to download ${SIPA_PAGE_URL}. Status ${pageResponse.status}. Verify the Secretaría de Trabajo statistics page.`);
-    }
-
-    const pagePublishedAt = isoDateFromHttpDate(pageResponse.headers.get('last-modified'));
-    const html = await pageResponse.text();
+    const [html, pagePublishedAt] = await Promise.all([fetchTextFromUrl(SIPA_PAGE_URL), fetchLastModifiedDate(SIPA_PAGE_URL)]);
     const workbookUrl = parseLatestSipaWorkbookUrl(html);
     if (!workbookUrl) {
         throw new Error(`Failed to find the SIPA statistics workbook at ${SIPA_PAGE_URL}. Verify the anexo links.`);

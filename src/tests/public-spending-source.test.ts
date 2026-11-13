@@ -245,4 +245,17 @@ describe('public spending official source', () => {
         expect(row.totalEstimate).toBeCloseTo(22.668, 3);
         expect(row.partial).toBeUndefined();
     });
+
+    it('reads absolute workbook values in the en format SheetJS writes: thousands commas and decimal points', () => {
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+            [], [], [],
+            [null, 'FINALIDAD / FUNCION', 2023, 2024],
+            [],
+            ['1.0', 'GASTO PÚBLICO TOTAL', '1', '1,234,567.8'],
+            ['1.4', 'IV. SERVICIOS DE LA DEUDA PÚBLICA', '1', '98,765.4'],
+        ]), '$ corrientes');
+
+        expect(parsePublicSpendingAbsoluteWorkbook(XLSX.write(workbook, { type: 'buffer', bookType: 'xls' }), 2024)).toEqual({ total: 1234567.8, debtService: 98765.4 });
+    });
 });

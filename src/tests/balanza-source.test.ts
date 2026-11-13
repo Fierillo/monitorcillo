@@ -77,4 +77,26 @@ describe('ICA official source parsing', () => {
             { fecha: '2026-07-01', exportaciones: 8854, saldo: 2115 },
         ]);
     });
+
+    it('reads ICA values in the en format SheetJS writes: thousands commas and decimal points', () => {
+        const shiftedWorkbook = (rows: unknown[][], sheetName: string) => workbook(rows.map(row => [null, ...row]), sheetName);
+        const aggregate = shiftedWorkbook([
+            ['Período', null, 'Exportaciones', null, null, null, null, 'Importaciones', null, null, null, 'Saldo'],
+            ['2026*', 'Julioe', '8,854.5', null, null, null, null, '6,739.25', null, null, null, '2,115.25'],
+        ], 'FOB-CIF');
+        const exports = shiftedWorkbook([
+            [null, 'Exportaciones mensuales por grandes rubros. Enero-julio de 2026 y año 2025'],
+            [null, null, 'Total', null, null, null, 'Productos primarios (PP)', null, null, null, 'Manufacturas de origen agropecuario (MOA)', null, null, null, 'Manufacturas de origen industrial (MOI)', null, null, null, 'Combustibles y energía (CyE)'],
+            [null, null, 'Año 2026e', null, null, null, 'Año 2026e', null, null, null, 'Año 2026e', null, null, null, 'Año 2026e', null, null, null, 'Año 2026e'],
+            [null, 'Jul', '8,854.5', null, null, null, '2,110.5', null, null, null, '3,068', null, null, null, '2,170', null, null, null, '1,506'],
+        ], 'expo_gr');
+        const imports = shiftedWorkbook([
+            [null, 'Importaciones mensuales por usos económicos. Enero-julio de 2026 y año 2025'],
+            [null, 'Período', 'Total', null, null, null, 'Bienes de capital (BK)', null, null, null, 'Bienes intermedios (BI)', null, null, null, 'Combustibles y lubricantes básicos y elaborados (CyL)', null, null, null, 'Piezas y accesorios para bienes de capital (PyA)', null, null, null, 'Bienes de consumo (BC)', null, null, null, 'Vehículos automotores de pasajeros (VA)', null, null, null, 'Resto'],
+            [null, null, 'Año 2026*', null, null, null, 'Año 2026*', null, null, null, 'Año 2026*', null, null, null, 'Año 2026*', null, null, null, 'Año 2026*', null, null, null, 'Año 2026*', null, null, null, 'Año 2026*', null, null, null, 'Año 2026*'],
+            [null, 'Jul', '6,739.25', null, null, null, '1,167.5', null, null, null, '2,426', null, null, null, '614', null, null, null, '1,083', null, null, null, '889', null, null, null, '448', null, null, null, '112'],
+        ], 'impo_uso');
+
+        expect(parseLatestIcaReport(aggregate, exports, imports)[0]).toMatchObject({ exportaciones: 8854.5, importaciones: 6739.25, saldo: 2115.25, expo_pp: 2110.5, impo_bienes_capital: 1167.5 });
+    });
 });

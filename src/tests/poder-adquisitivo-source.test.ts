@@ -7,21 +7,29 @@ const mocks = vi.hoisted(() => ({
     fetchIpcNucleoSeries: vi.fn(),
 }));
 
-vi.mock('@/lib/sync/http-client', () => ({ fetchTextFromUrl: mocks.fetchTextFromUrl }));
+vi.mock('@/lib/sync/http-client', () => ({
+    fetchTextFromUrl: mocks.fetchTextFromUrl,
+    fetchBufferFromUrl: async (url: string) => Buffer.from(await mocks.fetchTextFromUrl(url)),
+}));
 vi.mock('@/lib/sync/time-series-client', () => ({ fetchTimeSeries: mocks.fetchTimeSeries }));
 vi.mock('@/lib/sync/cache', () => ({ fetchIpcNucleoSeries: mocks.fetchIpcNucleoSeries }));
 vi.mock('@/lib/salary-source', () => ({ parseSalaryPublicationDate: mocks.parseSalaryPublicationDate }));
 
-import { fetchPoderAdquisitivoRawReport, parseOfficialSalaryCsvRows, parseRipteCsvRows } from '../lib/sync/poder-adquisitivo';
+import { fetchPoderAdquisitivoRawReport, INDEC_SALARIES_CSV, RIPTE_CSV as RIPTE_SPEC } from '../lib/sync/poder-adquisitivo';
+import { firstSheetRows, parseTableSeries } from '../lib/protocols';
 
-const RIPTE_CSV = `indice_tiempo,remuneracion_imponible_promedio_trabajadores_estables
+const parseOfficialSalaryCsvRows = (csv: string) => new Map(parseTableSeries(firstSheetRows(Buffer.from(csv)), INDEC_SALARIES_CSV).map(({ fecha, ...salary }) => [fecha, salary]));
+const parseRipteCsvRows = (csv: string) => new Map(parseTableSeries(firstSheetRows(Buffer.from(csv)), RIPTE_SPEC).map(row => [row.fecha, row.ripte]));
+const SALARIES_HEADER = 'periodo;IS_sector_privado_registrado;IS_sector_publico;IS_total_registrado;IS_sector_no_registrado;IS_indice_total';
+
+const RIPTE_CSV = `indice_tiempo,ripte
 2026-01-01,1856432.71
 2026-02-01,1923004.15`;
 
 describe('parseOfficialSalaryCsvRows', () => {
     it('reads quoted semicolon-delimited salaries while preserving dates, decimal commas and missing values', () => {
         const rows = parseOfficialSalaryCsvRows([
-            'periodo;privado;publico;registrado;no_registrado;nota',
+            SALARIES_HEADER,
             '"1/3/2026";"8935,48";"NA";"8341,11";"";"dato; provisional"',
         ].join('\r\n'));
 
@@ -49,7 +57,7 @@ describe('parseOfficialSalaryCsvRows', () => {
 describe('parseRipteCsvRows', () => {
     it('reads quoted monthly indices and skips quoted empty values', () => {
         const csv = [
-            'indice_tiempo,remuneracion',
+            'indice_tiempo,ripte',
             '"2026-01-01","1856432.71"',
             '"2026-02-01",""',
         ].join('\r\n');
@@ -65,7 +73,7 @@ describe('parseRipteCsvRows', () => {
     });
 
     it('ignores rows without a usable date or value', () => {
-        const csv = `indice_tiempo,remuneracion
+        const csv = `indice_tiempo,ripte
 2026-01-01,1856432.71
 2026-02-01,NA
 sin-fecha,123
@@ -85,7 +93,7 @@ describe('fetchPoderAdquisitivoRawReport', () => {
 
     it('takes core IPC from the shared series that extends the stale API with INDEC fallbacks', async () => {
         mocks.fetchIpcNucleoSeries.mockResolvedValue({ data: [['2026-01-01', 100], ['2026-09-01', 150]] });
-        mocks.fetchTextFromUrl.mockImplementation(async (url: string) => (url.includes('ripte') ? RIPTE_CSV : 'periodo;a;b;c;d\n1/1/2026;1;2;3;4'));
+        mocks.fetchTextFromUrl.mockImplementation(async (url: string) => (url.includes('ripte') ? RIPTE_CSV : `${SALARIES_HEADER}\n1/1/2026;1;2;3;4;5`));
 
         const { rows } = await fetchPoderAdquisitivoRawReport();
 
@@ -93,7 +101,7 @@ describe('fetchPoderAdquisitivoRawReport', () => {
     });
 
     it('reports the RIPTE values published for each month', async () => {
-        mocks.fetchTextFromUrl.mockImplementation(async (url: string) => (url.includes('ripte') ? RIPTE_CSV : 'periodo;a;b;c;d\n1/1/2026;1;2;3;4'));
+        mocks.fetchTextFromUrl.mockImplementation(async (url: string) => (url.includes('ripte') ? RIPTE_CSV : `${SALARIES_HEADER}\n1/1/2026;1;2;3;4;5`));
 
         const { rows } = await fetchPoderAdquisitivoRawReport();
 
@@ -103,7 +111,7 @@ describe('fetchPoderAdquisitivoRawReport', () => {
     it('fails instead of reporting every month without a RIPTE value', async () => {
         mocks.fetchTextFromUrl.mockImplementation(async (url: string) => {
             if (url.includes('ripte')) throw new Error('Failed to download RIPTE. Status 503');
-            return 'periodo;a;b;c;d\n1/1/2026;1;2;3;4';
+            return `${SALARIES_HEADER}\n1/1/2026;1;2;3;4;5`;
         });
 
         await expect(fetchPoderAdquisitivoRawReport()).rejects.toThrow('Failed to download RIPTE');

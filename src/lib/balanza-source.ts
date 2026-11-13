@@ -1,51 +1,14 @@
 import type { BalanzaRawRow } from '@/types';
-import { readWorkbook, sheetRows } from './protocols';
+import { firstSheetRows } from './protocols';
+import { isoDate, monthNumber } from './normalize/dates';
+import { parseNumber } from './normalize/numbers';
 import { normalizeText } from './normalize/text';
 import type { BalanzaSeriesKey } from './balanza/schema';
-
-const MONTHS = new Map([
-    ['ene', 1], ['enero', 1],
-    ['feb', 2], ['febrero', 2],
-    ['mar', 3], ['marzo', 3],
-    ['abr', 4], ['abril', 4],
-    ['may', 5], ['mayo', 5],
-    ['jun', 6], ['junio', 6],
-    ['jul', 7], ['julio', 7],
-    ['ago', 8], ['agosto', 8],
-    ['sep', 9], ['septiembre', 9],
-    ['oct', 10], ['octubre', 10],
-    ['nov', 11], ['noviembre', 11],
-    ['dic', 12], ['diciembre', 12],
-]);
 
 type IcaWorkbookUrls = {
     exports: string | null;
     imports: string | null;
 };
-
-function workbookRows(buffer: Buffer): unknown[][] {
-    const workbook = readWorkbook(buffer);
-    return sheetRows(workbook.Sheets[workbook.SheetNames[0]]);
-}
-
-function numericValue(value: unknown): number | null {
-    const cleaned = String(value ?? '').replaceAll(',', '').trim();
-    if (!cleaned) return null;
-    const numeric = Number(cleaned);
-    return Number.isFinite(numeric) ? numeric : null;
-}
-
-function monthNumber(value: unknown): number | null {
-    const normalized = normalizeText(value).replace(/[^a-z]/g, '');
-    for (const [name, month] of MONTHS) {
-        if (normalized.startsWith(name)) return month;
-    }
-    return null;
-}
-
-function toFecha(year: number, month: number): string {
-    return `${year}-${String(month).padStart(2, '0')}-01`;
-}
 
 function headerColumns(rows: unknown[][], labels: Record<string, string>): { rowIndex: number; columns: Record<string, number> } {
     for (const [rowIndex, row] of rows.entries()) {
@@ -61,7 +24,7 @@ function headerColumns(rows: unknown[][], labels: Record<string, string>): { row
 }
 
 function latestAggregateRow(buffer: Buffer): BalanzaRawRow {
-    const rows = workbookRows(buffer);
+    const rows = firstSheetRows(buffer);
     const { columns } = headerColumns(rows, {
         exportaciones: 'exportaciones',
         importaciones: 'importaciones',
@@ -74,15 +37,15 @@ function latestAggregateRow(buffer: Buffer): BalanzaRawRow {
         const rowYear = row.map(value => String(value ?? '').match(/^(\d{4})/)).find(Boolean);
         if (rowYear) year = Number(rowYear[1]);
         const month = row.map(monthNumber).find(value => value != null);
-        const exportaciones = numericValue(row[columns.exportaciones]);
-        const importaciones = numericValue(row[columns.importaciones]);
+        const exportaciones = parseNumber(row[columns.exportaciones], 'en');
+        const importaciones = parseNumber(row[columns.importaciones], 'en');
         if (!year || !month || exportaciones == null || importaciones == null) continue;
 
         latest = {
-            fecha: toFecha(year, month),
+            fecha: isoDate(year, month, 1),
             exportaciones,
             importaciones,
-            saldo: numericValue(row[columns.saldo]) ?? exportaciones - importaciones,
+            saldo: parseNumber(row[columns.saldo], 'en') ?? exportaciones - importaciones,
         };
     }
 
@@ -97,7 +60,7 @@ function reportYear(rows: unknown[][]): number {
 }
 
 function latestBreakdownRow(buffer: Buffer, labels: Partial<Record<BalanzaSeriesKey, string>>): BalanzaRawRow {
-    const rows = workbookRows(buffer);
+    const rows = firstSheetRows(buffer);
     const year = reportYear(rows);
     const header = headerColumns(rows, labels);
     const starts = Object.values(header.columns).sort((a, b) => a - b);
@@ -114,9 +77,9 @@ function latestBreakdownRow(buffer: Buffer, labels: Partial<Record<BalanzaSeries
     let latest: BalanzaRawRow | null = null;
     for (const row of rows) {
         const month = row.map(monthNumber).find(value => value != null);
-        if (!month || Object.values(columns).some(column => numericValue(row[column]) == null)) continue;
-        latest = { fecha: toFecha(year, month) };
-        for (const [key, column] of Object.entries(columns)) latest[key as BalanzaSeriesKey] = numericValue(row[column]);
+        if (!month || Object.values(columns).some(column => parseNumber(row[column], 'en') == null)) continue;
+        latest = { fecha: isoDate(year, month, 1) };
+        for (const [key, column] of Object.entries(columns)) latest[key as BalanzaSeriesKey] = parseNumber(row[column], 'en');
     }
 
     if (latest) return latest;
@@ -140,7 +103,7 @@ export function parseIcaPublicationDate(html: string): string | null {
     if (!day || !month || Number.isNaN(parsedYear)) return null;
 
     const year = match[3].length === 2 ? 2000 + parsedYear : parsedYear;
-    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return isoDate(year, month, day);
 }
 
 export function parseIcaWorkbookUrls(html: string): IcaWorkbookUrls {

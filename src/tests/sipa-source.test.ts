@@ -1,6 +1,10 @@
 import * as XLSX from 'xlsx';
-import { describe, expect, it } from 'vitest';
-import { parseLatestSipaWorkbookUrl, parseSipaWorkbook } from '../lib/sipa-source';
+import { describe, expect, it, vi } from 'vitest';
+import { fetchSipaRawReport, parseLatestSipaWorkbookUrl, parseSipaWorkbook } from '../lib/sipa-source';
+import { SIPA_PAGE_URL } from '../lib/sipa-schema';
+
+const http = vi.hoisted(() => ({ fetchTextFromUrl: vi.fn(), fetchBufferFromUrl: vi.fn(), fetchLastModifiedDate: vi.fn() }));
+vi.mock('../lib/sync/http-client', async (importOriginal) => ({ ...await importOriginal<object>(), ...http }));
 
 function workbook(rows: unknown[][], sheetName: string): Buffer {
     const result = XLSX.utils.book_new();
@@ -62,5 +66,20 @@ describe('SIPA registered employment source parsing', () => {
                 provisional: true,
             },
         ]);
+    });
+
+    it('downloads the page and workbook with the shared HTTP client, dating it by the page when the workbook has no Last-Modified', async () => {
+        const workbookUrl = 'https://www.argentina.gob.ar/sites/default/files/trabajoregistrado_2606_estadisticas.xlsx';
+        http.fetchTextFromUrl.mockResolvedValue(`<a href="${workbookUrl}">ver</a>`);
+        http.fetchBufferFromUrl.mockResolvedValue(workbook([
+            ['Período', 'Sector privado', 'Sector público', 'Casas particulares', 'Autónomos', 'Monotributo', 'Monotributo social', 'Total'],
+            ['jun-26*', '6,126.4', '3,380.0', '444.1', '388.9', '2,206.8', '227.3', '12,773.4'],
+        ], 'T.2.2'));
+        http.fetchLastModifiedDate.mockImplementation(async (url: string) => url === SIPA_PAGE_URL ? '2026-09-10' : null);
+
+        const report = await fetchSipaRawReport();
+
+        expect(http.fetchTextFromUrl).toHaveBeenCalledWith(SIPA_PAGE_URL);
+        expect(report).toMatchObject({ publishedAt: '2026-09-10', rows: [{ fecha: '2026-06-01', total: 12773.4 }] });
     });
 });

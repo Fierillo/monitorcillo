@@ -1,4 +1,5 @@
 import type { PobrezaRawRow } from '@/types';
+import { isoDate, monthNumber } from './normalize/dates';
 import { extractFileLinks, fetchPdf, parseUtdtAssetDate } from './protocols';
 import { fetchLastModifiedDate, fetchTextFromUrl } from './sync/http-client';
 import { fetchTimeSeries } from './sync/time-series-client';
@@ -14,19 +15,12 @@ const PDF_FETCH_CONCURRENCY = 4;
 const SHINY_TIMEOUT_MS = 30_000;
 const UCA_FETCH_TIMEOUT_MS = 30_000;
 const UCA_EDSA_START_YEAR = 2010;
-const SEMESTER_MONTHS: Record<string, number> = {
-    ene: 1, feb: 2, mar: 3, abr: 4, may: 5, jun: 6,
-    jul: 7, ago: 8, sep: 9, oct: 10, nov: 11, dic: 12,
-};
 
 function periodToFecha(period: string): string | null {
     const match = period.match(/([A-Za-z]{3})(\d{2})([A-Za-z]{3})(\d{2})/);
     if (!match) return null;
-
-    const endMonth = SEMESTER_MONTHS[match[3].toLowerCase()];
-    if (!endMonth) return null;
-
-    return `${2000 + Number(match[4])}-${String(endMonth).padStart(2, '0')}-01`;
+    const endMonth = monthNumber(match[3]);
+    return endMonth ? isoDate(2000 + Number(match[4]), endMonth, 1) : null;
 }
 
 export type UtdtPeriodPdfLink = {

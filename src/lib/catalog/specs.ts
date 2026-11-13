@@ -1,5 +1,6 @@
 import type { CatalogIndicatorSpec, CatalogNextExpectedEvent, DataRow } from '@/types';
 import { rowDate, toFiniteNumber } from './rows';
+import { addMonths } from '../normalize/dates';
 
 const decimalFormatter = new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 1,
@@ -16,16 +17,6 @@ function addDays(date: string, days: number): string {
     const value = new Date(`${date}T00:00:00Z`);
     value.setUTCDate(value.getUTCDate() + days);
     return value.toISOString().split('T')[0];
-}
-
-function addMonths(date: string, months: number): string {
-    const [year, month] = date.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1 + months, 1)).toISOString().split('T')[0];
-}
-
-function addYears(date: string, years: number): string {
-    const [year, month] = date.split('-').map(Number);
-    return `${year + years}-${String(month).padStart(2, '0')}-01`;
 }
 
 function nextBusinessDay(date: string): string {
@@ -141,7 +132,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         type: 'reca',
         referenceLabel: 'Mismo mes año anterior',
         betterWhen: 'higher',
-        getReferenceDate: date => addYears(date, -1),
+        getReferenceDate: date => addMonths(date, -12),
         selectReferenceValue: row => row.pctPbi,
         datePrecision: 'month',
         normalizedValueColumn: 'pct_pbi',
@@ -188,7 +179,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         type: 'deuda',
         referenceLabel: 'Mismo mes año anterior',
         betterWhen: 'lower',
-        getReferenceDate: date => addYears(date, -1),
+        getReferenceDate: date => addMonths(date, -12),
         selectReferenceValue: row => row.stock_usd,
         datePrecision: 'month',
         normalizedValueColumn: 'stock_usd',
@@ -203,7 +194,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         type: 'pobreza',
         referenceLabel: 'Mismo semestre año anterior',
         betterWhen: 'lower',
-        getReferenceDate: date => addYears(date, -1),
+        getReferenceDate: date => addMonths(date, -12),
         selectReferenceValue: row => row.pobreza_utdt ?? row.pobreza_indec,
         datePrecision: 'day',
         normalizedValueColumn: 'pobreza_utdt',
@@ -273,7 +264,7 @@ export const CATALOG_INDICATOR_SPECS: Record<string, CatalogIndicatorSpec> = {
         type: 'gasto',
         referenceLabel: 'Año anterior',
         betterWhen: 'lower',
-        getReferenceDate: date => addYears(date, -1),
+        getReferenceDate: date => addMonths(date, -12),
         selectReferenceValue: row => row.total,
         datePrecision: 'day',
         normalizedValueColumn: 'total',

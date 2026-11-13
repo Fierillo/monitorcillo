@@ -1,16 +1,13 @@
 import * as XLSX from 'xlsx';
 import type { DepositosPrestamosRawRow } from '@/types';
 import { PNFC_BREAKDOWNS } from './morosidad/schema';
-import { readWorkbook } from './protocols';
+import { excelSerialToIsoMonth, readWorkbook } from './protocols';
 import { fetchBufferFromUrl } from './sync/http-client';
 
 const PNFC_ANNEX_URL = 'https://www.bcra.gob.ar/archivos/Pdfs/PublicacionesEstadisticas/informes/anexo-estadistico-proveedores-no-financieros-credito-junio-2026.xlsx';
 
 function monthFromCell(cell: XLSX.CellObject | undefined): string | null {
-    if (typeof cell?.v !== 'number') return null;
-    const date = XLSX.SSF.parse_date_code(cell.v);
-    if (!date) return null;
-    return `${date.y}-${String(date.m).padStart(2, '0')}-01`;
+    return typeof cell?.v === 'number' ? excelSerialToIsoMonth(cell.v) : null;
 }
 
 function numberFromCell(cell: XLSX.CellObject | undefined): number | null {

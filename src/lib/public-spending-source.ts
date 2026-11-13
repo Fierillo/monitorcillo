@@ -3,6 +3,8 @@ import type { ChartDataRow } from '@/types';
 import { extractFileLinks, readWorkbook } from './protocols';
 import { fetchBufferFromUrl, fetchTextFromUrl } from './sync/http-client';
 import { PRESUPUESTO_PBI_BY_YEAR } from './presupuesto-source';
+import { monthNumber } from './normalize/dates';
+import { parseNumber } from './normalize/numbers';
 
 const PUBLIC_SPENDING_URLS = {
     consolidated: 'https://www.argentina.gob.ar/sites/default/files/gasto%5Fpublico%5Fconsolidado%5Fdesde%5F1980%5F2.xls',
@@ -15,8 +17,6 @@ const NATIONAL_TOTALS_URL = 'https://dgsiaf-repo.mecon.gob.ar/repository/pa/data
 const ARGENTINA_GOB_ORIGIN = 'https://www.argentina.gob.ar';
 const PROVINCIAL_EXECUTIONS_PAGE_URL = `${ARGENTINA_GOB_ORIGIN}/economia/sechacienda/coordinacion-fiscal-provincial/ejecucion-presupuestaria-provincial/ejecuciones`;
 const QUARTER_NUMERALS = ['i', 'ii', 'iii', 'iv'];
-
-const SPANISH_MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 type PublicSpendingYear = {
     total: number;
@@ -40,24 +40,12 @@ export type ProvincialExecution = {
     quarters: number;
 };
 
-function numericValue(value: unknown): number | null {
-    if (value == null || value === '') return null;
-    const number = Number(value);
-    return Number.isFinite(number) ? number : null;
-}
-
-function parseLocalNumber(value: string | undefined): number | null {
-    if (value == null) return null;
-    return numericValue(value.replace(/\./g, '').replace(',', '.'));
-}
-
 function parseSpanishDate(value: string | undefined): Date | null {
     if (!value) return null;
     const match = value.match(/(\d{1,2})\s+([a-záéíóú]+)\s+(\d{4})/i);
     if (!match) return null;
-    const month = SPANISH_MONTHS.indexOf(match[2].toLowerCase());
-    if (month < 0) return null;
-    return new Date(Date.UTC(Number(match[3]), month, Number(match[1])));
+    const month = monthNumber(match[2]);
+    return month ? new Date(Date.UTC(Number(match[3]), month - 1, Number(match[1]))) : null;
 }
 
 export function parsePublicSpendingWorkbook(buffer: ArrayBuffer | Uint8Array): PublicSpendingSeries {
@@ -75,8 +63,8 @@ export function parsePublicSpendingWorkbook(buffer: ArrayBuffer | Uint8Array): P
     for (let column = 2; column < headers.length; column += 1) {
         const header = String(headers[column]);
         const match = header.match(/^(\d{4})(\*)?$/);
-        const total = numericValue(totalRow[column]);
-        const debtService = numericValue(debtServiceRow[column]);
+        const total = parseNumber(totalRow[column], 'en');
+        const debtService = parseNumber(debtServiceRow[column], 'en');
         if (!match || total == null || debtService == null) continue;
         series.set(Number(match[1]), { total, debtService, preliminary: match[2] === '*' });
     }
@@ -98,8 +86,8 @@ export function parsePublicSpendingAbsoluteWorkbook(
     const column = headers.findIndex(header => String(header) === String(year));
     const totalRow = rows.find(row => row[0] === '1.0');
     const debtServiceRow = rows.find(row => row[0] === '1.4');
-    const total = numericValue(totalRow?.[column]);
-    const debtService = numericValue(debtServiceRow?.[column]);
+    const total = parseNumber(totalRow?.[column], 'en');
+    const debtService = parseNumber(debtServiceRow?.[column], 'en');
     if (column < 0 || total == null || debtService == null) {
         throw new Error(`Failed to parse public spending workbook. Missing absolute values for ${year}.`);
     }
@@ -119,8 +107,8 @@ export function parseNationalTotalsZip(buffer: ArrayBuffer | Uint8Array): Map<nu
     const series = new Map<number, NationalTotalsYear>();
     for (const row of rows) {
         const year = Number(row.ejercicio_presupuestario);
-        const total = parseLocalNumber(row.credito_devengado);
-        const primary = parseLocalNumber(row.gasto_primario_devengado);
+        const total = parseNumber(row.credito_devengado, 'es-AR');
+        const primary = parseNumber(row.gasto_primario_devengado, 'es-AR');
         const updatedAt = parseSpanishDate(row.ultima_actualizacion_fecha);
         if (!Number.isInteger(year) || total == null || primary == null || !updatedAt) continue;
         series.set(year, { total, primary, interest: total - primary, updatedAt });
@@ -160,8 +148,8 @@ export function parseProvincialExecutionWorkbook(buffer: ArrayBuffer | Uint8Arra
         const label = String(row[0]).toLowerCase();
         return label.includes('rentas de la propiedad') && !label.includes('gastos primarios');
     }).at(-1);
-    const primary = numericValue(primaryRow?.[totalColumn]);
-    const interest = numericValue(interestRow?.[totalColumn]);
+    const primary = parseNumber(primaryRow?.[totalColumn], 'en');
+    const interest = parseNumber(interestRow?.[totalColumn], 'en');
     if (totalColumn < 0 || primary == null || interest == null) {
         throw new Error('Failed to parse provincial execution workbook. Missing primary spending or property income totals.');
     }
@@ -255,12 +243,6 @@ export async function appendExecutionRowsOrWarn(
     return rows;
 }
 
-async function fetchWorkbook(url: string): Promise<ArrayBuffer> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to fetch public spending workbook ${url}. HTTP ${response.status}.`);
-    return response.arrayBuffer();
-}
-
 async function fetchProvincialExecution(year: number): Promise<ProvincialExecution> {
     const links = provincialExecutionLinks(await fetchTextFromUrl(PROVINCIAL_EXECUTIONS_PAGE_URL), year);
     const failures: string[] = [];
@@ -274,7 +256,7 @@ async function fetchProvincialExecution(year: number): Promise<ProvincialExecuti
     throw new Error(`No usable provincial execution for ${year} on ${PROVINCIAL_EXECUTIONS_PAGE_URL}. ${failures.join('; ')}`);
 }
 
-async function loadExecutionRows(annual: ChartDataRow[], nationBuffer: ArrayBuffer, nation: PublicSpendingSeries, provinces: PublicSpendingSeries, municipalities: PublicSpendingSeries): Promise<ChartDataRow[]> {
+async function loadExecutionRows(annual: ChartDataRow[], nationBuffer: Buffer, nation: PublicSpendingSeries, provinces: PublicSpendingSeries, municipalities: PublicSpendingSeries): Promise<ChartDataRow[]> {
     const nationalTotals = parseNationalTotalsZip(await fetchBufferFromUrl(NATIONAL_TOTALS_URL, { expectedContentType: /zip|octet-stream/i }));
     const years = executionYears(nationalTotals, Number(annual.at(-1)?.fecha));
     const latest = years.at(-1);
@@ -304,7 +286,7 @@ async function loadExecutionRows(annual: ChartDataRow[], nationBuffer: ArrayBuff
 /** Official annual series plus the execution years after it (closed estimates and the current partial), fetched live from MECON; the sync stores it in Neon. */
 export async function fetchPublicSpendingChartRows(): Promise<ChartDataRow[]> {
     const [consolidatedBuffer, nationBuffer, provincesBuffer, municipalitiesBuffer] = await Promise.all(
-        Object.values(PUBLIC_SPENDING_URLS).map(fetchWorkbook),
+        Object.values(PUBLIC_SPENDING_URLS).map(url => fetchBufferFromUrl(url)),
     );
     const [consolidated, nation, provinces, municipalities] = [
         consolidatedBuffer,

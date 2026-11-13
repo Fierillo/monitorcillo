@@ -1,57 +1,34 @@
 import { fetchIpcNucleoSeries } from './cache';
 import type { PoderAdquisitivoRawRow } from '@/types';
 import { parseSalaryPublicationDate } from '../salary-source';
-import { readWorkbook, sheetRows } from '../protocols';
+import { fetchTableSeries, type TableSeriesSpec } from '../protocols';
 import { SALARY_PUBLICATION_PAGE_URL } from './constants';
 import { fetchTextFromUrl } from './http-client';
 import { fetchTimeSeries } from './time-series-client';
 import { seriesValueMap } from './series';
 
-const OFFICIAL_SALARY_CSV_URL = 'https://www.indec.gob.ar/ftp/cuadros/sociedad/indice_salarios.csv';
-const RIPTE_CSV_URL = 'https://infra.datos.gob.ar/catalog/sspm/dataset/158/distribution/158.1/download/remuneracion-imponible-promedio-trabajadores-estables-ripte-total-pais-pesos-serie-mensual.csv';
+/** INDEC salary index by sector (1/m/yyyy periods, decimal commas, NA for missing). */
+export const INDEC_SALARIES_CSV: TableSeriesSpec<'salario_privado' | 'salario_publico' | 'salario_registrado' | 'salario_no_registrado'> = {
+    url: 'https://www.indec.gob.ar/ftp/cuadros/sociedad/indice_salarios.csv',
+    date: { column: 'periodo', format: 'd/m/yyyy' },
+    numberFormat: 'es-AR',
+    fields: {
+        salario_privado: { column: 'IS_sector_privado_registrado' },
+        salario_publico: { column: 'IS_sector_publico' },
+        salario_registrado: { column: 'IS_total_registrado' },
+        salario_no_registrado: { column: 'IS_sector_no_registrado' },
+    },
+};
 
-function parseDecimal(value: string | undefined): number | null {
-    if (!value || value === 'NA') return null;
-    const parsed = Number(value.replace(',', '.'));
-    return Number.isFinite(parsed) ? parsed : null;
-}
+/** Average taxable pay of stable workers (RIPTE), pesos per month. */
+export const RIPTE_CSV: TableSeriesSpec<'ripte'> = {
+    url: 'https://infra.datos.gob.ar/catalog/sspm/dataset/158/distribution/158.1/download/remuneracion-imponible-promedio-trabajadores-estables-ripte-total-pais-pesos-serie-mensual.csv',
+    date: { column: 'indice_tiempo', format: 'iso' },
+    numberFormat: 'en',
+    fields: { ripte: { column: 'ripte' } },
+};
 
-function parseSalaryDate(value: string | undefined): string | null {
-    const match = value?.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (!match) return null;
-    return `${match[3]}-${String(Number(match[2])).padStart(2, '0')}-01`;
-}
-
-export function parseOfficialSalaryCsvRows(csv: string): Map<string, Pick<PoderAdquisitivoRawRow, 'salario_registrado' | 'salario_no_registrado' | 'salario_privado' | 'salario_publico'>> {
-    const workbook = readWorkbook(Buffer.from(csv));
-    const rows = new Map<string, Pick<PoderAdquisitivoRawRow, 'salario_registrado' | 'salario_no_registrado' | 'salario_privado' | 'salario_publico'>>();
-    for (const cells of sheetRows(workbook.Sheets[workbook.SheetNames[0]]).slice(1)) {
-        const [periodo, privado, publico, registrado, noRegistrado] = cells.map(cell => String(cell ?? ''));
-        const fecha = parseSalaryDate(periodo);
-        if (!fecha) continue;
-        rows.set(fecha, {
-            salario_registrado: parseDecimal(registrado),
-            salario_no_registrado: parseDecimal(noRegistrado),
-            salario_privado: parseDecimal(privado),
-            salario_publico: parseDecimal(publico),
-        });
-    }
-    return rows;
-}
-
-export function parseRipteCsvRows(csv: string): Map<string, number> {
-    const workbook = readWorkbook(Buffer.from(csv));
-    const rows = new Map<string, number>();
-    for (const cells of sheetRows(workbook.Sheets[workbook.SheetNames[0]]).slice(1)) {
-        const [fecha, value] = cells.map(cell => String(cell ?? ''));
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha ?? '')) continue;
-        const parsed = Number(value);
-        if (value && Number.isFinite(parsed)) rows.set(fecha, parsed);
-    }
-    return rows;
-}
-
-function buildSalaryRow(fecha: string, salaryRow: Partial<PoderAdquisitivoRawRow> | null, ipc: Map<string, number>, jubilaciones: Map<string, number>, ripte: Map<string, number>): PoderAdquisitivoRawRow {
+function buildSalaryRow(fecha: string, salaryRow: Partial<PoderAdquisitivoRawRow> | null, ipc: Map<string, number>, jubilaciones: Map<string, number>, ripte: Map<string, number | null>): PoderAdquisitivoRawRow {
     return {
         fecha,
         ipc_nucleo: ipc.get(fecha) ?? null,
@@ -65,18 +42,18 @@ function buildSalaryRow(fecha: string, salaryRow: Partial<PoderAdquisitivoRawRow
 }
 
 export async function fetchPoderAdquisitivoRawReport(): Promise<{ rows: PoderAdquisitivoRawRow[]; publishedAt: string | null }> {
-    const [ipc, jubilaciones, salariosCsv, ripteCsv, publicationHtml] = await Promise.all([
+    const [ipc, jubilaciones, salaryRows, ripteRows, publicationHtml] = await Promise.all([
         fetchIpcNucleoSeries(),
         fetchTimeSeries({ ids: ['58.1_MP_0_M_24'] }),
-        fetchTextFromUrl(OFFICIAL_SALARY_CSV_URL),
-        fetchTextFromUrl(RIPTE_CSV_URL),
+        fetchTableSeries(INDEC_SALARIES_CSV),
+        fetchTableSeries(RIPTE_CSV),
         fetchTextFromUrl(SALARY_PUBLICATION_PAGE_URL),
     ]);
 
     const ipcByFecha = seriesValueMap(ipc.data || []);
     const jubilacionesByFecha = seriesValueMap(jubilaciones.data || []);
-    const salariosByFecha = parseOfficialSalaryCsvRows(salariosCsv);
-    const ripteByFecha = parseRipteCsvRows(ripteCsv);
+    const salariosByFecha = new Map(salaryRows.map(({ fecha, ...salary }) => [fecha, salary]));
+    const ripteByFecha = new Map(ripteRows.map(row => [row.fecha, row.ripte]));
     const combinedMap = new Map<string, PoderAdquisitivoRawRow>();
 
     for (const [fecha, salaryRow] of salariosByFecha) {

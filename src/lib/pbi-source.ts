@@ -1,6 +1,7 @@
 import type { EmaeRawRow, PbiAnchorRow } from '@/types';
 import { readWorkbook, sheetRows } from './protocols';
 import { normalizeText } from './normalize/text';
+import { parseNumber, toNullableNumber } from './normalize/numbers';
 
 const INDEC_BASE_URL = 'https://www.indec.gob.ar';
 const PBI_DESEASONALIZED_SHEET = 'desestacionalizado n';
@@ -14,18 +15,6 @@ const QUARTER_RELEASE_MONTHS: Record<number, string> = {
 
 function absoluteIndecUrl(url: string): string {
     return new URL(url, INDEC_BASE_URL).toString();
-}
-
-function parseNumber(value: unknown): number | null {
-    if (value === null || value === undefined || value === '') return null;
-
-    const raw = String(value).trim().replace(/\s/g, '');
-    const normalized = raw.includes('.') && raw.includes(',')
-        ? raw.replace(/\./g, '').replace(',', '.')
-        : raw.replace(/,/g, '');
-    const parsed = Number(normalized);
-
-    return Number.isFinite(parsed) ? parsed : null;
 }
 
 function parseYear(value: unknown): number | null {
@@ -75,7 +64,7 @@ export function parsePbiWorkbook(buffer: Buffer): PbiAnchorRow[] {
     for (const row of rows) {
         currentYear = parseYear(row[0]) ?? currentYear;
         const quarter = parseQuarter(row[1]);
-        const pbi = parseNumber(row[2]);
+        const pbi = parseNumber(row[2], 'en');
         if (!currentYear || !quarter || pbi === null) continue;
 
         anchors.push({
@@ -94,7 +83,7 @@ export function buildMonthlyPbiSeries(
 ): Map<string, number> {
     const sortedAnchors = [...anchors].sort((a, b) => a.fecha.localeCompare(b.fecha));
     const sortedEmae = emaeRows
-        .map(row => ({ fecha: row.fecha, valor: parseNumber(row.emae_desestacionalizado) }))
+        .map(row => ({ fecha: row.fecha, valor: toNullableNumber(row.emae_desestacionalizado ?? null) }))
         .filter((row): row is { fecha: string; valor: number } => row.valor !== null)
         .sort((a, b) => a.fecha.localeCompare(b.fecha));
     const sortedTargets = Array.from(new Set(targetDates)).sort((a, b) => a.localeCompare(b));

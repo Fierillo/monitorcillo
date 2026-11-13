@@ -103,4 +103,14 @@ describe('ICG UTDT source parsing', () => {
 
         expect(report.nextPublishedAt).toBe('2027-02-22');
     });
+
+    it('reads ICG values in the en format SheetJS writes, so a thousands value is out of range', () => {
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+            [null, null, 'Jan-23', 'Feb-23'],
+            [null, 'ICG ', '2.35', '1,234.5'],
+        ]), 'Actual');
+
+        expect(parseIcgWorkbook(XLSX.write(workbook, { type: 'buffer', bookType: 'xls' }))).toEqual([{ fecha: '2023-01-01', icg: 2.35 }]);
+    });
 });

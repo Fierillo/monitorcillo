@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import type { DepositosPrestamosRawRow } from '@/types';
-import { readWorkbook } from './protocols';
+import { excelSerialToIsoMonth, readWorkbook } from './protocols';
+import { isoDate } from './normalize/dates';
 import { fetchBufferFromUrl, fetchTextFromUrl } from './sync/http-client';
 
 const BANK_REPORT_CATALOG_URL = 'https://www.bcra.gob.ar/wp-json/bcra/v1/publicaciones?category=informe-sobre-bancos&lang=es&action=total';
@@ -11,11 +12,12 @@ function normalizeLabel(value: unknown): string {
 }
 
 function monthFromCell(cell: XLSX.CellObject | undefined): string | null {
-    if (cell?.v instanceof Date) return `${cell.v.getUTCFullYear()}-${String(cell.v.getUTCMonth() + 1).padStart(2, '0')}-01`;
+    if (cell?.v instanceof Date) return isoDate(cell.v.getUTCFullYear(), cell.v.getUTCMonth() + 1, 1);
     if (typeof cell?.v !== 'number') return null;
-    const date = XLSX.SSF.parse_date_code(cell.v);
-    if (!date || date.y < 1990 || date.y > 2100) return null;
-    return `${date.y}-${String(date.m).padStart(2, '0')}-01`;
+    const fecha = excelSerialToIsoMonth(cell.v);
+    if (!fecha) return null;
+    const year = Number(fecha.slice(0, 4));
+    return year < 1990 || year > 2100 ? null : fecha;
 }
 
 function addDebtorSectorRatios(sheet: XLSX.WorkSheet, groupName: string, rawKey: 'mora_familias_pct' | 'mora_empresas_pct', rows: Map<string, DepositosPrestamosRawRow>): void {

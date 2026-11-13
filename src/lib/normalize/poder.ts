@@ -1,13 +1,8 @@
 import type { NumericValue, PoderAdquisitivoNormalizedRow, PoderAdquisitivoRawRow } from '@/types';
-import { MONTHS_ES } from './dates';
+import { addMonths, isoToMonthLabel } from './dates';
 import { notNull, toNumber } from './numbers';
 
 const INFORMAL_SALARY_LAG_MONTHS = 5;
-
-function addMonths(fecha: string, offset: number): string {
-    const [year, month] = fecha.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1 + offset, 1)).toISOString().split('T')[0];
-}
 
 export function normalizePoderAdquisitivo(rawData: PoderAdquisitivoRawRow[]): PoderAdquisitivoNormalizedRow[] {
     if (!Array.isArray(rawData) || rawData.length === 0) return [];
@@ -37,10 +32,9 @@ export function normalizePoderAdquisitivo(rawData: PoderAdquisitivoRawRow[]): Po
         const ipc = toNumber(row.ipc_nucleo);
         if (!ipc) return null;
         const calc = (value: NumericValue, factor: number) => value == null || !factor ? null : (Number(value) / ipc / factor) * 100;
-        const date = new Date(row.fecha + 'T12:00:00Z');
 
         return {
-            fecha: `${MONTHS_ES[date.getUTCMonth()]} ${String(date.getUTCFullYear()).slice(-2)}`,
+            fecha: isoToMonthLabel(row.fecha),
             iso_fecha: row.fecha,
             blanco: calc(row.salario_registrado, factors.blanco),
             negro: calc(informalSalaryByFecha.get(row.fecha), factors.negro),

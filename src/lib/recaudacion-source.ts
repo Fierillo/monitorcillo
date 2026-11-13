@@ -1,58 +1,14 @@
 import type { RecaudacionOfficialReport, RecaudacionRawRow } from '@/types';
-import { readWorkbook, sheetRows } from './protocols';
+import { firstSheetRows } from './protocols';
 import { normalizeText } from './normalize/text';
+import { isoDate, monthNumber } from './normalize/dates';
+import { parseNumber } from './normalize/numbers';
 import { conceptToTaxField, RECAUDACION_TAX_RAW_KEYS } from './recaudacion/schema';
 
 const ARGENTINA_GOB_BASE_URL = 'https://www.argentina.gob.ar';
 
-const MONTHS_ES: Record<string, string> = {
-    enero: '01',
-    febrero: '02',
-    marzo: '03',
-    abril: '04',
-    mayo: '05',
-    junio: '06',
-    julio: '07',
-    agosto: '08',
-    septiembre: '09',
-    setiembre: '09',
-    octubre: '10',
-    noviembre: '11',
-    diciembre: '12',
-};
-
-const MONTHS_EN: Record<string, string> = {
-    jan: '01',
-    feb: '02',
-    mar: '03',
-    apr: '04',
-    may: '05',
-    jun: '06',
-    jul: '07',
-    aug: '08',
-    sep: '09',
-    oct: '10',
-    nov: '11',
-    dec: '12',
-};
-
 function absoluteArgentinaGobUrl(url: string): string {
     return new URL(url, ARGENTINA_GOB_BASE_URL).toString();
-}
-
-function parseNumber(value: unknown): number | null {
-    if (value === null || value === undefined || value === '') return null;
-
-    const raw = String(value).trim().replace(/\s/g, '');
-    const isNegative = raw.startsWith('(') && raw.endsWith(')');
-    const unsigned = raw.replace(/[()]/g, '');
-    const normalized = unsigned.includes(',') && unsigned.includes('.')
-        ? unsigned.replace(/\./g, '').replace(',', '.')
-        : unsigned.replace(/,/g, '');
-    const parsed = Number(normalized);
-
-    if (!Number.isFinite(parsed)) return null;
-    return isNegative ? -parsed : parsed;
 }
 
 function parsePublicationDate(value: unknown): string | null {
@@ -61,9 +17,8 @@ function parsePublicationDate(value: unknown): string | null {
     const raw = String(value ?? '').trim();
     const englishMatch = raw.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
     if (englishMatch) {
-        const month = MONTHS_EN[englishMatch[2].toLowerCase()];
-        if (!month) return null;
-        return `${englishMatch[3]}-${month}-${englishMatch[1].padStart(2, '0')}`;
+        const month = monthNumber(englishMatch[2]);
+        return month ? isoDate(Number(englishMatch[3]), month, Number(englishMatch[1])) : null;
     }
 
     const numericMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
@@ -71,17 +26,15 @@ function parsePublicationDate(value: unknown): string | null {
 
     const parsedYear = Number(numericMatch[3]);
     const year = numericMatch[3].length === 2 ? 2000 + parsedYear : parsedYear;
-    return `${year}-${numericMatch[2].padStart(2, '0')}-${numericMatch[1].padStart(2, '0')}`;
+    return isoDate(year, Number(numericMatch[2]), Number(numericMatch[1]));
 }
 
 function parsePeriodDate(value: unknown): string | null {
     const match = normalizeText(value).match(/recaudacion tributaria\.\s*([a-z]+)\s+de\s+(\d{4})/);
     if (!match) return null;
 
-    const month = MONTHS_ES[match[1]];
-    if (!month) return null;
-
-    return `${match[2]}-${month}-01`;
+    const month = monthNumber(match[1]);
+    return month ? isoDate(Number(match[2]), month, 1) : null;
 }
 
 function buildRecaudacionRow(periodDate: string, values: Partial<RecaudacionRawRow>): RecaudacionRawRow {
@@ -131,11 +84,7 @@ export function mergeRecaudacionOfficialReport(
 }
 
 export function parseRecaudacionWorkbook(buffer: Buffer): RecaudacionOfficialReport | null {
-    const workbook = readWorkbook(buffer);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    if (!sheet) return null;
-
-    const rows = sheetRows(sheet);
+    const rows = firstSheetRows(buffer);
     let publishedAt: string | null = null;
     let periodDate: string | null = null;
     const values: Partial<RecaudacionRawRow> = {};
@@ -149,7 +98,7 @@ export function parseRecaudacionWorkbook(buffer: Buffer): RecaudacionOfficialRep
         const field = conceptToTaxField(String(row[0] ?? ''));
         if (!field) continue;
 
-        const amount = parseNumber(row[1]);
+        const amount = parseNumber(row[1], 'en');
         if (amount == null) continue;
         values[field] = amount;
     }

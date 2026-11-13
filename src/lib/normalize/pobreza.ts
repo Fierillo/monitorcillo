@@ -1,5 +1,5 @@
 import type { PobrezaNormalizedRow, PobrezaRawRow } from '@/types';
-import { MONTHS_ES } from './dates';
+import { addMonths, isoToMonthLabel } from './dates';
 import { toNullableNumber } from './numbers';
 
 type MonthlyPovertyRow = {
@@ -7,11 +7,6 @@ type MonthlyPovertyRow = {
     pobreza_utdt: number | null;
     pobreza_uca: number | null;
 };
-
-function addMonths(fecha: string, offset: number): string {
-    const [year, month] = fecha.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1 + offset, 1)).toISOString().split('T')[0];
-}
 
 function monthRange(start: string, end: string): string[] {
     const months: string[] = [];
@@ -72,7 +67,7 @@ export function normalizePobreza(rawData: PobrezaRawRow[]): PobrezaNormalizedRow
         if (Number.isNaN(date.getTime())) continue;
 
         normalizedRows.push({
-            fecha: `${MONTHS_ES[date.getUTCMonth()]} ${String(date.getUTCFullYear()).slice(-2)}`,
+            fecha: isoToMonthLabel(fecha),
             iso_fecha: fecha,
             pobreza_indec: row.pobreza_indec,
             pobreza_utdt: row.pobreza_utdt,

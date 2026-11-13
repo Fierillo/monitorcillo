@@ -7,7 +7,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../lib/db/client', () => ({ sql: { query: vi.fn() } }));
-vi.mock('../lib/sync/http-client', () => ({ fetchTextFromUrl: mocks.fetchTextFromUrl }));
+vi.mock('../lib/sync/http-client', () => ({
+    fetchTextFromUrl: mocks.fetchTextFromUrl,
+    fetchBufferFromUrl: async (url: string) => Buffer.from(await mocks.fetchTextFromUrl(url)),
+}));
 vi.mock('../lib/sync/time-series-client', () => ({ fetchTimeSeries: mocks.fetchTimeSeries }));
 vi.mock('../lib/sync/cache', () => ({
     fetchEmaeWorkbookRows: async () => [{ fecha: '2004-01-01', emae: 95, emae_desestacionalizado: 100 }],

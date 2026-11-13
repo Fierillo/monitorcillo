@@ -1,12 +1,6 @@
 import type { BmaMonthlyBucket, BmaNormalizedRow, BmaRawRow, NumericValue } from '@/types';
-import { fechaToTimestamp } from './dates';
+import { fechaToTimestamp, isoToMonthLabel, MONTHS_ES } from './dates';
 import { baseIpcValue, notNull, toBasePrices, toNullableNumber } from './numbers';
-
-const MONTHS_NAMES: Record<string, string> = {
-    '01': 'ENE', '02': 'FEB', '03': 'MAR', '04': 'ABR',
-    '05': 'MAY', '06': 'JUN', '07': 'JUL', '08': 'AGO',
-    '09': 'SEPT', '10': 'OCT', '11': 'NOV', '12': 'DIC'
-};
 
 function addAverage(value: NumericValue, apply: (numericValue: number) => void) {
     const numericValue = toNullableNumber(value);
@@ -56,8 +50,8 @@ export function normalizeBma(rawData: BmaRawRow[]): BmaNormalizedRow[] {
     }
 
     return Array.from(monthly.entries()).map(([monthKey, bucket]) => {
-        const [yyyy, mm] = monthKey.split('-');
-        if (!MONTHS_NAMES[mm]) return null;
+        const iso_fecha = `${monthKey}-01`;
+        if (!MONTHS_ES[Number(monthKey.slice(5, 7)) - 1]) return null;
         const calcReal = (value: number | null) => toBasePrices(value, bucket.ipc_nucleo, baseIpc);
         const calcPct = (realValue: number | null) => {
             return realValue == null || !bucket.pbi_trimestral ? null : (realValue / bucket.pbi_trimestral) * 100;
@@ -77,8 +71,8 @@ export function normalizeBma(rawData: BmaRawRow[]): BmaNormalizedRow[] {
         const bmAmpliaReal = calcReal(bmAmpliaRaw);
 
         return {
-            fecha: `${MONTHS_NAMES[mm]} ${yyyy.slice(-2)}`,
-            iso_fecha: `${monthKey}-01`,
+            fecha: isoToMonthLabel(iso_fecha),
+            iso_fecha,
             BaseMonetaria: calcPct(baseMonetariaReal),
             PasivosRemunerados: calcPct(pasivosRemuneradosReal),
             DepositosTesoro: calcPct(depositosTesoroReal),

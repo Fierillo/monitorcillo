@@ -5,7 +5,7 @@ import {
     sectorLevelAportes,
     type EmaeSectorKey,
 } from '../emae/schema';
-import { fechaToTimestamp, MONTHS_ES } from './dates';
+import { fechaToTimestamp, isoToMonthLabel } from './dates';
 import { notNull, toNullableNumber } from './numbers';
 
 const MM12_PERIODS = 12;
@@ -72,7 +72,7 @@ export function normalizeEmae(rawData: EmaeRawRow[]): EmaeNormalizedRow[] {
             const aportes = sectorLevelAportes(sectorMonthlyBase100, emaeDesestBase100);
 
             const normalizedRow: EmaeNormalizedRow = {
-                fecha: `${MONTHS_ES[dateObj.getUTCMonth()]} ${String(dateObj.getUTCFullYear()).slice(-2)}`,
+                fecha: isoToMonthLabel(row.fecha),
                 iso_fecha: row.fecha,
                 emae: emaeBase100,
                 emae_desestacionalizado: emaeDesestBase100,

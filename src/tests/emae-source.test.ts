@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
-import { parseEmaeHistoricalCsv, parseEmaePublicationDate, parseEmaeSectorWorkbook, parseEmaeWorkbook, prependHistoricalEmae } from '../lib/emae-source';
+import { EMAE_HISTORICAL_CSV, parseEmaePublicationDate, parseEmaeSectorWorkbook, parseEmaeWorkbook, prependHistoricalEmae } from '../lib/emae-source';
+import { firstSheetRows, parseTableSeries } from '../lib/protocols';
+
+const parseHistoricalCsv = (csv: string) => parseTableSeries(firstSheetRows(Buffer.from(csv)), EMAE_HISTORICAL_CSV);
 
 function workbookBuffer(rows: unknown[][], sheetName = 'EMAE'): Buffer {
     const workbook = XLSX.utils.book_new();
@@ -17,9 +20,9 @@ describe('EMAE official source parsing', () => {
             '"2004-01-01","114.4","Overlap"',
         ].join('\n');
 
-        expect(parseEmaeHistoricalCsv(csv)).toEqual([
-            ['1993-01-01', 98.25],
-            ['2004-01-01', 114.4],
+        expect(parseHistoricalCsv(csv)).toEqual([
+            { fecha: '1993-01-01', emae_desestacionalizado: 98.25 },
+            { fecha: '2004-01-01', emae_desestacionalizado: 114.4 },
         ]);
     });
 
@@ -32,9 +35,9 @@ describe('EMAE official source parsing', () => {
             '2004-01-01,100,114.4',
         ].join('\r\n');
 
-        expect(parseEmaeHistoricalCsv(csv)).toEqual([
-            ['1993-01-01', 98.25],
-            ['2004-01-01', 114.4],
+        expect(parseHistoricalCsv(csv)).toEqual([
+            { fecha: '1993-01-01', emae_desestacionalizado: 98.25 },
+            { fecha: '2004-01-01', emae_desestacionalizado: 114.4 },
         ]);
     });
 
@@ -85,12 +88,20 @@ describe('EMAE official source parsing', () => {
             { fecha: '2004-01-01', emae_desestacionalizado: 100 },
             { fecha: '2004-02-01', emae_desestacionalizado: 102 },
         ], [
-            ['2003-12-01', 50],
-            ['2004-01-01', 80],
+            { fecha: '2003-12-01', emae_desestacionalizado: 50 },
+            { fecha: '2004-01-01', emae_desestacionalizado: 80 },
         ])).toEqual([
             { fecha: '2003-12-01', emae_desestacionalizado: 62.5 },
             { fecha: '2004-01-01', emae_desestacionalizado: 100 },
             { fecha: '2004-02-01', emae_desestacionalizado: 102 },
         ]);
+    });
+
+    it('reads EMAE indices in the en format SheetJS writes: thousands commas and decimal points', () => {
+        const rows = parseEmaeWorkbook(workbookBuffer([
+            ['2026', 'Enero', '1,148.8', null, '155.7', null, '152.7'],
+        ]));
+
+        expect(rows).toEqual([{ fecha: '2026-01-01', emae: 1148.8, emae_desestacionalizado: 155.7, emae_tendencia: 152.7 }]);
     });
 });
